@@ -847,7 +847,7 @@ async function syncDeckToApi(deckId){
   if(!state.user||!apiToken())return;
   const deck=state.decks[deckId];if(!deck)return;
   const{_insts,_cols,_sort,...clean}=deck;
-  try{await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify(clean)})}
+  try{await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify({...clean,splashSite:deck.splashSite||null})})}
   catch(e){console.warn('Deck sync failed:',e.message)}
 }
 
@@ -999,7 +999,30 @@ function openShare(){
     openModal('modal-share');return;
   }
   const url=buildShareUrl(state.currentDeckId);
-  const isSplash=state.user&&deck.splashOwner===state.user.username;
+  // Per-site splash status
+  const SITES=[
+    {id:'mymagicdeck',  label:'mymagicdeck.com',   icon:'🃏', format:null},
+    {id:'myvintagedeck',label:'myvintagedeck.com',  icon:'⚗️', format:'vintage'},
+    {id:'mycommanderdeck',label:'mycommanderdeck.com',icon:'👑', format:'commander'},
+  ];
+  let splashRows='';
+  for(const site of SITES){
+    const isSet=deck.splashSite===site.id;
+    // Check if deck is legal for this format
+    let eligible=true,eligNote='';
+    if(site.format){
+      const cards=Object.values(deck.cards||{});
+      const illegal=cards.filter(({card})=>{
+        const l=(card.legalities||{})[site.format];
+        return l!=='legal'&&l!=='restricted';
+      });
+      if(illegal.length){eligible=false;eligNote=`<span style="color:var(--warn);font-size:0.67rem;">${illegal.length} card${illegal.length>1?'s':''} not ${site.format}-legal</span>`;}
+    }
+    splashRows+=`<label class="share-opt${!eligible?' disabled':''}">
+      <input type="checkbox" data-site="${site.id}" ${isSet?'checked':''} ${!eligible?'disabled':''} onchange="toggleDeckSiteSplash('${site.id}',this.checked)" />
+      <div class="share-opt-text"><strong>${site.icon} ${site.label}</strong>${eligible?'<span>Show this deck on '+site.label+'</span>':eligNote}</div>
+    </label>`;
+  }
   body.innerHTML=`
     <div class="share-url-box"><span class="share-url" id="share-url-text">${url}</span><button class="btn small primary" onclick="copyShareUrl()">Copy</button></div>
     <div class="share-opts">
@@ -1007,10 +1030,10 @@ function openShare(){
         <input type="checkbox" id="share-public-chk" ${deck.public!==false?'checked':''} onchange="toggleDeckPublic()" />
         <div class="share-opt-text"><strong>Public link</strong><span>Anyone with the link can view this deck</span></div>
       </label>
-      <label class="share-opt">
-        <input type="checkbox" id="share-splash-chk" ${isSplash?'checked':''} onchange="toggleDeckSplash()" />
-        <div class="share-opt-text"><strong>⭐ Set as my splash deck</strong><span>This deck will appear on your public profile page</span></div>
-      </label>
+      <div style="border-top:1px solid var(--border);padding-top:8px;margin-top:4px;">
+        <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:6px;">⭐ Set as splash deck</div>
+        ${splashRows}
+      </div>
     </div>
     <div class="share-download">
       <button class="btn" onclick="downloadDeckTxt()">⬇ Download .txt</button>
@@ -1024,18 +1047,22 @@ function copyShareUrl(){
   navigator.clipboard.writeText(t).then(()=>toast('Link copied!','success')).catch(()=>{const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');ta.remove();toast('Link copied!','success')});
 }
 function toggleDeckPublic(){const d=currentDeck();if(d){d.public=document.getElementById('share-public-chk').checked;saveToStorage();syncDeckToApi(d.id);}}
-function toggleDeckSplash(){
+function toggleDeckSiteSplash(site,checked){
   const d=currentDeck();if(!d||!state.user)return;
-  const chk=document.getElementById('share-splash-chk').checked;
-  // Un-splash any previous deck for this user
-  for(const deck of Object.values(state.decks))if(deck.splashOwner===state.user.username){deck.splashOwner=null;syncDeckToApi(deck.id);}
-  if(chk){
+  if(checked){
+    // Un-splash any other deck set for this same site
+    for(const deck of Object.values(state.decks)){
+      if(deck.splashSite===site&&deck.id!==d.id){deck.splashSite=null;deck.splashOwner=null;syncDeckToApi(deck.id);}
+    }
+    d.splashSite=site;
     d.splashOwner=state.user.username;
-    // Splash deck must be public — auto-enable it
     d.public=true;
     const pubChk=document.getElementById('share-public-chk');
     if(pubChk)pubChk.checked=true;
-    toast('Splash deck set! ⭐ (Public link enabled)','success');
+    toast('Splash set for '+site+'.com ⭐','success');
+  } else {
+    if(d.splashSite===site){d.splashSite=null;d.splashOwner=null;}
+    toast('Removed splash for '+site+'.com','info');
   }
   saveToStorage();syncDeckToApi(d.id);
   openDeckManager();
@@ -1275,8 +1302,13 @@ function splashReorder(){
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
   _splashDeck=null;
-  // If we're on a subdomain, go back to the main site
+  // If we're on a site-specific domain, redirect to main builder
   const host=window.location.hostname;
+  const SITE_DOMAINS=['myvintagedeck.com','www.myvintagedeck.com','mycommanderdeck.com','www.mycommanderdeck.com'];
+  if(SITE_DOMAINS.includes(host)){
+    window.location.href='https://mymagicdeck.com';
+    return;
+  }
   if(host.match(/^[a-z0-9_-]+\.mymagicdeck\.com$/i)&&!host.startsWith('www')){
     window.location.href='https://mymagicdeck.com';
   }
@@ -1315,8 +1347,25 @@ function splashImportToCurrent(){
 
 // URL hash routing — open splash from a shared link
 function checkUrlHash(){
-  // Check for subdomain — e.g. jake.mymagicdeck.com
   const host=window.location.hostname;
+  // Handle site-specific splash domains
+  const SITE_MAP={
+    'myvintagedeck.com':  'myvintagedeck',
+    'www.myvintagedeck.com': 'myvintagedeck',
+    'mycommanderdeck.com':   'mycommanderdeck',
+    'www.mycommanderdeck.com':'mycommanderdeck',
+  };
+  if(SITE_MAP[host]){
+    const site=SITE_MAP[host];
+    apiFetch('/site/'+site+'/splash').then(data=>{
+      openSplash(data.deck,data.username);
+    }).catch(()=>{
+      const label={myvintagedeck:'myvintagedeck.com',mycommanderdeck:'mycommanderdeck.com'}[site]||site;
+      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No splash deck set for <strong style="color:#c8cdd8">${label}</strong> yet.</div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your deck on mymagicdeck.com</a></div>`;
+    });
+    return;
+  }
+  // Handle username subdomains — e.g. jake.mymagicdeck.com
   const subMatch=host.match(/^([a-z0-9_-]+)\.mymagicdeck\.com$/i);
   if(subMatch&&subMatch[1]!=='www'){
     const username=subMatch[1];
@@ -1799,11 +1848,12 @@ function openDeckManager(){
   for(const d of decks){
     const cc=Object.values(d.cards).reduce((s,e)=>s+e.qty,0),sbc=Object.values(d.sideboard||{}).reduce((s,e)=>s+e.qty,0),cur=d.id===state.currentDeckId;
     const isSplash=state.user&&d.splashOwner===state.user.username;
+    const splashLabel={mymagicdeck:'⭐ Splash',myvintagedeck:'⭐ Vintage',mycommanderdeck:'⭐ Commander'}[d.splashSite]||(isSplash?'⭐ Splash':null);
     const clrSet=new Set();for(const{card}of Object.values(d.cards))for(const c of(card.color_identity||card.colors||[]))clrSet.add(c);
     const pipHtml=[...clrSet].map(c=>`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${{W:'#f9f0db',U:'#5b8def',B:'#2d1f3d',R:'#c03030',G:'#2d6040'}[c]||'#3a4050'};border:1px solid rgba(255,255,255,0.2);vertical-align:middle"></span>`).join('');
     h+=`<div class="deck-list-item${cur?' current':''}" onclick="loadDeck('${d.id}');closeModal('modal-decks')">
       <div style="flex:1;min-width:0">
-        <div class="deck-item-name">${d.name} ${isSplash?'<span class="splash-deck-manager-badge">⭐ Splash</span>':''}</div>
+        <div class="deck-item-name">${d.name} ${splashLabel?`<span class="splash-deck-manager-badge">${splashLabel}</span>`:''}</div>
         <div class="deck-item-meta">${cc} cards${sbc>0?' · SB: '+sbc:''} ${pipHtml}</div>
       </div>
       <div class="deck-item-actions">
@@ -1839,10 +1889,11 @@ document.addEventListener('keydown',function(e){
 document.getElementById('deck-name-input').addEventListener('blur',function(){const d=currentDeck();if(d){d.name=this.value.trim()||'Untitled Deck';this.value=d.name;saveToStorage();syncDeckToApi(d.id)}});
 
 function init(){
-  // If on a subdomain, only handle splash routing — don't boot the full builder
+  // If on a splash-only domain, only handle routing — don't boot the full builder
   const host=window.location.hostname;
-  const isSub=host.match(/^[a-z0-9_-]+\.mymagicdeck\.com$/i)&&!host.startsWith('www');
-  if(isSub){checkUrlHash();return;}
+  const SPLASH_ONLY=host.match(/^([a-z0-9_-]+)\.mymagicdeck\.com$/i)&&!host.startsWith('www');
+  const SITE_ONLY=['myvintagedeck.com','www.myvintagedeck.com','mycommanderdeck.com','www.mycommanderdeck.com'].includes(host);
+  if(SPLASH_ONLY||SITE_ONLY){checkUrlHash();return;}
 
   loadFromStorage();
   if(!Object.keys(state.decks).length||!state.currentDeckId)newDeck();

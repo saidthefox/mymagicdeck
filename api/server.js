@@ -33,13 +33,18 @@ db.exec(`
     data        TEXT    NOT NULL DEFAULT '{}',
     is_public   INTEGER NOT NULL DEFAULT 0,
     is_splash   INTEGER NOT NULL DEFAULT 0,
+    splash_site TEXT,
     updated_at  INTEGER NOT NULL DEFAULT (unixepoch()),
     PRIMARY KEY (id, user_id)
   );
 
-  CREATE INDEX IF NOT EXISTS idx_decks_user   ON decks(user_id);
-  CREATE INDEX IF NOT EXISTS idx_decks_splash ON decks(user_id, is_splash);
+  CREATE INDEX IF NOT EXISTS idx_decks_user        ON decks(user_id);
+  CREATE INDEX IF NOT EXISTS idx_decks_splash      ON decks(user_id, is_splash);
+  CREATE INDEX IF NOT EXISTS idx_decks_splash_site ON decks(user_id, splash_site);
 `);
+
+// ── Migrations (idempotent) ───────────────────────────────────────────────────
+try { db.exec(`ALTER TABLE decks ADD COLUMN splash_site TEXT`); } catch (_) { /* already exists */ }
 
 // ── Fastify instance ──────────────────────────────────────────────────────────
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL || 'info' } });
@@ -137,15 +142,16 @@ app.post('/api/auth/login', {
 // ── GET /api/decks  (all decks for authenticated user) ────────────────────────
 app.get('/api/decks', { preHandler: authenticate }, async (req) => {
   const rows = db.prepare(
-    'SELECT id, name, data, is_public, is_splash, updated_at FROM decks WHERE user_id = ?'
+    'SELECT id, name, data, is_public, is_splash, splash_site, updated_at FROM decks WHERE user_id = ?'
   ).all(req.user.sub);
 
   return rows.map(r => ({
-    id:        r.id,
-    name:      r.name,
-    public:    !!r.is_public,
+    id:          r.id,
+    name:        r.name,
+    public:      !!r.is_public,
     splashOwner: r.is_splash ? req.user.username : null,
-    updatedAt: r.updated_at,
+    splashSite:  r.splash_site || null,
+    updatedAt:   r.updated_at,
     ...JSON.parse(r.data),
   }));
 });
@@ -153,7 +159,7 @@ app.get('/api/decks', { preHandler: authenticate }, async (req) => {
 // ── PUT /api/decks/:id  (create or update a single deck) ─────────────────────
 app.put('/api/decks/:id', { preHandler: authenticate }, async (req, reply) => {
   const { id } = req.params;
-  const { name, cards, sideboard, public: isPublic, splashOwner } = req.body;
+  const { name, cards, sideboard, public: isPublic, splashOwner, splashSite } = req.body;
 
   if (!name || typeof cards !== 'object') {
     return reply.code(400).send({ error: 'name and cards are required.' });
@@ -162,17 +168,21 @@ app.put('/api/decks/:id', { preHandler: authenticate }, async (req, reply) => {
   // Serialize everything except top-level metadata into data blob
   const data = JSON.stringify({ cards, sideboard: sideboard || {} });
   const isSplash = splashOwner ? 1 : 0;
+  // Allowed splash sites
+  const VALID_SITES = ['mymagicdeck', 'myvintagedeck', 'mycommanderdeck'];
+  const site = (splashSite && VALID_SITES.includes(splashSite)) ? splashSite : null;
 
   db.prepare(`
-    INSERT INTO decks (id, user_id, name, data, is_public, is_splash, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+    INSERT INTO decks (id, user_id, name, data, is_public, is_splash, splash_site, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, unixepoch())
     ON CONFLICT(id, user_id) DO UPDATE SET
-      name       = excluded.name,
-      data       = excluded.data,
-      is_public  = excluded.is_public,
-      is_splash  = excluded.is_splash,
-      updated_at = unixepoch()
-  `).run(id, req.user.sub, name, data, isPublic ? 1 : 0, isSplash);
+      name        = excluded.name,
+      data        = excluded.data,
+      is_public   = excluded.is_public,
+      is_splash   = excluded.is_splash,
+      splash_site = excluded.splash_site,
+      updated_at  = unixepoch()
+  `).run(id, req.user.sub, name, data, isPublic ? 1 : 0, isSplash, site);
 
   return { ok: true };
 });
@@ -209,6 +219,35 @@ app.get('/api/users/:username/splash', async (req, reply) => {
       public: true,
       splashOwner: user.username,
       ...JSON.parse(deck.data),
+    },
+  };
+});
+
+// ── GET /api/site/:site/splash  (public splash for a specific site) ───────────
+// site = 'mymagicdeck' | 'myvintagedeck' | 'mycommanderdeck'
+app.get('/api/site/:site/splash', async (req, reply) => {
+  const { site } = req.params;
+  const VALID_SITES = ['mymagicdeck', 'myvintagedeck', 'mycommanderdeck'];
+  if (!VALID_SITES.includes(site)) return reply.code(400).send({ error: 'Unknown site.' });
+
+  const row = db.prepare(
+    `SELECT d.id, d.name, d.data, u.username
+     FROM decks d JOIN users u ON u.id = d.user_id
+     WHERE d.splash_site = ? AND d.is_public = 1
+     ORDER BY d.updated_at DESC LIMIT 1`
+  ).get(site);
+
+  if (!row) return reply.code(404).send({ error: 'No splash deck set for this site.' });
+
+  return {
+    username: row.username,
+    deck: {
+      id:         row.id,
+      name:       row.name,
+      public:     true,
+      splashSite: site,
+      splashOwner: row.username,
+      ...JSON.parse(row.data),
     },
   };
 });
