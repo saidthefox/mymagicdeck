@@ -145,13 +145,46 @@
       border-radius: 6px; overflow: hidden; cursor: grab; user-select: none;
       transition: box-shadow 0.12s, filter 0.12s; border: 1px solid rgba(0,0,0,0.3);
     }
-    .mtgo-card:last-child, .mtgo-card:hover {
-      box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-    }
-    .mtgo-card:hover { z-index: 500 !important; filter: brightness(1.08); }
-    .mtgo-card.dragging { opacity: 0.25; }
+    .mtgo-card:last-child { box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+    .mtgo-card:hover { z-index: 500 !important; transform: translateY(-8px) scale(2.3); transform-origin: top center; box-shadow: 0 16px 48px rgba(0,0,0,0.85) !important; filter: none; cursor: pointer; }
+    .mtgo-card.dragging { opacity: 0.25; transform: none !important; }
     .mtgo-card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
     .mtgo-card .no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text-dim); font-size: 0.6rem; text-align: center; padding: 4px; border: 1px solid var(--border); }
+    /* Set badge — shown on hover via parent hover */
+    .mtgo-card .set-badge {
+      position: absolute; bottom: 5px; right: 5px;
+      background: rgba(0,0,0,0.78); color: #fff; font-size: 0.48rem; font-weight: 700;
+      border-radius: 4px; padding: 2px 5px; pointer-events: auto;
+      opacity: 0; transition: opacity 0.1s; white-space: nowrap; max-width: 70px;
+      overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02em;
+      cursor: pointer; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .mtgo-card:hover .set-badge { opacity: 1; }
+    .set-badge:hover { background: var(--accent) !important; border-color: var(--accent) !important; }
+    /* Printings popover */
+    #printings-popover {
+      position: fixed; z-index: 3000; background: var(--surface);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: 0 8px 40px rgba(0,0,0,0.7); padding: 12px;
+      width: 320px; max-height: 420px; overflow-y: auto;
+      display: none; flex-direction: column; gap: 10px;
+    }
+    #printings-popover.open { display: flex; }
+    .printings-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .printings-title { font-size: 0.8rem; font-weight: 700; color: var(--text-bright); }
+    .printings-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 1rem; padding: 0 4px; }
+    .printings-close:hover { color: var(--text-bright); }
+    .printings-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .printing-item {
+      cursor: pointer; border-radius: 4px; overflow: hidden;
+      border: 2px solid transparent; transition: border-color 0.12s, transform 0.12s;
+      position: relative;
+    }
+    .printing-item:hover { border-color: var(--accent); transform: scale(1.05); }
+    .printing-item.active { border-color: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .printing-item img { width: 100%; display: block; border-radius: 2px; }
+    .printing-item .pi-set { font-size: 0.48rem; color: var(--text-dim); text-align: center; padding: 2px 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .printings-spinner { text-align: center; padding: 20px; color: var(--text-dim); font-size: 0.8rem; }
 
     .mtgo-drop-line {
       position: absolute; left: 0; width: var(--card-w); height: 3px;
@@ -659,6 +692,14 @@
     </div>
   </div>
   <div class="splash-body" id="splash-body"></div>
+</div>
+
+<div id="printings-popover">
+  <div class="printings-header">
+    <span class="printings-title" id="printings-title">Other Printings</span>
+    <button class="printings-close" onclick="closePrintings()">✕</button>
+  </div>
+  <div id="printings-grid-wrap"><div class="printings-spinner">Loading…</div></div>
 </div>
 
 <div id="toast-container"></div>
@@ -1456,6 +1497,73 @@ function dragEnd(e){
   }
   drag=null;
 }
+
+// ============================================================
+//  PRINTINGS POPOVER
+// ============================================================
+let _printingsUid=null;
+async function openPrintings(e,uid,card){
+  e.preventDefault();
+  _printingsUid=uid;
+  const pop=document.getElementById('printings-popover');
+  document.getElementById('printings-title').textContent=card.name+' — Printings';
+  document.getElementById('printings-grid-wrap').innerHTML='<div class="printings-spinner">Loading…</div>';
+  // Position near click, keep on screen
+  pop.classList.add('open');
+  const pw=320,ph=420;
+  let x=e.clientX+12,y=e.clientY-20;
+  if(x+pw>window.innerWidth-8)x=e.clientX-pw-12;
+  if(y+ph>window.innerHeight-8)y=window.innerHeight-ph-8;
+  if(y<8)y=8;
+  pop.style.left=x+'px';pop.style.top=y+'px';
+  // Fetch all printings by oracle_id
+  try{
+    const q=card.oracle_id?`oracleid:${card.oracle_id}`:`!"${card.name}"`;
+    let prints=[],page=1,hasMore=true;
+    while(hasMore&&page<=4){
+      const r=await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&unique=prints&order=released&dir=desc&page=${page}`);
+      const d=await r.json();
+      if(d.object==='error')break;
+      prints=[...prints,...(d.data||[])];
+      hasMore=d.has_more;page++;
+    }
+    let html='<div class="printings-grid">';
+    for(const p of prints){
+      const img=getCardImage(p,'small');
+      const isActive=p.id===card.id;
+      const esc=JSON.stringify(sanitizeCard(p)).replace(/"/g,'&quot;');
+      html+=`<div class="printing-item${isActive?' active':''}" onclick="selectPrinting('${uid}',${esc})" title="${p.set_name} (${p.released_at?.slice(0,4)||''})">`;
+      html+=img?`<img src="${img}" alt="${p.set_name}"/>`:`<div style="aspect-ratio:488/680;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-dim);padding:4px">${p.set_name}</div>`;
+      html+=`<div class="pi-set">${p.set_name}</div></div>`;
+    }
+    html+='</div>';
+    document.getElementById('printings-grid-wrap').innerHTML=html;
+  }catch(err){
+    document.getElementById('printings-grid-wrap').innerHTML='<div class="printings-spinner">Failed to load printings.</div>';
+  }
+}
+function selectPrinting(uid,newCard){
+  const deck=currentDeck();
+  if(!deck)return;
+  ensureLayout(deck);
+  const inst=deck._insts[uid];
+  if(!inst)return;
+  inst.card=newCard;
+  for(const k of Object.keys(deck.cards)){
+    if(deck.cards[k]===inst){deck.cards[k].card=newCard;break;}
+  }
+  closePrintings();
+  renderDeckVisual();
+  toast('Printing updated to '+newCard.set_name,'success');
+}
+function closePrintings(){
+  document.getElementById('printings-popover').classList.remove('open');
+  _printingsUid=null;
+}
+document.addEventListener('mousedown',function(e){
+  const pop=document.getElementById('printings-popover');
+  if(pop&&pop.classList.contains('open')&&!pop.contains(e.target)&&!e.target.classList.contains('set-badge'))closePrintings();
+});
 
 // ============================================================
 //  SEARCH
