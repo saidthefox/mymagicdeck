@@ -441,11 +441,30 @@
       transition:transform 0.15s ease, box-shadow 0.15s ease, width 0.15s ease; box-shadow:0 2px 8px rgba(0,0,0,0.5);
       background: var(--surface2); border: 1px solid var(--border);
     }
-    .splash-card:hover { transform:translateY(-8px) scale(2.3); transform-origin:top center; box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
+    .splash-card:hover, .splash-card.zoomed { transform:translateY(-8px) scale(2.3); transform-origin:top center; box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
     .splash-card img { width:100%; display:block; border-radius:5px; }
     .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
     .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
     .splash-deck-manager-badge { display:inline-flex; align-items:center; gap:4px; background:var(--accent-dim); color:var(--accent); border-radius:10px; padding:1px 8px; font-size:0.65rem; font-weight:700; }
+
+    @media (max-width: 700px) {
+      /* Header: hide logo text labels, keep icons */
+      .splash-header { padding: 0 10px; gap: 8px; height: 48px; }
+      .splash-logo { font-size: 0.85rem; }
+      .splash-header-right { gap: 4px; }
+      .splash-header-right .btn { padding: 5px 8px; font-size: 0.72rem; }
+      /* Hide Download and Load into Builder on small screens, keep Copy+Close */
+      .splash-header-right .btn:nth-child(2),
+      .splash-header-right .btn:nth-child(3) { display: none; }
+      /* Meta bar: stack vertically */
+      .splash-meta-bar { flex-direction: column; align-items: flex-start; gap: 8px; padding-bottom: 12px; margin-bottom: 12px; }
+      .splash-sort-wrap { gap: 8px; }
+      .splash-zoom-slider { width: 110px; }
+      /* Type bar: taller so text fits */
+      .splash-type-breakdown { height: 36px; }
+      /* Body padding tighter */
+      .splash-body { padding: 12px; }
+    }
   </style>
 </head>
 <body>
@@ -1036,7 +1055,11 @@ function openSplash(deckObj,username){
   // Store data on overlay for zoom/reorder re-renders
   const overlay=document.getElementById('splash-overlay');
   overlay._splashGroups={g,sbCards,allCards};
-  const zoomPct=parseInt(document.getElementById('splash-zoom')?.value||100);
+  // Default zoom: smaller on mobile
+  const defaultZoom=window.innerWidth<=700?70:100;
+  const zoomSlider=document.getElementById('splash-zoom');
+  if(zoomSlider){zoomSlider.value=defaultZoom;const lbl=document.getElementById('splash-zoom-label');if(lbl)lbl.textContent=defaultZoom+'%';}
+  const zoomPct=defaultZoom;
   const sortMode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
   const colsHtml=_buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode);
 
@@ -1118,8 +1141,10 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
       const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
       html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})"`;
-      html+=` onmouseenter="var i=this.querySelector('img');if(i){i.src=i.dataset.large;}"`;
-      html+=` onmouseleave="var i=this.querySelector('img');if(i){i.src=i.dataset.normal;}">`;
+      html+=` onmouseenter="var im=this.querySelector('img');if(im)im.src=im.dataset.large;"`;
+      html+=` onmouseleave="var im=this.querySelector('img');if(im)im.src=im.dataset.normal;"`;
+      html+=` ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()"`;
+      html+=`>`;
       html+=imgNormal
         ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}"/>`
         :`<div class="no-img-ph">${card.name}</div>`;
@@ -1141,6 +1166,38 @@ function _splashRebuildColumns(){
   const newHtml=_buildSplashColumns(g,sbCards,allCards,zoom,sortMode);
   if(existing)existing.outerHTML=newHtml;
   else body.insertAdjacentHTML('beforeend',newHtml);
+}
+function splashCardTouch(e,el){
+  // First tap zooms in; second tap opens card detail
+  if(el.classList.contains('zoomed')){
+    el.classList.remove('zoomed');
+    const im=el.querySelector('img');if(im)im.src=im.dataset.normal;
+    // Let the onclick fire for detail
+  } else {
+    e.preventDefault();
+    // Dismiss any other zoomed card first
+    document.querySelectorAll('.splash-card.zoomed').forEach(c=>{
+      c.classList.remove('zoomed');
+      const im=c.querySelector('img');if(im)im.src=im.dataset.normal;
+    });
+    el.classList.add('zoomed');
+    const im=el.querySelector('img');if(im)im.src=im.dataset.large;
+  }
+}
+function splashCardTouch(e,el){
+  if(el.classList.contains('zoomed')){
+    // Second tap — let onclick fire for card detail
+    el.classList.remove('zoomed');
+    const im=el.querySelector('img');if(im)im.src=im.dataset.normal;
+  } else {
+    e.preventDefault();
+    document.querySelectorAll('.splash-card.zoomed').forEach(c=>{
+      c.classList.remove('zoomed');
+      const im=c.querySelector('img');if(im)im.src=im.dataset.normal;
+    });
+    el.classList.add('zoomed');
+    const im=el.querySelector('img');if(im)im.src=im.dataset.large;
+  }
 }
 function splashZoom(){
   const slider=document.getElementById('splash-zoom');
