@@ -1803,7 +1803,18 @@ async function doSearch(){
 async function loadMoreResults(){
   if(!state.searchNextPage)return;
   const btn=document.querySelector('.load-more-btn');if(btn)btn.disabled=true;
-  try{const r=await fetch(state.searchNextPage);const d=await r.json();
+  try{
+    if(state.searchNextPage.startsWith('local:')){
+      const apiPath=state.searchNextPage.slice(6).replace(/^\/api/,'');
+      const d=await apiFetch(apiPath);
+      if(d.object==='list'){
+        state.searchResults=[...state.searchResults,...(d.data||[])];
+        state.searchHasMore=d.has_more||false;
+        state.searchNextPage=d.next_page?'local:'+d.next_page:null;
+        renderSearchResults();return;
+      }
+    }
+    const r=await fetch(state.searchNextPage);const d=await r.json();
     state.searchResults=[...state.searchResults,...(d.data||[])];state.searchHasMore=d.has_more||false;state.searchNextPage=d.next_page||null;renderSearchResults()
   }catch(e){toast('Failed to load more results','error')}
 }
@@ -1920,8 +1931,18 @@ async function doImport(){
   }
   if(!main.length&&!side.length){err.textContent='Could not parse any cards.';return}
   closeModal('modal-import');toast(`Importing ${main.length+side.length} cards…`);let failed=[];
-  for(const{qty,name}of main){try{const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}const c=await r.json();addCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,80))}catch(e){failed.push(name)}}
-  for(const{qty,name}of side){try{const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}const c=await r.json();addSBCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,80))}catch(e){failed.push(name)}}
+  for(const{qty,name}of main){try{
+    let c=await apiFetch('/cards/named?name='+encodeURIComponent(name)).catch(()=>null);
+    if(!c||c.object==='error'){
+      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}c=await r.json();
+    }
+    addCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,50))}catch(e){failed.push(name)}}
+  for(const{qty,name}of side){try{
+    let c=await apiFetch('/cards/named?name='+encodeURIComponent(name)).catch(()=>null);
+    if(!c||c.object==='error'){
+      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}c=await r.json();
+    }
+    addSBCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,50))}catch(e){failed.push(name)}}
   if(failed.length)toast(`${failed.length} not found: ${failed.slice(0,3).join(', ')}`,'error');else toast('Import complete!','success')
 }
 function openExport(){populateExport();openModal('modal-export')}

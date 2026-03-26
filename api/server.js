@@ -1,9 +1,10 @@
 'use strict';
 
-const path = require('path');
-const fs   = require('fs');
-const Fastify = require('fastify');
-const bcrypt  = require('bcrypt');
+const path  = require('path');
+const fs    = require('fs');
+const https = require('https');
+const Fastify  = require('fastify');
+const bcrypt   = require('bcrypt');
 const Database = require('better-sqlite3');
 
 // ── Config ────────────────────────────────────────────────────────────────────
@@ -45,6 +46,254 @@ db.exec(`
 // ── Migrations (idempotent) ───────────────────────────────────────────────────
 try { db.exec(`ALTER TABLE decks ADD COLUMN splash_site TEXT`); } catch (_) { /* already exists */ }
 try { db.exec(`CREATE INDEX IF NOT EXISTS idx_decks_splash_site ON decks(user_id, splash_site)`); } catch (_) { /* already exists */ }
+
+// ── Cards table + FTS5 ───────────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS cards (
+    oracle_id       TEXT PRIMARY KEY,
+    name            TEXT NOT NULL,
+    mana_cost       TEXT,
+    cmc             REAL NOT NULL DEFAULT 0,
+    type_line       TEXT,
+    oracle_text     TEXT,
+    colors          TEXT,         -- JSON array e.g. ["W","U"]
+    color_identity  TEXT,         -- JSON array
+    keywords        TEXT,         -- JSON array
+    legalities      TEXT,         -- JSON object
+    set_id          TEXT,
+    set_name        TEXT,
+    rarity          TEXT,
+    image_uris      TEXT,         -- JSON object (small/normal/large)
+    card_faces      TEXT,         -- JSON array (for DFCs)
+    prices          TEXT,         -- JSON object {usd, usd_foil}
+    updated_at      INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_cards_name ON cards(name COLLATE NOCASE);
+  CREATE INDEX IF NOT EXISTS idx_cards_cmc  ON cards(cmc);
+`);
+
+// FTS5 table — content= links to cards so we don't double-store text
+try {
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS cards_fts USING fts5(
+      name, type_line, oracle_text, keywords,
+      content='cards', content_rowid='rowid'
+    );
+  `);
+} catch (_) { /* already exists */ }
+
+// ── Card refresh state ────────────────────────────────────────────────────────
+let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
+let _cardRefreshRunning = false;
+
+async function httpsGet(url) {
+  return new Promise((resolve, reject) => {
+    const follow = (u, redirects = 0) => {
+      if (redirects > 5) return reject(new Error('Too many redirects'));
+      https.get(u, { headers: { 'User-Agent': 'mymagicdeck/1.0 (homelab deck builder)', 'Accept': 'application/json' } }, res => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          return follow(res.headers.location, redirects + 1);
+        }
+        const chunks = [];
+        res.on('data', c => chunks.push(c));
+        res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
+        res.on('error', reject);
+      }).on('error', reject);
+    };
+    follow(url);
+  });
+}
+
+async function refreshCards() {
+  if (_cardRefreshRunning) return;
+  _cardRefreshRunning = true;
+  _cardRefreshState = { status: 'fetching-index', started: Date.now(), finished: null, count: 0, error: null };
+  try {
+    // 1. Get bulk-data index
+    const idx = await httpsGet('https://api.scryfall.com/bulk-data');
+    const bulkList = JSON.parse(idx.body).data;
+    const oracleEntry = bulkList.find(d => d.type === 'oracle_cards');
+    if (!oracleEntry) throw new Error('oracle_cards bulk entry not found');
+
+    _cardRefreshState.status = 'downloading';
+    const dl = await httpsGet(oracleEntry.download_uri);
+    if (dl.status !== 200) throw new Error(`Download failed: HTTP ${dl.status}`);
+
+    _cardRefreshState.status = 'parsing';
+    const cards = JSON.parse(dl.body);
+
+    _cardRefreshState.status = 'upserting';
+    const upsert = db.prepare(`
+      INSERT INTO cards
+        (oracle_id, name, mana_cost, cmc, type_line, oracle_text, colors, color_identity,
+         keywords, legalities, set_id, set_name, rarity, image_uris, card_faces, prices, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,unixepoch())
+      ON CONFLICT(oracle_id) DO UPDATE SET
+        name=excluded.name, mana_cost=excluded.mana_cost, cmc=excluded.cmc,
+        type_line=excluded.type_line, oracle_text=excluded.oracle_text,
+        colors=excluded.colors, color_identity=excluded.color_identity,
+        keywords=excluded.keywords, legalities=excluded.legalities,
+        set_id=excluded.set_id, set_name=excluded.set_name, rarity=excluded.rarity,
+        image_uris=excluded.image_uris, card_faces=excluded.card_faces,
+        prices=excluded.prices, updated_at=unixepoch()
+    `);
+
+    // Rebuild FTS in one transaction — much faster
+    const runUpserts = db.transaction((cards) => {
+      db.prepare('DELETE FROM cards_fts').run();
+      for (const c of cards) {
+        if (c.object !== 'card') continue;
+        upsert.run(
+          c.oracle_id, c.name, c.mana_cost || null,
+          c.cmc || 0, c.type_line || null, c.oracle_text || null,
+          JSON.stringify(c.colors || []), JSON.stringify(c.color_identity || []),
+          JSON.stringify(c.keywords || []), JSON.stringify(c.legalities || {}),
+          c.set || null, c.set_name || null, c.rarity || null,
+          JSON.stringify(c.image_uris || null),
+          c.card_faces ? JSON.stringify(c.card_faces) : null,
+          JSON.stringify({ usd: c.prices?.usd || null, usd_foil: c.prices?.usd_foil || null })
+        );
+      }
+      // Rebuild FTS from cards table
+      db.prepare(`INSERT INTO cards_fts(rowid, name, type_line, oracle_text, keywords)
+                  SELECT rowid, name, type_line, oracle_text, keywords FROM cards`).run();
+      return cards.filter(c => c.object === 'card').length;
+    });
+
+    const count = runUpserts(cards);
+    _cardRefreshState = { status: 'done', started: _cardRefreshState.started, finished: Date.now(), count, error: null };
+    app.log.info(`Card refresh complete: ${count} cards`);
+  } catch (err) {
+    _cardRefreshState = { ..._cardRefreshState, status: 'error', error: err.message, finished: Date.now() };
+    app.log.error('Card refresh failed: ' + err.message);
+  } finally {
+    _cardRefreshRunning = false;
+  }
+}
+
+// Seed on startup if cards table is empty, then refresh daily
+function scheduleCardRefresh() {
+  const count = db.prepare('SELECT COUNT(*) as n FROM cards').get().n;
+  if (count === 0) {
+    app.log.info('Cards table empty — seeding from Scryfall bulk data...');
+    refreshCards();
+  }
+  // Daily refresh at ~3am UTC
+  const msUntil3am = (() => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setUTCHours(3, 0, 0, 0);
+    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+    return next - now;
+  })();
+  setTimeout(() => { refreshCards(); setInterval(refreshCards, 24 * 60 * 60 * 1000); }, msUntil3am);
+}
+
+// ── Scryfall query parser ─────────────────────────────────────────────────────
+// Translates a subset of Scryfall syntax into SQLite WHERE clauses
+function parseScryfallQuery(q) {
+  const tokens = q.match(/(?:[^\s"]+|"[^"]*")+/g) || [];
+  const where = [], params = [], errors = [];
+  let ftsTerms = [];
+
+  for (const tok of tokens) {
+    const lower = tok.toLowerCase();
+
+    // Color: c:wubrg or color:wubrg
+    const colorM = lower.match(/^(?:c|color):([wubrgmc]+)$/);
+    if (colorM) {
+      const cols = colorM[1].toUpperCase().split('').filter(x => 'WUBRG'.includes(x));
+      for (const col of cols) where.push(`json_each.value = '${col}'`);
+      // Use a simple LIKE check per color
+      if (cols.length) {
+        const checks = cols.map(() => `color_identity LIKE ?`);
+        where.push(`(${checks.join(' AND ')})`);
+        for (const col of cols) params.push(`%"${col}"%`);
+      }
+      continue;
+    }
+
+    // Color identity: ci:
+    const ciM = lower.match(/^(?:ci|identity):([wubrgmc]+)$/);
+    if (ciM) {
+      const cols = ciM[1].toUpperCase().split('').filter(x => 'WUBRG'.includes(x));
+      if (cols.length) {
+        const checks = cols.map(() => `color_identity LIKE ?`);
+        where.push(`(${checks.join(' AND ')})`);
+        for (const col of cols) params.push(`%"${col}"%`);
+      }
+      continue;
+    }
+
+    // Type: t:creature or type:instant
+    const typeM = lower.match(/^(?:t|type):(.+)$/);
+    if (typeM) {
+      where.push(`type_line LIKE ?`);
+      params.push(`%${typeM[1]}%`);
+      continue;
+    }
+
+    // Oracle text: o: or oracle:
+    const oracleM = lower.match(/^(?:o|oracle):(.+)$/);
+    if (oracleM) {
+      const term = oracleM[1].replace(/"/g, '');
+      ftsTerms.push(`oracle_text:"${term}"`);
+      continue;
+    }
+
+    // Format legality: f:commander
+    const formatM = lower.match(/^(?:f|format):(\w+)$/);
+    if (formatM) {
+      where.push(`json_extract(legalities, '$.${formatM[1]}') IN ('legal','restricted')`);
+      continue;
+    }
+
+    // CMC: cmc=3, cmc>2, cmc<=4, mv=3 etc
+    const cmcM = lower.match(/^(?:cmc|mv|manavalue)(>=|<=|!=|>|<|=)(\d+(?:\.\d+)?)$/);
+    if (cmcM) {
+      const op = cmcM[1] === '!=' ? '!=' : cmcM[1];
+      where.push(`cmc ${op} ?`);
+      params.push(parseFloat(cmcM[2]));
+      continue;
+    }
+
+    // Rarity: r:rare
+    const rarityM = lower.match(/^(?:r|rarity):(\w+)$/);
+    if (rarityM) {
+      where.push(`rarity = ?`);
+      params.push(rarityM[1].toLowerCase());
+      continue;
+    }
+
+    // Bare keyword/name — goes to FTS
+    const clean = tok.replace(/"/g, '').trim();
+    if (clean) ftsTerms.push(clean);
+  }
+
+  return { where, params, ftsTerms };
+}
+
+function cardRowToScryfall(r) {
+  return {
+    oracle_id:      r.oracle_id,
+    name:           r.name,
+    mana_cost:      r.mana_cost,
+    cmc:            r.cmc,
+    type_line:      r.type_line,
+    oracle_text:    r.oracle_text,
+    colors:         JSON.parse(r.colors || '[]'),
+    color_identity: JSON.parse(r.color_identity || '[]'),
+    keywords:       JSON.parse(r.keywords || '[]'),
+    legalities:     JSON.parse(r.legalities || '{}'),
+    set:            r.set_id,
+    set_name:       r.set_name,
+    rarity:         r.rarity,
+    image_uris:     JSON.parse(r.image_uris || 'null'),
+    card_faces:     r.card_faces ? JSON.parse(r.card_faces) : undefined,
+    prices:         JSON.parse(r.prices || '{}'),
+    object:         'card',
+  };
+}
 
 // ── Fastify instance ──────────────────────────────────────────────────────────
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL || 'info' } });
@@ -277,7 +526,105 @@ app.get('/api/decks/:id/share', async (req, reply) => {
   };
 });
 
+// ── GET /api/cards/refresh/status ─────────────────────────────────────────────
+app.get('/api/cards/refresh/status', async () => ({
+  ..._cardRefreshState,
+  total: db.prepare('SELECT COUNT(*) as n FROM cards').get().n,
+}));
+
+// ── POST /api/cards/refresh  (manual trigger, no auth for convenience) ────────
+app.post('/api/cards/refresh', async (req, reply) => {
+  if (_cardRefreshRunning) return reply.code(409).send({ error: 'Refresh already running', state: _cardRefreshState });
+  refreshCards(); // fire and forget
+  return { ok: true, message: 'Refresh started' };
+});
+
+// ── GET /api/cards/search?q=...&page=1&per_page=40 ───────────────────────────
+app.get('/api/cards/search', async (req, reply) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return reply.code(400).send({ error: 'q is required' });
+
+  const page    = Math.max(1, parseInt(req.query.page || '1', 10));
+  const perPage = Math.min(175, parseInt(req.query.per_page || '40', 10));
+  const offset  = (page - 1) * perPage;
+
+  const total = db.prepare('SELECT COUNT(*) as n FROM cards').get().n;
+  if (total === 0) {
+    // No local data yet — tell frontend to fall back to Scryfall
+    return reply.code(503).send({ error: 'Card database not yet seeded', fallback: true });
+  }
+
+  try {
+    const { where, params, ftsTerms } = parseScryfallQuery(q);
+
+    let rows;
+    const limit = perPage + 1; // fetch one extra to know if there's a next page
+
+    if (ftsTerms.length) {
+      // FTS path
+      const ftsQuery = ftsTerms.join(' ');
+      const ftsWhere = where.length ? 'AND ' + where.join(' AND ') : '';
+      const sql = `
+        SELECT c.* FROM cards_fts
+        JOIN cards c ON c.rowid = cards_fts.rowid
+        WHERE cards_fts MATCH ?
+        ${ftsWhere}
+        ORDER BY rank
+        LIMIT ? OFFSET ?
+      `;
+      rows = db.prepare(sql).all(ftsQuery, ...params, limit, offset);
+    } else if (where.length) {
+      // Filter-only path (no text terms)
+      const sql = `SELECT * FROM cards WHERE ${where.join(' AND ')} ORDER BY name LIMIT ? OFFSET ?`;
+      rows = db.prepare(sql).all(...params, limit, offset);
+    } else {
+      return reply.code(400).send({ error: 'No valid search terms', object: 'error', details: 'No valid search terms' });
+    }
+
+    const hasMore = rows.length > perPage;
+    if (hasMore) rows.pop();
+
+    return {
+      object:   'list',
+      total_cards: rows.length,
+      has_more: hasMore,
+      next_page: hasMore ? `/api/cards/search?q=${encodeURIComponent(q)}&page=${page + 1}&per_page=${perPage}` : null,
+      data: rows.map(cardRowToScryfall),
+    };
+  } catch (err) {
+    app.log.warn('Card search error: ' + err.message);
+    // Let the frontend fall back to Scryfall
+    return reply.code(500).send({ error: err.message, fallback: true });
+  }
+});
+
+// ── GET /api/cards/named?name=...&fuzzy=1 ────────────────────────────────────
+app.get('/api/cards/named', async (req, reply) => {
+  const name = (req.query.name || req.query.fuzzy || '').trim();
+  if (!name) return reply.code(400).send({ error: 'name is required' });
+
+  const total = db.prepare('SELECT COUNT(*) as n FROM cards').get().n;
+  if (total === 0) return reply.code(503).send({ error: 'Card database not yet seeded', fallback: true });
+
+  // Exact match first
+  let row = db.prepare('SELECT * FROM cards WHERE name = ? COLLATE NOCASE').get(name);
+  if (!row) {
+    // FTS fallback
+    try {
+      const results = db.prepare(`
+        SELECT c.* FROM cards_fts
+        JOIN cards c ON c.rowid = cards_fts.rowid
+        WHERE cards_fts MATCH ? ORDER BY rank LIMIT 1
+      `).get(name);
+      row = results;
+    } catch (_) {}
+  }
+  if (!row) return reply.code(404).send({ object: 'error', details: `No card found named "${name}"` });
+  return cardRowToScryfall(row);
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   if (err) { app.log.error(err); process.exit(1); }
+  scheduleCardRefresh();
 });
