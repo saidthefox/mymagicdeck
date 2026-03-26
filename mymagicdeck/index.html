@@ -1602,26 +1602,20 @@ function _hoverReset(el, imgEl, normalSrc){
 }
 
 // ── Hook hover via delegation (mtgo-card, splash-card, splash-commander-card) ─
-document.addEventListener('mouseover', function(e){
-  const card = e.target.closest('.mtgo-card');
-  if(card && !card.classList.contains('dragging')){
-    const img = card.querySelector('img');
-    _hoverZoom(card, 2.3, img, img?.dataset.large);
-    return;
-  }
-  const sc = e.target.closest('.splash-card');
-  if(sc){ const img=sc.querySelector('img'); _hoverZoom(sc,2.3,img,img?.dataset.large); return; }
-  const cc = e.target.closest('.splash-commander-card');
-  if(cc){ const img=cc.querySelector('img'); _hoverZoom(cc,2.3,img,img?.dataset.large); }
-});
-document.addEventListener('mouseout', function(e){
-  const card = e.target.closest('.mtgo-card');
-  if(card){ const img=card.querySelector('img'); _hoverReset(card,img,img?.dataset.normal); return; }
-  const sc = e.target.closest('.splash-card');
-  if(sc){ const img=sc.querySelector('img'); _hoverReset(sc,img,img?.dataset.normal); return; }
-  const cc = e.target.closest('.splash-commander-card');
-  if(cc){ const img=cc.querySelector('img'); _hoverReset(cc,img,img?.dataset.normal); }
-});
+// Use mouseover/mouseout but guard with relatedTarget to avoid child-element firing
+const HOVER_SEL = '.mtgo-card, .splash-card, .splash-commander-card';
+function _hoverCard(e, entering){
+  const card = e.target.closest(HOVER_SEL);
+  if(!card) return;
+  if(card.classList.contains('dragging')) return;
+  // Only act when the related target is truly outside this card
+  if(e.relatedTarget && card.contains(e.relatedTarget)) return;
+  const img = card.querySelector('img');
+  if(entering) _hoverZoom(card, 2.3, img, img?.dataset.large);
+  else          _hoverReset(card, img, img?.dataset.normal);
+}
+document.addEventListener('mouseover',  e => _hoverCard(e, true));
+document.addEventListener('mouseout',   e => _hoverCard(e, false));
 
 // ============================================================
 //  MTGO VISUAL RENDER
