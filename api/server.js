@@ -40,11 +40,11 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_decks_user        ON decks(user_id);
   CREATE INDEX IF NOT EXISTS idx_decks_splash      ON decks(user_id, is_splash);
-  CREATE INDEX IF NOT EXISTS idx_decks_splash_site ON decks(user_id, splash_site);
 `);
 
 // ── Migrations (idempotent) ───────────────────────────────────────────────────
 try { db.exec(`ALTER TABLE decks ADD COLUMN splash_site TEXT`); } catch (_) { /* already exists */ }
+try { db.exec(`CREATE INDEX IF NOT EXISTS idx_decks_splash_site ON decks(user_id, splash_site)`); } catch (_) { /* already exists */ }
 
 // ── Fastify instance ──────────────────────────────────────────────────────────
 const app = Fastify({ logger: { level: process.env.LOG_LEVEL || 'info' } });
