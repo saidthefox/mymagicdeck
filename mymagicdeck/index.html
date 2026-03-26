@@ -1088,10 +1088,13 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
     html+=`<div class="splash-column" style="min-width:${CARD_W}px"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
     html+=`<div class="splash-col-stack" style="position:relative;width:${CARD_W}px;height:${stackH}px">`;
     cards.forEach((card,i)=>{
-      const img=getCardImage(card,'normal');
+      const imgNormal=getCardImage(card,'normal');
+      const imgLarge=getCardImage(card,'large')||imgNormal;
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
       html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})">`;
-      html+=img?`<img src="${img}" alt="${card.name}"/>`:`<div class="no-img-ph">${card.name}</div>`;
+      html+=imgNormal
+        ?`<img src="${imgNormal}" data-large="${imgLarge}" alt="${card.name}" onmouseenter="this.src=this.dataset.large" onmouseleave="this.src='${imgNormal}'"/>`
+        :`<div class="no-img-ph">${card.name}</div>`;
       html+=`</div>`;
     });
     html+=`</div></div>`;
