@@ -1593,15 +1593,15 @@ function _hoverZoom(el, scale, imgEl, largeSrc){
     top = rect.top - 8;
   }
 
-  // Build ghost
+  // Build ghost at full zoomed pixel size (no CSS scale — renders sharp)
   const ghost = document.createElement('div');
-  ghost.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px;transform:scale(${scale});transform-origin:top left;z-index:9999;pointer-events:none;border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,0.9);transition:none;`;
+  ghost.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${Math.round(rect.width*scale)}px;height:${Math.round(rect.height*scale)}px;z-index:9999;pointer-events:none;border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,0.9);overflow:hidden;`;
 
   const src = largeSrc || imgEl?.src || '';
   if(src){
     const img = document.createElement('img');
     img.src = src;
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:8px;';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
     ghost.appendChild(img);
   }
 
