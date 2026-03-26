@@ -1017,6 +1017,11 @@ function openShare(){
         return l!=='legal'&&l!=='restricted';
       });
       if(illegal.length){eligible=false;eligNote=`<span style="color:var(--warn);font-size:0.67rem;">${illegal.length} card${illegal.length>1?'s':''} not ${site.format}-legal</span>`;}
+      // Commander requires exactly 100 cards
+      if(eligible&&site.format==='commander'){
+        const total=cards.reduce((s,e)=>s+e.qty,0);
+        if(total!==100){eligible=false;eligNote=`<span style="color:var(--warn);font-size:0.67rem;">Commander decks must have 100 cards (yours has ${total})</span>`;}
+      }
     }
     splashRows+=`<label class="share-opt${!eligible?' disabled':''}">
       <input type="checkbox" data-site="${site.id}" ${isSet?'checked':''} ${!eligible?'disabled':''} onchange="toggleDeckSiteSplash('${site.id}',this.checked)" />
