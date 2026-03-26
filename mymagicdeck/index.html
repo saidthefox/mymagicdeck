@@ -793,7 +793,7 @@ function resetColumns(){const d=currentDeck();if(d){d._insts=null;d._cols=null;}
 // Deck management
 function newDeck(){const id=generateId();state.decks[id]={id,name:'Untitled Deck',cards:{},sideboard:{}};state.currentDeckId=id;document.getElementById('deck-name-input').value='Untitled Deck';renderAll();saveToStorage();syncDeckToApi(id)}
 function saveDeck(){const d=currentDeck();if(!d)return;d.name=document.getElementById('deck-name-input').value.trim()||'Untitled Deck';saveToStorage();syncDeckToApi(d.id);toast('Deck saved!','success')}
-function loadDeck(id){if(!state.decks[id])return;state.currentDeckId=id;document.getElementById('deck-name-input').value=state.decks[id].name;state.decks[id]._insts=null;renderAll()}
+function loadDeck(id){if(!state.decks[id])return;state.currentDeckId=id;document.getElementById('deck-name-input').value=state.decks[id].name;state.decks[id]._insts=null;renderAll();switchCenterView('deck')}
 function deleteDeck(id){if(!confirm('Delete this deck?'))return;deleteDeckFromApi(id);delete state.decks[id];const ids=Object.keys(state.decks);if(!ids.length)newDeck();else loadDeck(ids[0]);saveToStorage();openDeckManager()}
 /*──────────────────────────────────────────────────────────────
   API CLIENT
@@ -1397,9 +1397,14 @@ function renderDeckVisual(){
     h+=`<div class="mtgo-column" data-col="${key}"><div class="mtgo-col-header">${getColLabel(key,sort)} <span class="cnt">${count}</span></div><div class="mtgo-col-stack" data-col="${key}" style="height:${stackH}px"><div class="mtgo-drop-line" data-col="${key}"></div>`;
     for(let i=0;i<count;i++){
       const uid=uids[i],inst=deck._insts[uid];if(!inst)continue;
-      const card=inst.card,img=getCardImage(card,'normal')||getCardImage(card,'small');
-      h+=`<div class="mtgo-card" data-uid="${uid}" data-col="${key}" data-idx="${i}" style="top:${i*so}px;z-index:${i+1}" onmousedown="cardMouseDown(event,'${uid}','${key}',${i})">`;
-      h+=img?`<img src="${img}" alt="${card.name}" loading="lazy" draggable="false"/>`:`<div class="no-img">${card.name}</div>`;
+      const card=inst.card;
+      const imgNormal=getCardImage(card,'normal')||getCardImage(card,'small');
+      const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
+      const setName=card.set_name||'';
+      const esc=JSON.stringify(sanitizeCard(card)).replace(/"/g,'&quot;');
+      h+=`<div class="mtgo-card" data-uid="${uid}" data-col="${key}" data-idx="${i}" style="top:${i*so}px;z-index:${i+1}" onmousedown="cardMouseDown(event,'${uid}','${key}',${i})" onmouseenter="var im=this.querySelector('img');if(im&&im.dataset.large)im.src=im.dataset.large;" onmouseleave="var im=this.querySelector('img');if(im&&im.dataset.normal)im.src=im.dataset.normal;">`;
+      h+=imgNormal?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}" loading="lazy" draggable="false"/>`:`<div class="no-img">${card.name}</div>`;
+      if(setName)h+=`<div class="set-badge" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openPrintings(event,'${uid}',${esc})">${setName}</div>`;
       h+=`</div>`;
     }
     h+=`</div></div>`;
