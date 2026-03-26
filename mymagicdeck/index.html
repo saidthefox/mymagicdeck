@@ -294,15 +294,15 @@
     input, select, textarea, button { font-family: inherit; }
 
     /* Sideboard */
-    .deck-section.sideboard .deck-section-header { color: var(--warn); }
-    .deck-section.sideboard .deck-section-count { background: var(--warn-dim); color: var(--warn); }
+    .deck-section.sideboard .deck-section-header { color: var(--text-dim); }
+    .deck-section.sideboard .deck-section-count { background: var(--surface3); color: var(--text-dim); }
     .sideboard-toggle { display: flex; align-items: center; justify-content: space-between; padding: 6px 4px 2px; cursor: pointer; user-select: none; }
-    .sideboard-toggle span { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--warn); }
+    .sideboard-toggle span { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); }
     .sideboard-toggle .toggle-arrow { font-size: 0.7rem; color: var(--text-dim); transition: transform 0.2s; }
     .sideboard-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
     #sideboard-sections { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 4px; }
     #sideboard-sections.hidden { display: none; }
-    .sideboard-count-badge { background: var(--warn-dim); color: var(--warn); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
+    .sideboard-count-badge { background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
 
     /* 4-copy warning */
     .deck-card-row.overcopy .deck-card-name::after { content: ' ⚠'; color: var(--warn); font-size: 0.75rem; }
@@ -527,7 +527,7 @@
 </div>
 <div id="app">
     <div class="panel" id="panel-deck">
-    <div class="panel-header"><span>Deck List</span><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
+    <div class="panel-header"><span>Mainboard</span><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
     <div class="panel-body" id="deck-panel-body">
       <div class="deck-empty" id="deck-empty"><div class="icon">🃏</div>Search for cards and click<br/>to add them to your deck.</div>
       <div id="deck-sections"></div>
