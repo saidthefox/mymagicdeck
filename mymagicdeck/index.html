@@ -135,6 +135,11 @@
     .mtgo-toolbar label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
     .mtgo-toolbar select { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 3px 8px; font-size: 0.75rem; cursor: pointer; }
     .mtgo-toolbar select:focus { outline: none; border-color: var(--accent); }
+    .mtgo-toolbar .deck-zoom-wrap { display:flex; align-items:center; gap:5px; }
+    .mtgo-toolbar .deck-zoom-slider { -webkit-appearance:none; appearance:none; width:80px; height:4px; border-radius:2px; background:var(--border); outline:none; cursor:pointer; }
+    .mtgo-toolbar .deck-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; }
+    .mtgo-toolbar .deck-zoom-slider::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
+    .mtgo-toolbar .deck-zoom-val { font-size:0.68rem; color:var(--text-dim); min-width:32px; }
     .mtgo-info { margin-left: auto; font-size: 0.7rem; color: var(--text-dim); }
     .mtgo-columns-wrap { flex: 1; overflow: auto; padding: 8px; }
     .mtgo-columns { display: flex; gap: 6px; align-items: flex-start; min-height: 100%; }
@@ -152,7 +157,8 @@
       transition: box-shadow 0.12s, filter 0.12s; border: 1px solid rgba(0,0,0,0.3);
     }
     .mtgo-card:last-child { box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
-    .mtgo-card:hover { z-index: 500 !important; transform: translateY(-8px) scale(2.3); transform-origin: top center; box-shadow: 0 16px 48px rgba(0,0,0,0.85) !important; filter: none; cursor: pointer; }
+    .mtgo-card:hover { z-index: 500 !important; filter: none; cursor: pointer; }
+    .mtgo-card.hovered { z-index: 500 !important; box-shadow: 0 16px 48px rgba(0,0,0,0.85) !important; filter: none; cursor: pointer; }
     .mtgo-card.dragging { opacity: 0.25; transform: none !important; }
     .mtgo-card img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
     .mtgo-card .no-img { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--surface2); color: var(--text-dim); font-size: 0.6rem; text-align: center; padding: 4px; border: 1px solid var(--border); }
@@ -477,10 +483,11 @@
     .splash-col-stack { position:relative; }
     .splash-card {
       position:absolute; width:121px; border-radius:6px; overflow:hidden; cursor:pointer;
-      transition:transform 0.15s ease, box-shadow 0.15s ease, width 0.15s ease; box-shadow:0 2px 8px rgba(0,0,0,0.5);
+      transition:transform 0.15s ease, box-shadow 0.15s ease; box-shadow:0 2px 8px rgba(0,0,0,0.5);
       background: var(--surface2); border: 1px solid var(--border);
     }
-    .splash-card:hover, .splash-card.zoomed { transform:translateY(-8px) scale(2.3); transform-origin:top center; box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
+    /* Hover zoom handled by JS to clamp to viewport — see splashCardHover() */
+    .splash-card.hovered { box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
     .splash-card img { width:100%; display:block; border-radius:5px; }
     .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
     .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
@@ -489,12 +496,12 @@
     .splash-commander-col { display:flex; flex-direction:column; align-items:center; margin-right:20px; flex-shrink:0; }
     .splash-commander-label { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--gold); margin-bottom:8px; text-align:center; }
     .splash-commander-card {
-      position:relative; border-radius:8px; overflow:hidden; cursor:pointer;
+      position:relative; border-radius:8px; cursor:pointer;
       box-shadow:0 0 0 2.5px var(--gold), 0 6px 24px rgba(0,0,0,0.7);
       transition:transform 0.15s ease, box-shadow 0.15s ease;
-      background:var(--surface2);
+      background:var(--surface2); z-index:1;
     }
-    .splash-commander-card:hover { transform:scale(1.06); box-shadow:0 0 0 3px var(--gold), 0 12px 40px rgba(0,0,0,0.85); }
+    .splash-commander-card.hovered { box-shadow:0 0 0 3px var(--gold), 0 12px 40px rgba(0,0,0,0.85); }
     .splash-commander-card img { width:121px; display:block; border-radius:7px; }
     .splash-commander-divider { width:1px; background:var(--border); align-self:stretch; margin:0 8px; flex-shrink:0; }
 
@@ -630,6 +637,11 @@
           <option value="type">Type</option>
           <option value="color">Color</option>
         </select>
+        <div class="deck-zoom-wrap">
+          <label style="margin-left:8px">🔍</label>
+          <input type="range" class="deck-zoom-slider" id="deck-zoom-slider" min="50" max="150" value="100" step="5" oninput="deckZoomChange()">
+          <span class="deck-zoom-val" id="deck-zoom-val">100%</span>
+        </div>
         <div class="mtgo-info" id="mtgo-info"></div>
       </div>
       <div class="mtgo-columns-wrap" id="mtgo-columns-wrap">
@@ -1317,7 +1329,7 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
     const imgN=getCardImage(cmdCard,'normal');
     const imgL=imgN?imgN.replace('/normal/','/large/').replace('_normal.','_large.'):'';
     const esc=JSON.stringify(cmdCard).replace(/"/g,'&quot;');
-    html+=`<div class="splash-commander-col"><div class="splash-commander-label">👑 Commander</div><div class="splash-commander-card" onclick="showCardDetail(${esc})" onmouseenter="var im=this.querySelector('img');if(im)im.src=im.dataset.large;" onmouseleave="var im=this.querySelector('img');if(im)im.src=im.dataset.normal;">`;
+    html+=`<div class="splash-commander-col"><div class="splash-commander-label">👑 Commander</div><div class="splash-commander-card" onclick="showCardDetail(${esc})" data-normal="${imgN}" data-large="${imgL||imgN}">`;
     html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${cmdCard.name}"/>`:`<div class="no-img-ph" style="width:121px;aspect-ratio:488/680">${cmdCard.name}</div>`;
     html+=`</div></div><div class="splash-commander-divider"></div>`;
   }
@@ -1335,11 +1347,7 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
       // Derive large URL from normal URL (works even for reconstructed card objects)
       const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
-      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})"`;
-      html+=` onmouseenter="var im=this.querySelector('img');if(im)im.src=im.dataset.large;"`;
-      html+=` onmouseleave="var im=this.querySelector('img');if(im)im.src=im.dataset.normal;"`;
-      html+=` ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()"`;
-      html+=`>`;
+      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()">`;
       html+=imgNormal
         ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}"/>`
         :`<div class="no-img-ph">${card.name}</div>`;
@@ -1549,6 +1557,68 @@ function switchCenterView(v){
   else{sv.classList.remove('active');dv.classList.add('active');dv.style.display='flex';f.style.display='none';renderDeckVisual()}
 }
 
+// ── Deck builder zoom ─────────────────────────────────────────────────────────
+let _deckZoom=100;
+function deckZoomChange(){
+  _deckZoom=parseInt(document.getElementById('deck-zoom-slider')?.value||100);
+  document.getElementById('deck-zoom-val').textContent=_deckZoom+'%';
+  renderDeckVisual();
+}
+
+// ── Clamp-to-viewport hover zoom (used by both deck builder and splash) ───────
+function _hoverZoom(el, scale, imgEl, largeSrc){
+  // swap image
+  if(imgEl && largeSrc) imgEl.src = largeSrc;
+  // compute transform-origin so zoomed card stays inside viewport
+  const rect = el.getBoundingClientRect();
+  const W = window.innerWidth;
+  const cw = rect.width * scale;
+  // horizontal: prefer center, clamp left/right
+  let ox = 50; // percent
+  const cx = rect.left + rect.width / 2;
+  if (cx - cw/2 < 8) ox = Math.max(0, (8 - rect.left) / rect.width * 100);
+  else if (cx + cw/2 > W - 8) ox = Math.min(100, (W - 8 - rect.left) / rect.width * 100);
+  // vertical: prefer top, flip to bottom if near top edge
+  let oy = 0; // top by default
+  if (rect.top < 8) oy = 100; // grow downward
+  el.style.transformOrigin = ox+'% '+(oy===0?'top':'bottom');
+  el.style.transform = `translateY(${oy===0?-8:8}px) scale(${scale})`;
+  el.classList.add('hovered');
+  // Allow overflow from scroll containers so zoomed card isn't clipped
+  const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
+  if(scrollParent) scrollParent.dataset.hovering = '1', scrollParent.style.overflow = 'visible';
+}
+function _hoverReset(el, imgEl, normalSrc){
+  if(imgEl && normalSrc) imgEl.src = normalSrc;
+  el.style.transform = '';
+  el.style.transformOrigin = '';
+  el.classList.remove('hovered');
+  const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
+  if(scrollParent){ delete scrollParent.dataset.hovering; scrollParent.style.overflow = ''; }
+}
+
+// ── Hook hover via delegation (mtgo-card, splash-card, splash-commander-card) ─
+document.addEventListener('mouseover', function(e){
+  const card = e.target.closest('.mtgo-card');
+  if(card && !card.classList.contains('dragging')){
+    const img = card.querySelector('img');
+    _hoverZoom(card, 2.3, img, img?.dataset.large);
+    return;
+  }
+  const sc = e.target.closest('.splash-card');
+  if(sc){ const img=sc.querySelector('img'); _hoverZoom(sc,2.3,img,img?.dataset.large); return; }
+  const cc = e.target.closest('.splash-commander-card');
+  if(cc){ const img=cc.querySelector('img'); _hoverZoom(cc,2.3,img,img?.dataset.large); }
+});
+document.addEventListener('mouseout', function(e){
+  const card = e.target.closest('.mtgo-card');
+  if(card){ const img=card.querySelector('img'); _hoverReset(card,img,img?.dataset.normal); return; }
+  const sc = e.target.closest('.splash-card');
+  if(sc){ const img=sc.querySelector('img'); _hoverReset(sc,img,img?.dataset.normal); return; }
+  const cc = e.target.closest('.splash-commander-card');
+  if(cc){ const img=cc.querySelector('img'); _hoverReset(cc,img,img?.dataset.normal); }
+});
+
 // ============================================================
 //  MTGO VISUAL RENDER
 // ============================================================
@@ -1561,13 +1631,17 @@ function renderDeckVisual(){
   const total=totalCards();
   info.textContent=total+' cards · '+Object.keys(deck.cards).length+' unique';
 
-  const cardH=167,so=STACK_OFFSET;
+  const scale=_deckZoom/100;
+  const cardW=Math.round(120*scale),cardH=Math.round(167*scale),so=Math.round(STACK_OFFSET*scale);
+  document.documentElement.style.setProperty('--card-w', cardW+'px');
+  document.documentElement.style.setProperty('--card-h', cardH+'px');
+
   let h='';
   for(const key of colOrder){
     const uids=deck._cols[key]||[];
     const count=uids.length;
     const stackH=count>0?(count-1)*so+cardH:80;
-    h+=`<div class="mtgo-column" data-col="${key}"><div class="mtgo-col-header">${getColLabel(key,sort)} <span class="cnt">${count}</span></div><div class="mtgo-col-stack" data-col="${key}" style="height:${stackH}px"><div class="mtgo-drop-line" data-col="${key}"></div>`;
+    h+=`<div class="mtgo-column" data-col="${key}" style="width:${cardW}px"><div class="mtgo-col-header">${getColLabel(key,sort)} <span class="cnt">${count}</span></div><div class="mtgo-col-stack" data-col="${key}" style="height:${stackH}px;width:${cardW}px"><div class="mtgo-drop-line" data-col="${key}"></div>`;
     for(let i=0;i<count;i++){
       const uid=uids[i],inst=deck._insts[uid];if(!inst)continue;
       const card=inst.card;
@@ -1575,7 +1649,7 @@ function renderDeckVisual(){
       const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
       const setName=card.set_name||'';
       const esc=JSON.stringify(sanitizeCard(card)).replace(/"/g,'&quot;');
-      h+=`<div class="mtgo-card" data-uid="${uid}" data-col="${key}" data-idx="${i}" style="top:${i*so}px;z-index:${i+1}" onmousedown="cardMouseDown(event,'${uid}','${key}',${i})" onmouseenter="var im=this.querySelector('img');if(im&&im.dataset.large)im.src=im.dataset.large;" onmouseleave="var im=this.querySelector('img');if(im&&im.dataset.normal)im.src=im.dataset.normal;">`;
+      h+=`<div class="mtgo-card" data-uid="${uid}" data-col="${key}" data-idx="${i}" style="top:${i*so}px;z-index:${i+1};width:${cardW}px;height:${cardH}px" onmousedown="cardMouseDown(event,'${uid}','${key}',${i})">`;
       h+=imgNormal?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}" loading="lazy" draggable="false"/>`:`<div class="no-img">${card.name}</div>`;
       if(setName)h+=`<div class="set-badge" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openPrintings(event,'${uid}',${esc})">${setName}</div>`;
       h+=`</div>`;
