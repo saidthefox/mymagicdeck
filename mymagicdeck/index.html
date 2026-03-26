@@ -102,8 +102,14 @@
     .search-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
     .filter-chip:hover, .filter-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-    .filter-chip-label { font-size: 0.68rem; color: var(--text-dim); opacity: 0.6; white-space: nowrap; }
+    .filter-chip-label { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-bright); white-space: nowrap; opacity: 0.85; }
     .filter-chip-sep { width: 1px; height: 14px; background: var(--border); flex-shrink: 0; }
+    /* CMC bubbles */
+    .cmc-op-bubble { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.78rem; font-weight: 700; cursor: pointer; color: var(--text-dim); transition: all 0.15s; user-select: none; }
+    .cmc-op-bubble:hover, .cmc-op-bubble.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .cmc-num-bubble { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.7rem; font-weight: 700; cursor: pointer; color: var(--text-dim); transition: all 0.15s; user-select: none; }
+    .cmc-num-bubble:hover, .cmc-num-bubble.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
     .card-result:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
@@ -553,14 +559,14 @@
         </div>
       </div>
       <div class="search-filters" id="search-filters">
-        <span class="filter-chip-label">Colors:</span>
-        <span class="filter-chip" data-filter="c:w">⚪ White</span>
-        <span class="filter-chip" data-filter="c:u">🔵 Blue</span>
-        <span class="filter-chip" data-filter="c:b">⚫ Black</span>
-        <span class="filter-chip" data-filter="c:r">🔴 Red</span>
-        <span class="filter-chip" data-filter="c:g">🟢 Green</span>
+        <span class="filter-chip-label">Colors</span>
+        <span class="filter-chip" data-filter="c:w" title="White">⚪</span>
+        <span class="filter-chip" data-filter="c:u" title="Blue">🔵</span>
+        <span class="filter-chip" data-filter="c:b" title="Black">⚫</span>
+        <span class="filter-chip" data-filter="c:r" title="Red">🔴</span>
+        <span class="filter-chip" data-filter="c:g" title="Green">🟢</span>
         <span class="filter-chip-sep"></span>
-        <span class="filter-chip-label">Types:</span>
+        <span class="filter-chip-label">Types</span>
         <span class="filter-chip" data-filter="t:creature">Creature</span>
         <span class="filter-chip" data-filter="t:instant">Instant</span>
         <span class="filter-chip" data-filter="t:sorcery">Sorcery</span>
@@ -571,7 +577,7 @@
         <span class="filter-chip" data-filter="t:tribal">Tribal</span>
         <span class="filter-chip" data-filter="t:lhurgoyf">Lhurgoyf</span>
         <span class="filter-chip-sep"></span>
-        <span class="filter-chip-label">Formats:</span>
+        <span class="filter-chip-label">Formats</span>
         <span class="filter-chip" data-filter="f:standard">Standard</span>
         <span class="filter-chip" data-filter="f:commander">Commander</span>
         <span class="filter-chip" data-filter="f:modern">Modern</span>
@@ -580,6 +586,23 @@
         <span class="filter-chip" data-filter="f:premodern">Premodern</span>
         <span class="filter-chip" data-filter="f:oldschool">Middle School</span>
         <span class="filter-chip" data-filter="f:pauper">Pauper</span>
+        <span class="filter-chip-sep"></span>
+        <span class="filter-chip-label">CMC</span>
+        <span class="cmc-op-bubble" data-op=">=" title="Greater than or equal">≥</span>
+        <span class="cmc-op-bubble" data-op="=" title="Equal">＝</span>
+        <span class="cmc-op-bubble" data-op="<=" title="Less than or equal">≤</span>
+        <span class="filter-chip-sep"></span>
+        <span class="cmc-num-bubble" data-cmc="0">0</span>
+        <span class="cmc-num-bubble" data-cmc="1">1</span>
+        <span class="cmc-num-bubble" data-cmc="2">2</span>
+        <span class="cmc-num-bubble" data-cmc="3">3</span>
+        <span class="cmc-num-bubble" data-cmc="4">4</span>
+        <span class="cmc-num-bubble" data-cmc="5">5</span>
+        <span class="cmc-num-bubble" data-cmc="6">6</span>
+        <span class="cmc-num-bubble" data-cmc="7">7</span>
+        <span class="cmc-num-bubble" data-cmc="8">8</span>
+        <span class="cmc-num-bubble" data-cmc="9">9</span>
+        <span class="cmc-num-bubble" data-cmc="10">10</span>
       </div>
     </div>
     <div id="search-view" class="active">
@@ -1584,6 +1607,27 @@ document.querySelectorAll('.filter-chip').forEach(c=>{c.addEventListener('click'
   if(idx>=0){parts.splice(idx,1);this.classList.remove('active')}else{parts.push(f);this.classList.add('active')}
   inp.value=parts.join(' ');
   clearTimeout(searchTimeout);doSearch();
+})});
+
+// CMC bubble state
+let _cmcOp=null,_cmcNum=null;
+function _applyCmc(){
+  const inp=document.getElementById('search-input');
+  // Remove any existing cmc filter from the query
+  let parts=inp.value.trim().split(/\s+/).filter(s=>!/^cmc[><=]+\d+$/.test(s));
+  if(_cmcOp!==null&&_cmcNum!==null)parts.push('cmc'+_cmcOp+_cmcNum);
+  inp.value=parts.join(' ');
+  clearTimeout(searchTimeout);doSearch();
+}
+document.querySelectorAll('.cmc-op-bubble').forEach(b=>{b.addEventListener('click',function(){
+  const op=this.dataset.op;
+  if(_cmcOp===op){_cmcOp=null;this.classList.remove('active')}else{document.querySelectorAll('.cmc-op-bubble').forEach(x=>x.classList.remove('active'));_cmcOp=op;this.classList.add('active')}
+  _applyCmc();
+})});
+document.querySelectorAll('.cmc-num-bubble').forEach(b=>{b.addEventListener('click',function(){
+  const n=this.dataset.cmc;
+  if(_cmcNum===n){_cmcNum=null;this.classList.remove('active')}else{document.querySelectorAll('.cmc-num-bubble').forEach(x=>x.classList.remove('active'));_cmcNum=n;this.classList.add('active')}
+  _applyCmc();
 })});
 
 async function doSearch(){
