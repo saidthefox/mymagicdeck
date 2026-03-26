@@ -1566,57 +1566,71 @@ function deckZoomChange(){
   renderDeckVisual();
 }
 
-// ── Clamp-to-viewport hover zoom (used by both deck builder and splash) ───────
+// ── Card hover zoom: fixed-position ghost overlay, no DOM ancestor side-effects ─
+let _hoverGhost = null;
+let _hoverSource = null;
+
 function _hoverZoom(el, scale, imgEl, largeSrc){
-  // swap image
-  if(imgEl && largeSrc) imgEl.src = largeSrc;
-  // compute transform-origin so zoomed card stays inside viewport
+  if(_hoverSource === el) return; // already showing
+  _hoverHideGhost();
+  _hoverSource = el;
+
   const rect = el.getBoundingClientRect();
   const W = window.innerWidth, H = window.innerHeight;
   const cw = rect.width * scale, ch = rect.height * scale;
-  // horizontal: prefer center, clamp to keep within viewport
-  let ox = 50; // percent
-  const cx = rect.left + rect.width / 2;
-  if (cx - cw/2 < 8) ox = Math.max(0, (8 - rect.left) / rect.width * 100);
-  else if (cx + cw/2 > W - 8) ox = Math.min(100, (W - 8 - rect.left) / rect.width * 100);
-  // vertical: grow upward (origin=top, translate up) unless bottom of zoomed card would go off screen,
-  // in which case anchor to bottom of card and grow upward from there
+
+  // Compute clamped position
+  let left = rect.left + (rect.width - cw) / 2; // centered by default
+  if(left < 8) left = 8;
+  if(left + cw > W - 8) left = W - 8 - cw;
+
+  let top;
   const wouldOverflowBottom = rect.top + ch + 8 > H;
-  const oy = wouldOverflowBottom ? 'bottom' : 'top';
-  const ty = wouldOverflowBottom ? 8 : -8;
-  el.style.transformOrigin = ox+'% '+oy;
-  el.style.transform = `translateY(${ty}px) scale(${scale})`;
-  el.style.zIndex = '2000';
-  el.classList.add('hovered');
-  // Allow overflow from scroll containers so zoomed card isn't clipped
-  const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
-  if(scrollParent) scrollParent.dataset.hovering = '1', scrollParent.style.overflow = 'visible';
+  if(wouldOverflowBottom){
+    top = rect.bottom - ch - 8; // grow upward from bottom edge
+    if(top < 8) top = 8;
+  } else {
+    top = rect.top - 8;
+  }
+
+  // Build ghost
+  const ghost = document.createElement('div');
+  ghost.style.cssText = `position:fixed;left:${left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px;transform:scale(${scale});transform-origin:top left;z-index:9999;pointer-events:none;border-radius:8px;box-shadow:0 16px 48px rgba(0,0,0,0.9);transition:none;`;
+
+  const src = largeSrc || imgEl?.src || '';
+  if(src){
+    const img = document.createElement('img');
+    img.src = src;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;border-radius:8px;';
+    ghost.appendChild(img);
+  }
+
+  // Gold border for commander
+  if(el.classList.contains('splash-commander-card')){
+    ghost.style.boxShadow = '0 0 0 3px #c8a84b, 0 16px 48px rgba(0,0,0,0.9)';
+  }
+
+  document.body.appendChild(ghost);
+  _hoverGhost = ghost;
 }
-function _hoverReset(el, imgEl, normalSrc){
-  if(imgEl && normalSrc) imgEl.src = normalSrc;
-  el.style.transform = '';
-  el.style.transformOrigin = '';
-  el.style.zIndex = '';
-  el.classList.remove('hovered');
-  const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
-  if(scrollParent){ delete scrollParent.dataset.hovering; scrollParent.style.overflow = ''; }
+
+function _hoverHideGhost(){
+  if(_hoverGhost){ _hoverGhost.remove(); _hoverGhost = null; }
+  _hoverSource = null;
 }
 
 // ── Attach non-bubbling hover listeners to card elements after DOM injection ──
 function _attachCardHover(root){
   root.querySelectorAll('.mtgo-card, .splash-card, .splash-commander-card').forEach(card=>{
-    // Remove any previously attached listeners by cloning (avoids duplicates on re-render)
-    // We use a flag instead to avoid clone cost — just skip if already bound
     if(card._hoverBound) return;
     card._hoverBound = true;
     card.addEventListener('mouseenter', function(){
       if(this.classList.contains('dragging')) return;
       const img = this.querySelector('img');
-      _hoverZoom(this, 2.3, img, img?.dataset.large);
+      _hoverZoom(this, 2.3, img, img?.dataset.large || img?.src);
     });
     card.addEventListener('mouseleave', function(){
-      const img = this.querySelector('img');
-      _hoverReset(this, img, img?.dataset.normal);
+      _hoverHideGhost();
     });
   });
 }
