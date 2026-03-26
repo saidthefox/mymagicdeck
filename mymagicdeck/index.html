@@ -386,6 +386,12 @@
     .splash-by strong { color: var(--accent); cursor: pointer; }
     .splash-by strong:hover { text-decoration: underline; }
     .splash-header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    .splash-zoom-wrap { display:flex; align-items:center; gap:6px; margin-right:6px; }
+    .splash-zoom-lbl { font-size:0.85rem; opacity:0.7; }
+    .splash-zoom-val { font-size:0.72rem; color:var(--text-dim); min-width:34px; text-align:right; }
+    .splash-zoom-slider { -webkit-appearance:none; appearance:none; width:90px; height:4px; border-radius:2px; background:var(--border); outline:none; cursor:pointer; }
+    .splash-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; }
+    .splash-zoom-slider::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
     .splash-body { flex: 1; overflow-y: auto; overflow-x: auto; padding: 20px; }
     .splash-meta-bar {
       display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
@@ -423,12 +429,12 @@
     .splash-type-legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
     /* Column layout */
     .splash-columns { display:flex; gap:12px; align-items:flex-start; min-width:max-content; padding-bottom:20px; }
-    .splash-column { display:flex; flex-direction:column; align-items:center; min-width:110px; }
+    .splash-column { display:flex; flex-direction:column; align-items:center; min-width:121px; }
     .splash-col-header { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-dim); margin-bottom:8px; text-align:center; }
     .splash-col-header .cnt { color:var(--accent); }
     .splash-col-stack { position:relative; }
     .splash-card {
-      position:absolute; width:110px; border-radius:6px; overflow:hidden; cursor:pointer;
+      position:absolute; width:121px; border-radius:6px; overflow:hidden; cursor:pointer;
       transition:transform 0.12s, box-shadow 0.12s; box-shadow:0 2px 8px rgba(0,0,0,0.5);
       background: var(--surface2); border: 1px solid var(--border);
     }
@@ -609,6 +615,11 @@
       <div class="splash-by" id="splash-by"></div>
     </div>
     <div class="splash-header-right">
+      <div class="splash-zoom-wrap">
+        <label for="splash-zoom" class="splash-zoom-lbl">🔍</label>
+        <input type="range" id="splash-zoom" min="60" max="160" value="100" step="5" oninput="splashZoom()" class="splash-zoom-slider">
+        <span id="splash-zoom-label" class="splash-zoom-val">100%</span>
+      </div>
       <button class="btn" onclick="splashCopyList()">📋 Copy List</button>
       <button class="btn" onclick="splashDownloadTxt()">⬇ Download</button>
       <button class="btn primary" onclick="splashImportToCurrent()">＋ Load into Builder</button>
@@ -1003,10 +1014,22 @@ function openSplash(deckObj,username){
   legendHtml+='</div>';
 
   // Columnar stacked layout — one column per category, cards stacked like MTGO view
-  const CARD_H=167,SO=28;
-  let colsHtml='<div class="splash-columns">';
+  // Store groups on the overlay so the zoom slider can re-render without re-fetching
+  document.getElementById('splash-overlay')._splashGroups={g,sbCards};
+  const zoomPct=parseInt(document.getElementById('splash-zoom')?.value||100);
+  const colsHtml=_buildSplashColumns(g,sbCards,zoomPct);
+
+  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+legendHtml+colsHtml;
+  document.getElementById('splash-overlay').classList.add('open');
+}
+function _buildSplashColumns(g,sbCards,zoomPct){
+  const scale=zoomPct/100;
+  const CARD_W=Math.round(121*scale);
+  const CARD_H=Math.round(184*scale);
+  const SO=Math.round(31*scale);
   const allCols=CATEGORY_ORDER.filter(c=>g[c]);
   if(sbCards.length)allCols.push('__sb__');
+  let html='<div class="splash-columns">';
   for(const cat of allCols){
     const entries=cat==='__sb__'?sbCards:g[cat];
     if(!entries||!entries.length)continue;
@@ -1015,21 +1038,33 @@ function openSplash(deckObj,username){
     const stackH=(cards.length-1)*SO+CARD_H;
     const label=cat==='__sb__'?'Sideboard':cat;
     const count=entries.reduce((s,e)=>s+e.qty,0);
-    colsHtml+=`<div class="splash-column"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
-    colsHtml+=`<div class="splash-col-stack" style="position:relative;width:110px;height:${stackH}px">`;
+    html+=`<div class="splash-column" style="min-width:${CARD_W}px"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
+    html+=`<div class="splash-col-stack" style="position:relative;width:${CARD_W}px;height:${stackH}px">`;
     cards.forEach((card,i)=>{
       const img=getCardImage(card,'normal');
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
-      colsHtml+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1}" onclick="showCardDetail(${esc})">`;
-      colsHtml+=img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`;
-      colsHtml+=`</div>`;
+      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})">`;
+      html+=img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`;
+      html+=`</div>`;
     });
-    colsHtml+=`</div></div>`;
+    html+=`</div></div>`;
   }
-  colsHtml+='</div>';
-
-  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+legendHtml+colsHtml;
-  document.getElementById('splash-overlay').classList.add('open');
+  html+='</div>';
+  return html;
+}
+function splashZoom(){
+  const slider=document.getElementById('splash-zoom');
+  const label=document.getElementById('splash-zoom-label');
+  if(!slider)return;
+  label.textContent=slider.value+'%';
+  const el=document.getElementById('splash-overlay');
+  const {g,sbCards}=el._splashGroups||{};
+  if(!g)return;
+  // Replace only the columns portion of the body
+  const body=document.getElementById('splash-body');
+  const existing=body.querySelector('.splash-columns');
+  if(existing)existing.outerHTML=_buildSplashColumns(g,sbCards,parseInt(slider.value));
+  else body.insertAdjacentHTML('beforeend',_buildSplashColumns(g,sbCards,parseInt(slider.value)));
 }
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
