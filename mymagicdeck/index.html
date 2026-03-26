@@ -99,9 +99,11 @@
     .search-spinner { position: absolute; right: 10px; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .search-spinner.active { display: block; }
-    .search-filters { display: flex; gap: 6px; flex-wrap: wrap; }
+    .search-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
     .filter-chip:hover, .filter-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    .filter-chip-label { font-size: 0.68rem; color: var(--text-dim); opacity: 0.6; white-space: nowrap; }
+    .filter-chip-sep { width: 1px; height: 14px; background: var(--border); flex-shrink: 0; }
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
     .card-result:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
@@ -499,14 +501,33 @@
         </div>
       </div>
       <div class="search-filters" id="search-filters">
+        <span class="filter-chip-label">Colors:</span>
         <span class="filter-chip" data-filter="c:w">⚪ White</span>
         <span class="filter-chip" data-filter="c:u">🔵 Blue</span>
         <span class="filter-chip" data-filter="c:b">⚫ Black</span>
         <span class="filter-chip" data-filter="c:r">🔴 Red</span>
         <span class="filter-chip" data-filter="c:g">🟢 Green</span>
+        <span class="filter-chip-sep"></span>
+        <span class="filter-chip-label">Types:</span>
         <span class="filter-chip" data-filter="t:creature">Creature</span>
         <span class="filter-chip" data-filter="t:instant">Instant</span>
+        <span class="filter-chip" data-filter="t:sorcery">Sorcery</span>
+        <span class="filter-chip" data-filter="t:enchantment">Enchantment</span>
+        <span class="filter-chip" data-filter="t:artifact">Artifact</span>
+        <span class="filter-chip" data-filter="t:planeswalker">Planeswalker</span>
         <span class="filter-chip" data-filter="t:land">Land</span>
+        <span class="filter-chip" data-filter="t:tribal">Tribal</span>
+        <span class="filter-chip" data-filter="t:lhurgoyf">Lhurgoyf</span>
+        <span class="filter-chip-sep"></span>
+        <span class="filter-chip-label">Formats:</span>
+        <span class="filter-chip" data-filter="f:standard">Standard</span>
+        <span class="filter-chip" data-filter="f:commander">Commander</span>
+        <span class="filter-chip" data-filter="f:modern">Modern</span>
+        <span class="filter-chip" data-filter="f:legacy">Legacy</span>
+        <span class="filter-chip" data-filter="f:vintage">Vintage</span>
+        <span class="filter-chip" data-filter="f:premodern">Premodern</span>
+        <span class="filter-chip" data-filter="f:oldschool">Middle School</span>
+        <span class="filter-chip" data-filter="f:pauper">Pauper</span>
       </div>
     </div>
     <div id="search-view" class="active">
@@ -1385,11 +1406,18 @@ function dragEnd(e){
 let searchTimeout=null,activeFilters=new Set();
 document.getElementById('search-input').addEventListener('input',function(){clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>doSearch(),300)});
 document.getElementById('search-input').addEventListener('keydown',function(e){if(e.key==='Enter'){clearTimeout(searchTimeout);doSearch()}});
-document.querySelectorAll('.filter-chip').forEach(c=>{c.addEventListener('click',function(){const f=this.dataset.filter;if(activeFilters.has(f)){activeFilters.delete(f);this.classList.remove('active')}else{activeFilters.add(f);this.classList.add('active')}doSearch()})});
+document.querySelectorAll('.filter-chip').forEach(c=>{c.addEventListener('click',function(){
+  const f=this.dataset.filter;
+  const inp=document.getElementById('search-input');
+  const parts=inp.value.trim().split(/\s+/).filter(Boolean);
+  const idx=parts.indexOf(f);
+  if(idx>=0){parts.splice(idx,1);this.classList.remove('active')}else{parts.push(f);this.classList.add('active')}
+  inp.value=parts.join(' ');
+  clearTimeout(searchTimeout);doSearch();
+})});
 
 async function doSearch(){
-  let q=document.getElementById('search-input').value.trim();
-  const fp=[...activeFilters];if(fp.length)q=(q+' '+fp.join(' ')).trim();
+  const q=document.getElementById('search-input').value.trim();
   if(!q){document.getElementById('search-results').innerHTML=`<div class="search-placeholder"><div class="icon">🔍</div><strong>Search for any Magic card</strong><br/>Use Scryfall syntax:<br/><code style="color:var(--accent)">c:u t:instant</code> — blue instants<br/><code style="color:var(--accent)">cmc=3 t:creature</code> — 3-CMC creatures</div>`;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;return}
   if(state.centerView!=='search')switchCenterView('search');
   state.searchQuery=q;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;
