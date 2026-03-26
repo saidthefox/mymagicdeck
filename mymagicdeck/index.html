@@ -1076,16 +1076,20 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
       if(g[cat]&&g[cat].length)columns.push({label:cat,entries:g[cat]});
     }
   }
-  if(sbCards.length)columns.push({label:'Sideboard',entries:sbCards});
+  if(sbCards.length){
+    const sbSorted=[...sbCards].sort((a,b)=>(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name));
+    columns.push({label:'Sideboard',entries:sbSorted,gap:true});
+  }
 
   let html='<div class="splash-columns">';
-  for(const{label,entries}of columns){
+  for(const{label,entries,gap}of columns){
     if(!entries||!entries.length)continue;
     const cards=[];
     for(const{card,qty}of entries)for(let i=0;i<qty;i++)cards.push(card);
     const stackH=(cards.length-1)*SO+CARD_H;
     const count=entries.reduce((s,e)=>s+e.qty,0);
-    html+=`<div class="splash-column" style="min-width:${CARD_W}px"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
+    const marginStyle=gap?`margin-left:${Math.round(CARD_W*0.5)}px;`:'';
+    html+=`<div class="splash-column" style="min-width:${CARD_W}px;${marginStyle}"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
     html+=`<div class="splash-col-stack" style="position:relative;width:${CARD_W}px;height:${stackH}px">`;
     cards.forEach((card,i)=>{
       const imgNormal=getCardImage(card,'normal');
