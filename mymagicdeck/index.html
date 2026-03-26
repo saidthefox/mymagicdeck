@@ -421,17 +421,17 @@
 </head>
 <body>
 <div id="header">
-  <div class="logo">✦ My<span>Magic</span>Deck</div>
+  <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
     <input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" />
-    <button class="btn" onclick="openDeckManager()">📂 Decks</button>
+    <button class="btn primary" onclick="saveDeck()">💾 Save</button>
     <button class="btn" onclick="newDeck()">＋ New</button>
+    <button class="btn" onclick="openDeckManager()">📂 Decks</button>
+    <button class="btn" onclick="openImport()">⬇ Import</button>
+    <button class="btn" onclick="openExport()">⬆ Export</button>
   </div>
   <div class="header-right" style="position:relative;">
-    <button class="btn" onclick="openImport()">⬆ Import</button>
-    <button class="btn" onclick="openExport()">⬇ Export</button>
     <button class="btn" id="share-btn" onclick="openShare()">🔗 Share</button>
-    <button class="btn primary" onclick="saveDeck()">💾 Save</button>
     <div id="user-btn-area">
       <button class="btn" id="signin-btn" onclick="openAuth()">👤 Sign In</button>
       <div class="user-avatar" id="user-avatar" style="display:none;" onclick="toggleUserMenu()"></div>
@@ -827,7 +827,7 @@ function updateUserUI(){
   document.getElementById('signin-btn').style.display=u?'none':'';
   const av=document.getElementById('user-avatar');
   av.style.display=u?'flex':'none';
-  if(u){av.textContent=u.username.slice(0,2).toUpperCase();document.getElementById('user-menu-name').textContent=u.username;}
+  if(u){av.textContent=u.username;document.getElementById('user-menu-name').textContent=u.username;}
 }
 function toggleUserMenu(){
   const m=document.getElementById('user-menu');
@@ -1010,12 +1010,23 @@ function splashImportToCurrent(){
 
 // URL hash routing — open splash from a shared link
 function checkUrlHash(){
+  // Check for subdomain — e.g. jake.mymagicdeck.com
+  const host=window.location.hostname;
+  const subMatch=host.match(/^([a-z0-9_-]+)\.mymagicdeck\.com$/i);
+  if(subMatch&&subMatch[1]!=='www'){
+    const username=subMatch[1];
+    apiFetch('/users/'+username+'/splash').then(data=>{
+      openSplash(data,username);
+    }).catch(()=>{
+      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No public splash deck for <strong style="color:#c8cdd8">${username}</strong></div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your own deck</a></div>`;
+    });
+    return;
+  }
   const hash=window.location.hash;
   if(hash.startsWith('#deck=')){
     const encoded=hash.slice(6);
     const data=decodeDeck(encoded);
     if(data){
-      // Reconstruct a minimal deck object from the compact payload
       const deck={name:data.n,cards:{},sideboard:{}};
       for(const item of(data.c||[])){
         const card={name:item.n,image_uris:item.d?{small:item.d,normal:item.d}:null,color_identity:item.ci,cmc:item.cmc,type_line:item.t,prices:{usd:item.p||null}};
