@@ -485,6 +485,18 @@
     .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
     .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
     .splash-deck-manager-badge { display:inline-flex; align-items:center; gap:4px; background:var(--accent-dim); color:var(--accent); border-radius:10px; padding:1px 8px; font-size:0.65rem; font-weight:700; }
+    /* Commander slot */
+    .splash-commander-col { display:flex; flex-direction:column; align-items:center; margin-right:20px; flex-shrink:0; }
+    .splash-commander-label { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--gold); margin-bottom:8px; text-align:center; }
+    .splash-commander-card {
+      position:relative; border-radius:8px; overflow:hidden; cursor:pointer;
+      box-shadow:0 0 0 2.5px var(--gold), 0 6px 24px rgba(0,0,0,0.7);
+      transition:transform 0.15s ease, box-shadow 0.15s ease;
+      background:var(--surface2);
+    }
+    .splash-commander-card:hover { transform:scale(1.06); box-shadow:0 0 0 3px var(--gold), 0 12px 40px rgba(0,0,0,0.85); }
+    .splash-commander-card img { width:121px; display:block; border-radius:7px; }
+    .splash-commander-divider { width:1px; background:var(--border); align-self:stretch; margin:0 8px; flex-shrink:0; }
 
     @media (max-width: 700px) {
       /* Header: hide logo text labels, keep icons */
@@ -847,7 +859,7 @@ async function syncDeckToApi(deckId){
   if(!state.user||!apiToken())return;
   const deck=state.decks[deckId];if(!deck)return;
   const{_insts,_cols,_sort,...clean}=deck;
-  try{await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify({...clean,splashSite:deck.splashSite||null})})}
+  try{await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify({...clean,splashSite:deck.splashSite||null,commander:deck.commander||null})})}
   catch(e){console.warn('Deck sync failed:',e.message)}
 }
 
@@ -1039,6 +1051,7 @@ function openShare(){
         <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--text-dim);margin-bottom:6px;">⭐ Set as splash deck</div>
         ${splashRows}
       </div>
+      ${_buildCommanderPickerHtml(deck)}
     </div>
     <div class="share-download">
       <button class="btn" onclick="downloadDeckTxt()">⬇ Download .txt</button>
@@ -1073,6 +1086,49 @@ function toggleDeckSiteSplash(site,checked){
   openDeckManager();
 }
 function previewSplash(){closeModal('modal-share');const d=currentDeck();if(d)openSplash(d,state.user?.username||'You');}
+function _buildCommanderPickerHtml(deck){
+  const legends=getLegendaryCreatures(deck);
+  if(!legends.length)return '';
+  const currentId=deck.commander||getCardId(getCommanderCard(deck));
+  const idx=Math.max(0,legends.findIndex(({card})=>getCardId(card)===currentId));
+  const current=legends[idx];
+  const card=current?.card;
+  const imgN=card?getCardImage(card,'normal'):null;
+  const total=legends.length;
+  return `<div style="border-top:1px solid var(--border);padding-top:10px;margin-top:6px">
+    <div style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--gold,#d4a843);margin-bottom:8px">👑 Commander</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="btn small" onclick="shiftCommander(-1)" ${total<=1?'disabled':''} style="flex-shrink:0">◀</button>
+      ${imgN?`<img src="${imgN}" style="width:48px;border-radius:5px;box-shadow:0 0 0 1.5px var(--gold,#d4a843)"/>`:''}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:0.82rem;font-weight:700;color:var(--text-bright);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${card?.name||'—'}</div>
+        <div style="font-size:0.7rem;color:var(--text-dim);margin-top:1px">${idx+1} / ${total} legendary creature${total!==1?'s':''}</div>
+      </div>
+      <button class="btn small" onclick="shiftCommander(1)" ${total<=1?'disabled':''} style="flex-shrink:0">▶</button>
+    </div>
+  </div>`;
+}
+function shiftCommander(dir){
+  const d=currentDeck();if(!d)return;
+  const legends=getLegendaryCreatures(d);
+  if(!legends.length)return;
+  const currentId=d.commander||getCardId(getCommanderCard(d));
+  let idx=legends.findIndex(({card})=>getCardId(card)===currentId);
+  idx=(idx+dir+legends.length)%legends.length;
+  d.commander=getCardId(legends[idx].card);
+  saveToStorage();syncDeckToApi(d.id);
+  // Re-render just the commander picker section
+  const body=document.getElementById('share-modal-body');
+  const pickerEl=body?.querySelector('.commander-picker-wrap');
+  const newHtml=_buildCommanderPickerHtml(d);
+  if(pickerEl){pickerEl.outerHTML=newHtml;}else{
+    // fallback: rebuild the whole commander picker area
+    const insertTarget=body?.querySelector('[data-cmdr-anchor]');
+    if(insertTarget)insertTarget.innerHTML=newHtml;
+  }
+  // Simpler: just re-open share which refreshes everything
+  openShare();
+}
 function downloadDeckTxt(){
   const cards=deckCards(),sb=sideboardCards();const d=currentDeck();
   let txt='';
@@ -1094,6 +1150,38 @@ function splashCopyListFromCurrent(){
   SPLASH PAGE
 ──────────────────────────────────────────────────────────────*/
 let _splashDeck=null;
+let _splashCommanderCard=null;
+
+// Return all legendary creature entries [{card,qty}] from a deck
+function getLegendaryCreatures(deckObj){
+  return Object.values(deckObj.cards||{}).filter(({card})=>{
+    const t=card.type_line||'';
+    return /Legendary/.test(t)&&/Creature/.test(t);
+  });
+}
+// Return the card object of the commander (explicit or best-fit auto)
+function getCommanderCard(deckObj){
+  const legends=getLegendaryCreatures(deckObj);
+  if(!legends.length)return null;
+  // Explicit commander chosen?
+  if(deckObj.commander){
+    const found=legends.find(({card})=>getCardId(card)===deckObj.commander);
+    if(found)return found.card;
+  }
+  // Auto-select: most colors matching deck identity
+  const deckColors=new Set();
+  for(const{card}of Object.values(deckObj.cards||{})){
+    for(const c of (card.color_identity||[]))deckColors.add(c);
+  }
+  let best=null,bestScore=-1;
+  for(const{card}of legends){
+    const ci=card.color_identity||[];
+    const score=ci.filter(c=>deckColors.has(c)).length-(ci.filter(c=>!deckColors.has(c)).length*2);
+    if(score>bestScore){bestScore=score;best=card;}
+  }
+  return best;
+}
+
 function openSplash(deckObj,username){
   _splashDeck={deck:deckObj,username};
 
@@ -1150,6 +1238,7 @@ function openSplash(deckObj,username){
 
   // Store data on overlay for zoom/reorder re-renders
   const overlay=document.getElementById('splash-overlay');
+  _splashCommanderCard=getCommanderCard(deckObj);
   overlay._splashGroups={g,sbCards,allCards};
   // Default zoom: smaller on mobile
   const defaultZoom=window.innerWidth<=700?70:100;
@@ -1221,7 +1310,17 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
     columns.push({label:'Sideboard',entries:sbSorted,gap:true});
   }
 
+  // Commander column (before everything else)
+  const cmdCard=_splashCommanderCard;
   let html='<div class="splash-columns">';
+  if(cmdCard){
+    const imgN=getCardImage(cmdCard,'normal');
+    const imgL=imgN?imgN.replace('/normal/','/large/').replace('_normal.','_large.'):'';
+    const esc=JSON.stringify(cmdCard).replace(/"/g,'&quot;');
+    html+=`<div class="splash-commander-col"><div class="splash-commander-label">👑 Commander</div><div class="splash-commander-card" onclick="showCardDetail(${esc})" onmouseenter="var im=this.querySelector('img');if(im)im.src=im.dataset.large;" onmouseleave="var im=this.querySelector('img');if(im)im.src=im.dataset.normal;">`;
+    html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${cmdCard.name}"/>`:`<div class="no-img-ph" style="width:121px;aspect-ratio:488/680">${cmdCard.name}</div>`;
+    html+=`</div></div><div class="splash-commander-divider"></div>`;
+  }
   for(const{label,entries,gap}of columns){
     if(!entries||!entries.length)continue;
     const cards=[];
@@ -1307,15 +1406,15 @@ function splashReorder(){
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
   _splashDeck=null;
-  // If we're on a site-specific domain, redirect to main builder
+  _splashCommanderCard=null;
+  // If we're on any site-specific domain (root or subdomain), redirect to main builder
   const host=window.location.hostname;
-  const SITE_DOMAINS=['myvintagedeck.com','www.myvintagedeck.com','mycommanderdeck.com','www.mycommanderdeck.com'];
-  if(SITE_DOMAINS.includes(host)){
-    window.location.href='https://mymagicdeck.com';
+  if(host.match(/(?:^|\.)myvintagedeck\.com$/i)||host.match(/(?:^|\.)mycommanderdeck\.com$/i)){
+    window.location.replace('https://mymagicdeck.com');
     return;
   }
   if(host.match(/^[a-z0-9_-]+\.mymagicdeck\.com$/i)&&!host.startsWith('www')){
-    window.location.href='https://mymagicdeck.com';
+    window.location.replace('https://mymagicdeck.com');
   }
 }
 function splashCopyList(){

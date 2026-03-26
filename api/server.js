@@ -159,14 +159,16 @@ app.get('/api/decks', { preHandler: authenticate }, async (req) => {
 // ── PUT /api/decks/:id  (create or update a single deck) ─────────────────────
 app.put('/api/decks/:id', { preHandler: authenticate }, async (req, reply) => {
   const { id } = req.params;
-  const { name, cards, sideboard, public: isPublic, splashOwner, splashSite } = req.body;
+  const { name, cards, sideboard, public: isPublic, splashOwner, splashSite, commander } = req.body;
 
   if (!name || typeof cards !== 'object') {
     return reply.code(400).send({ error: 'name and cards are required.' });
   }
 
   // Serialize everything except top-level metadata into data blob
-  const data = JSON.stringify({ cards, sideboard: sideboard || {} });
+  const dataObj = { cards, sideboard: sideboard || {} };
+  if (commander) dataObj.commander = commander;
+  const data = JSON.stringify(dataObj);
   const isSplash = splashOwner ? 1 : 0;
   // Allowed splash sites
   const VALID_SITES = ['mymagicdeck', 'myvintagedeck', 'mycommanderdeck'];
