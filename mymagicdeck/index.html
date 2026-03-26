@@ -1353,15 +1353,12 @@ function splashImportToCurrent(){
 // URL hash routing — open splash from a shared link
 function checkUrlHash(){
   const host=window.location.hostname;
-  // Handle site-specific splash domains
-  const SITE_MAP={
-    'myvintagedeck.com':  'myvintagedeck',
-    'www.myvintagedeck.com': 'myvintagedeck',
-    'mycommanderdeck.com':   'mycommanderdeck',
-    'www.mycommanderdeck.com':'mycommanderdeck',
-  };
-  if(SITE_MAP[host]){
-    const site=SITE_MAP[host];
+  // Handle site-specific splash domains (root and any subdomain)
+  const siteMatch=host.match(/(?:^|\.)myvintagedeck\.com$/i)?'myvintagedeck'
+                 :host.match(/(?:^|\.)mycommanderdeck\.com$/i)?'mycommanderdeck'
+                 :null;
+  if(siteMatch){
+    const site=siteMatch;
     apiFetch('/site/'+site+'/splash').then(data=>{
       openSplash(data.deck,data.username);
     }).catch(()=>{
@@ -1897,7 +1894,7 @@ function init(){
   // If on a splash-only domain, only handle routing — don't boot the full builder
   const host=window.location.hostname;
   const SPLASH_ONLY=host.match(/^([a-z0-9_-]+)\.mymagicdeck\.com$/i)&&!host.startsWith('www');
-  const SITE_ONLY=['myvintagedeck.com','www.myvintagedeck.com','mycommanderdeck.com','www.mycommanderdeck.com'].includes(host);
+  const SITE_ONLY=host.match(/(?:^|\.)myvintagedeck\.com$/i)||host.match(/(?:^|\.)mycommanderdeck\.com$/i);
   if(SPLASH_ONLY||SITE_ONLY){checkUrlHash();return;}
 
   loadFromStorage();
