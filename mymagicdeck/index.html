@@ -588,9 +588,9 @@
         <span class="filter-chip" data-filter="f:pauper">Pauper</span>
         <span class="filter-chip-sep"></span>
         <span class="filter-chip-label">CMC</span>
-        <span class="cmc-op-bubble" data-op=">=" title="Greater than or equal">≥</span>
-        <span class="cmc-op-bubble" data-op="=" title="Equal">＝</span>
-        <span class="cmc-op-bubble" data-op="<=" title="Less than or equal">≤</span>
+        <span class="cmc-op-bubble" data-op=">" title="Greater than">&#62;</span>
+        <span class="cmc-op-bubble" data-op="=" title="Equal">=</span>
+        <span class="cmc-op-bubble" data-op="<" title="Less than">&#60;</span>
         <span class="filter-chip-sep"></span>
         <span class="cmc-num-bubble" data-cmc="0">0</span>
         <span class="cmc-num-bubble" data-cmc="1">1</span>
@@ -1610,18 +1610,27 @@ document.querySelectorAll('.filter-chip').forEach(c=>{c.addEventListener('click'
 })});
 
 // CMC bubble state
-let _cmcOp=null,_cmcNum=null;
+let _cmcOps=new Set(),_cmcNum=null;
+function _cmcOperator(){
+  const gt=_cmcOps.has('>'),eq=_cmcOps.has('='),lt=_cmcOps.has('<');
+  if(gt&&eq)return '>=';
+  if(lt&&eq)return '<=';
+  if(gt)return '>';
+  if(lt)return '<';
+  if(eq)return '=';
+  return null;
+}
 function _applyCmc(){
   const inp=document.getElementById('search-input');
-  // Remove any existing cmc filter from the query
   let parts=inp.value.trim().split(/\s+/).filter(s=>!/^cmc[><=]+\d+$/.test(s));
-  if(_cmcOp!==null&&_cmcNum!==null)parts.push('cmc'+_cmcOp+_cmcNum);
+  const op=_cmcOperator();
+  if(op!==null&&_cmcNum!==null)parts.push('cmc'+op+_cmcNum);
   inp.value=parts.join(' ');
   clearTimeout(searchTimeout);doSearch();
 }
 document.querySelectorAll('.cmc-op-bubble').forEach(b=>{b.addEventListener('click',function(){
   const op=this.dataset.op;
-  if(_cmcOp===op){_cmcOp=null;this.classList.remove('active')}else{document.querySelectorAll('.cmc-op-bubble').forEach(x=>x.classList.remove('active'));_cmcOp=op;this.classList.add('active')}
+  if(_cmcOps.has(op)){_cmcOps.delete(op);this.classList.remove('active')}else{_cmcOps.add(op);this.classList.add('active')}
   _applyCmc();
 })});
 document.querySelectorAll('.cmc-num-bubble').forEach(b=>{b.addEventListener('click',function(){
