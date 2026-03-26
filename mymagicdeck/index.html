@@ -386,10 +386,10 @@
     .splash-by strong { color: var(--accent); cursor: pointer; }
     .splash-by strong:hover { text-decoration: underline; }
     .splash-header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
-    .splash-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .splash-body { flex: 1; overflow-y: auto; overflow-x: auto; padding: 20px; }
     .splash-meta-bar {
       display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-      margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
+      margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border);
     }
     .splash-meta-stat { font-size: 0.8rem; color: var(--text-dim); }
     .splash-meta-stat strong { color: var(--text-bright); font-size: 0.9rem; }
@@ -405,19 +405,38 @@
     .splash-pip.R { background: #c03030; color: #fff; }
     .splash-pip.G { background: #2d6040; color: #7de0a0; }
     .splash-pip.C { background: #3a4050; color: #c0c8d8; }
-    .splash-sections { display: flex; flex-direction: column; gap: 20px; }
-    .splash-section-title { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); margin-bottom: 10px; }
-    .splash-card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+    /* Type breakdown bar */
+    .splash-type-breakdown { display:flex; gap:4px; align-items:stretch; margin-bottom:20px; border-radius:8px; overflow:hidden; height:32px; }
+    .splash-type-seg { display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.7rem; font-weight:700; color:#fff; min-width:0; overflow:hidden; transition:flex 0.3s; cursor:default; }
+    .splash-type-seg span { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .splash-type-seg.Creatures    { background:#2d6040; }
+    .splash-type-seg.Instants     { background:#1a3a6a; }
+    .splash-type-seg.Sorceries    { background:#4a2060; }
+    .splash-type-seg.Enchantments { background:#5a3010; }
+    .splash-type-seg.Artifacts    { background:#3a4050; }
+    .splash-type-seg.Planeswalkers{ background:#7a2020; }
+    .splash-type-seg.Lands        { background:#3a2a10; }
+    .splash-type-seg.Other        { background:#2a2a2a; }
+    .splash-type-seg.Sideboard    { background:#1a4a3a; }
+    .splash-type-legend { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
+    .splash-type-legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--text-dim); }
+    .splash-type-legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+    /* Column layout */
+    .splash-columns { display:flex; gap:12px; align-items:flex-start; min-width:max-content; padding-bottom:20px; }
+    .splash-column { display:flex; flex-direction:column; align-items:center; min-width:110px; }
+    .splash-col-header { font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.07em; color:var(--text-dim); margin-bottom:8px; text-align:center; }
+    .splash-col-header .cnt { color:var(--accent); }
+    .splash-col-stack { position:relative; }
     .splash-card {
-      border-radius: 6px; overflow: hidden; cursor: pointer;
-      transition: transform 0.12s, box-shadow 0.12s; position: relative;
+      position:absolute; width:110px; border-radius:6px; overflow:hidden; cursor:pointer;
+      transition:transform 0.12s, box-shadow 0.12s; box-shadow:0 2px 8px rgba(0,0,0,0.5);
       background: var(--surface2); border: 1px solid var(--border);
     }
-    .splash-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
-    .splash-card img { width: 100%; display: block; aspect-ratio: 488/680; object-fit: cover; }
-    .splash-card .splash-qty { position: absolute; bottom: 4px; right: 4px; background: rgba(0,0,0,0.75); color: #fff; font-size: 0.62rem; font-weight: 700; border-radius: 4px; padding: 1px 5px; }
-    .splash-card .no-img-ph { aspect-ratio: 488/680; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; color: var(--text-dim); text-align: center; padding: 6px; }
-    .splash-deck-manager-badge { display: inline-flex; align-items: center; gap: 4px; background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 1px 8px; font-size: 0.65rem; font-weight: 700; }
+    .splash-card:hover { transform:translateY(-6px) scale(1.04); box-shadow:0 12px 32px rgba(0,0,0,0.7); z-index:100!important; }
+    .splash-card img { width:100%; display:block; border-radius:5px; }
+    .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
+    .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
+    .splash-deck-manager-badge { display:inline-flex; align-items:center; gap:4px; background:var(--accent-dim); color:var(--accent); border-radius:10px; padding:1px 8px; font-size:0.65rem; font-weight:700; }
   </style>
 </head>
 <body>
@@ -940,47 +959,76 @@ function openSplash(deckObj,username){
   _splashDeck={deck:deckObj,username};
   document.getElementById('splash-deck-name').textContent=deckObj.name||'Untitled Deck';
   const byEl=document.getElementById('splash-by');
-  byEl.innerHTML=username?`by <strong onclick="">${username}</strong>`:'shared deck';
-  // Build color identity across all cards
+  byEl.innerHTML=username?`by <strong>${username}</strong>`:'shared deck';
+
   const allCards=Object.values(deckObj.cards||{});
-  const ci=new Set();for(const{card}of allCards){for(const c of(card.color_identity||card.colors||[]))ci.add(c);}
-  const ciArr=[...ci];
-  const total=allCards.reduce((s,e)=>s+e.qty,0);
   const sbCards=Object.values(deckObj.sideboard||{});
+  const total=allCards.reduce((s,e)=>s+e.qty,0);
   const sbTotal=sbCards.reduce((s,e)=>s+e.qty,0);
   let tp=0;for(const{card,qty}of allCards)tp+=parseFloat(card.prices?.usd||0)*qty;
-  const pipHtml=ciArr.map(c=>`<div class="splash-pip ${c}">${c}</div>`).join('');
+  for(const{card,qty}of sbCards)tp+=parseFloat(card.prices?.usd||0)*qty;
+
+  // Color pips
+  const ci=new Set();for(const{card}of allCards)for(const c of(card.color_identity||card.colors||[]))ci.add(c);
+  const pipHtml=[...ci].map(c=>`<div class="splash-pip ${c}">${c}</div>`).join('');
+
+  // Meta bar
   const statsHtml=`<div class="splash-meta-bar">
     <div class="splash-meta-stat"><strong>${total}</strong> cards</div>
     ${sbTotal>0?`<div class="splash-meta-stat"><strong>${sbTotal}</strong> sideboard</div>`:''}
     <div class="splash-meta-stat"><strong>$${tp.toFixed(2)}</strong> est.</div>
     ${pipHtml?`<div class="splash-color-pips">${pipHtml}</div>`:''}
   </div>`;
+
   // Group by category
   const g={};for(const{card,qty}of allCards){const c=getCardCategory(card);if(!g[c])g[c]=[];g[c].push({card,qty})}
   for(const k of Object.keys(g))g[k].sort((a,b)=>(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name));
-  let sectHtml='';
+
+  // Type breakdown bar + legend
+  const typeColors={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
+  let barHtml='<div class="splash-type-breakdown">';
+  let legendHtml='<div class="splash-type-legend">';
   for(const cat of CATEGORY_ORDER){
     if(!g[cat])continue;
     const ct=g[cat].reduce((s,e)=>s+e.qty,0);
-    sectHtml+=`<div style="margin-bottom:20px"><div class="splash-section-title">${cat} <span style="color:var(--accent)">${ct}</span></div><div class="splash-card-grid">`;
-    for(const{card,qty}of g[cat]){
-      const img=getCardImage(card,'normal');
-      sectHtml+=`<div class="splash-card" onclick="showCardDetail(${JSON.stringify(card).replace(/"/g,'&quot;')})">` +
-        (img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`) +
-        (qty>1?`<div class="splash-qty">${qty}x</div>`:'') + `</div>`;
-    }
-    sectHtml+='</div></div>';
+    const col=typeColors[cat]||'#2a2a2a';
+    barHtml+=`<div class="splash-type-seg" style="flex:${ct};background:${col}" title="${cat}: ${ct}"><span>${ct} ${cat}</span></div>`;
+    legendHtml+=`<div class="splash-type-legend-item"><div class="splash-type-legend-dot" style="background:${col}"></div>${cat} <strong style="color:var(--text-bright)">${ct}</strong></div>`;
   }
-  if(sbCards.length){
-    sectHtml+=`<div style="margin-bottom:20px"><div class="splash-section-title" style="color:var(--warn)">Sideboard <span style="color:var(--warn)">${sbTotal}</span></div><div class="splash-card-grid">`;
-    for(const{card,qty}of sbCards){
-      const img=getCardImage(card,'normal');
-      sectHtml+=`<div class="splash-card" onclick="showCardDetail(${JSON.stringify(card).replace(/"/g,'&quot;')})">`+(img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`)+(qty>1?`<div class="splash-qty">${qty}x</div>`:'')+`</div>`;
-    }
-    sectHtml+='</div></div>';
+  if(sbTotal>0){
+    barHtml+=`<div class="splash-type-seg" style="flex:${sbTotal};background:#1a4a3a" title="Sideboard: ${sbTotal}"><span>${sbTotal} SB</span></div>`;
+    legendHtml+=`<div class="splash-type-legend-item"><div class="splash-type-legend-dot" style="background:#1a4a3a"></div>Sideboard <strong style="color:var(--text-bright)">${sbTotal}</strong></div>`;
   }
-  document.getElementById('splash-body').innerHTML=statsHtml+`<div class="splash-sections">${sectHtml}</div>`;
+  barHtml+='</div>';
+  legendHtml+='</div>';
+
+  // Columnar stacked layout — one column per category, cards stacked like MTGO view
+  const CARD_H=167,SO=28;
+  let colsHtml='<div class="splash-columns">';
+  const allCols=CATEGORY_ORDER.filter(c=>g[c]);
+  if(sbCards.length)allCols.push('__sb__');
+  for(const cat of allCols){
+    const entries=cat==='__sb__'?sbCards:g[cat];
+    if(!entries||!entries.length)continue;
+    const cards=[];
+    for(const{card,qty}of entries)for(let i=0;i<qty;i++)cards.push(card);
+    const stackH=(cards.length-1)*SO+CARD_H;
+    const label=cat==='__sb__'?'Sideboard':cat;
+    const count=entries.reduce((s,e)=>s+e.qty,0);
+    colsHtml+=`<div class="splash-column"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
+    colsHtml+=`<div class="splash-col-stack" style="position:relative;width:110px;height:${stackH}px">`;
+    cards.forEach((card,i)=>{
+      const img=getCardImage(card,'normal');
+      const esc=JSON.stringify(card).replace(/"/g,'&quot;');
+      colsHtml+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1}" onclick="showCardDetail(${esc})">`;
+      colsHtml+=img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`;
+      colsHtml+=`</div>`;
+    });
+    colsHtml+=`</div></div>`;
+  }
+  colsHtml+='</div>';
+
+  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+legendHtml+colsHtml;
   document.getElementById('splash-overlay').classList.add('open');
 }
 function closeSplash(){
