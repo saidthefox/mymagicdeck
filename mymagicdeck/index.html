@@ -436,10 +436,10 @@
     .splash-col-stack { position:relative; }
     .splash-card {
       position:absolute; width:121px; border-radius:6px; overflow:hidden; cursor:pointer;
-      transition:transform 0.12s, box-shadow 0.12s; box-shadow:0 2px 8px rgba(0,0,0,0.5);
+      transition:transform 0.15s ease, box-shadow 0.15s ease, width 0.15s ease; box-shadow:0 2px 8px rgba(0,0,0,0.5);
       background: var(--surface2); border: 1px solid var(--border);
     }
-    .splash-card:hover { transform:translateY(-6px) scale(1.04); box-shadow:0 12px 32px rgba(0,0,0,0.7); z-index:100!important; }
+    .splash-card:hover { transform:translateY(-8px) scale(2.3); transform-origin:top center; box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
     .splash-card img { width:100%; display:block; border-radius:5px; }
     .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
     .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
@@ -1090,11 +1090,13 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
     cards.forEach((card,i)=>{
       const imgNormal=getCardImage(card,'normal');
       // Derive large URL from normal URL (works even for reconstructed card objects)
-      const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):''
+      const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
-      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})">`;
+      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})"`;
+      html+=` onmouseenter="var i=this.querySelector('img');if(i){i.src=i.dataset.large;}"`;
+      html+=` onmouseleave="var i=this.querySelector('img');if(i){i.src=i.dataset.normal;}">`;
       html+=imgNormal
-        ?`<img src="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}" onmouseenter="this.src=this.dataset.large" onmouseleave="this.src='${imgNormal}'"/>`
+        ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}"/>`
         :`<div class="no-img-ph">${card.name}</div>`;
       html+=`</div>`;
     });
