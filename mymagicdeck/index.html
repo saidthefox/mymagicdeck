@@ -424,9 +424,11 @@
     .splash-type-seg.Lands        { background:#3a2a10; }
     .splash-type-seg.Other        { background:#2a2a2a; }
     .splash-type-seg.Sideboard    { background:#1a4a3a; }
-    .splash-type-legend { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:20px; }
-    .splash-type-legend-item { display:flex; align-items:center; gap:5px; font-size:0.72rem; color:var(--text-dim); }
-    .splash-type-legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+    .splash-sort-wrap { display:flex; align-items:center; gap:10px; margin-right:4px; }
+    .splash-sort-label { font-size:0.72rem; color:var(--text-dim); white-space:nowrap; }
+    .splash-sort-wrap label { display:flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--text-dim); cursor:pointer; white-space:nowrap; }
+    .splash-sort-wrap label:hover { color:var(--text-bright); }
+    .splash-sort-wrap input[type=radio] { accent-color:var(--accent); cursor:pointer; }
     /* Column layout */
     .splash-columns { display:flex; gap:12px; align-items:flex-start; min-width:max-content; padding-bottom:20px; }
     .splash-column { display:flex; flex-direction:column; align-items:center; min-width:121px; }
@@ -615,6 +617,11 @@
       <div class="splash-by" id="splash-by"></div>
     </div>
     <div class="splash-header-right">
+      <div class="splash-sort-wrap">
+        <span class="splash-sort-label">Order:</span>
+        <label><input type="radio" name="splash-sort" value="cmc" checked onchange="splashReorder()"> By CMC</label>
+        <label><input type="radio" name="splash-sort" value="type" onchange="splashReorder()"> By Type</label>
+      </div>
       <div class="splash-zoom-wrap">
         <label for="splash-zoom" class="splash-zoom-lbl">🔍</label>
         <input type="range" id="splash-zoom" min="60" max="160" value="100" step="5" oninput="splashZoom()" class="splash-zoom-slider">
@@ -995,48 +1002,90 @@ function openSplash(deckObj,username){
   const g={};for(const{card,qty}of allCards){const c=getCardCategory(card);if(!g[c])g[c]=[];g[c].push({card,qty})}
   for(const k of Object.keys(g))g[k].sort((a,b)=>(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name));
 
-  // Type breakdown bar + legend
+  // Type breakdown bar (keep big bar, remove redundant legend)
   const typeColors={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
   let barHtml='<div class="splash-type-breakdown">';
-  let legendHtml='<div class="splash-type-legend">';
   for(const cat of CATEGORY_ORDER){
     if(!g[cat])continue;
     const ct=g[cat].reduce((s,e)=>s+e.qty,0);
     const col=typeColors[cat]||'#2a2a2a';
     barHtml+=`<div class="splash-type-seg" style="flex:${ct};background:${col}" title="${cat}: ${ct}"><span>${ct} ${cat}</span></div>`;
-    legendHtml+=`<div class="splash-type-legend-item"><div class="splash-type-legend-dot" style="background:${col}"></div>${cat} <strong style="color:var(--text-bright)">${ct}</strong></div>`;
   }
   if(sbTotal>0){
     barHtml+=`<div class="splash-type-seg" style="flex:${sbTotal};background:#1a4a3a" title="Sideboard: ${sbTotal}"><span>${sbTotal} SB</span></div>`;
-    legendHtml+=`<div class="splash-type-legend-item"><div class="splash-type-legend-dot" style="background:#1a4a3a"></div>Sideboard <strong style="color:var(--text-bright)">${sbTotal}</strong></div>`;
   }
   barHtml+='</div>';
-  legendHtml+='</div>';
 
-  // Columnar stacked layout — one column per category, cards stacked like MTGO view
-  // Store groups on the overlay so the zoom slider can re-render without re-fetching
-  document.getElementById('splash-overlay')._splashGroups={g,sbCards};
+  // Store data on overlay for zoom/reorder re-renders
+  const overlay=document.getElementById('splash-overlay');
+  overlay._splashGroups={g,sbCards,allCards};
   const zoomPct=parseInt(document.getElementById('splash-zoom')?.value||100);
-  const colsHtml=_buildSplashColumns(g,sbCards,zoomPct);
+  const sortMode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
+  const colsHtml=_buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode);
 
-  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+legendHtml+colsHtml;
+  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+colsHtml;
   document.getElementById('splash-overlay').classList.add('open');
 }
-function _buildSplashColumns(g,sbCards,zoomPct){
+function _isBasicLand(card){
+  const t=(card.type_line||'').toLowerCase();
+  const basicNames=['plains','island','swamp','mountain','forest','wastes'];
+  return t.includes('basic') || basicNames.includes(card.name.toLowerCase());
+}
+function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
   const scale=zoomPct/100;
   const CARD_W=Math.round(121*scale);
   const CARD_H=Math.round(184*scale);
   const SO=Math.round(31*scale);
-  const allCols=CATEGORY_ORDER.filter(c=>g[c]);
-  if(sbCards.length)allCols.push('__sb__');
+  // Build list of {label, entries} columns depending on sort mode
+  const columns=[];
+  if(sortMode==='cmc'){
+    // Non-land cards grouped by CMC 0-6, 7+
+    const cmcBuckets={};
+    const nonbasicLands=[];
+    const basicLands=[];
+    for(const{card,qty}of allCards){
+      const isLand=(card.type_line||'').toLowerCase().includes('land');
+      if(isLand){
+        (_isBasicLand(card)?basicLands:nonbasicLands).push({card,qty});
+      } else {
+        const cmc=Math.min(card.cmc||0,7);
+        const key=cmc===7?'7+':String(cmc);
+        if(!cmcBuckets[key])cmcBuckets[key]=[];
+        cmcBuckets[key].push({card,qty});
+      }
+    }
+    const cmcOrder=['0','1','2','3','4','5','6','7+'];
+    for(const k of cmcOrder){
+      if(cmcBuckets[k]&&cmcBuckets[k].length){
+        const sorted=[...cmcBuckets[k]].sort((a,b)=>{
+          const ac=a.card.cmc||0,bc=b.card.cmc||0;
+          return ac-bc||a.card.name.localeCompare(b.card.name);
+        });
+        columns.push({label:`CMC ${k}`,entries:sorted});
+      }
+    }
+    if(nonbasicLands.length){
+      nonbasicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
+      columns.push({label:'Lands',entries:nonbasicLands});
+    }
+    if(basicLands.length){
+      basicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
+      columns.push({label:'Basic Lands',entries:basicLands});
+    }
+  } else {
+    // By type
+    for(const cat of CATEGORY_ORDER){
+      if(g[cat]&&g[cat].length)columns.push({label:cat,entries:g[cat]});
+    }
+  }
+  if(sbCards.length)columns.push({label:'Sideboard',entries:sbCards});
+
   let html='<div class="splash-columns">';
-  for(const cat of allCols){
-    const entries=cat==='__sb__'?sbCards:g[cat];
+  for(const{label,entries}of columns){
     if(!entries||!entries.length)continue;
     const cards=[];
     for(const{card,qty}of entries)for(let i=0;i<qty;i++)cards.push(card);
     const stackH=(cards.length-1)*SO+CARD_H;
-    const label=cat==='__sb__'?'Sideboard':cat;
     const count=entries.reduce((s,e)=>s+e.qty,0);
     html+=`<div class="splash-column" style="min-width:${CARD_W}px"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
     html+=`<div class="splash-col-stack" style="position:relative;width:${CARD_W}px;height:${stackH}px">`;
@@ -1044,7 +1093,7 @@ function _buildSplashColumns(g,sbCards,zoomPct){
       const img=getCardImage(card,'normal');
       const esc=JSON.stringify(card).replace(/"/g,'&quot;');
       html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})">`;
-      html+=img?`<img src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="no-img-ph">${card.name}</div>`;
+      html+=img?`<img src="${img}" alt="${card.name}"/>`:`<div class="no-img-ph">${card.name}</div>`;
       html+=`</div>`;
     });
     html+=`</div></div>`;
@@ -1052,19 +1101,26 @@ function _buildSplashColumns(g,sbCards,zoomPct){
   html+='</div>';
   return html;
 }
+function _splashRebuildColumns(){
+  const el=document.getElementById('splash-overlay');
+  const {g,sbCards,allCards}=el._splashGroups||{};
+  if(!g)return;
+  const zoom=parseInt(document.getElementById('splash-zoom')?.value||100);
+  const sortMode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
+  const body=document.getElementById('splash-body');
+  const existing=body.querySelector('.splash-columns');
+  const newHtml=_buildSplashColumns(g,sbCards,allCards,zoom,sortMode);
+  if(existing)existing.outerHTML=newHtml;
+  else body.insertAdjacentHTML('beforeend',newHtml);
+}
 function splashZoom(){
   const slider=document.getElementById('splash-zoom');
   const label=document.getElementById('splash-zoom-label');
-  if(!slider)return;
-  label.textContent=slider.value+'%';
-  const el=document.getElementById('splash-overlay');
-  const {g,sbCards}=el._splashGroups||{};
-  if(!g)return;
-  // Replace only the columns portion of the body
-  const body=document.getElementById('splash-body');
-  const existing=body.querySelector('.splash-columns');
-  if(existing)existing.outerHTML=_buildSplashColumns(g,sbCards,parseInt(slider.value));
-  else body.insertAdjacentHTML('beforeend',_buildSplashColumns(g,sbCards,parseInt(slider.value)));
+  if(label)label.textContent=slider.value+'%';
+  _splashRebuildColumns();
+}
+function splashReorder(){
+  _splashRebuildColumns();
 }
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
