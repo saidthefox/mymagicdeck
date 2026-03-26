@@ -382,7 +382,8 @@
     .splash-logo { font-size: 1rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
     .splash-logo span { color: var(--text-bright); }
     .splash-deck-name { font-size: 1.05rem; font-weight: 700; color: var(--text-bright); }
-    .splash-by-inline { font-size: 0.72rem; color: var(--text-dim); }
+    .splash-deck-name-inline { font-size: 1.0rem; font-weight: 700; color: var(--text-bright); }
+    .splash-by-inline { font-size: 0.78rem; color: var(--text-dim); }
     .splash-header-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
     .splash-zoom-wrap { display:flex; align-items:center; gap:6px; margin-right:6px; }
     .splash-zoom-lbl { font-size:0.85rem; opacity:0.7; }
@@ -610,7 +611,6 @@
 <div id="splash-overlay">
   <div class="splash-header">
     <div class="splash-logo">✦ My<span>Magic</span>Deck</div>
-    <div class="splash-deck-name" id="splash-deck-name"></div>
     <div class="splash-header-right">
       <button class="btn" onclick="splashCopyList()">📋 Copy List</button>
       <button class="btn" onclick="splashDownloadTxt()">⬇ Download</button>
@@ -960,7 +960,6 @@ function splashCopyListFromCurrent(){
 let _splashDeck=null;
 function openSplash(deckObj,username){
   _splashDeck={deck:deckObj,username};
-  document.getElementById('splash-deck-name').textContent=deckObj.name||'Untitled Deck';
 
   const allCards=Object.values(deckObj.cards||{});
   const sbCards=Object.values(deckObj.sideboard||{});
@@ -969,15 +968,19 @@ function openSplash(deckObj,username){
   let tp=0;for(const{card,qty}of allCards)tp+=parseFloat(card.prices?.usd||0)*qty;
   for(const{card,qty}of sbCards)tp+=parseFloat(card.prices?.usd||0)*qty;
 
-  // Meta bar: count+by stacked left, then sort radios + zoom
+  // Meta bar: deck name + by on one line, counts+price, then sort+zoom
+  const byStr=username?`by <strong style="color:var(--accent)">${username}</strong>`:'shared deck';
   const statsHtml=`<div class="splash-meta-bar">
-    <div style="display:flex;flex-direction:column;gap:2px">
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <span class="splash-deck-name-inline" id="splash-deck-name"></span>
+        <span class="splash-by-inline">${byStr}</span>
+      </div>
       <div style="display:flex;align-items:center;gap:12px">
         <div class="splash-meta-stat"><strong>${total}</strong> cards</div>
         ${sbTotal>0?`<div class="splash-meta-stat"><strong>${sbTotal}</strong> sideboard</div>`:''}
         <div class="splash-meta-stat"><strong>$${tp.toFixed(2)}</strong> est.</div>
       </div>
-      <div class="splash-by-inline" id="splash-by-inline"></div>
     </div>
     <div class="splash-sort-wrap">
       <span class="splash-sort-label">Order:</span>
@@ -1017,8 +1020,8 @@ function openSplash(deckObj,username){
   const colsHtml=_buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode);
 
   document.getElementById('splash-body').innerHTML=statsHtml+barHtml+colsHtml;
-  const byInline=document.getElementById('splash-by-inline');
-  if(byInline)byInline.innerHTML=username?`by <strong style="color:var(--accent)">${username}</strong>`:'shared deck';
+  const dn=document.getElementById('splash-deck-name');
+  if(dn)dn.textContent=deckObj.name||'Untitled Deck';
   document.getElementById('splash-overlay').classList.add('open');
 }
 function _isBasicLand(card){
@@ -1034,7 +1037,7 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
   // Build list of {label, entries} columns depending on sort mode
   const columns=[];
   if(sortMode==='cmc'){
-    // Non-land cards grouped by CMC 0-6, 7+
+    // Basic lands first, non-basic lands second, then non-land cards by CMC
     const cmcBuckets={};
     const nonbasicLands=[];
     const basicLands=[];
@@ -1049,6 +1052,14 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
         cmcBuckets[key].push({card,qty});
       }
     }
+    if(basicLands.length){
+      basicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
+      columns.push({label:'Basic Lands',entries:basicLands});
+    }
+    if(nonbasicLands.length){
+      nonbasicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
+      columns.push({label:'Lands',entries:nonbasicLands});
+    }
     const cmcOrder=['0','1','2','3','4','5','6','7+'];
     for(const k of cmcOrder){
       if(cmcBuckets[k]&&cmcBuckets[k].length){
@@ -1058,14 +1069,6 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
         });
         columns.push({label:`CMC ${k}`,entries:sorted});
       }
-    }
-    if(nonbasicLands.length){
-      nonbasicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
-      columns.push({label:'Lands',entries:nonbasicLands});
-    }
-    if(basicLands.length){
-      basicLands.sort((a,b)=>a.card.name.localeCompare(b.card.name));
-      columns.push({label:'Basic Lands',entries:basicLands});
     }
   } else {
     // By type
