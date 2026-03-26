@@ -499,7 +499,7 @@
       position:relative; border-radius:8px; cursor:pointer;
       box-shadow:0 0 0 2.5px var(--gold), 0 6px 24px rgba(0,0,0,0.7);
       transition:transform 0.15s ease, box-shadow 0.15s ease;
-      background:var(--surface2); z-index:1;
+      background:var(--surface2); z-index:10;
     }
     .splash-commander-card.hovered { box-shadow:0 0 0 3px var(--gold), 0 12px 40px rgba(0,0,0,0.85); }
     .splash-commander-card img { width:121px; display:block; border-radius:7px; }
@@ -1571,18 +1571,21 @@ function _hoverZoom(el, scale, imgEl, largeSrc){
   if(imgEl && largeSrc) imgEl.src = largeSrc;
   // compute transform-origin so zoomed card stays inside viewport
   const rect = el.getBoundingClientRect();
-  const W = window.innerWidth;
-  const cw = rect.width * scale;
-  // horizontal: prefer center, clamp left/right
+  const W = window.innerWidth, H = window.innerHeight;
+  const cw = rect.width * scale, ch = rect.height * scale;
+  // horizontal: prefer center, clamp to keep within viewport
   let ox = 50; // percent
   const cx = rect.left + rect.width / 2;
   if (cx - cw/2 < 8) ox = Math.max(0, (8 - rect.left) / rect.width * 100);
   else if (cx + cw/2 > W - 8) ox = Math.min(100, (W - 8 - rect.left) / rect.width * 100);
-  // vertical: prefer top, flip to bottom if near top edge
-  let oy = 0; // top by default
-  if (rect.top < 8) oy = 100; // grow downward
-  el.style.transformOrigin = ox+'% '+(oy===0?'top':'bottom');
-  el.style.transform = `translateY(${oy===0?-8:8}px) scale(${scale})`;
+  // vertical: grow upward (origin=top, translate up) unless bottom of zoomed card would go off screen,
+  // in which case anchor to bottom of card and grow upward from there
+  const wouldOverflowBottom = rect.top + ch + 8 > H;
+  const oy = wouldOverflowBottom ? 'bottom' : 'top';
+  const ty = wouldOverflowBottom ? 8 : -8;
+  el.style.transformOrigin = ox+'% '+oy;
+  el.style.transform = `translateY(${ty}px) scale(${scale})`;
+  el.style.zIndex = '2000';
   el.classList.add('hovered');
   // Allow overflow from scroll containers so zoomed card isn't clipped
   const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
@@ -1592,6 +1595,7 @@ function _hoverReset(el, imgEl, normalSrc){
   if(imgEl && normalSrc) imgEl.src = normalSrc;
   el.style.transform = '';
   el.style.transformOrigin = '';
+  el.style.zIndex = '';
   el.classList.remove('hovered');
   const scrollParent = el.closest('.mtgo-columns-wrap, .splash-body');
   if(scrollParent){ delete scrollParent.dataset.hovering; scrollParent.style.overflow = ''; }
