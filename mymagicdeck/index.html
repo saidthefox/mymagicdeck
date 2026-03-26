@@ -902,7 +902,14 @@ function toggleDeckSplash(){
   const chk=document.getElementById('share-splash-chk').checked;
   // Un-splash any previous deck for this user
   for(const deck of Object.values(state.decks))if(deck.splashOwner===state.user.username){deck.splashOwner=null;syncDeckToApi(deck.id);}
-  if(chk){d.splashOwner=state.user.username;toast('Splash deck set! ⭐','success');}
+  if(chk){
+    d.splashOwner=state.user.username;
+    // Splash deck must be public — auto-enable it
+    d.public=true;
+    const pubChk=document.getElementById('share-public-chk');
+    if(pubChk)pubChk.checked=true;
+    toast('Splash deck set! ⭐ (Public link enabled)','success');
+  }
   saveToStorage();syncDeckToApi(d.id);
   openDeckManager();
 }
@@ -975,7 +982,15 @@ function openSplash(deckObj,username){
   document.getElementById('splash-body').innerHTML=statsHtml+`<div class="splash-sections">${sectHtml}</div>`;
   document.getElementById('splash-overlay').classList.add('open');
 }
-function closeSplash(){document.getElementById('splash-overlay').classList.remove('open');_splashDeck=null;}
+function closeSplash(){
+  document.getElementById('splash-overlay').classList.remove('open');
+  _splashDeck=null;
+  // If we're on a subdomain, go back to the main site
+  const host=window.location.hostname;
+  if(host.match(/^[a-z0-9_-]+\.mymagicdeck\.com$/i)&&!host.startsWith('www')){
+    window.location.href='https://mymagicdeck.com';
+  }
+}
 function splashCopyList(){
   if(!_splashDeck)return;
   const cards=Object.values(_splashDeck.deck.cards||{});const sb=Object.values(_splashDeck.deck.sideboard||{});
@@ -1425,6 +1440,11 @@ document.addEventListener('keydown',function(e){
 document.getElementById('deck-name-input').addEventListener('blur',function(){const d=currentDeck();if(d){d.name=this.value.trim()||'Untitled Deck';this.value=d.name;saveToStorage();syncDeckToApi(d.id)}});
 
 function init(){
+  // If on a subdomain, only handle splash routing — don't boot the full builder
+  const host=window.location.hostname;
+  const isSub=host.match(/^[a-z0-9_-]+\.mymagicdeck\.com$/i)&&!host.startsWith('www');
+  if(isSub){checkUrlHash();return;}
+
   loadFromStorage();
   if(!Object.keys(state.decks).length||!state.currentDeckId)newDeck();
   else{document.getElementById('deck-name-input').value=currentDeck()?.name||'Untitled Deck';renderAll();}
