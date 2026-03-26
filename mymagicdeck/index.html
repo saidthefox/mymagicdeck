@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MyMagicDeck — MTG Deck Builder</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%235b8def'/><text y='.9em' font-size='72' x='50%' text-anchor='middle' dominant-baseline='top' font-family='system-ui'>🃏</text></svg>" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 14px; }
@@ -1031,7 +1032,7 @@ function checkUrlHash(){
   if(subMatch&&subMatch[1]!=='www'){
     const username=subMatch[1];
     apiFetch('/users/'+username+'/splash').then(data=>{
-      openSplash(data,username);
+      openSplash(data.deck,data.username);
     }).catch(()=>{
       document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No public splash deck for <strong style="color:#c8cdd8">${username}</strong></div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your own deck</a></div>`;
     });
