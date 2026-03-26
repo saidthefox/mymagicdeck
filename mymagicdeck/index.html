@@ -1334,9 +1334,10 @@ async function doImport(){
   const err=document.getElementById('import-error');err.textContent='';
   const main=[],side=[];let inSide=false;
   for(const line of lines){
-    if(/^Sideboard$/i.test(line)){inSide=true;continue}
+    if(/^Sideboard$/i.test(line)||/^\[Sideboard\]$/i.test(line)){inSide=true;continue}
     if(/^(Deck|Commander)$/i.test(line)){inSide=false;continue}
     if(line.startsWith('//'))continue;
+    if(/^\[.+\]$/.test(line))continue;  // skip [SECTION] headers
     let qty=1,name='',m=line.match(/^(\d+)[xX]?\s+(.+)$/);
     if(m){qty=parseInt(m[1]);name=m[2].trim()}else{m=line.match(/^(.+?)\s+[xX](\d+)$/);if(m){qty=parseInt(m[2]);name=m[1].trim()}else name=line}
     name=name.replace(/\s+\([A-Z0-9]+\)\s+\d+.*$/,'').trim();
