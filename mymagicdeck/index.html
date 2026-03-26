@@ -34,7 +34,7 @@
     }
     #header .logo { font-size: 1.15rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; white-space: nowrap; }
     #header .logo span { color: var(--text-bright); }
-    .header-deck-controls { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .header-deck-controls { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
     #deck-name-input {
       background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
       color: var(--text-bright); padding: 5px 10px; font-size: 0.9rem; font-weight: 600; min-width: 140px; max-width: 220px;
@@ -424,8 +424,8 @@
   <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
     <input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" />
-    <button class="btn primary" onclick="saveDeck()">💾 Save</button>
     <button class="btn" onclick="newDeck()">＋ New</button>
+    <button class="btn" onclick="saveDeck()">💾 Save</button>
     <button class="btn" onclick="openDeckManager()">📂 Decks</button>
     <button class="btn" onclick="openImport()">⬇ Import</button>
     <button class="btn" onclick="openExport()">⬆ Export</button>
