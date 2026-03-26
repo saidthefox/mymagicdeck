@@ -1261,6 +1261,7 @@ function openSplash(deckObj,username){
   const colsHtml=_buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode);
 
   document.getElementById('splash-body').innerHTML=statsHtml+barHtml+colsHtml;
+  _attachCardHover(document.getElementById('splash-body'));
   const dn=document.getElementById('splash-deck-name');
   if(dn)dn.textContent=deckObj.name||'Untitled Deck';
   document.getElementById('splash-overlay').classList.add('open');
@@ -1601,21 +1602,24 @@ function _hoverReset(el, imgEl, normalSrc){
   if(scrollParent){ delete scrollParent.dataset.hovering; scrollParent.style.overflow = ''; }
 }
 
-// ── Hook hover via delegation (mtgo-card, splash-card, splash-commander-card) ─
-// Use mouseover/mouseout but guard with relatedTarget to avoid child-element firing
-const HOVER_SEL = '.mtgo-card, .splash-card, .splash-commander-card';
-function _hoverCard(e, entering){
-  const card = e.target.closest(HOVER_SEL);
-  if(!card) return;
-  if(card.classList.contains('dragging')) return;
-  // Only act when the related target is truly outside this card
-  if(e.relatedTarget && card.contains(e.relatedTarget)) return;
-  const img = card.querySelector('img');
-  if(entering) _hoverZoom(card, 2.3, img, img?.dataset.large);
-  else          _hoverReset(card, img, img?.dataset.normal);
+// ── Attach non-bubbling hover listeners to card elements after DOM injection ──
+function _attachCardHover(root){
+  root.querySelectorAll('.mtgo-card, .splash-card, .splash-commander-card').forEach(card=>{
+    // Remove any previously attached listeners by cloning (avoids duplicates on re-render)
+    // We use a flag instead to avoid clone cost — just skip if already bound
+    if(card._hoverBound) return;
+    card._hoverBound = true;
+    card.addEventListener('mouseenter', function(){
+      if(this.classList.contains('dragging')) return;
+      const img = this.querySelector('img');
+      _hoverZoom(this, 2.3, img, img?.dataset.large);
+    });
+    card.addEventListener('mouseleave', function(){
+      const img = this.querySelector('img');
+      _hoverReset(this, img, img?.dataset.normal);
+    });
+  });
 }
-document.addEventListener('mouseover',  e => _hoverCard(e, true));
-document.addEventListener('mouseout',   e => _hoverCard(e, false));
 
 // ============================================================
 //  MTGO VISUAL RENDER
@@ -1655,6 +1659,7 @@ function renderDeckVisual(){
     h+=`</div></div>`;
   }
   container.innerHTML=h;
+  _attachCardHover(container);
 }
 
 // ============================================================
