@@ -167,34 +167,9 @@
     /* ── Card Mockup ─────────────────────────────────────────── */
     .card-mockup-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
     .card-mockup { width: 100%; flex-shrink: 0; position: relative; user-select: none; }
-    /* SVG line-art card shell */
-    .cm-svg-card { width: 100%; display: block; }
-    /* Overlay inputs positioned absolutely over the SVG regions */
-    .cm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
-    .cm-overlay * { pointer-events: all; }
-    /* Name row */
-    .cm-name-row { position: absolute; left: 8%; right: 8%; top: 3%; height: 6.5%; display: flex; align-items: center; gap: 2px; }
-    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 1.08rem; font-weight: 400; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0 3px; min-width: 0; }
-    .cm-name-in::placeholder { color: #999; font-style: italic; font-weight: 400; }
-    .cm-name-in:focus { background: rgba(0,0,0,0.05); border-radius: 2px; }
-    .cm-mana { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
-    .cm-mana-sym { width: 15px; height: 15px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.56rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
-    .cm-mana-sym:hover { transform: scale(1.25); box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-    /* Art region click-to-clear */
-    .cm-art-overlay { position: absolute; left: 6%; right: 6%; top: 10.8%; height: 37.5%; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 2px; transition: background 0.12s; }
-    .cm-art-overlay:hover { background: rgba(0,0,0,0.06); }
-    .cm-art-icon { font-size: 1.4rem; opacity: 0.25; pointer-events: none; }
-    /* Type line */
-    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 49.4%; height: 5%; display: flex; align-items: center; justify-content: space-between; padding-left: 3px; }
-    .cm-typeline { background: transparent; border: none; font-size: 0.9rem; font-weight: 400; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cm-rarity { background: transparent; border: none; font-size: 0.9rem; font-weight: 400; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; text-align: right; flex-shrink: 0; }
-    /* Text box */
-    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 55.6%; height: 28.5%; display: flex; align-items: flex-start; padding-top: 2px; padding-left: 3px; }
-    .cm-textbox { background: transparent; border: none; font-size: 0.88rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Courier New',Courier,monospace; }
-    /* P/T box — always visible */
-    .cm-pt-row { position: absolute; right: 7%; top: 88.3%; height: 6.1%; display: flex; align-items: center; gap: 1px; }
-    .cm-pt-in { width: 22px; background: transparent; border: none; text-align: center; font-size: 0.82rem; font-weight: 700; color: #111; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0; }
-    .cm-pt-sep { font-size: 0.82rem; font-weight: 700; color: #111; line-height: 1; font-family: 'Courier New',Courier,monospace; }
+    /* Card mockup — pure SVG, fills widget */
+    .card-mockup-wrap { width: 100%; height: 100%; display: flex; align-items: stretch; }
+    .cm-svg-card { width: 100%; height: 100%; display: block; overflow: visible; }
 
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
@@ -816,38 +791,61 @@
         <div class="fw" id="fw-card" data-fw="card">
           <div class="fw-body" style="padding:0;">
             <div class="card-mockup-wrap">
-              <div class="card-mockup" id="card-mockup">
-                <svg class="cm-svg-card" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" fill="none">
-                  <rect x="3" y="3" width="194" height="354" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
-                  <rect x="8" y="8" width="184" height="344" rx="7" ry="7" stroke="#555" stroke-width="0.8" fill="none"/>
-                  <rect x="11" y="11" width="178" height="24" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
-                  <rect x="11" y="39" width="178" height="135" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
-                  <rect x="11" y="178" width="178" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
-                  <rect x="11" y="200" width="178" height="105" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
-                  <rect x="145" y="318" width="44" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
-                </svg>
-                <div class="cm-overlay">
-                  <div class="cm-name-row">
-                    <input class="cm-name-in" id="cm-name-input" placeholder="Name…" oninput="cmNameInput()" maxlength="60">
-                    <div class="cm-mana" id="cm-mana"></div>
+              <svg id="card-mockup-svg" class="cm-svg-card" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
+                <!-- Card body -->
+                <rect id="cm-body" x="2" y="2" width="196" height="276" rx="10" ry="10" stroke="#222" stroke-width="1.5" fill="#f8f8f6"/>
+                <rect x="6" y="6" width="188" height="268" rx="7" ry="7" stroke="#555" stroke-width="0.6" fill="none"/>
+                <!-- Name bar -->
+                <rect id="cm-namebar" x="9" y="9" width="182" height="20" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+                <!-- Art box -->
+                <rect id="cm-artbox" x="9" y="32" width="182" height="105" rx="2" ry="2" stroke="#333" stroke-width="0.8" fill="#e0e0de"/>
+                <!-- Art clear-filters button (invisible hit area) -->
+                <rect id="cm-art-hit" x="9" y="32" width="182" height="105" rx="2" ry="2" fill="transparent" style="cursor:pointer" onclick="clearAllFilters()" title="Clear all filters"/>
+                <text id="cm-art-icon" x="100" y="91" text-anchor="middle" dominant-baseline="middle" font-size="18" opacity="0.22" style="pointer-events:none">♻</text>
+                <!-- Type line bar -->
+                <rect id="cm-typebar" x="9" y="140" width="182" height="16" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+                <!-- Text box -->
+                <rect x="9" y="159" width="182" height="84" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#f4f4f2"/>
+                <!-- P/T box -->
+                <rect x="142" y="251" width="50" height="19" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+
+                <!-- Name text (editable via foreignObject) -->
+                <foreignObject x="10" y="9" width="130" height="20">
+                  <input xmlns="http://www.w3.org/1999/xhtml"
+                    id="cm-name-input"
+                    style="width:100%;height:100%;border:none;background:transparent;font-size:9px;font-family:'Courier New',monospace;color:#111;padding:0 3px;outline:none;box-sizing:border-box;"
+                    placeholder="Name…" maxlength="60" oninput="cmNameInput()"/>
+                </foreignObject>
+
+                <!-- Mana pips group (populated by JS) -->
+                <g id="cm-mana-g" transform="translate(144,9)"></g>
+
+                <!-- Type line text -->
+                <text id="cm-typeline" x="13" y="151" font-size="7" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
+                <text id="cm-rarity" x="187" y="151" font-size="7" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
+
+                <!-- Text box content (foreignObject for wrapping) -->
+                <foreignObject x="11" y="161" width="178" height="80">
+                  <div xmlns="http://www.w3.org/1999/xhtml" id="cm-textbox"
+                    style="width:100%;height:100%;font-size:7.5px;font-family:'Courier New',monospace;color:#333;line-height:1.45;overflow:hidden;box-sizing:border-box;padding:2px 3px;font-style:italic;opacity:0.45;">
+                    Select filters…
                   </div>
-                  <div class="cm-art-overlay" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">
-                    <span class="cm-art-icon">♻️</span>
+                </foreignObject>
+
+                <!-- P/T -->
+                <foreignObject x="143" y="251" width="48" height="19">
+                  <div xmlns="http://www.w3.org/1999/xhtml"
+                    style="display:flex;align-items:center;justify-content:center;height:100%;gap:1px;font-family:'Courier New',monospace;font-size:8px;font-weight:700;color:#111;">
+                    <input id="cm-pow-in" xmlns="http://www.w3.org/1999/xhtml"
+                      style="width:16px;border:none;background:transparent;text-align:center;font-size:8px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
+                      placeholder="*" maxlength="3" oninput="cmPtInput()"/>
+                    <span style="line-height:1">/</span>
+                    <input id="cm-tou-in" xmlns="http://www.w3.org/1999/xhtml"
+                      style="width:16px;border:none;background:transparent;text-align:center;font-size:8px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
+                      placeholder="*" maxlength="3" oninput="cmPtInput()"/>
                   </div>
-                  <div class="cm-typeline-row">
-                    <div class="cm-typeline" id="cm-typeline">—</div>
-                    <div class="cm-rarity" id="cm-rarity"></div>
-                  </div>
-                  <div class="cm-textbox-row">
-                    <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.45">Select filters…</div>
-                  </div>
-                  <div class="cm-pt-row" id="cm-pt-wrap">
-                    <input class="cm-pt-in" id="cm-pow-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
-                    <span class="cm-pt-sep">/</span>
-                    <input class="cm-pt-in" id="cm-tou-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
-                  </div>
-                </div>
-              </div>
+                </foreignObject>
+              </svg>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -2330,87 +2328,114 @@ function updateActiveFilterPills(){
   el.querySelectorAll('.afp-x').forEach((x,i)=>x.addEventListener('click',e=>{e.stopPropagation();pills[i].clear()}));
 }
 
-function _collapseGenericPips(manaEl, cycleColors, manaKey){
-  // Find leading run of generic pips
-  const spans=[...manaEl.children];
+const SVG_NS='http://www.w3.org/2000/svg';
+const PIP_R=6, PIP_GAP=14; // pip radius and spacing
+
+function _makePipCircle(m, label, isGeneric){
+  const g=document.createElementNS(SVG_NS,'g');
+  const c=document.createElementNS(SVG_NS,'circle');
+  c.setAttribute('r', PIP_R);
+  c.setAttribute('fill', m.bg);
+  c.setAttribute('stroke','rgba(0,0,0,0.45)');
+  c.setAttribute('stroke-width','0.8');
+  const t=document.createElementNS(SVG_NS,'text');
+  t.setAttribute('text-anchor','middle');
+  t.setAttribute('dominant-baseline','central');
+  t.setAttribute('font-size', isGeneric?'6':'5.5');
+  t.setAttribute('font-weight','900');
+  t.setAttribute('font-family',"'Courier New',monospace");
+  t.setAttribute('fill', m.fg);
+  t.setAttribute('pointer-events','none');
+  t.textContent=label;
+  g.appendChild(c);
+  g.appendChild(t);
+  return g;
+}
+
+function _collapseGenericPips(manaG, cycleColors, manaKey){
+  // Count leading generics in _manaPips
   let genericCount=0;
-  for(const s of spans){
-    if(s.dataset.pip==='generic') genericCount++;
-    else break;
-  }
+  for(const p of _manaPips){ if(p==='generic') genericCount++; else break; }
   if(genericCount===0) return;
   const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
-  // Remove all leading generic spans
-  for(let i=0;i<genericCount;i++) manaEl.removeChild(manaEl.firstChild);
-  // Insert one numbered span
-  const numSpan=document.createElement('span');
-  numSpan.className='cm-mana-sym';
-  numSpan.style.background=GENERIC.bg;
-  numSpan.style.color=GENERIC.fg;
-  numSpan.textContent=String(genericCount);
-  // Only make it clickable if there are colors to cycle to
+  // The first pip circle in manaG corresponds to index 0
+  // Remove first genericCount children and replace with one numbered circle
+  for(let i=0;i<genericCount;i++) if(manaG.firstChild) manaG.removeChild(manaG.firstChild);
+  // Shift remaining children right
+  const remaining=[...manaG.children];
+  // Re-position: numbered pip at x=PIP_R, then rest follow
+  const numG=_makePipCircle(GENERIC, String(genericCount), true);
+  numG.setAttribute('transform',`translate(${PIP_R},0)`);
+  numG.style.cursor=cycleColors.length>0?'pointer':'default';
   if(cycleColors.length>0){
-    numSpan.title='Click to cycle color';
-    numSpan.style.cursor='pointer';
-    numSpan.addEventListener('click',()=>{
-      // Find the index of the first generic pip in _manaPips and cycle it
+    numG.title='Click to cycle color';
+    numG.addEventListener('click',()=>{
       const firstGenIdx=_manaPips.indexOf('generic');
       if(firstGenIdx===-1) return;
       _manaPips[firstGenIdx]=cycleColors[0];
-      // Re-sort: generics first, then WUBRG
       const WUBRG=['w','u','b','r','g'];
       _manaPips.sort((a,b)=>{
         if(a==='generic'&&b==='generic') return 0;
-        if(a==='generic') return -1;
-        if(b==='generic') return 1;
+        if(a==='generic') return -1; if(b==='generic') return 1;
         return WUBRG.indexOf(a)-WUBRG.indexOf(b);
       });
       _prevManaKey=manaKey;
       renderManaPips(cycleColors,manaKey);
     });
-  } else {
-    numSpan.title=genericCount+' generic mana';
-    numSpan.style.cursor='default';
   }
-  manaEl.insertBefore(numSpan,manaEl.firstChild);
+  manaG.insertBefore(numG, manaG.firstChild);
+  // Reposition all children
+  let x=PIP_R;
+  for(const child of manaG.children){
+    child.setAttribute('transform',`translate(${x},0)`);
+    x+=PIP_GAP;
+  }
 }
 
 function renderManaPips(cycleColors, manaKey){
-  const manaEl=document.getElementById('cm-mana');
-  if(!manaEl) return;
-  manaEl.innerHTML='';
+  const manaG=document.getElementById('cm-mana-g');
+  if(!manaG) return;
+  while(manaG.firstChild) manaG.removeChild(manaG.firstChild);
   const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
   _manaPips.forEach((pip,idx)=>{
     const isGeneric=pip==='generic';
     const m=isGeneric?GENERIC:(COLOR_MANA[pip]||GENERIC);
-    const span=document.createElement('span');
-    span.className='cm-mana-sym';
-    span.dataset.pip=pip;
-    span.style.background=m.bg;
-    span.style.color=m.fg;
-    span.textContent=isGeneric?'':m.sym;
-    span.title='Click to cycle color';
-    span.addEventListener('click',()=>{
+    const g=_makePipCircle(m, isGeneric?'':m.sym, isGeneric);
+    g.dataset.pip=pip;
+    g.style.cursor='pointer';
+    const x=PIP_R + idx*PIP_GAP;
+    g.setAttribute('transform',`translate(${x},${PIP_R})`);
+    g.addEventListener('click',()=>{
       if(cycleColors.length===0) return;
       const cur=_manaPips[idx];
       const pos=cycleColors.indexOf(cur);
       if(cur==='generic') _manaPips[idx]=cycleColors[0];
       else if(pos>=0&&pos<cycleColors.length-1) _manaPips[idx]=cycleColors[pos+1];
       else _manaPips[idx]='generic';
-      // Re-sort: generics first, then colored in WUBRG order
       const WUBRG=['w','u','b','r','g'];
       _manaPips.sort((a,b)=>{
         if(a==='generic'&&b==='generic') return 0;
-        if(a==='generic') return -1;
-        if(b==='generic') return 1;
+        if(a==='generic') return -1; if(b==='generic') return 1;
         return WUBRG.indexOf(a)-WUBRG.indexOf(b);
       });
       _prevManaKey=manaKey;
       renderManaPips(cycleColors,manaKey);
     });
-    manaEl.appendChild(span);
+    manaG.appendChild(g);
   });
-  _collapseGenericPips(manaEl, cycleColors, manaKey);
+  _collapseGenericPips(manaG, cycleColors, manaKey);
+  // Reposition all after collapse
+  let x=PIP_R;
+  for(const child of manaG.children){
+    const cur=parseFloat(child.getAttribute('transform')?.match(/translate\(([^,]+)/)?.[1]||x);
+    child.setAttribute('transform',`translate(${x},${PIP_R})`);
+    x+=PIP_GAP;
+  }
+  // Shift whole group to right-align in the 54px wide zone (200-10 namebar right edge minus some)
+  const totalW=_manaPips.length>0 ? (manaG.children.length)*PIP_GAP : 0;
+  // manaG starts at x=144 in SVG; pips right-align inside remaining 46px
+  const offsetX=Math.max(0, 44 - totalW);
+  manaG.setAttribute('transform',`translate(${144+offsetX},${9})`);
 }
 
 function updateCardMockup(){
@@ -2428,13 +2453,12 @@ function updateCardMockup(){
 
   // SVG frame tint based on color (outer card body)
   const COLOR_FILL={W:'#faf5dc',U:'#d0e8f8',B:'#c8b8d0',R:'#fad0a8',G:'#b8dca8',M:'#f8e890',A:'#dcdcdc',L:'#dcc898',C:'#dce0e8',none:'#f8f8f6'};
-  const svgCardBody=document.querySelector('.cm-svg-card rect:nth-child(1)');
-  if(svgCardBody) svgCardBody.setAttribute('fill', COLOR_FILL[fc]||'#f8f8f6');
-  // Keep art box and text box always white/neutral
-  const svgArtBox=document.querySelector('.cm-svg-card rect:nth-child(4)');
-  if(svgArtBox) svgArtBox.setAttribute('fill','#e8e8e6');
-  const svgTextBox=document.querySelector('.cm-svg-card rect:nth-child(7)');
-  if(svgTextBox) svgTextBox.setAttribute('fill','#f4f4f2');
+  const svgBody=document.getElementById('cm-body');
+  if(svgBody) svgBody.setAttribute('fill', COLOR_FILL[fc]||'#f8f8f6');
+  const svgNamebar=document.getElementById('cm-namebar');
+  if(svgNamebar) svgNamebar.setAttribute('fill', COLOR_FILL[fc]||'#eee');
+  const svgTypebar=document.getElementById('cm-typebar');
+  if(svgTypebar) svgTypebar.setAttribute('fill', COLOR_FILL[fc]||'#eee');
 
   // Mana symbols — clickable pips that cycle through selected colors
   const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
@@ -2470,10 +2494,11 @@ function updateCardMockup(){
 
   // Type line (left) + Rarity (right)
   const typeStr=types.length?types.map(t=>t[0].toUpperCase()+t.slice(1)).join(' — '):'—';
-  document.getElementById('cm-typeline').textContent=typeStr;
+  const tlEl=document.getElementById('cm-typeline');
+  if(tlEl) tlEl.textContent=typeStr;
   const rars=[..._fs.rarities];
-  const rarityEl=document.getElementById('cm-rarity');
-  if(rarityEl) rarityEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
+  const rarEl=document.getElementById('cm-rarity');
+  if(rarEl) rarEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
 
   // Text box — show all active filters
   const tb=document.getElementById('cm-textbox');
@@ -2482,27 +2507,27 @@ function updateCardMockup(){
   const textParts=[];
   if(kws.length) textParts.push(kws.map(k=>k[0].toUpperCase()+k.slice(1)).join(', '));
   if(fmts.length) textParts.push('Legal in: '+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', '));
-  if(textParts.length){
-    tb.style.fontStyle='normal'; tb.style.opacity='1';
-    tb.innerHTML=textParts.join('<br>');
-  } else if(colors.length||types.length||cmc!==null){
-    tb.style.fontStyle='italic'; tb.style.opacity='0.55'; tb.textContent='';
-  } else {
-    tb.style.fontStyle='italic'; tb.style.opacity='0.55'; tb.textContent='Select filters…';
+  if(tb){
+    if(textParts.length){
+      tb.style.fontStyle='normal'; tb.style.opacity='1';
+      tb.innerHTML=textParts.join('<br>');
+    } else if(colors.length||types.length||cmc!==null){
+      tb.style.fontStyle='italic'; tb.style.opacity='0.45'; tb.textContent='';
+    } else {
+      tb.style.fontStyle='italic'; tb.style.opacity='0.45'; tb.textContent='Select filters…';
+    }
   }
 
-  // P/T always visible — sync values from filter state
-  const ptWrap=document.getElementById('cm-pt-wrap');
-  ptWrap.style.display='flex';
+  // P/T — sync values from filter state
   const powIn=document.getElementById('cm-pow-in');
   const touIn=document.getElementById('cm-tou-in');
   if(powIn) powIn.value=_fs.powVal||'';
   if(touIn) touIn.value=_fs.touVal||'';
-
 }
 
 function cmNameInput(){
-  _fs.name=document.getElementById('cm-name-input').value;
+  const el=document.getElementById('cm-name-input');
+  _fs.name=el?el.value:'';
   syncFilters();
 }
 
