@@ -1743,8 +1743,12 @@ function _splashRebuildColumns(){
   const body=document.getElementById('splash-body');
   const existing=body.querySelector('.splash-columns');
   const newHtml=_buildSplashColumns(g,sbCards,allCards,zoom,sortMode);
-  if(existing)existing.outerHTML=newHtml;
-  else body.insertAdjacentHTML('beforeend',newHtml);
+  const tmp=document.createElement('div');
+  tmp.innerHTML=newHtml;
+  const newNode=tmp.firstElementChild;
+  if(existing)existing.replaceWith(newNode);
+  else body.appendChild(newNode);
+  _attachCardHover(body);
 }
 function splashCardTouch(e,el){
   if(el.classList.contains('zoomed')){
