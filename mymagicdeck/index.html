@@ -2924,7 +2924,7 @@ const FW_DEFAULTS = {
   'fw-cmc':      { x:1,   y:78, w:260, h:58  },
   'fw-types':    { x:1,   y:144,w:248, h:68  },
   'fw-pt':       { x:1,   y:220,w:220, h:58  },
-  'fw-card':     { x:320, y:2,  w:210, h:348 },
+  'fw-card':     { x:253, y:78, w:276, h:350 },
   'fw-format':   { x:535, y:2,  w:200, h:100 },
   'fw-rarity':   { x:535, y:110,w:160, h:62  },
   'fw-keywords': { x:535, y:180,w:200, h:94  },
@@ -3090,11 +3090,6 @@ function fwInitDrag(){
       fwSaveLayout();
     });
 
-    // Bring to front on click
-    el.addEventListener('mousedown', ()=>{
-      document.querySelectorAll('.fw').forEach(w=>w.style.zIndex='');
-      el.style.zIndex=50;
-    });
   });
 }
 
