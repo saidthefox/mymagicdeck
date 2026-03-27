@@ -112,7 +112,7 @@
     .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
 
     /* ── Card Filter Panel ───────────────────────────────────── */
-    .card-filter-panel { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: start; }
+    .card-filter-panel { display: grid; grid-template-columns: 1fr 185px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
     .cfp-section { display: flex; flex-direction: column; gap: 4px; }
     .cfp-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
@@ -120,9 +120,9 @@
     .cfp-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; font-size: 0.7rem; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; white-space: nowrap; }
     .cfp-chip:hover { border-color: var(--accent); color: var(--text); }
     .cfp-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-    .cfp-color-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; border: 2px solid transparent; transition: all 0.12s; user-select: none; }
-    .cfp-color-chip:hover { transform: scale(1.15); }
-    .cfp-color-chip.active { border-color: #fff; box-shadow: 0 0 0 2px var(--accent); transform: scale(1.15); }
+    .cfp-color-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: opacity 0.12s, transform 0.12s; user-select: none; opacity: 0.45; }
+    .cfp-color-chip:hover { opacity: 0.8; transform: scale(1.1); }
+    .cfp-color-chip.active { opacity: 1; transform: scale(1.1); }
     .cfp-cmc-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
     .cfp-op { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.78rem; font-weight: 700; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; }
     .cfp-op:hover, .cfp-op.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
@@ -135,9 +135,9 @@
     .cfp-pt-select:focus { outline: none; border-color: var(--accent); }
 
     /* ── Card Mockup ─────────────────────────────────────────── */
-    .card-mockup-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .card-mockup { width: 148px; flex-shrink: 0; border-radius: 9px; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; position: relative; user-select: none; filter: drop-shadow(0 4px 18px rgba(0,0,0,0.75)); }
-    .cm-frame { border-radius: 9px; padding: 6px 5px 5px; display: flex; flex-direction: column; gap: 3px; transition: background 0.25s; }
+    .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; }
+    .card-mockup { width: 100%; flex-shrink: 0; border-radius: 9px; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; position: relative; user-select: none; }
+    .cm-frame { border-radius: 9px; padding: 5px 4px 4px; display: flex; flex-direction: column; gap: 3px; transition: background 0.25s; border: 2px solid rgba(0,0,0,0.3); }
     .cm-frame.W  { background: linear-gradient(155deg,#f9f6e8 0%,#d4c88a 100%); }
     .cm-frame.U  { background: linear-gradient(155deg,#b3d4f5 0%,#2a6fa8 100%); }
     .cm-frame.B  { background: linear-gradient(155deg,#6b5b6e 0%,#1a1220 100%); }
@@ -149,24 +149,24 @@
     .cm-frame.C  { background: linear-gradient(155deg,#e0e0e0 0%,#aaa 100%); }
     .cm-frame.none { background: linear-gradient(155deg,#3a3a4a 0%,#1e1e2a 100%); }
     .cm-header { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
-    .cm-name-in { flex: 1; background: rgba(255,255,255,0.25); border: none; border-radius: 3px; color: #1a1000; font-size: 0.58rem; font-weight: 700; font-family: inherit; outline: none; padding: 1px 4px; min-width: 0; }
+    .cm-name-in { flex: 1; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.2); border-radius: 3px; color: #1a1000; font-size: 0.58rem; font-weight: 700; font-family: inherit; outline: none; padding: 1px 4px; min-width: 0; }
     .cm-frame.B .cm-name-in,.cm-frame.none .cm-name-in { color: #e8e0d0; background: rgba(255,255,255,0.1); }
     .cm-frame.U .cm-name-in,.cm-frame.R .cm-name-in,.cm-frame.G .cm-name-in { color: #fff8f0; background: rgba(255,255,255,0.15); }
     .cm-mana { display: flex; gap: 1px; flex-wrap: wrap; justify-content: flex-end; max-width: 60px; }
     .cm-mana-sym { width: 12px; height: 12px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.44rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.35); flex-shrink: 0; }
-    .cm-art { width: 100%; aspect-ratio: 4/3; background: #1a1a2a; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #555; font-size: 1.8rem; overflow: hidden; }
+    .cm-art { width: 100%; aspect-ratio: 4/3; background: #1a1a2a; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #555; font-size: 1.8rem; overflow: hidden; cursor: pointer; transition: opacity 0.12s; }
+    .cm-art:hover { opacity: 0.75; }
     .cm-typeline { background: rgba(0,0,0,0.15); border-radius: 3px; padding: 1px 4px; font-size: 0.5rem; font-weight: 700; color: #1a1000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cm-frame.B .cm-typeline,.cm-frame.none .cm-typeline { color: #e0d8c8; }
     .cm-frame.U .cm-typeline,.cm-frame.R .cm-typeline,.cm-frame.G .cm-typeline,.cm-frame.M .cm-typeline { color: #fff8e8; }
-    .cm-textbox { background: rgba(255,255,255,0.18); border-radius: 3px; padding: 4px; min-height: 40px; font-size: 0.48rem; line-height: 1.45; color: #1a1000; }
+    .cm-textbox { background: rgba(255,255,255,0.45); border: 1px solid rgba(0,0,0,0.15); border-radius: 3px; padding: 4px; min-height: 40px; font-size: 0.48rem; line-height: 1.45; color: #1a1000; }
     .cm-frame.B .cm-textbox,.cm-frame.none .cm-textbox { color: #e8e0d0; background: rgba(0,0,0,0.3); }
     .cm-frame.U .cm-textbox,.cm-frame.R .cm-textbox,.cm-frame.G .cm-textbox,.cm-frame.M .cm-textbox { color: #fff8e8; background: rgba(0,0,0,0.2); }
     .cm-pt-row { display: flex; justify-content: flex-end; align-items: center; gap: 2px; min-height: 12px; }
     .cm-pt-in { width: 24px; background: rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.25); border-radius: 3px; text-align: center; font-size: 0.58rem; font-weight: 700; color: #1a1000; font-family: inherit; outline: none; padding: 1px 2px; }
     .cm-frame.B .cm-pt-in,.cm-frame.none .cm-pt-in { color: #e8e0d0; background: rgba(255,255,255,0.1); }
     .cm-frame.U .cm-pt-in,.cm-frame.R .cm-pt-in,.cm-frame.G .cm-pt-in,.cm-frame.M .cm-pt-in { color: #fff8e8; }
-    .cm-clear-btn { position: absolute; top: -9px; right: -9px; width: 19px; height: 19px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); font-size: 0.65rem; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 5; }
-    .cm-clear-btn:hover { color: var(--accent); border-color: var(--accent); }
+
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
     .card-result:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
@@ -682,13 +682,12 @@
         <!-- CENTER: Card Mockup -->
         <div class="card-mockup-wrap">
           <div class="card-mockup" id="card-mockup">
-            <div class="cm-clear-btn" onclick="clearAllFilters()" title="Clear all filters">✕</div>
             <div class="cm-frame none" id="cm-frame">
               <div class="cm-header">
                 <input class="cm-name-in" id="cm-name-input" placeholder="Name…" oninput="cmNameInput()" maxlength="60">
                 <div class="cm-mana" id="cm-mana"></div>
               </div>
-              <div class="cm-art" id="cm-art">🃏</div>
+              <div class="cm-art" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">♻️</div>
               <div class="cm-typeline" id="cm-typeline">—</div>
               <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.55">Select filters…</div>
               <div class="cm-pt-row" id="cm-pt-wrap" style="display:none">
@@ -698,7 +697,6 @@
               </div>
             </div>
           </div>
-          <div style="font-size:0.57rem;color:var(--text-dim);text-align:center;max-width:148px;line-height:1.4">Type name or P/T directly on the card</div>
         </div>
 
         <!-- RIGHT: Formats + CMC -->
