@@ -124,13 +124,12 @@
     .card-filter-panel.collapsed { display: none; }
 
     /* ── Draggable filter widgets ─────────────────────────────── */
-    .fw { position: absolute; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; min-width: 80px; min-height: 60px; z-index: 10; }
-    .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
-    .fw-header { display: flex; align-items: center; justify-content: space-between; padding: 3px 7px; cursor: grab; border-bottom: 1px solid var(--border); background: var(--surface3); border-radius: var(--radius) var(--radius) 0 0; flex-shrink: 0; user-select: none; }
-    .fw-header:active { cursor: grabbing; }
-    .fw-title { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
-    .fw-body { flex: 1; padding: 5px 7px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
-    .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.4; }
+    .fw { position: absolute; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; min-width: 80px; min-height: 50px; z-index: 10; cursor: grab; }
+    .fw:active { cursor: grabbing; }
+    .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); cursor: grabbing; }
+    .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; }
+    .fw-body { flex: 1; padding: 3px 6px 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+    .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.35; }
     .fw-resize:hover { opacity: 1; }
     .fw-resize::before { content: ''; display: block; width: 0; height: 0; border-style: solid; border-width: 0 0 10px 10px; border-color: transparent transparent var(--text-dim) transparent; position: absolute; right: 1px; bottom: 1px; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
@@ -731,7 +730,7 @@
 
         <!-- WIDGET: Colors -->
         <div class="fw" id="fw-colors" data-fw="colors">
-          <div class="fw-header"><span class="fw-title">Colors</span></div>
+          <div class="fw-title">Colors</div>
           <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-color-chip" data-color="w" title="White" style="background:#f9f3d0">⚪</span>
@@ -747,7 +746,7 @@
 
         <!-- WIDGET: CMC -->
         <div class="fw" id="fw-cmc" data-fw="cmc">
-          <div class="fw-header"><span class="fw-title">Mana Value (CMC)</span></div>
+          <div class="fw-title">Mana Value (CMC)</div>
           <div class="fw-body">
             <div class="cfp-cmc-row">
               <span class="cfp-op" data-op=">">&gt;</span>
@@ -769,7 +768,7 @@
 
         <!-- WIDGET: Types -->
         <div class="fw" id="fw-types" data-fw="types">
-          <div class="fw-header"><span class="fw-title">Types</span></div>
+          <div class="fw-title">Types</div>
           <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-type="creature">Creature</span>
@@ -788,7 +787,7 @@
 
         <!-- WIDGET: P/T -->
         <div class="fw" id="fw-pt" data-fw="pt">
-          <div class="fw-header"><span class="fw-title">Power / Toughness</span></div>
+          <div class="fw-title">Power / Toughness</div>
           <div class="fw-body">
             <div class="cfp-pt-row">
               <select class="cfp-pt-select" id="pt-power-op" onchange="syncFilters()">
@@ -807,7 +806,7 @@
 
         <!-- WIDGET: Card Mockup -->
         <div class="fw" id="fw-card" data-fw="card">
-          <div class="fw-header"><span class="fw-title">Card Preview</span></div>
+          <div class="fw-title">Card Preview</div>
           <div class="fw-body" style="padding:2px;">
             <div class="card-mockup-wrap">
               <div class="card-mockup" id="card-mockup">
@@ -849,7 +848,7 @@
 
         <!-- WIDGET: Format -->
         <div class="fw" id="fw-format" data-fw="format">
-          <div class="fw-header"><span class="fw-title">Format</span></div>
+          <div class="fw-title">Format</div>
           <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-format="standard">Standard</span>
@@ -867,7 +866,7 @@
 
         <!-- WIDGET: Rarity -->
         <div class="fw" id="fw-rarity" data-fw="rarity">
-          <div class="fw-header"><span class="fw-title">Rarity</span></div>
+          <div class="fw-title">Rarity</div>
           <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-rarity="common">Common</span>
@@ -881,7 +880,7 @@
 
         <!-- WIDGET: Keywords -->
         <div class="fw" id="fw-keywords" data-fw="keywords">
-          <div class="fw-header"><span class="fw-title">Keywords</span></div>
+          <div class="fw-title">Keywords</div>
           <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-keyword="flying">Flying</span>
@@ -2448,7 +2447,7 @@ function updateCardMockup(){
     } else if(cycleColors.length>0){
       _manaPips=cycleColors.slice();
     } else if(colors.includes('c')){
-      _manaPips=['generic'];
+      _manaPips=['c'];
     } else {
       _manaPips=[];
     }
@@ -2928,16 +2927,16 @@ function fwInitDrag(){
   fwApplyLayout(layout);
 
   document.querySelectorAll('.fw').forEach(el=>{
-    const header=el.querySelector('.fw-header');
     const resizer=el.querySelector('.fw-resize');
 
-    // Drag
+    // Drag — whole widget is draggable (skip resize handle and interactive elements)
     let dragDx=0, dragDy=0, dragging=false;
-    header.addEventListener('mousedown', e=>{
-      if(e.target.closest('button,input,select,a')) return;
+    el.addEventListener('mousedown', e=>{
+      if(e.target.closest('.fw-resize,button,input,select,a,span[data-color],span[data-type],span[data-format],span[data-rarity],span[data-keyword],span[data-cmc],span[data-op],span[data-keyword]')) return;
       dragging=true;
-      dragDx=e.clientX-el.offsetLeft;
-      dragDy=e.clientY-el.offsetTop;
+      const panelRect=panel.getBoundingClientRect();
+      dragDx=e.clientX-panelRect.left-el.offsetLeft;
+      dragDy=e.clientY-panelRect.top-el.offsetTop;
       el.classList.add('dragging');
       el.style.zIndex=100;
       e.preventDefault();
@@ -2945,8 +2944,8 @@ function fwInitDrag(){
     document.addEventListener('mousemove', e=>{
       if(!dragging) return;
       const panelRect=panel.getBoundingClientRect();
-      let nx=e.clientX-panelRect.left-dragDx+el.offsetLeft;
-      let ny=e.clientY-panelRect.top-dragDy+el.offsetTop;
+      let nx=e.clientX-panelRect.left-dragDx;
+      let ny=e.clientY-panelRect.top-dragDy;
       // Clamp within panel (allow slight overhang on right/bottom)
       nx=Math.max(0, nx);
       ny=Math.max(0, ny);
