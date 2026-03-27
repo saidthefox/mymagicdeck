@@ -796,21 +796,21 @@
                 <rect id="cm-body" x="2" y="2" width="196" height="276" rx="10" ry="10" stroke="#222" stroke-width="1.5" fill="#f8f8f6"/>
                 <rect x="6" y="6" width="188" height="268" rx="7" ry="7" stroke="#555" stroke-width="0.6" fill="none"/>
                 <!-- Name bar -->
-                <rect id="cm-namebar" x="9" y="9" width="182" height="20" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+                <rect id="cm-namebar" x="9" y="9" width="182" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
                 <!-- Art box -->
-                <rect id="cm-artbox" x="9" y="32" width="182" height="105" rx="2" ry="2" stroke="#333" stroke-width="0.8" fill="#e0e0de"/>
+                <rect id="cm-artbox" x="9" y="34" width="182" height="118" rx="2" ry="2" stroke="#333" stroke-width="0.8" fill="#e0e0de"/>
                 <!-- Art clear-filters button (invisible hit area) -->
-                <rect id="cm-art-hit" x="9" y="32" width="182" height="105" rx="2" ry="2" fill="transparent" style="cursor:pointer" onclick="clearAllFilters()" title="Clear all filters"/>
-                <text id="cm-art-icon" x="100" y="91" text-anchor="middle" dominant-baseline="middle" font-size="18" opacity="0.22" style="pointer-events:none">♻</text>
+                <rect id="cm-art-hit" x="9" y="34" width="182" height="118" rx="2" ry="2" fill="transparent" style="cursor:pointer" onclick="clearAllFilters()" title="Clear all filters"/>
+                <text id="cm-art-icon" x="100" y="97" text-anchor="middle" dominant-baseline="middle" font-size="18" opacity="0.22" style="pointer-events:none">♻</text>
                 <!-- Type line bar -->
-                <rect id="cm-typebar" x="9" y="140" width="182" height="16" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+                <rect id="cm-typebar" x="9" y="155" width="182" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
                 <!-- Text box -->
-                <rect x="9" y="159" width="182" height="84" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#f4f4f2"/>
+                <rect x="9" y="176" width="182" height="72" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#f4f4f2"/>
                 <!-- P/T box -->
-                <rect x="142" y="251" width="50" height="19" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
+                <rect x="142" y="251" width="50" height="21" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
 
                 <!-- Name text (editable via foreignObject) -->
-                <foreignObject x="10" y="9" width="130" height="20">
+                <foreignObject x="10" y="9" width="130" height="22">
                   <input xmlns="http://www.w3.org/1999/xhtml"
                     id="cm-name-input"
                     style="width:100%;height:100%;border:none;background:transparent;font-size:12px;font-family:'Courier New',monospace;color:#111;padding:0 3px;outline:none;box-sizing:border-box;"
@@ -821,11 +821,11 @@
                 <g id="cm-mana-g" transform="translate(144,9)"></g>
 
                 <!-- Type line text -->
-                <text id="cm-typeline" x="13" y="151" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
-                <text id="cm-rarity" x="187" y="151" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
+                <text id="cm-typeline" x="13" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
+                <text id="cm-rarity" x="187" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
 
                 <!-- Text box content (foreignObject for wrapping) -->
-                <foreignObject x="11" y="161" width="178" height="80">
+                <foreignObject x="11" y="177" width="178" height="70">
                   <div xmlns="http://www.w3.org/1999/xhtml" id="cm-textbox"
                     style="width:100%;height:100%;font-size:9.8px;font-family:'Courier New',monospace;color:#333;line-height:1.45;overflow:hidden;box-sizing:border-box;padding:2px 3px;font-style:italic;opacity:0.45;">
                     Select filters…
@@ -833,7 +833,7 @@
                 </foreignObject>
 
                 <!-- P/T -->
-                <foreignObject x="143" y="251" width="48" height="19">
+                <foreignObject x="143" y="251" width="48" height="21">
                   <div xmlns="http://www.w3.org/1999/xhtml"
                     style="display:flex;align-items:center;justify-content:center;height:100%;gap:1px;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#111;">
                     <input id="cm-pow-in" xmlns="http://www.w3.org/1999/xhtml"
@@ -3018,13 +3018,15 @@ function fwInitDrag(){
     el.style.zIndex=_fwZCounter;
   }
 
+  // Single document-level capture listener: find which .fw was actually clicked
+  // by walking up from e.target to the nearest .fw ancestor
+  document.getElementById('card-filter-panel').addEventListener('mousedown', e=>{
+    const fw=e.target.closest('.fw');
+    if(fw) fwBringToFront(fw);
+  }, true);
+
   document.querySelectorAll('.fw').forEach(el=>{
     const resizer=el.querySelector('.fw-resize');
-
-    // Any click on a widget brings it to the front
-    el.addEventListener('mousedown', e=>{
-      fwBringToFront(el);
-    }, true); // capture phase so it fires before drag check
 
     // Drag — whole widget is draggable (skip resize handle and interactive elements)
     let dragDx=0, dragDy=0, dragging=false;
