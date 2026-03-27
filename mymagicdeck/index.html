@@ -3076,7 +3076,7 @@ function fwInitDrag(){
     // Drag — whole widget is draggable (skip resize handle and interactive elements)
     let dragDx=0, dragDy=0, dragging=false;
     el.addEventListener('mousedown', e=>{
-      if(e.target.closest('.fw-resize,button,input,select,a,span[data-color],span[data-type],span[data-format],span[data-rarity],span[data-keyword],span[data-cmc],span[data-op],span[data-keyword]')) return;
+      if(e.target.closest('.fw-resize,button,input,select,textarea,a,span[data-color],span[data-type],span[data-format],span[data-rarity],span[data-keyword],span[data-cmc],span[data-op],span[data-keyword]')) return;
       dragging=true;
       const panelRect=panel.getBoundingClientRect();
       dragDx=e.clientX-panelRect.left-el.offsetLeft;
