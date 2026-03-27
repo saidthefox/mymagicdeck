@@ -173,15 +173,68 @@
     .cfp-op:hover, .cfp-op.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
     .cfp-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.68rem; font-weight: 400; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; }
     .cfp-num:hover, .cfp-num.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
-    .cfp-pt-row { display: flex; align-items: center; gap: 4px; }
-    .cfp-pt-input { width: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 4px; font-size: 0.75rem; text-align: center; }
-    .cfp-pt-input:focus { outline: none; border-color: var(--accent); }
-    .cfp-pt-input::-webkit-inner-spin-button, .cfp-pt-input::-webkit-outer-spin-button { opacity: 0.4; filter: invert(60%) sepia(10%) saturate(400%) hue-rotate(180deg); }
+    .cfp-pt-row { display: flex; align-items: center; gap: 6px; justify-content: center; }
+    /* hidden inputs keep filter state, new drum UI drives them */
+    .pt-drum { display: inline-flex; flex-direction: column; align-items: center; gap: 0; user-select: none; }
+    .pt-drum-op { display: flex; align-items: center; justify-content: center;
+      width: 30px; height: 32px; border-radius: 6px 6px 0 0;
+      background: linear-gradient(160deg, var(--surface3) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border); border-bottom: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 2px 2px 0 rgba(0,0,0,0.35), 1px 1px 0 rgba(0,0,0,0.25);
+      font-size: 0.85rem; font-weight: 700; color: var(--text-bright); cursor: pointer;
+      transition: background 0.1s, color 0.1s; }
+    .pt-drum-op:hover { background: linear-gradient(160deg, var(--accent-dim) 0%, var(--surface2) 100%); color: var(--accent); }
+    .pt-drum-op.active { background: linear-gradient(160deg, var(--accent) 0%, var(--accent-dim) 100%) !important; color: #fff !important; box-shadow: inset 0 1px 0 rgba(255,255,255,0.15), 1px 1px 0 rgba(0,0,0,0.4); }
+    .pt-drum-num { display: flex; flex-direction: column; align-items: center;
+      width: 30px; border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+      background: var(--bg); overflow: hidden; }
+    .pt-drum-up, .pt-drum-dn { width: 100%; height: 14px; display: flex; align-items: center; justify-content: center;
+      font-size: 0.45rem; color: var(--text-dim); cursor: pointer; line-height: 1;
+      transition: background 0.1s, color 0.1s; }
+    .pt-drum-up:hover, .pt-drum-dn:hover { background: var(--surface2); color: var(--accent); }
+    .pt-drum-val { font-size: 1rem; font-weight: 800; color: var(--text-bright); line-height: 1;
+      font-family: ui-monospace, 'Courier New', monospace; letter-spacing: -0.05em;
+      width: 100%; text-align: center; padding: 2px 0; background: var(--bg);
+      border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .pt-drum-val.empty { color: var(--text-dim); font-size: 0.65rem; font-weight: 400; letter-spacing: 0; }
+    .pt-drum-base { width: 30px; height: 6px; border-radius: 0 0 6px 6px;
+      background: linear-gradient(160deg, var(--surface3) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border); border-top: none;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.35), 1px 1px 0 rgba(0,0,0,0.25); }
+    .pt-sep { font-size: 1.1rem; font-weight: 300; color: var(--text-dim); padding: 0 2px; align-self: center; margin-top: 6px; }
     .cfp-oracle-input { width: 100%; box-sizing: border-box; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 4px 6px; font-size: 0.72rem; font-family: 'Courier New', monospace; resize: none; outline: none; line-height: 1.4; }
     .cfp-oracle-input:focus { border-color: var(--accent); color: var(--text-bright); }
     .cfp-oracle-input::placeholder { color: var(--text-dim); opacity: 0.6; }
-    .cfp-pt-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 3px; font-size: 0.7rem; cursor: pointer; }
-    .cfp-pt-select:focus { outline: none; border-color: var(--accent); }
+    /* P/T drum-roller widget */
+    .cfp-pt-row { display: flex; align-items: flex-start; gap: 8px; justify-content: center; }
+    .pt-drum { display: inline-flex; flex-direction: column; align-items: center; user-select: none; }
+    .pt-drum-op { display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 30px; border-radius: 6px 6px 0 0;
+      background: linear-gradient(170deg, var(--surface3) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border); border-bottom: none;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.07), 2px 2px 0 rgba(0,0,0,0.4);
+      font-size: 0.9rem; font-weight: 700; color: var(--text-dim); cursor: pointer;
+      transition: color 0.1s; letter-spacing: -0.03em; }
+    .pt-drum-op:hover { color: var(--accent); }
+    .pt-drum-op.active { background: linear-gradient(170deg, var(--accent) 0%, color-mix(in srgb, var(--accent) 60%, var(--surface2)) 100%) !important; color: #fff !important; }
+    .pt-drum-num { display: flex; flex-direction: column; align-items: stretch; width: 32px;
+      border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .pt-drum-up, .pt-drum-dn { width: 100%; height: 13px; display: flex; align-items: center; justify-content: center;
+      font-size: 0.4rem; color: var(--text-dim); cursor: pointer; background: var(--bg);
+      transition: background 0.1s, color 0.1s; }
+    .pt-drum-up { border-bottom: 1px solid var(--border); }
+    .pt-drum-dn { border-top: 1px solid var(--border); }
+    .pt-drum-up:hover, .pt-drum-dn:hover { background: var(--surface2); color: var(--accent); }
+    .pt-drum-val { font-size: 1.15rem; font-weight: 900; color: var(--text-bright);
+      font-family: ui-monospace, 'SF Mono', 'Courier New', monospace;
+      width: 100%; text-align: center; padding: 3px 0; background: var(--bg);
+      line-height: 1; }
+    .pt-drum-val.empty { color: var(--border); font-size: 0.7rem; font-weight: 400; padding: 5px 0; }
+    .pt-drum-base { width: 32px; height: 5px; border-radius: 0 0 6px 6px;
+      background: linear-gradient(170deg, var(--surface3) 0%, var(--surface2) 100%);
+      border: 1px solid var(--border); border-top: none;
+      box-shadow: 2px 2px 0 rgba(0,0,0,0.4); }
+    .pt-sep { font-size: 1.2rem; font-weight: 300; color: var(--text-dim); padding: 0 1px; margin-top: 22px; }
     /* Filter toggle button */
     .filter-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-dim); padding: 4px 10px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
     .filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
@@ -821,15 +874,32 @@
           <div class="fw-title">Power / Toughness</div>
           <div class="fw-body">
             <div class="cfp-pt-row">
-              <select class="cfp-pt-select" id="pt-power-op" onchange="syncFilters()">
-                <option value="">P</option><option value="pow=">=</option><option value="pow>">&gt;</option><option value="pow<">&lt;</option>
-              </select>
-              <input class="cfp-pt-input" id="pt-power-val" type="number" min="0" max="20" placeholder="?" oninput="syncFilters()">
-              <span style="color:var(--text-dim);font-size:0.8rem">/</span>
-              <select class="cfp-pt-select" id="pt-tough-op" onchange="syncFilters()">
-                <option value="">T</option><option value="tou=">=</option><option value="tou>">&gt;</option><option value="tou<">&lt;</option>
-              </select>
-              <input class="cfp-pt-input" id="pt-tough-val" type="number" min="0" max="20" placeholder="?" oninput="syncFilters()">
+              <!-- hidden inputs for filter state -->
+              <input type="hidden" id="pt-power-op" value="">
+              <input type="hidden" id="pt-power-val" value="">
+              <input type="hidden" id="pt-tough-op" value="">
+              <input type="hidden" id="pt-tough-val" value="">
+              <!-- Power drum -->
+              <div class="pt-drum" id="pt-pow-drum">
+                <div class="pt-drum-op" id="pt-pow-op-btn" onclick="ptCycleOp('pow')" title="Cycle operator">P</div>
+                <div class="pt-drum-num">
+                  <div class="pt-drum-up" onclick="ptStep('pow',1)">▲</div>
+                  <div class="pt-drum-val empty" id="pt-pow-val-lbl">—</div>
+                  <div class="pt-drum-dn" onclick="ptStep('pow',-1)">▼</div>
+                </div>
+                <div class="pt-drum-base"></div>
+              </div>
+              <span class="pt-sep">/</span>
+              <!-- Toughness drum (number left, op right) -->
+              <div class="pt-drum" id="pt-tou-drum">
+                <div class="pt-drum-op" id="pt-tou-op-btn" onclick="ptCycleOp('tou')" title="Cycle operator">T</div>
+                <div class="pt-drum-num">
+                  <div class="pt-drum-up" onclick="ptStep('tou',1)">▲</div>
+                  <div class="pt-drum-val empty" id="pt-tou-val-lbl">—</div>
+                  <div class="pt-drum-dn" onclick="ptStep('tou',-1)">▼</div>
+                </div>
+                <div class="pt-drum-base"></div>
+              </div>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -2258,6 +2328,56 @@ function _cmcOpStr(){
   if(gt)return '>'; if(lt)return '<'; if(eq)return '='; return null;
 }
 
+// ── P/T drum-roller helpers ───────────────────────────────────────────────────
+const _PT_OPS = { pow: ['','pow=','pow>','pow<'], tou: ['','tou=','tou>','tou<'] };
+const _PT_LABELS = { '':'', 'pow=':'=', 'pow>':'>', 'pow<':'<', 'tou=':'=', 'tou>':'>', 'tou<':'<' };
+function ptCycleOp(field){
+  const hidId = field==='pow'?'pt-power-op':'pt-tough-op';
+  const hid = document.getElementById(hidId);
+  const ops = _PT_OPS[field];
+  const cur = hid.value||'';
+  const next = ops[(ops.indexOf(cur)+1)%ops.length];
+  hid.value = next;
+  ptUpdateUI(field);
+  syncFilters();
+}
+function ptStep(field, dir){
+  const hidValId = field==='pow'?'pt-power-val':'pt-tough-val';
+  const hidOpId  = field==='pow'?'pt-power-op':'pt-tough-op';
+  const hidVal = document.getElementById(hidValId);
+  const hidOp  = document.getElementById(hidOpId);
+  let v = parseInt(hidVal.value)||0;
+  v = Math.max(0, Math.min(20, v + dir));
+  hidVal.value = v;
+  // Auto-set op to '=' if none selected
+  if(!hidOp.value) { hidOp.value = field+'='; }
+  ptUpdateUI(field);
+  syncFilters();
+}
+function ptUpdateUI(field){
+  const hidValId = field==='pow'?'pt-power-val':'pt-tough-val';
+  const hidOpId  = field==='pow'?'pt-power-op':'pt-tough-op';
+  const lblId    = field==='pow'?'pt-pow-val-lbl':'pt-tou-val-lbl';
+  const opBtnId  = field==='pow'?'pt-pow-op-btn':'pt-tou-op-btn';
+  const v = document.getElementById(hidValId).value;
+  const op = document.getElementById(hidOpId).value;
+  const lbl = document.getElementById(lblId);
+  const opBtn = document.getElementById(opBtnId);
+  if(lbl){
+    if(v===''||v===undefined){ lbl.textContent='—'; lbl.className='pt-drum-val empty'; }
+    else { lbl.textContent=v; lbl.className='pt-drum-val'; }
+  }
+  if(opBtn){
+    const sym = _PT_LABELS[op]||(field==='pow'?'P':'T');
+    opBtn.textContent = op ? sym : (field==='pow'?'P':'T');
+    opBtn.classList.toggle('active', !!op);
+  }
+}
+function ptSyncFromState(){
+  // Called after parseSearchToFilters to sync drum UI from hidden inputs
+  ['pow','tou'].forEach(f=>ptUpdateUI(f));
+}
+
 function syncFilters(){
   _fs.powOp  = document.getElementById('pt-power-op')?.value||'';
   _fs.powVal = document.getElementById('pt-power-val')?.value||'';
@@ -2369,11 +2489,12 @@ function parseSearchToFilters(){
   _fs.cmcOps.forEach(op=>{document.querySelector(`.cfp-op[data-op="${op}"]`)?.classList.add('active')});
   if(_fs.cmcNum!==null)document.querySelector(`.cfp-num[data-cmc="${_fs.cmcNum}"]`)?.classList.add('active');
 
-  // Update P/T dropdowns
-  if(_fs.powOp)document.getElementById('pt-power-op').value=_fs.powOp;
-  if(_fs.powVal)document.getElementById('pt-power-val').value=_fs.powVal;
-  if(_fs.touOp)document.getElementById('pt-tough-op').value=_fs.touOp;
-  if(_fs.touVal)document.getElementById('pt-tough-val').value=_fs.touVal;
+  // Update P/T hidden inputs and drum UI
+  document.getElementById('pt-power-op').value=_fs.powOp||'';
+  document.getElementById('pt-power-val').value=_fs.powVal||'';
+  document.getElementById('pt-tough-op').value=_fs.touOp||'';
+  document.getElementById('pt-tough-val').value=_fs.touVal||'';
+  ptSyncFromState();
 
   // Update card mockup name input
   const nameIn=document.getElementById('cm-name-input');
@@ -2637,6 +2758,7 @@ function clearAllFilters(){
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';_fs.oracleText='';
   ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val','oracle-text-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['pt-power-op','pt-tough-op'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ptSyncFromState();
   document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
   document.getElementById('search-input').value='';
   updateCardMockup();
@@ -3008,7 +3130,7 @@ init();
 
 // ── Filter Widget Drag/Resize System ──────────────────────────────────────────
 
-const FW_STORAGE_KEY = 'mmd_fw_layout_v2';
+const FW_STORAGE_KEY = 'mmd_fw_layout_v3';
 
 // Default layout: card widget centered in panel, other columns snapped to its sides
 function fwComputeDefaults(){
@@ -3020,7 +3142,7 @@ function fwComputeDefaults(){
     { id:'fw-colors',   w:179, h:68  },
     { id:'fw-cmc',      w:260, h:67  },
     { id:'fw-types',    w:248, h:75  },
-    { id:'fw-pt',       w:220, h:58  },
+    { id:'fw-pt',       w:180, h:80  },
   ];
   const col3=[
     { id:'fw-format',   w:200, h:100 },
