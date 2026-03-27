@@ -308,6 +308,35 @@ app.register(require('@fastify/jwt'), {
   sign: { expiresIn: '30d' },
 });
 
+// ── Rate limiter (in-memory, per-IP) ─────────────────────────────────────────
+const _rateBuckets = new Map();
+const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
+const RATE_MAX_AUTH = 20;            // max auth attempts per window
+
+function rateLimitAuth(req, reply, done) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now();
+  let bucket = _rateBuckets.get(ip);
+  if (!bucket || now - bucket.start > RATE_WINDOW) {
+    bucket = { start: now, count: 0 };
+    _rateBuckets.set(ip, bucket);
+  }
+  bucket.count++;
+  if (bucket.count > RATE_MAX_AUTH) {
+    reply.code(429).send({ error: 'Too many attempts. Please try again in a few minutes.' });
+    return;
+  }
+  done();
+}
+
+// Clean up stale rate limit buckets every 30 minutes
+setInterval(() => {
+  const cutoff = Date.now() - RATE_WINDOW;
+  for (const [ip, bucket] of _rateBuckets) {
+    if (bucket.start < cutoff) _rateBuckets.delete(ip);
+  }
+}, 30 * 60 * 1000);
+
 // ── Auth helpers ──────────────────────────────────────────────────────────────
 async function authenticate(req, reply) {
   try {
@@ -324,6 +353,7 @@ app.get('/api/health', async () => ({ ok: true }));
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
 app.post('/api/auth/register', {
+  preHandler: rateLimitAuth,
   schema: {
     body: {
       type: 'object',
@@ -331,7 +361,7 @@ app.post('/api/auth/register', {
       properties: {
         username: { type: 'string', minLength: 2, maxLength: 32 },
         email:    { type: 'string', format: 'email' },
-        password: { type: 'string', minLength: 4, maxLength: 128 },
+        password: { type: 'string', minLength: 8, maxLength: 128 },
       },
     },
   },
@@ -358,6 +388,7 @@ app.post('/api/auth/register', {
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
 app.post('/api/auth/login', {
+  preHandler: rateLimitAuth,
   schema: {
     body: {
       type: 'object',

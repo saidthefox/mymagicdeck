@@ -359,6 +359,31 @@
     @keyframes slideIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
     input, select, textarea, button { font-family: inherit; }
 
+    /* DB seeding banner */
+    #db-status-banner {
+      display: none; background: var(--warn-dim); border-bottom: 1px solid var(--warn);
+      padding: 6px 16px; font-size: 0.78rem; color: var(--warn); text-align: center;
+      flex-shrink: 0; z-index: 99;
+    }
+    #db-status-banner.active { display: block; }
+    #db-status-banner .spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--warn); border-top-color: transparent; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+    /* Sync status indicator */
+    #sync-indicator {
+      display: none; font-size: 0.65rem; color: var(--text-dim); padding: 2px 8px;
+      border-radius: 10px; background: var(--surface2); white-space: nowrap;
+    }
+    #sync-indicator.syncing { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); }
+    #sync-indicator.success { display: inline-flex; color: var(--success); }
+    #sync-indicator.error { display: inline-flex; color: var(--danger); }
+
+    /* Import progress */
+    #import-progress { display: none; margin-top: 8px; }
+    #import-progress.active { display: block; }
+    #import-progress-bar { width: 100%; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+    #import-progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.15s; width: 0%; }
+    #import-progress-text { font-size: 0.72rem; color: var(--text-dim); margin-top: 4px; }
+
     /* Sideboard */
     .deck-section.sideboard .deck-section-header { color: var(--text-dim); }
     .deck-section.sideboard .deck-section-count { background: var(--surface3); color: var(--text-dim); }
@@ -580,12 +605,14 @@
   </style>
 </head>
 <body>
+<div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
 <div id="header">
   <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
     <input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" />
     <button class="btn" onclick="newDeck()">＋ New</button>
     <button class="btn" onclick="saveDeck()">💾 Save</button>
+    <span id="sync-indicator"></span>
     <button class="btn" onclick="openDeckManager()">📂 Decks</button>
     <button class="btn" onclick="openImport()">⬇ Import</button>
     <button class="btn" onclick="openExport()">⬆ Export</button>
@@ -829,7 +856,7 @@
     </div>
   </div>
 </div>
-<div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" onclick="doImport()">Import</button></div></div></div>
+<div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
 <div class="modal-overlay" id="modal-decks"><div class="modal"><div class="modal-header"><div class="modal-title">My Decks</div><button class="modal-close" onclick="closeModal('modal-decks')">✕</button></div><div class="modal-body" id="deck-manager-list"></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-decks')">Close</button><button class="btn primary" onclick="newDeck();closeModal('modal-decks')">＋ New Deck</button></div></div></div>
 <!-- Auth Modal -->
@@ -992,6 +1019,32 @@ async function apiFetch(path,opts={}){
   return res.json();
 }
 
+// ── DB seeding status polling ────────────────────────────────────────────────
+let _dbStatusInterval=null;
+async function checkDbStatus(){
+  try{
+    const s=await apiFetch('/cards/refresh/status');
+    const banner=document.getElementById('db-status-banner');
+    const text=document.getElementById('db-status-text');
+    if(s.status==='done'||s.total>0&&s.status==='idle'){
+      banner.classList.remove('active');
+      if(_dbStatusInterval){clearInterval(_dbStatusInterval);_dbStatusInterval=null;}
+    }else if(s.status==='error'){
+      text.textContent='Card database failed to load: '+s.error+'. Search will use Scryfall directly.';
+      banner.classList.add('active');
+      if(_dbStatusInterval){clearInterval(_dbStatusInterval);_dbStatusInterval=null;}
+    }else{
+      const msgs={'fetching-index':'Connecting to Scryfall...','downloading':'Downloading card database (this may take a minute)...','parsing':'Processing card data...','upserting':'Saving cards to local database...'};
+      text.textContent=msgs[s.status]||'Loading card database...';
+      banner.classList.add('active');
+    }
+  }catch(e){/* API not reachable — skip */}
+}
+function startDbStatusPolling(){
+  checkDbStatus();
+  _dbStatusInterval=setInterval(checkDbStatus,3000);
+}
+
 function saveToStorage(){
   try{
     const o={};
@@ -1003,13 +1056,26 @@ function saveToStorage(){
   }catch(e){}
 }
 
-// Push a single deck to the API (fire-and-forget with silent error)
+// Push a single deck to the API with sync indicator feedback
+let _syncTimer=null;
+function showSyncStatus(cls,text){
+  const el=document.getElementById('sync-indicator');if(!el)return;
+  el.className=cls;el.textContent=text;
+  clearTimeout(_syncTimer);
+  if(cls!=='syncing')_syncTimer=setTimeout(()=>{el.className='';el.style.display='none';},2500);
+}
 async function syncDeckToApi(deckId){
   if(!state.user||!apiToken())return;
   const deck=state.decks[deckId];if(!deck)return;
   const{_insts,_cols,_sort,...clean}=deck;
-  try{await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify({...clean,splashSite:deck.splashSite||null,commander:deck.commander||null})})}
-  catch(e){console.warn('Deck sync failed:',e.message)}
+  showSyncStatus('syncing','Saving...');
+  try{
+    await apiFetch('/decks/'+deckId,{method:'PUT',body:JSON.stringify({...clean,splashSite:deck.splashSite||null,commander:deck.commander||null})});
+    showSyncStatus('success','Saved');
+  }catch(e){
+    showSyncStatus('error','Sync failed');
+    console.warn('Deck sync failed:',e.message);
+  }
 }
 
 // Delete a deck from the API
@@ -1075,7 +1141,7 @@ async function doAuth(){
   const err=document.getElementById('auth-err');
   const btn=document.getElementById('auth-submit-btn');
   if(!username){err.textContent='Username is required.';return}
-  if(password.length<4){err.textContent='Password must be at least 4 characters.';return}
+  if(password.length<8){err.textContent='Password must be at least 8 characters.';return}
   if(_authMode==='signup'&&(!email||!email.includes('@'))){err.textContent='Valid email required.';return}
   btn.disabled=true;btn.textContent='…';
   try{
@@ -1509,23 +1575,6 @@ function _splashRebuildColumns(){
   else body.insertAdjacentHTML('beforeend',newHtml);
 }
 function splashCardTouch(e,el){
-  // First tap zooms in; second tap opens card detail
-  if(el.classList.contains('zoomed')){
-    el.classList.remove('zoomed');
-    const im=el.querySelector('img');if(im)im.src=im.dataset.normal;
-    // Let the onclick fire for detail
-  } else {
-    e.preventDefault();
-    // Dismiss any other zoomed card first
-    document.querySelectorAll('.splash-card.zoomed').forEach(c=>{
-      c.classList.remove('zoomed');
-      const im=c.querySelector('img');if(im)im.src=im.dataset.normal;
-    });
-    el.classList.add('zoomed');
-    const im=el.querySelector('img');if(im)im.src=im.dataset.large;
-  }
-}
-function splashCardTouch(e,el){
   if(el.classList.contains('zoomed')){
     // Second tap — let onclick fire for card detail
     el.classList.remove('zoomed');
@@ -1690,9 +1739,9 @@ function selectCardById(cid,zone='main'){const d=currentDeck();if(!d)return;cons
 function switchCenterView(v){
   state.centerView=v;
   document.querySelectorAll('.view-toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
-  const sv=document.getElementById('search-view'),dv=document.getElementById('deck-visual-view'),f=document.getElementById('search-filters');
-  if(v==='search'){sv.classList.add('active');dv.classList.remove('active');dv.style.display='none';f.style.display=''}
-  else{sv.classList.remove('active');dv.classList.add('active');dv.style.display='flex';f.style.display='none';renderDeckVisual()}
+  const sv=document.getElementById('search-view'),dv=document.getElementById('deck-visual-view'),f=document.getElementById('card-filter-panel');
+  if(v==='search'){sv.classList.add('active');dv.classList.remove('active');dv.style.display='none';if(f)f.style.display=''}
+  else{sv.classList.remove('active');dv.classList.add('active');dv.style.display='flex';if(f)f.style.display='none';renderDeckVisual()}
 }
 
 // ── Deck builder zoom ─────────────────────────────────────────────────────────
@@ -2145,10 +2194,28 @@ async function doSearch(){
   if(state.centerView!=='search')switchCenterView('search');
   state.searchQuery=q;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;
   const sp=document.getElementById('search-spinner');sp.classList.add('active');
-  try{const r=await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=name&page=1`);const d=await r.json();
-    if(d.object==='error'){document.getElementById('search-results').innerHTML=`<div class="no-results">${d.details||'No cards found.'}</div>`;return}
-    state.searchResults=d.data||[];state.searchHasMore=d.has_more||false;state.searchNextPage=d.next_page||null;renderSearchResults()
-  }catch(e){document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection.</div>'}finally{sp.classList.remove('active')}
+  try{
+    // Try local API first — faster and avoids Scryfall rate limits
+    let d=null,usedLocal=false;
+    try{
+      d=await apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=40');
+      usedLocal=true;
+    }catch(localErr){
+      // Local API unavailable or DB not seeded — fall back to Scryfall
+      d=null;
+    }
+    if(d&&d.object==='list'){
+      state.searchResults=d.data||[];
+      state.searchHasMore=d.has_more||false;
+      state.searchNextPage=d.next_page?'local:'+d.next_page:null;
+      renderSearchResults();
+    } else {
+      // Fallback to Scryfall
+      const r=await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=name&page=1`);const sd=await r.json();
+      if(sd.object==='error'){document.getElementById('search-results').innerHTML=`<div class="no-results">${sd.details||'No cards found.'}</div>`;return}
+      state.searchResults=sd.data||[];state.searchHasMore=sd.has_more||false;state.searchNextPage=sd.next_page||null;renderSearchResults();
+    }
+  }catch(e){document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection and try again.</div>'}finally{sp.classList.remove('active')}
 }
 async function loadMoreResults(){
   if(!state.searchNextPage)return;
@@ -2235,7 +2302,22 @@ function renderStats(){
   document.getElementById('stat-avg-mv').textContent=tn>0?(tc/tn).toFixed(2):'—';
   let tp=0;for(const{card,qty}of cards)tp+=parseFloat(card.prices?.usd||0)*qty;
   for(const{card,qty}of sbCards)tp+=parseFloat(card.prices?.usd||0)*qty;
-  document.getElementById('stat-price').textContent='$'+tp.toFixed(2);
+  const priceEl=document.getElementById('stat-price');
+  priceEl.textContent='$'+tp.toFixed(2);
+  // Price freshness — check when cards were last updated
+  if(!document.getElementById('stat-price-freshness')){
+    const freshEl=document.createElement('div');freshEl.id='stat-price-freshness';freshEl.className='stat-row';
+    freshEl.innerHTML='<span class="stat-label" style="font-size:0.68rem">Price Data</span><span class="stat-value" id="stat-price-age" style="font-size:0.68rem;font-weight:400;color:var(--text-dim)"></span>';
+    priceEl.closest('.stat-block')?.appendChild(freshEl);
+  }
+  apiFetch('/cards/refresh/status').then(s=>{
+    const ageEl=document.getElementById('stat-price-age');if(!ageEl)return;
+    if(s.finished){
+      const ago=Date.now()-s.finished;const hrs=Math.floor(ago/3600000);
+      ageEl.textContent=hrs<1?'Updated < 1 hour ago':`Updated ${hrs} hour${hrs>1?'s':''} ago`;
+    }else if(s.status==='done'){ageEl.textContent='Up to date';}
+    else{ageEl.textContent='Updating...';}
+  }).catch(()=>{});
   // 4-copy violations
   const violations=cards.filter(({card,qty})=>!isBasicLand(card)&&qty>4);
   let vwarn=document.getElementById('stat-violations');
@@ -2280,20 +2362,32 @@ async function doImport(){
     if(name)(inSide?side:main).push({qty,name});
   }
   if(!main.length&&!side.length){err.textContent='Could not parse any cards.';return}
-  closeModal('modal-import');toast(`Importing ${main.length+side.length} cards…`);let failed=[];
-  for(const{qty,name}of main){try{
-    let c=await apiFetch('/cards/named?name='+encodeURIComponent(name)).catch(()=>null);
-    if(!c||c.object==='error'){
-      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}c=await r.json();
-    }
-    addCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,50))}catch(e){failed.push(name)}}
-  for(const{qty,name}of side){try{
-    let c=await apiFetch('/cards/named?name='+encodeURIComponent(name)).catch(()=>null);
-    if(!c||c.object==='error'){
-      const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);if(!r.ok){failed.push(name);continue}c=await r.json();
-    }
-    addSBCard(sanitizeCard(c),qty);await new Promise(r=>setTimeout(r,50))}catch(e){failed.push(name)}}
-  if(failed.length)toast(`${failed.length} not found: ${failed.slice(0,3).join(', ')}`,'error');else toast('Import complete!','success')
+  // Show progress UI
+  const allItems=[...main.map(m=>({...m,zone:'main'})),...side.map(s=>({...s,zone:'side'}))];
+  const total=allItems.length;
+  const prog=document.getElementById('import-progress');
+  const progFill=document.getElementById('import-progress-fill');
+  const progText=document.getElementById('import-progress-text');
+  const importBtn=document.getElementById('import-btn');
+  prog.classList.add('active');progFill.style.width='0%';progText.textContent=`Importing 0 / ${total} cards...`;
+  importBtn.disabled=true;importBtn.textContent='Importing...';
+  let failed=[],done=0;
+  for(const{qty,name,zone}of allItems){
+    try{
+      let c=await apiFetch('/cards/named?name='+encodeURIComponent(name)).catch(()=>null);
+      if(!c||c.object==='error'){
+        const r=await fetch(`https://api.scryfall.com/cards/named?fuzzy=${encodeURIComponent(name)}`);
+        if(!r.ok){failed.push(name);done++;progFill.style.width=Math.round(done/total*100)+'%';progText.textContent=`Importing ${done} / ${total} cards...`;continue}
+        c=await r.json();
+      }
+      if(zone==='side')addSBCard(sanitizeCard(c),qty);else addCard(sanitizeCard(c),qty);
+      await new Promise(r=>setTimeout(r,50));
+    }catch(e){failed.push(name)}
+    done++;progFill.style.width=Math.round(done/total*100)+'%';progText.textContent=`Importing ${done} / ${total} cards...`;
+  }
+  prog.classList.remove('active');importBtn.disabled=false;importBtn.textContent='Import';
+  closeModal('modal-import');
+  if(failed.length)toast(`${failed.length} card${failed.length>1?'s':''} not found: ${failed.slice(0,3).join(', ')}${failed.length>3?' ...':''}`,'error');else toast('Import complete!','success')
 }
 function openExport(){populateExport();openModal('modal-export')}
 function switchExportTab(m){state.exportMode=m;document.querySelectorAll('[id^="export-tab-"]').forEach(t=>t.classList.toggle('active',t.id==='export-tab-'+m));populateExport()}
@@ -2378,6 +2472,8 @@ function init(){
   if(state.user&&apiToken())pullDecksFromApi();
   // Check for shared deck in URL hash
   checkUrlHash();
+  // Start polling card DB status (shows banner if seeding)
+  startDbStatusPolling();
 }
 init();
 </script>
