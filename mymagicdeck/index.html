@@ -120,8 +120,19 @@
     .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
 
     /* ── Card Filter Panel ───────────────────────────────────── */
-    .card-filter-panel { display: grid; grid-template-columns: 1fr 230px 1fr; gap: 8px; padding: 2px 10px 8px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; overflow: hidden; }
+    .card-filter-panel { position: relative; overflow: hidden; background: var(--surface); border-bottom: none; min-height: 220px; flex-shrink: 0; }
     .card-filter-panel.collapsed { display: none; }
+
+    /* ── Draggable filter widgets ─────────────────────────────── */
+    .fw { position: absolute; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; min-width: 80px; min-height: 60px; z-index: 10; }
+    .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); }
+    .fw-header { display: flex; align-items: center; justify-content: space-between; padding: 3px 7px; cursor: grab; border-bottom: 1px solid var(--border); background: var(--surface3); border-radius: var(--radius) var(--radius) 0 0; flex-shrink: 0; user-select: none; }
+    .fw-header:active { cursor: grabbing; }
+    .fw-title { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
+    .fw-body { flex: 1; padding: 5px 7px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+    .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.4; }
+    .fw-resize:hover { opacity: 1; }
+    .fw-resize::before { content: ''; display: block; width: 0; height: 0; border-style: solid; border-width: 0 0 10px 10px; border-color: transparent transparent var(--text-dim) transparent; position: absolute; right: 1px; bottom: 1px; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
     .cfp-section { display: flex; flex-direction: column; gap: 4px; }
     .cfp-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
@@ -138,7 +149,7 @@
     .cfp-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.68rem; font-weight: 400; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; }
     .cfp-num:hover, .cfp-num.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
     .cfp-pt-row { display: flex; align-items: center; gap: 4px; }
-    .cfp-pt-input { width: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-bright); padding: 2px 4px; font-size: 0.75rem; text-align: center; }
+    .cfp-pt-input { width: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 4px; font-size: 0.75rem; text-align: center; }
     .cfp-pt-input:focus { outline: none; border-color: var(--accent); }
     .cfp-pt-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 3px; font-size: 0.7rem; cursor: pointer; }
     .cfp-pt-select:focus { outline: none; border-color: var(--accent); }
@@ -155,7 +166,7 @@
     .afp-x:hover { opacity: 1; }
 
     /* ── Card Mockup ─────────────────────────────────────────── */
-    .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; align-self: stretch; justify-content: flex-start; }
+    .card-mockup-wrap { width: 100%; height: 100%; display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; }
     .card-mockup { width: 100%; flex-shrink: 0; position: relative; user-select: none; }
     /* SVG line-art card shell */
     .cm-svg-card { width: 100%; display: block; }
@@ -453,9 +464,8 @@
       /* Search bar: allow wrapping on tablet */
       .search-bar-top { flex-wrap: wrap; }
       .search-input-wrap { min-width: 200px; }
-      /* Filter panel: stack as two columns on tablet */
-      .card-filter-panel { grid-template-columns: 1fr 1fr; gap: 8px; }
-      .card-mockup-wrap { display: none; }
+      /* Filter panel: scroll on tablet */
+      .card-filter-panel { overflow-x: auto; }
       /* Search results: smaller cards on tablet */
       .search-results { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
       /* Panels get proper mobile heights */
@@ -470,9 +480,8 @@
       .header-deck-controls .btn { display: none; }
       #deck-name-input { min-width: 70px; max-width: 110px; font-size: 0.78rem; padding: 4px 8px; }
       #header .header-right { display: flex; }
-      /* Filter panel: single column on phone */
-      .card-filter-panel { grid-template-columns: 1fr; padding: 6px 8px; gap: 6px; }
-      .card-mockup-wrap { display: none; }
+      /* Filter panel: scroll on phone */
+      .card-filter-panel { overflow-x: auto; }
       /* Search input full width */
       .search-bar { padding: 8px; }
       .search-bar-top { flex-wrap: wrap; }
@@ -720,10 +729,10 @@
       <!-- <div class="active-filter-pills" id="active-filter-pills"></div> -->
       <div class="card-filter-panel" id="card-filter-panel">
 
-        <!-- LEFT: Colors + Types + P/T -->
-        <div class="cfp-col">
-          <div class="cfp-section">
-            <div class="cfp-label">Colors</div>
+        <!-- WIDGET: Colors -->
+        <div class="fw" id="fw-colors" data-fw="colors">
+          <div class="fw-header"><span class="fw-title">Colors</span></div>
+          <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-color-chip" data-color="w" title="White" style="background:#f9f3d0">⚪</span>
               <span class="cfp-color-chip" data-color="u" title="Blue"  style="background:#2a6fa8">🔵</span>
@@ -733,8 +742,13 @@
               <span class="cfp-color-chip" data-color="c" title="Colorless" style="background:#888;color:#fff;font-style:normal;font-size:0.75rem;font-weight:700">◇</span>
             </div>
           </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Mana Value (CMC)</div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: CMC -->
+        <div class="fw" id="fw-cmc" data-fw="cmc">
+          <div class="fw-header"><span class="fw-title">Mana Value (CMC)</span></div>
+          <div class="fw-body">
             <div class="cfp-cmc-row">
               <span class="cfp-op" data-op=">">&gt;</span>
               <span class="cfp-op" data-op="=">=</span>
@@ -750,8 +764,13 @@
               <span class="cfp-num" data-cmc="7">7+</span>
             </div>
           </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Types</div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: Types -->
+        <div class="fw" id="fw-types" data-fw="types">
+          <div class="fw-header"><span class="fw-title">Types</span></div>
+          <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-type="creature">Creature</span>
               <span class="cfp-chip" data-type="instant">Instant</span>
@@ -764,8 +783,13 @@
               <span class="cfp-chip" data-type="legendary">Legendary</span>
             </div>
           </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Power / Toughness</div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: P/T -->
+        <div class="fw" id="fw-pt" data-fw="pt">
+          <div class="fw-header"><span class="fw-title">Power / Toughness</span></div>
+          <div class="fw-body">
             <div class="cfp-pt-row">
               <select class="cfp-pt-select" id="pt-power-op" onchange="syncFilters()">
                 <option value="">P</option><option value="pow=">=</option><option value="pow>">&gt;</option><option value="pow<">&lt;</option>
@@ -778,62 +802,55 @@
               <input class="cfp-pt-input" id="pt-tough-val" type="number" min="0" max="20" placeholder="?" oninput="syncFilters()">
             </div>
           </div>
+          <div class="fw-resize"></div>
         </div>
 
-        <!-- CENTER: Card Mockup -->
-        <div class="card-mockup-wrap">
-          <div class="card-mockup" id="card-mockup">
-            <!-- SVG line-art Magic card skeleton -->
-            <svg class="cm-svg-card" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" fill="none">
-              <!-- Card body -->
-              <rect x="3" y="3" width="194" height="354" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
-              <!-- Inner border -->
-              <rect x="8" y="8" width="184" height="344" rx="7" ry="7" stroke="#555" stroke-width="0.8" stroke-dasharray="0" fill="none"/>
-              <!-- Title bar -->
-              <rect x="11" y="11" width="178" height="24" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
-              <!-- Art box -->
-              <rect x="11" y="39" width="178" height="135" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
-              <!-- Type line bar -->
-              <rect x="11" y="178" width="178" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
-              <!-- Text box -->
-              <rect x="11" y="200" width="178" height="105" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
-              <!-- P/T box -->
-              <rect x="145" y="318" width="44" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
-            </svg>
-            <!-- Interactive overlay -->
-            <div class="cm-overlay">
-              <!-- Name + mana -->
-              <div class="cm-name-row">
-                <input class="cm-name-in" id="cm-name-input" placeholder="Name…" oninput="cmNameInput()" maxlength="60">
-                <div class="cm-mana" id="cm-mana"></div>
-              </div>
-              <!-- Art area = click to clear -->
-              <div class="cm-art-overlay" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">
-                <span class="cm-art-icon">♻️</span>
-              </div>
-              <!-- Type line -->
-              <div class="cm-typeline-row">
-                <div class="cm-typeline" id="cm-typeline">—</div>
-                <div class="cm-rarity" id="cm-rarity"></div>
-              </div>
-              <!-- Text box -->
-              <div class="cm-textbox-row">
-                <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.45">Select filters…</div>
-              </div>
-              <!-- P/T -->
-              <div class="cm-pt-row" id="cm-pt-wrap">
-                <input class="cm-pt-in" id="cm-pow-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
-                <span class="cm-pt-sep">/</span>
-                <input class="cm-pt-in" id="cm-tou-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
+        <!-- WIDGET: Card Mockup -->
+        <div class="fw" id="fw-card" data-fw="card">
+          <div class="fw-header"><span class="fw-title">Card Preview</span></div>
+          <div class="fw-body" style="padding:2px;">
+            <div class="card-mockup-wrap">
+              <div class="card-mockup" id="card-mockup">
+                <svg class="cm-svg-card" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" fill="none">
+                  <rect x="3" y="3" width="194" height="354" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
+                  <rect x="8" y="8" width="184" height="344" rx="7" ry="7" stroke="#555" stroke-width="0.8" fill="none"/>
+                  <rect x="11" y="11" width="178" height="24" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
+                  <rect x="11" y="39" width="178" height="135" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
+                  <rect x="11" y="178" width="178" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+                  <rect x="11" y="200" width="178" height="105" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
+                  <rect x="145" y="318" width="44" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+                </svg>
+                <div class="cm-overlay">
+                  <div class="cm-name-row">
+                    <input class="cm-name-in" id="cm-name-input" placeholder="Name…" oninput="cmNameInput()" maxlength="60">
+                    <div class="cm-mana" id="cm-mana"></div>
+                  </div>
+                  <div class="cm-art-overlay" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">
+                    <span class="cm-art-icon">♻️</span>
+                  </div>
+                  <div class="cm-typeline-row">
+                    <div class="cm-typeline" id="cm-typeline">—</div>
+                    <div class="cm-rarity" id="cm-rarity"></div>
+                  </div>
+                  <div class="cm-textbox-row">
+                    <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.45">Select filters…</div>
+                  </div>
+                  <div class="cm-pt-row" id="cm-pt-wrap">
+                    <input class="cm-pt-in" id="cm-pow-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
+                    <span class="cm-pt-sep">/</span>
+                    <input class="cm-pt-in" id="cm-tou-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+          <div class="fw-resize"></div>
         </div>
 
-        <!-- RIGHT: Formats + Rarity + Keywords -->
-        <div class="cfp-col">
-          <div class="cfp-section">
-            <div class="cfp-label">Format</div>
+        <!-- WIDGET: Format -->
+        <div class="fw" id="fw-format" data-fw="format">
+          <div class="fw-header"><span class="fw-title">Format</span></div>
+          <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-format="standard">Standard</span>
               <span class="cfp-chip" data-format="commander">Commander</span>
@@ -845,8 +862,13 @@
               <span class="cfp-chip" data-format="premodern">Premodern</span>
             </div>
           </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Rarity</div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: Rarity -->
+        <div class="fw" id="fw-rarity" data-fw="rarity">
+          <div class="fw-header"><span class="fw-title">Rarity</span></div>
+          <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-rarity="common">Common</span>
               <span class="cfp-chip" data-rarity="uncommon">Uncommon</span>
@@ -854,8 +876,13 @@
               <span class="cfp-chip" data-rarity="mythic">Mythic</span>
             </div>
           </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Keywords</div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: Keywords -->
+        <div class="fw" id="fw-keywords" data-fw="keywords">
+          <div class="fw-header"><span class="fw-title">Keywords</span></div>
+          <div class="fw-body">
             <div class="cfp-chips">
               <span class="cfp-chip" data-keyword="flying">Flying</span>
               <span class="cfp-chip" data-keyword="trample">Trample</span>
@@ -867,6 +894,7 @@
               <span class="cfp-chip" data-keyword="menace">Menace</span>
             </div>
           </div>
+          <div class="fw-resize"></div>
         </div>
 
       </div>
@@ -2307,20 +2335,36 @@ function _collapseGenericPips(manaEl, cycleColors, manaKey){
   const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
   // Remove all leading generic spans
   for(let i=0;i<genericCount;i++) manaEl.removeChild(manaEl.firstChild);
-  // Insert one numbered span that clicks pip[0]
+  // Insert one numbered span
   const numSpan=document.createElement('span');
   numSpan.className='cm-mana-sym';
   numSpan.style.background=GENERIC.bg;
   numSpan.style.color=GENERIC.fg;
   numSpan.textContent=String(genericCount);
-  numSpan.title='Click to cycle color';
-  numSpan.style.cursor='pointer';
-  numSpan.addEventListener('click',()=>{
-    if(cycleColors.length===0) return;
-    _manaPips[0]=cycleColors[0];
-    _prevManaKey=manaKey;
-    renderManaPips(cycleColors,manaKey);
-  });
+  // Only make it clickable if there are colors to cycle to
+  if(cycleColors.length>0){
+    numSpan.title='Click to cycle color';
+    numSpan.style.cursor='pointer';
+    numSpan.addEventListener('click',()=>{
+      // Find the index of the first generic pip in _manaPips and cycle it
+      const firstGenIdx=_manaPips.indexOf('generic');
+      if(firstGenIdx===-1) return;
+      _manaPips[firstGenIdx]=cycleColors[0];
+      // Re-sort: generics first, then WUBRG
+      const WUBRG=['w','u','b','r','g'];
+      _manaPips.sort((a,b)=>{
+        if(a==='generic'&&b==='generic') return 0;
+        if(a==='generic') return -1;
+        if(b==='generic') return 1;
+        return WUBRG.indexOf(a)-WUBRG.indexOf(b);
+      });
+      _prevManaKey=manaKey;
+      renderManaPips(cycleColors,manaKey);
+    });
+  } else {
+    numSpan.title=genericCount+' generic mana';
+    numSpan.style.cursor='default';
+  }
   manaEl.insertBefore(numSpan,manaEl.firstChild);
 }
 
@@ -2409,6 +2453,7 @@ function updateCardMockup(){
       _manaPips=[];
     }
   } else if(cmc!==null&&op==='='){
+    // Sync pip count even when manaKey unchanged (e.g. CMC-only, no colors)
     while(_manaPips.length<cmc) _manaPips.push('generic');
     if(_manaPips.length>cmc) _manaPips=_manaPips.slice(0,cmc);
     _manaPips=_manaPips.map(p=>(p==='generic'||cycleColors.includes(p))?p:'generic');
@@ -2820,6 +2865,145 @@ function init(){
   startDbStatusPolling();
 }
 init();
+
+// ── Filter Widget Drag/Resize System ──────────────────────────────────────────
+
+const FW_STORAGE_KEY = 'mmd_fw_layout_v1';
+
+// Default layout: [id, left%, top%, width(px), height(px)]
+const FW_DEFAULTS = {
+  'fw-colors':   { x:1,   y:2,  w:170, h:68  },
+  'fw-cmc':      { x:1,   y:78, w:260, h:58  },
+  'fw-types':    { x:1,   y:144,w:310, h:68  },
+  'fw-pt':       { x:1,   y:220,w:220, h:58  },
+  'fw-card':     { x:320, y:2,  w:175, h:290 },
+  'fw-format':   { x:508, y:2,  w:200, h:100 },
+  'fw-rarity':   { x:508, y:110,w:160, h:62  },
+  'fw-keywords': { x:508, y:180,w:200, h:94  },
+};
+
+function fwSaveLayout(){
+  const layout={};
+  document.querySelectorAll('.fw').forEach(el=>{
+    const id=el.id;
+    layout[id]={
+      x:parseInt(el.style.left)||0,
+      y:parseInt(el.style.top)||0,
+      w:el.offsetWidth,
+      h:el.offsetHeight,
+    };
+  });
+  try{ localStorage.setItem(FW_STORAGE_KEY, JSON.stringify(layout)); }catch(e){}
+}
+
+function fwLoadLayout(){
+  let saved={};
+  try{ saved=JSON.parse(localStorage.getItem(FW_STORAGE_KEY)||'{}'); }catch(e){}
+  return Object.assign({}, FW_DEFAULTS, saved);
+}
+
+function fwApplyLayout(layout){
+  const panel=document.getElementById('card-filter-panel');
+  if(!panel) return;
+  // Size the panel to fit all widgets
+  let maxBottom=200;
+  document.querySelectorAll('.fw').forEach(el=>{
+    const id=el.id;
+    const cfg=layout[id]||FW_DEFAULTS[id]||{x:4,y:4,w:160,h:60};
+    el.style.left=cfg.x+'px';
+    el.style.top=cfg.y+'px';
+    el.style.width=cfg.w+'px';
+    el.style.height=cfg.h+'px';
+    const bottom=cfg.y+cfg.h;
+    if(bottom>maxBottom) maxBottom=bottom;
+  });
+  panel.style.height=(maxBottom+8)+'px';
+}
+
+function fwInitDrag(){
+  const panel=document.getElementById('card-filter-panel');
+  if(!panel) return;
+
+  const layout=fwLoadLayout();
+  fwApplyLayout(layout);
+
+  document.querySelectorAll('.fw').forEach(el=>{
+    const header=el.querySelector('.fw-header');
+    const resizer=el.querySelector('.fw-resize');
+
+    // Drag
+    let dragDx=0, dragDy=0, dragging=false;
+    header.addEventListener('mousedown', e=>{
+      if(e.target.closest('button,input,select,a')) return;
+      dragging=true;
+      dragDx=e.clientX-el.offsetLeft;
+      dragDy=e.clientY-el.offsetTop;
+      el.classList.add('dragging');
+      el.style.zIndex=100;
+      e.preventDefault();
+    });
+    document.addEventListener('mousemove', e=>{
+      if(!dragging) return;
+      const panelRect=panel.getBoundingClientRect();
+      let nx=e.clientX-panelRect.left-dragDx+el.offsetLeft;
+      let ny=e.clientY-panelRect.top-dragDy+el.offsetTop;
+      // Clamp within panel (allow slight overhang on right/bottom)
+      nx=Math.max(0, nx);
+      ny=Math.max(0, ny);
+      el.style.left=nx+'px';
+      el.style.top=ny+'px';
+    });
+    document.addEventListener('mouseup', e=>{
+      if(!dragging) return;
+      dragging=false;
+      el.classList.remove('dragging');
+      el.style.zIndex='';
+      // Expand panel height if widget was dragged below
+      const bottom=el.offsetTop+el.offsetHeight;
+      if(bottom+8>parseInt(panel.style.height||0)){
+        panel.style.height=(bottom+8)+'px';
+      }
+      fwSaveLayout();
+    });
+
+    // Resize
+    let resizing=false, resizeStartX=0, resizeStartY=0, resizeStartW=0, resizeStartH=0;
+    resizer.addEventListener('mousedown', e=>{
+      resizing=true;
+      resizeStartX=e.clientX;
+      resizeStartY=e.clientY;
+      resizeStartW=el.offsetWidth;
+      resizeStartH=el.offsetHeight;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    document.addEventListener('mousemove', e=>{
+      if(!resizing) return;
+      const nw=Math.max(80, resizeStartW+(e.clientX-resizeStartX));
+      const nh=Math.max(50, resizeStartH+(e.clientY-resizeStartY));
+      el.style.width=nw+'px';
+      el.style.height=nh+'px';
+    });
+    document.addEventListener('mouseup', e=>{
+      if(!resizing) return;
+      resizing=false;
+      const bottom=el.offsetTop+el.offsetHeight;
+      if(bottom+8>parseInt(panel.style.height||0)){
+        panel.style.height=(bottom+8)+'px';
+      }
+      fwSaveLayout();
+    });
+
+    // Bring to front on click
+    el.addEventListener('mousedown', ()=>{
+      document.querySelectorAll('.fw').forEach(w=>w.style.zIndex='');
+      el.style.zIndex=50;
+    });
+  });
+}
+
+// Init widgets after DOM ready
+fwInitDrag();
 </script>
 </body>
 </html>
