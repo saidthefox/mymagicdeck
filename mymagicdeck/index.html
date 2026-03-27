@@ -112,7 +112,7 @@
     .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
 
     /* ── Card Filter Panel ───────────────────────────────────── */
-    .card-filter-panel { display: grid; grid-template-columns: 1fr 185px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
+    .card-filter-panel { display: grid; grid-template-columns: 1fr 204px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
     .cfp-section { display: flex; flex-direction: column; gap: 4px; }
     .cfp-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
@@ -136,36 +136,33 @@
 
     /* ── Card Mockup ─────────────────────────────────────────── */
     .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; }
-    .card-mockup { width: 100%; flex-shrink: 0; border-radius: 9px; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; position: relative; user-select: none; }
-    .cm-frame { border-radius: 9px; padding: 5px 4px 4px; display: flex; flex-direction: column; gap: 3px; transition: background 0.25s; border: 2px solid rgba(0,0,0,0.3); }
-    .cm-frame.W  { background: linear-gradient(155deg,#f9f6e8 0%,#d4c88a 100%); }
-    .cm-frame.U  { background: linear-gradient(155deg,#b3d4f5 0%,#2a6fa8 100%); }
-    .cm-frame.B  { background: linear-gradient(155deg,#6b5b6e 0%,#1a1220 100%); }
-    .cm-frame.R  { background: linear-gradient(155deg,#f5a06a 0%,#9e2a0a 100%); }
-    .cm-frame.G  { background: linear-gradient(155deg,#7dc87a 0%,#1a5c1e 100%); }
-    .cm-frame.M  { background: linear-gradient(155deg,#f5e07a 0%,#c8940a 40%,#c0501a 100%); }
-    .cm-frame.A  { background: linear-gradient(155deg,#d0d0d0 0%,#888 100%); }
-    .cm-frame.L  { background: linear-gradient(155deg,#b09060 0%,#5a3a10 100%); }
-    .cm-frame.C  { background: linear-gradient(155deg,#e0e0e0 0%,#aaa 100%); }
-    .cm-frame.none { background: linear-gradient(155deg,#3a3a4a 0%,#1e1e2a 100%); }
-    .cm-header { display: flex; align-items: center; justify-content: space-between; gap: 3px; }
-    .cm-name-in { flex: 1; background: rgba(255,255,255,0.5); border: 1px solid rgba(0,0,0,0.2); border-radius: 3px; color: #1a1000; font-size: 0.58rem; font-weight: 700; font-family: inherit; outline: none; padding: 1px 4px; min-width: 0; }
-    .cm-frame.B .cm-name-in,.cm-frame.none .cm-name-in { color: #e8e0d0; background: rgba(255,255,255,0.1); }
-    .cm-frame.U .cm-name-in,.cm-frame.R .cm-name-in,.cm-frame.G .cm-name-in { color: #fff8f0; background: rgba(255,255,255,0.15); }
-    .cm-mana { display: flex; gap: 1px; flex-wrap: wrap; justify-content: flex-end; max-width: 60px; }
-    .cm-mana-sym { width: 12px; height: 12px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.44rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.35); flex-shrink: 0; }
-    .cm-art { width: 100%; aspect-ratio: 4/3; background: #1a1a2a; border-radius: 3px; display: flex; align-items: center; justify-content: center; color: #555; font-size: 1.8rem; overflow: hidden; cursor: pointer; transition: opacity 0.12s; }
-    .cm-art:hover { opacity: 0.75; }
-    .cm-typeline { background: rgba(0,0,0,0.15); border-radius: 3px; padding: 1px 4px; font-size: 0.5rem; font-weight: 700; color: #1a1000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .cm-frame.B .cm-typeline,.cm-frame.none .cm-typeline { color: #e0d8c8; }
-    .cm-frame.U .cm-typeline,.cm-frame.R .cm-typeline,.cm-frame.G .cm-typeline,.cm-frame.M .cm-typeline { color: #fff8e8; }
-    .cm-textbox { background: rgba(255,255,255,0.45); border: 1px solid rgba(0,0,0,0.15); border-radius: 3px; padding: 4px; min-height: 40px; font-size: 0.48rem; line-height: 1.45; color: #1a1000; }
-    .cm-frame.B .cm-textbox,.cm-frame.none .cm-textbox { color: #e8e0d0; background: rgba(0,0,0,0.3); }
-    .cm-frame.U .cm-textbox,.cm-frame.R .cm-textbox,.cm-frame.G .cm-textbox,.cm-frame.M .cm-textbox { color: #fff8e8; background: rgba(0,0,0,0.2); }
-    .cm-pt-row { display: flex; justify-content: flex-end; align-items: center; gap: 2px; min-height: 12px; }
-    .cm-pt-in { width: 24px; background: rgba(255,255,255,0.3); border: 1px solid rgba(0,0,0,0.25); border-radius: 3px; text-align: center; font-size: 0.58rem; font-weight: 700; color: #1a1000; font-family: inherit; outline: none; padding: 1px 2px; }
-    .cm-frame.B .cm-pt-in,.cm-frame.none .cm-pt-in { color: #e8e0d0; background: rgba(255,255,255,0.1); }
-    .cm-frame.U .cm-pt-in,.cm-frame.R .cm-pt-in,.cm-frame.G .cm-pt-in,.cm-frame.M .cm-pt-in { color: #fff8e8; }
+    .card-mockup { width: 100%; flex-shrink: 0; position: relative; user-select: none; }
+    /* SVG line-art card shell */
+    .cm-svg-card { width: 100%; display: block; }
+    /* Overlay inputs positioned absolutely over the SVG regions */
+    .cm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    .cm-overlay * { pointer-events: all; }
+    /* Name row: sits over the title bar region (~5.5%–13.5% height) */
+    .cm-name-row { position: absolute; left: 8%; right: 8%; top: 5%; height: 8%; display: flex; align-items: center; gap: 2px; }
+    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 0.54rem; font-weight: 700; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; outline: none; padding: 0 3px; min-width: 0; }
+    .cm-name-in::placeholder { color: #999; font-style: italic; font-weight: 400; }
+    .cm-name-in:focus { background: rgba(0,0,0,0.05); border-radius: 2px; }
+    .cm-mana { display: flex; gap: 1px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+    .cm-mana-sym { width: 11px; height: 11px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.4rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; }
+    /* Art region click-to-clear (~14%–52% height) */
+    .cm-art-overlay { position: absolute; left: 6%; right: 6%; top: 14%; height: 37%; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 2px; transition: background 0.12s; }
+    .cm-art-overlay:hover { background: rgba(0,0,0,0.06); }
+    .cm-art-icon { font-size: 1.4rem; opacity: 0.25; pointer-events: none; }
+    /* Type line (~53%–60% height) */
+    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 53%; height: 7%; display: flex; align-items: center; }
+    .cm-typeline { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+    /* Text box (~61%–86% height) */
+    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 61%; height: 25%; display: flex; align-items: flex-start; padding-top: 2px; }
+    .cm-textbox { background: transparent; border: none; font-size: 0.44rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; }
+    /* P/T box (~88%–95% height, right side) */
+    .cm-pt-row { position: absolute; right: 9%; top: 87%; height: 7%; display: flex; align-items: center; gap: 1px; }
+    .cm-pt-in { width: 20px; background: transparent; border: none; text-align: center; font-size: 0.52rem; font-weight: 700; color: #111; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; outline: none; padding: 0; }
+    .cm-pt-sep { font-size: 0.52rem; font-weight: 700; color: #111; line-height: 1; }
 
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
@@ -682,17 +679,46 @@
         <!-- CENTER: Card Mockup -->
         <div class="card-mockup-wrap">
           <div class="card-mockup" id="card-mockup">
-            <div class="cm-frame none" id="cm-frame">
-              <div class="cm-header">
+            <!-- SVG line-art Magic card skeleton -->
+            <svg class="cm-svg-card" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" fill="none">
+              <!-- Card body -->
+              <rect x="3" y="3" width="194" height="274" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
+              <!-- Inner border -->
+              <rect x="8" y="8" width="184" height="264" rx="7" ry="7" stroke="#555" stroke-width="0.8" stroke-dasharray="0" fill="none"/>
+              <!-- Title bar -->
+              <rect x="11" y="11" width="178" height="22" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
+              <!-- Art box -->
+              <rect x="11" y="37" width="178" height="103" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
+              <!-- Type line bar -->
+              <rect x="11" y="144" width="178" height="16" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+              <!-- Text box -->
+              <rect x="11" y="164" width="178" height="72" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
+              <!-- P/T box -->
+              <rect x="147" y="241" width="44" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+            </svg>
+            <!-- Interactive overlay -->
+            <div class="cm-overlay">
+              <!-- Name + mana -->
+              <div class="cm-name-row">
                 <input class="cm-name-in" id="cm-name-input" placeholder="Name…" oninput="cmNameInput()" maxlength="60">
                 <div class="cm-mana" id="cm-mana"></div>
               </div>
-              <div class="cm-art" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">♻️</div>
-              <div class="cm-typeline" id="cm-typeline">—</div>
-              <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.55">Select filters…</div>
+              <!-- Art area = click to clear -->
+              <div class="cm-art-overlay" id="cm-art" onclick="clearAllFilters()" title="Clear all filters">
+                <span class="cm-art-icon">♻️</span>
+              </div>
+              <!-- Type line -->
+              <div class="cm-typeline-row">
+                <div class="cm-typeline" id="cm-typeline">—</div>
+              </div>
+              <!-- Text box -->
+              <div class="cm-textbox-row">
+                <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.45">Select filters…</div>
+              </div>
+              <!-- P/T -->
               <div class="cm-pt-row" id="cm-pt-wrap" style="display:none">
                 <input class="cm-pt-in" id="cm-pow-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
-                <span style="font-size:0.6rem;font-weight:700;color:inherit">/</span>
+                <span class="cm-pt-sep">/</span>
                 <input class="cm-pt-in" id="cm-tou-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
               </div>
             </div>
@@ -2010,7 +2036,12 @@ function updateCardMockup(){
   else if(colors.length===0) fc='none';
   else if(colors.length===1) fc=colors[0].toUpperCase();
   else fc='M';
-  document.getElementById('cm-frame').className='cm-frame '+fc;
+  document.getElementById('cm-frame') && (document.getElementById('cm-frame').className='cm-frame '+fc);
+
+  // SVG art box tint based on color
+  const COLOR_FILL={W:'#f5f0d8',U:'#c8dff5',B:'#c0b0c8',R:'#f5c8a0',G:'#b0d8a0',M:'#f0e098',A:'#d8d8d0',L:'#d0b888',C:'#dde0e8',none:'#e8e8e6'};
+  const svgArtBox=document.querySelector('.cm-svg-card rect:nth-child(4)');
+  if(svgArtBox) svgArtBox.setAttribute('fill', COLOR_FILL[fc]||'#e8e8e6');
 
   // Mana symbols
   const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
@@ -2045,14 +2076,6 @@ function updateCardMockup(){
   const ptWrap=document.getElementById('cm-pt-wrap');
   ptWrap.style.display=types.includes('creature')?'flex':'none';
 
-  // Art emoji
-  const artDiv=document.getElementById('cm-art');
-  if(!artDiv.querySelector('img')){
-    artDiv.textContent=types.includes('creature')?'🐉':types.includes('instant')?'⚡':
-      types.includes('sorcery')?'🌀':types.includes('enchantment')?'✨':
-      types.includes('artifact')?'⚙️':types.includes('planeswalker')?'🧙':
-      types.includes('land')?'🏔️':'🃏';
-  }
 }
 
 function cmNameInput(){
