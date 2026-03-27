@@ -813,7 +813,7 @@
                 <foreignObject x="10" y="9" width="130" height="20">
                   <input xmlns="http://www.w3.org/1999/xhtml"
                     id="cm-name-input"
-                    style="width:100%;height:100%;border:none;background:transparent;font-size:9px;font-family:'Courier New',monospace;color:#111;padding:0 3px;outline:none;box-sizing:border-box;"
+                    style="width:100%;height:100%;border:none;background:transparent;font-size:12px;font-family:'Courier New',monospace;color:#111;padding:0 3px;outline:none;box-sizing:border-box;"
                     placeholder="Name…" maxlength="60" oninput="cmNameInput()"/>
                 </foreignObject>
 
@@ -821,13 +821,13 @@
                 <g id="cm-mana-g" transform="translate(144,9)"></g>
 
                 <!-- Type line text -->
-                <text id="cm-typeline" x="13" y="151" font-size="7" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
-                <text id="cm-rarity" x="187" y="151" font-size="7" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
+                <text id="cm-typeline" x="13" y="151" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
+                <text id="cm-rarity" x="187" y="151" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
 
                 <!-- Text box content (foreignObject for wrapping) -->
                 <foreignObject x="11" y="161" width="178" height="80">
                   <div xmlns="http://www.w3.org/1999/xhtml" id="cm-textbox"
-                    style="width:100%;height:100%;font-size:7.5px;font-family:'Courier New',monospace;color:#333;line-height:1.45;overflow:hidden;box-sizing:border-box;padding:2px 3px;font-style:italic;opacity:0.45;">
+                    style="width:100%;height:100%;font-size:9.8px;font-family:'Courier New',monospace;color:#333;line-height:1.45;overflow:hidden;box-sizing:border-box;padding:2px 3px;font-style:italic;opacity:0.45;">
                     Select filters…
                   </div>
                 </foreignObject>
@@ -835,13 +835,13 @@
                 <!-- P/T -->
                 <foreignObject x="143" y="251" width="48" height="19">
                   <div xmlns="http://www.w3.org/1999/xhtml"
-                    style="display:flex;align-items:center;justify-content:center;height:100%;gap:1px;font-family:'Courier New',monospace;font-size:8px;font-weight:700;color:#111;">
+                    style="display:flex;align-items:center;justify-content:center;height:100%;gap:1px;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#111;">
                     <input id="cm-pow-in" xmlns="http://www.w3.org/1999/xhtml"
-                      style="width:16px;border:none;background:transparent;text-align:center;font-size:8px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
+                      style="width:18px;border:none;background:transparent;text-align:center;font-size:10px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
                       placeholder="*" maxlength="3" oninput="cmPtInput()"/>
                     <span style="line-height:1">/</span>
                     <input id="cm-tou-in" xmlns="http://www.w3.org/1999/xhtml"
-                      style="width:16px;border:none;background:transparent;text-align:center;font-size:8px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
+                      style="width:18px;border:none;background:transparent;text-align:center;font-size:10px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
                       placeholder="*" maxlength="3" oninput="cmPtInput()"/>
                   </div>
                 </foreignObject>
@@ -2924,7 +2924,7 @@ const FW_DEFAULTS = {
   'fw-cmc':      { x:1,   y:78, w:260, h:58  },
   'fw-types':    { x:1,   y:144,w:310, h:68  },
   'fw-pt':       { x:1,   y:220,w:220, h:58  },
-  'fw-card':     { x:320, y:2,  w:175, h:290 },
+  'fw-card':     { x:320, y:2,  w:210, h:348 },
   'fw-format':   { x:508, y:2,  w:200, h:100 },
   'fw-rarity':   { x:508, y:110,w:160, h:62  },
   'fw-keywords': { x:508, y:180,w:200, h:94  },
@@ -3012,8 +3012,19 @@ function fwInitDrag(){
   const layout=fwLoadLayout();
   fwApplyLayout(layout);
 
+  let _fwZCounter=20;
+  function fwBringToFront(el){
+    _fwZCounter++;
+    el.style.zIndex=_fwZCounter;
+  }
+
   document.querySelectorAll('.fw').forEach(el=>{
     const resizer=el.querySelector('.fw-resize');
+
+    // Any click on a widget brings it to the front
+    el.addEventListener('mousedown', e=>{
+      fwBringToFront(el);
+    }, true); // capture phase so it fires before drag check
 
     // Drag — whole widget is draggable (skip resize handle and interactive elements)
     let dragDx=0, dragDy=0, dragging=false;
@@ -3024,7 +3035,6 @@ function fwInitDrag(){
       dragDx=e.clientX-panelRect.left-el.offsetLeft;
       dragDy=e.clientY-panelRect.top-el.offsetTop;
       el.classList.add('dragging');
-      el.style.zIndex=100;
       e.preventDefault();
     });
     document.addEventListener('mousemove', e=>{
@@ -3042,7 +3052,6 @@ function fwInitDrag(){
       if(!dragging) return;
       dragging=false;
       el.classList.remove('dragging');
-      el.style.zIndex='';
       // Expand panel height if widget was dragged below
       const bottom=el.offsetTop+el.offsetHeight;
       if(bottom+8>parseInt(panel.style.height||0)){
