@@ -211,8 +211,15 @@
     .no-results { grid-column: 1/-1; text-align: center; color: var(--text-dim); padding: 40px 20px; }
     .in-deck-badge { position: absolute; top: 6px; left: 6px; background: var(--accent); color: #fff; border-radius: 10px; padding: 1px 7px; font-size: 0.65rem; font-weight: 700; }
 
-    #search-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
+    #search-view { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-height: 80px; }
     #search-view:not(.active) { display: none; }
+    /* Search view resize handle (top drag bar) */
+    .search-view-resizer { height: 6px; flex-shrink: 0; cursor: ns-resize; background: transparent; transition: background 0.15s; position: relative; z-index: 20; }
+    .search-view-resizer:hover { background: var(--accent); opacity: 0.5; }
+    .search-view-resizer::after { content: ''; display: block; position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 32px; height: 2px; border-radius: 2px; background: var(--text-dim); opacity: 0.5; }
+    /* Widget layout reset button */
+    #fw-reset-btn { position: absolute; top: 5px; left: 5px; z-index: 200; background: rgba(160,160,160,0.18); border: 1px solid rgba(160,160,160,0.35); border-radius: var(--radius); color: var(--text-dim); font-size: 0.6rem; font-family: 'Courier New',Courier,monospace; padding: 2px 7px; cursor: pointer; letter-spacing: 0.04em; transition: background 0.15s, color 0.15s; user-select: none; }
+    #fw-reset-btn:hover { background: rgba(160,160,160,0.38); color: var(--text-bright); }
     #deck-visual-view { flex: 1; overflow: hidden; display: none; flex-direction: column; }
     #deck-visual-view.active { display: flex; }
 
@@ -727,6 +734,7 @@
       </div>
       <!-- <div class="active-filter-pills" id="active-filter-pills"></div> -->
       <div class="card-filter-panel" id="card-filter-panel">
+        <button id="fw-reset-btn" onclick="fwResetLayout()" title="Reset widget positions">↺ reset</button>
 
         <!-- WIDGET: Colors -->
         <div class="fw" id="fw-colors" data-fw="colors">
@@ -899,6 +907,7 @@
       </div>
     </div>
     <div id="search-view" class="active">
+      <div class="search-view-resizer" id="search-view-resizer"></div>
       <div class="search-results" id="search-results">
         <div class="search-placeholder"><div class="icon">🔍</div><strong>Search for any Magic card</strong><br/>Use Scryfall syntax:<br/><code style="color:var(--accent)">c:u t:instant</code> — blue instants<br/><code style="color:var(--accent)">cmc=3 t:creature</code> — 3-CMC creatures</div>
       </div>
@@ -2875,11 +2884,44 @@ const FW_DEFAULTS = {
   'fw-cmc':      { x:1,   y:78, w:260, h:58  },
   'fw-types':    { x:1,   y:144,w:310, h:68  },
   'fw-pt':       { x:1,   y:220,w:220, h:58  },
-  'fw-card':     { x:320, y:2,  w:175, h:290 },
+  'fw-card':     { x:320, y:32, w:175, h:290 },
   'fw-format':   { x:508, y:2,  w:200, h:100 },
   'fw-rarity':   { x:508, y:110,w:160, h:62  },
   'fw-keywords': { x:508, y:180,w:200, h:94  },
 };
+
+function fwResetLayout(){
+  try{ localStorage.removeItem(FW_STORAGE_KEY); }catch(e){}
+  fwApplyLayout(FW_DEFAULTS);
+}
+
+function fwInitSearchResize(){
+  const handle=document.getElementById('search-view-resizer');
+  const panel=document.getElementById('card-filter-panel');
+  const searchView=document.getElementById('search-view');
+  if(!handle||!panel||!searchView) return;
+  let resizing=false, startY=0, startPanelH=0;
+  handle.addEventListener('mousedown', e=>{
+    resizing=true;
+    startY=e.clientY;
+    startPanelH=panel.offsetHeight;
+    e.preventDefault();
+    document.body.style.cursor='ns-resize';
+  });
+  document.addEventListener('mousemove', e=>{
+    if(!resizing) return;
+    const dy=e.clientY-startY;
+    const newH=Math.max(80, startPanelH+dy);
+    panel.style.height=newH+'px';
+    fwSaveLayout();
+  });
+  document.addEventListener('mouseup', ()=>{
+    if(!resizing) return;
+    resizing=false;
+    document.body.style.cursor='';
+    fwSaveLayout();
+  });
+}
 
 function fwSaveLayout(){
   const layout={};
@@ -2892,6 +2934,9 @@ function fwSaveLayout(){
       h:el.offsetHeight,
     };
   });
+  // Also persist panel height (for search-view resizer)
+  const panel=document.getElementById('card-filter-panel');
+  if(panel&&panel.style.height) layout['__panelH']=parseInt(panel.style.height)||0;
   try{ localStorage.setItem(FW_STORAGE_KEY, JSON.stringify(layout)); }catch(e){}
 }
 
@@ -2904,7 +2949,7 @@ function fwLoadLayout(){
 function fwApplyLayout(layout){
   const panel=document.getElementById('card-filter-panel');
   if(!panel) return;
-  // Size the panel to fit all widgets
+  // Size the panel to fit all widgets (or use saved panel height)
   let maxBottom=200;
   document.querySelectorAll('.fw').forEach(el=>{
     const id=el.id;
@@ -2916,7 +2961,8 @@ function fwApplyLayout(layout){
     const bottom=cfg.y+cfg.h;
     if(bottom>maxBottom) maxBottom=bottom;
   });
-  panel.style.height=(maxBottom+8)+'px';
+  const savedPanelH=layout['__panelH'];
+  panel.style.height=(savedPanelH && savedPanelH>maxBottom+8 ? savedPanelH : maxBottom+8)+'px';
 }
 
 function fwInitDrag(){
@@ -3003,6 +3049,7 @@ function fwInitDrag(){
 
 // Init widgets after DOM ready
 fwInitDrag();
+fwInitSearchResize();
 </script>
 </body>
 </html>
