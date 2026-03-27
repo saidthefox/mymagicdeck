@@ -2918,17 +2918,41 @@ init();
 
 const FW_STORAGE_KEY = 'mmd_fw_layout_v1';
 
-// Default layout: [id, left%, top%, width(px), height(px)]
-const FW_DEFAULTS = {
-  'fw-colors':   { x:1,   y:2,  w:170, h:68  },
-  'fw-cmc':      { x:1,   y:78, w:260, h:58  },
-  'fw-types':    { x:1,   y:144,w:248, h:68  },
-  'fw-pt':       { x:1,   y:220,w:220, h:58  },
-  'fw-card':     { x:253, y:78, w:276, h:350 },
-  'fw-format':   { x:535, y:2,  w:200, h:100 },
-  'fw-rarity':   { x:535, y:110,w:160, h:62  },
-  'fw-keywords': { x:535, y:180,w:200, h:94  },
-};
+// Default layout computed from columns — top-left gravity, 6px gaps
+function fwComputeDefaults(){
+  const GAP=6, TOP=2, LEFT=2;
+  // Each column: array of {id, w, h}
+  const cols=[
+    [
+      { id:'fw-colors',   w:170, h:68  },
+      { id:'fw-cmc',      w:260, h:58  },
+      { id:'fw-types',    w:248, h:68  },
+      { id:'fw-pt',       w:220, h:58  },
+    ],
+    [
+      { id:'fw-card',     w:276, h:350 },
+    ],
+    [
+      { id:'fw-format',   w:200, h:100 },
+      { id:'fw-rarity',   w:160, h:62  },
+      { id:'fw-keywords', w:200, h:94  },
+    ],
+  ];
+  const layout={};
+  let cx=LEFT;
+  cols.forEach(col=>{
+    let colW=0;
+    let cy=TOP;
+    col.forEach(widget=>{
+      layout[widget.id]={ x:cx, y:cy, w:widget.w, h:widget.h };
+      cy+=widget.h+GAP;
+      colW=Math.max(colW, widget.w);
+    });
+    cx+=colW+GAP;
+  });
+  return layout;
+}
+const FW_DEFAULTS=fwComputeDefaults();
 
 function fwResetLayout(){
   try{ localStorage.removeItem(FW_STORAGE_KEY); }catch(e){}
