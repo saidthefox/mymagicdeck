@@ -2328,7 +2328,7 @@ function updateActiveFilterPills(){
 }
 
 const SVG_NS='http://www.w3.org/2000/svg';
-const PIP_R=6, PIP_GAP=14; // pip radius and spacing
+const PIP_R=8, PIP_GAP=18; // pip radius and spacing
 
 function _makePipCircle(m, label, isGeneric){
   const g=document.createElementNS(SVG_NS,'g');
@@ -2340,7 +2340,7 @@ function _makePipCircle(m, label, isGeneric){
   const t=document.createElementNS(SVG_NS,'text');
   t.setAttribute('text-anchor','middle');
   t.setAttribute('dominant-baseline','central');
-  t.setAttribute('font-size', isGeneric?'6':'5.5');
+  t.setAttribute('font-size', isGeneric?'8':'7');
   t.setAttribute('font-weight','900');
   t.setAttribute('font-family',"'Courier New',monospace");
   t.setAttribute('fill', m.fg);
@@ -2403,7 +2403,7 @@ function renderManaPips(cycleColors, manaKey){
     g.dataset.pip=pip;
     g.style.cursor='pointer';
     const x=PIP_R + idx*PIP_GAP;
-    g.setAttribute('transform',`translate(${x},${PIP_R})`);
+    g.setAttribute('transform',`translate(${x},0)`);
     g.addEventListener('click',()=>{
       if(cycleColors.length===0) return;
       const cur=_manaPips[idx];
@@ -2427,14 +2427,14 @@ function renderManaPips(cycleColors, manaKey){
   let x=PIP_R;
   for(const child of manaG.children){
     const cur=parseFloat(child.getAttribute('transform')?.match(/translate\(([^,]+)/)?.[1]||x);
-    child.setAttribute('transform',`translate(${x},${PIP_R})`);
+    child.setAttribute('transform',`translate(${x},0)`);
     x+=PIP_GAP;
   }
   // Shift whole group to right-align in the 54px wide zone (200-10 namebar right edge minus some)
   const totalW=_manaPips.length>0 ? (manaG.children.length)*PIP_GAP : 0;
   // manaG starts at x=144 in SVG; pips right-align inside remaining 46px
   const offsetX=Math.max(0, 44 - totalW);
-  manaG.setAttribute('transform',`translate(${144+offsetX},${9})`);
+  manaG.setAttribute('transform',`translate(${144+offsetX},${20})`);
 }
 
 function updateCardMockup(){
