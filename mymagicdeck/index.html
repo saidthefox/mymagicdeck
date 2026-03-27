@@ -124,6 +124,9 @@
     #search-input::placeholder { color: var(--text-dim); }
     .search-spinner { position: absolute; right: 10px; width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .search-clear-btn { position: absolute; right: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--text-dim); border: none; color: var(--bg); font-size: 0.65rem; font-weight: 700; line-height: 1; cursor: pointer; display: none; align-items: center; justify-content: center; opacity: 0.55; transition: opacity 0.15s; flex-shrink: 0; padding: 0; }
+    .search-clear-btn:hover { opacity: 1; }
+    .search-clear-btn.visible { display: flex; }
     .search-spinner.active { display: block; }
     .search-filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
     .filter-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 0.72rem; cursor: pointer; color: var(--text-dim); transition: all 0.15s; }
@@ -734,6 +737,7 @@
         <div class="search-input-wrap">
           <input type="text" id="search-input" placeholder="Search cards… (Ctrl+K)" autocomplete="off" />
           <div class="search-spinner" id="search-spinner"></div>
+          <button class="search-clear-btn" id="search-clear-btn" onclick="clearSearchInput()" tabindex="-1" aria-label="Clear search">✕</button>
         </div>
         <button class="filter-toggle" id="filter-toggle" onclick="toggleFilterPanel()"><span class="arrow">▾</span> Filters</button>
         <div class="view-toggle">
@@ -2199,7 +2203,9 @@ document.addEventListener('mousedown',function(e){
 //  SEARCH
 // ============================================================
 let searchTimeout=null,activeFilters=new Set();
-document.getElementById('search-input').addEventListener('input',function(){parseSearchToFilters();clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>doSearch(),300)});
+function updateSearchClearBtn(){const v=document.getElementById('search-input').value;const sp=document.getElementById('search-spinner');const cb=document.getElementById('search-clear-btn');if(cb)cb.classList.toggle('visible',v.length>0&&!sp.classList.contains('active'));}
+function clearSearchInput(){const el=document.getElementById('search-input');el.value='';updateSearchClearBtn();parseSearchToFilters();clearTimeout(searchTimeout);doSearch();el.focus();}
+document.getElementById('search-input').addEventListener('input',function(){parseSearchToFilters();updateSearchClearBtn();clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>doSearch(),300)});
 document.getElementById('search-input').addEventListener('keydown',function(e){if(e.key==='Enter'){parseSearchToFilters();clearTimeout(searchTimeout);doSearch()}});
 
 // ── Unified filter state ──────────────────────────────────────────────────────
@@ -2705,7 +2711,7 @@ async function doSearch(){
       if(sd.object==='error'){document.getElementById('search-results').innerHTML=`<div class="no-results">${sd.details||'No cards found.'}</div>`;return}
       state.searchResults=sd.data||[];state.searchHasMore=sd.has_more||false;state.searchNextPage=sd.next_page||null;renderSearchResults();
     }
-  }catch(e){document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection and try again.</div>'}finally{sp.classList.remove('active')}
+  }catch(e){document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection and try again.</div>'}finally{sp.classList.remove('active');updateSearchClearBtn()}
 }
 async function loadMoreResults(){
   if(!state.searchNextPage)return;
