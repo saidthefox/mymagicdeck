@@ -175,16 +175,16 @@
     .cm-art-overlay:hover { background: rgba(0,0,0,0.06); }
     .cm-art-icon { font-size: 1.4rem; opacity: 0.25; pointer-events: none; }
     /* Type line */
-    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 49.4%; height: 5%; display: flex; align-items: center; justify-content: space-between; }
+    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 49.4%; height: 5%; display: flex; align-items: center; justify-content: space-between; padding-left: 3px; }
     .cm-typeline { background: transparent; border: none; font-size: 0.9rem; font-weight: 400; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .cm-rarity { background: transparent; border: none; font-size: 0.9rem; font-weight: 400; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; text-align: right; flex-shrink: 0; }
     /* Text box */
-    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 55.6%; height: 28.5%; display: flex; align-items: flex-start; padding-top: 2px; }
+    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 55.6%; height: 28.5%; display: flex; align-items: flex-start; padding-top: 2px; padding-left: 3px; }
     .cm-textbox { background: transparent; border: none; font-size: 0.88rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Courier New',Courier,monospace; }
     /* P/T box — always visible */
     .cm-pt-row { position: absolute; right: 7%; top: 88.3%; height: 6.1%; display: flex; align-items: center; gap: 1px; }
-    .cm-pt-in { width: 26px; background: transparent; border: none; text-align: center; font-size: 1rem; font-weight: 700; color: #111; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0; }
-    .cm-pt-sep { font-size: 1rem; font-weight: 700; color: #111; line-height: 1; font-family: 'Courier New',Courier,monospace; }
+    .cm-pt-in { width: 22px; background: transparent; border: none; text-align: center; font-size: 0.82rem; font-weight: 700; color: #111; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0; }
+    .cm-pt-sep { font-size: 0.82rem; font-weight: 700; color: #111; line-height: 1; font-family: 'Courier New',Courier,monospace; }
 
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
@@ -2346,6 +2346,14 @@ function renderManaPips(cycleColors, manaKey){
       if(cur==='generic') _manaPips[idx]=cycleColors[0];
       else if(pos>=0&&pos<cycleColors.length-1) _manaPips[idx]=cycleColors[pos+1];
       else _manaPips[idx]='generic';
+      // Re-sort: generics first, then colored in WUBRG order
+      const WUBRG=['w','u','b','r','g'];
+      _manaPips.sort((a,b)=>{
+        if(a==='generic'&&b==='generic') return 0;
+        if(a==='generic') return -1;
+        if(b==='generic') return 1;
+        return WUBRG.indexOf(a)-WUBRG.indexOf(b);
+      });
       _prevManaKey=manaKey;
       renderManaPips(cycleColors,manaKey);
     });
@@ -2380,7 +2388,8 @@ function updateCardMockup(){
   // Mana symbols — clickable pips that cycle through selected colors
   const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
   const colored=colors.filter(c=>c!=='c');
-  const cycleColors=colored.slice();
+  const WUBRG_ORDER=['w','u','b','r','g'];
+  const cycleColors=colored.slice().sort((a,b)=>WUBRG_ORDER.indexOf(a)-WUBRG_ORDER.indexOf(b));
 
   // Build a key to detect when colors/cmc change (triggers pip reset)
   const manaKey=JSON.stringify({colors:[...colors].sort(),cmc,op});
@@ -2390,6 +2399,7 @@ function updateCardMockup(){
       const generic=Math.max(0,cmc-cycleColors.length);
       _manaPips=[];
       for(let i=0;i<generic;i++) _manaPips.push('generic');
+      // cycleColors already in WUBRG order
       cycleColors.forEach(c=>_manaPips.push(c));
     } else if(cycleColors.length>0){
       _manaPips=cycleColors.slice();
