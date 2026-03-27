@@ -112,7 +112,7 @@
     .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
 
     /* ── Card Filter Panel ───────────────────────────────────── */
-    .card-filter-panel { display: grid; grid-template-columns: 1fr 204px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
+    .card-filter-panel { display: grid; grid-template-columns: 1fr 224px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
     .cfp-section { display: flex; flex-direction: column; gap: 4px; }
     .cfp-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
@@ -144,7 +144,7 @@
     .cm-overlay * { pointer-events: all; }
     /* Name row: sits over the title bar region (~5.5%–13.5% height) */
     .cm-name-row { position: absolute; left: 8%; right: 8%; top: 5%; height: 8%; display: flex; align-items: center; gap: 2px; }
-    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 0.54rem; font-weight: 700; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; outline: none; padding: 0 3px; min-width: 0; }
+    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 0.54rem; font-weight: 700; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0 3px; min-width: 0; }
     .cm-name-in::placeholder { color: #999; font-style: italic; font-weight: 400; }
     .cm-name-in:focus { background: rgba(0,0,0,0.05); border-radius: 2px; }
     .cm-mana { display: flex; gap: 1px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
@@ -155,14 +155,14 @@
     .cm-art-icon { font-size: 1.4rem; opacity: 0.25; pointer-events: none; }
     /* Type line (~53%–60% height) */
     .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 53%; height: 7%; display: flex; align-items: center; }
-    .cm-typeline { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+    .cm-typeline { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
     /* Text box (~61%–86% height) */
     .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 61%; height: 25%; display: flex; align-items: flex-start; padding-top: 2px; }
-    .cm-textbox { background: transparent; border: none; font-size: 0.44rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; }
-    /* P/T box (~88%–95% height, right side) */
+    .cm-textbox { background: transparent; border: none; font-size: 0.44rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Courier New',Courier,monospace; }
+    /* P/T box (~88%–95% height, right side) — always visible */
     .cm-pt-row { position: absolute; right: 9%; top: 87%; height: 7%; display: flex; align-items: center; gap: 1px; }
-    .cm-pt-in { width: 20px; background: transparent; border: none; text-align: center; font-size: 0.52rem; font-weight: 700; color: #111; font-family: 'Palatino Linotype','Book Antiqua',Palatino,serif; outline: none; padding: 0; }
-    .cm-pt-sep { font-size: 0.52rem; font-weight: 700; color: #111; line-height: 1; }
+    .cm-pt-in { width: 20px; background: transparent; border: none; text-align: center; font-size: 0.52rem; font-weight: 700; color: #111; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0; }
+    .cm-pt-sep { font-size: 0.52rem; font-weight: 700; color: #111; line-height: 1; font-family: 'Courier New',Courier,monospace; }
 
     .search-results { flex: 1; overflow-y: auto; padding: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; align-content: start; }
     .card-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; cursor: pointer; transition: all 0.15s; position: relative; }
@@ -647,6 +647,23 @@
             </div>
           </div>
           <div class="cfp-section">
+            <div class="cfp-label">Mana Value (CMC)</div>
+            <div class="cfp-cmc-row">
+              <span class="cfp-op" data-op=">">&gt;</span>
+              <span class="cfp-op" data-op="=">=</span>
+              <span class="cfp-op" data-op="<">&lt;</span>
+              <span style="width:1px;height:14px;background:var(--border);flex-shrink:0;margin:0 2px"></span>
+              <span class="cfp-num" data-cmc="0">0</span>
+              <span class="cfp-num" data-cmc="1">1</span>
+              <span class="cfp-num" data-cmc="2">2</span>
+              <span class="cfp-num" data-cmc="3">3</span>
+              <span class="cfp-num" data-cmc="4">4</span>
+              <span class="cfp-num" data-cmc="5">5</span>
+              <span class="cfp-num" data-cmc="6">6</span>
+              <span class="cfp-num" data-cmc="7">7+</span>
+            </div>
+          </div>
+          <div class="cfp-section">
             <div class="cfp-label">Types</div>
             <div class="cfp-chips">
               <span class="cfp-chip" data-type="creature">Creature</span>
@@ -716,7 +733,7 @@
                 <div class="cm-textbox" id="cm-textbox" style="font-style:italic;opacity:0.45">Select filters…</div>
               </div>
               <!-- P/T -->
-              <div class="cm-pt-row" id="cm-pt-wrap" style="display:none">
+              <div class="cm-pt-row" id="cm-pt-wrap">
                 <input class="cm-pt-in" id="cm-pow-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
                 <span class="cm-pt-sep">/</span>
                 <input class="cm-pt-in" id="cm-tou-in" placeholder="*" maxlength="3" oninput="cmPtInput()">
@@ -738,23 +755,6 @@
               <span class="cfp-chip" data-format="pauper">Pauper</span>
               <span class="cfp-chip" data-format="pioneer">Pioneer</span>
               <span class="cfp-chip" data-format="premodern">Premodern</span>
-            </div>
-          </div>
-          <div class="cfp-section">
-            <div class="cfp-label">Mana Value (CMC)</div>
-            <div class="cfp-cmc-row">
-              <span class="cfp-op" data-op=">">&gt;</span>
-              <span class="cfp-op" data-op="=">=</span>
-              <span class="cfp-op" data-op="<">&lt;</span>
-              <span style="width:1px;height:14px;background:var(--border);flex-shrink:0;margin:0 2px"></span>
-              <span class="cfp-num" data-cmc="0">0</span>
-              <span class="cfp-num" data-cmc="1">1</span>
-              <span class="cfp-num" data-cmc="2">2</span>
-              <span class="cfp-num" data-cmc="3">3</span>
-              <span class="cfp-num" data-cmc="4">4</span>
-              <span class="cfp-num" data-cmc="5">5</span>
-              <span class="cfp-num" data-cmc="6">6</span>
-              <span class="cfp-num" data-cmc="7">7+</span>
             </div>
           </div>
         </div>
@@ -2038,10 +2038,15 @@ function updateCardMockup(){
   else fc='M';
   document.getElementById('cm-frame') && (document.getElementById('cm-frame').className='cm-frame '+fc);
 
-  // SVG art box tint based on color
-  const COLOR_FILL={W:'#f5f0d8',U:'#c8dff5',B:'#c0b0c8',R:'#f5c8a0',G:'#b0d8a0',M:'#f0e098',A:'#d8d8d0',L:'#d0b888',C:'#dde0e8',none:'#e8e8e6'};
+  // SVG frame tint based on color (outer card body)
+  const COLOR_FILL={W:'#faf5dc',U:'#d0e8f8',B:'#c8b8d0',R:'#fad0a8',G:'#b8dca8',M:'#f8e890',A:'#dcdcdc',L:'#dcc898',C:'#dce0e8',none:'#f8f8f6'};
+  const svgCardBody=document.querySelector('.cm-svg-card rect:nth-child(1)');
+  if(svgCardBody) svgCardBody.setAttribute('fill', COLOR_FILL[fc]||'#f8f8f6');
+  // Keep art box and text box always white/neutral
   const svgArtBox=document.querySelector('.cm-svg-card rect:nth-child(4)');
-  if(svgArtBox) svgArtBox.setAttribute('fill', COLOR_FILL[fc]||'#e8e8e6');
+  if(svgArtBox) svgArtBox.setAttribute('fill','#e8e8e6');
+  const svgTextBox=document.querySelector('.cm-svg-card rect:nth-child(7)');
+  if(svgTextBox) svgTextBox.setAttribute('fill','#f4f4f2');
 
   // Mana symbols
   const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
@@ -2072,9 +2077,9 @@ function updateCardMockup(){
     tb.style.fontStyle='italic'; tb.style.opacity='0.55'; tb.textContent='Select filters…';
   }
 
-  // P/T
+  // P/T always visible
   const ptWrap=document.getElementById('cm-pt-wrap');
-  ptWrap.style.display=types.includes('creature')?'flex':'none';
+  ptWrap.style.display='flex';
 
 }
 
