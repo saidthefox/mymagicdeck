@@ -2423,18 +2423,20 @@ function renderManaPips(cycleColors, manaKey){
     manaG.appendChild(g);
   });
   _collapseGenericPips(manaG, cycleColors, manaKey);
-  // Reposition all after collapse
+  // Reposition all pips, compressing gap if needed to stay within the pip zone
+  const PIP_ZONE=51; // px available right of name input (x:140 to x:191 in SVG)
+  const n=manaG.children.length;
+  // gap between pip centers: shrink if needed so all fit, min = 2*PIP_R (just touching)
+  const gap = n<=1 ? 0 : Math.min(PIP_GAP, (PIP_ZONE - 2*PIP_R) / (n-1));
+  const totalW = n<=1 ? 2*PIP_R : 2*PIP_R + (n-1)*gap;
+  // right-align: place group so rightmost pip edge = SVG x:189
+  const groupX = 191 - totalW;
   let x=PIP_R;
   for(const child of manaG.children){
-    const cur=parseFloat(child.getAttribute('transform')?.match(/translate\(([^,]+)/)?.[1]||x);
     child.setAttribute('transform',`translate(${x},0)`);
-    x+=PIP_GAP;
+    x+=gap;
   }
-  // Shift whole group to right-align in the 54px wide zone (200-10 namebar right edge minus some)
-  const totalW=_manaPips.length>0 ? (manaG.children.length)*PIP_GAP : 0;
-  // manaG starts at x=144 in SVG; pips right-align inside remaining 46px
-  const offsetX=Math.max(0, 44 - totalW);
-  manaG.setAttribute('transform',`translate(${144+offsetX},${20})`);
+  manaG.setAttribute('transform',`translate(${groupX},${20})`);
 }
 
 function updateCardMockup(){
