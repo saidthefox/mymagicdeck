@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Build, share, and manage Magic: The Gathering decks. Search every card, track stats, and publish your deck as a splash page." />
+  <meta property="og:title" content="MyMagicDeck — MTG Deck Builder" />
+  <meta property="og:description" content="Build, share, and manage Magic: The Gathering decks with a fast, free deck builder." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://mymagicdeck.com" />
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:title" content="MyMagicDeck — MTG Deck Builder" />
+  <meta name="twitter:description" content="Build, share, and manage MTG decks. Search every card, track stats, share with friends." />
   <title>MyMagicDeck — MTG Deck Builder</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
   <style>
@@ -91,7 +99,7 @@
     .view-toggle-btn:hover { color: var(--text); }
     .view-toggle-btn.active { background: var(--accent); color: #fff; border-radius: 18px; }
     .search-bar { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; background: var(--surface); }
-    .search-bar-top { display: flex; align-items: center; gap: 8px; }
+    .search-bar-top { display: flex; align-items: center; gap: 6px; }
     .search-input-wrap { position: relative; display: flex; align-items: center; flex: 1; }
     #search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-bright); padding: 8px 36px 8px 12px; font-size: 0.9rem; transition: border-color 0.15s; }
     #search-input:focus { outline: none; border-color: var(--accent); }
@@ -112,7 +120,8 @@
     .cmc-num-bubble.cmc-7plus { font-size: 0.6rem; width: 28px; border-radius: 12px; }
 
     /* ── Card Filter Panel ───────────────────────────────────── */
-    .card-filter-panel { display: grid; grid-template-columns: 1fr 224px 1fr; gap: 10px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: stretch; }
+    .card-filter-panel { display: grid; grid-template-columns: 1fr 180px 1fr; gap: 8px; padding: 8px 10px; background: var(--surface); border-bottom: 1px solid var(--border); align-items: start; overflow: hidden; }
+    .card-filter-panel.collapsed { display: none; }
     .cfp-col { display: flex; flex-direction: column; gap: 7px; }
     .cfp-section { display: flex; flex-direction: column; gap: 4px; }
     .cfp-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); }
@@ -133,6 +142,17 @@
     .cfp-pt-input:focus { outline: none; border-color: var(--accent); }
     .cfp-pt-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 3px; font-size: 0.7rem; cursor: pointer; }
     .cfp-pt-select:focus { outline: none; border-color: var(--accent); }
+    /* Filter toggle button */
+    .filter-toggle { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-dim); padding: 4px 10px; font-size: 0.72rem; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-toggle.has-filters { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+    .filter-toggle .arrow { font-size: 0.6rem; transition: transform 0.2s; }
+    .filter-toggle.collapsed .arrow { transform: rotate(-90deg); }
+    /* Active filter summary pills */
+    .active-filter-pills { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .afp { background: var(--accent-dim); border: 1px solid var(--accent); border-radius: 12px; padding: 1px 8px; font-size: 0.65rem; color: var(--accent); font-weight: 600; display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+    .afp-x { cursor: pointer; opacity: 0.6; font-size: 0.7rem; }
+    .afp-x:hover { opacity: 1; }
 
     /* ── Card Mockup ─────────────────────────────────────────── */
     .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; }
@@ -421,18 +441,54 @@
     /* Responsive */
     @media (max-width: 900px) {
       body { overflow: auto; }
-      #app { grid-template-columns: 1fr; overflow: visible; }
+      #app { grid-template-columns: 1fr; overflow: visible; min-height: 0; }
       .panel { border-right: none; border-bottom: 1px solid var(--border); max-height: none; overflow: visible; }
-      .panel.mobile-hidden { display: none; }
+      .panel.mobile-hidden { display: none !important; }
       #mobile-nav { display: flex; }
       #header .logo { font-size: 1rem; }
-      #deck-name-input { min-width: 100px; max-width: 140px; }
+      #deck-name-input { min-width: 80px; max-width: 120px; font-size: 0.8rem; }
       .header-right .btn span { display: none; }
+      /* Search bar: allow wrapping on tablet */
+      .search-bar-top { flex-wrap: wrap; }
+      .search-input-wrap { min-width: 200px; }
+      /* Filter panel: stack as two columns on tablet */
+      .card-filter-panel { grid-template-columns: 1fr 1fr; gap: 8px; }
+      .card-mockup-wrap { display: none; }
+      /* Search results: smaller cards on tablet */
+      .search-results { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
+      /* Panels get proper mobile heights */
+      #panel-deck .panel-body { max-height: 45vh; overflow-y: auto; }
+      #panel-search { min-height: 60vh; }
+      #panel-detail .detail-view { max-height: 50vh; overflow-y: auto; }
     }
     @media (max-width: 600px) {
-      #header { padding: 0 10px; gap: 6px; }
+      #header { padding: 0 8px; gap: 4px; height: 46px; }
+      #header .logo { font-size: 0.9rem; }
+      .header-deck-controls { gap: 4px; }
       .header-deck-controls .btn { display: none; }
+      #deck-name-input { min-width: 70px; max-width: 110px; font-size: 0.78rem; padding: 4px 8px; }
       #header .header-right { display: flex; }
+      /* Filter panel: single column on phone */
+      .card-filter-panel { grid-template-columns: 1fr; padding: 6px 8px; gap: 6px; }
+      .card-mockup-wrap { display: none; }
+      /* Search input full width */
+      .search-bar { padding: 8px; }
+      .search-bar-top { flex-wrap: wrap; }
+      .search-input-wrap { width: 100%; }
+      .view-toggle { flex-shrink: 0; }
+      /* Search results: smaller grid */
+      .search-results { grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 6px; padding: 6px; }
+      .card-result-info { padding: 4px 5px; }
+      .card-result-name { font-size: 0.68rem; }
+      .card-result-meta { font-size: 0.6rem; }
+      /* Bottom nav taller touch targets */
+      .mobile-nav-btn { padding: 12px 4px 10px; }
+      .mobile-nav-btn .icon { font-size: 1.3rem; }
+      /* Modals: nearly full screen */
+      .modal { width: 95vw; max-height: 90vh; }
+      .modal-textarea { min-height: 150px; }
+      /* Sync indicator hide on tiny screens */
+      #sync-indicator { display: none !important; }
     }
 
     /* ── User avatar ── */
@@ -653,11 +709,13 @@
           <input type="text" id="search-input" placeholder="Search cards… (Ctrl+K)" autocomplete="off" />
           <div class="search-spinner" id="search-spinner"></div>
         </div>
+        <button class="filter-toggle" id="filter-toggle" onclick="toggleFilterPanel()"><span class="arrow">▾</span> Filters</button>
         <div class="view-toggle">
           <button class="view-toggle-btn active" data-view="search" onclick="switchCenterView('search')">🔍 Search</button>
           <button class="view-toggle-btn" data-view="deck" onclick="switchCenterView('deck')">🃏 Deck</button>
         </div>
       </div>
+      <div class="active-filter-pills" id="active-filter-pills"></div>
       <div class="card-filter-panel" id="card-filter-panel">
 
         <!-- LEFT: Colors + Types + P/T -->
@@ -769,7 +827,7 @@
           </div>
         </div>
 
-        <!-- RIGHT: Formats + CMC -->
+        <!-- RIGHT: Formats + Rarity + Keywords -->
         <div class="cfp-col">
           <div class="cfp-section">
             <div class="cfp-label">Format</div>
@@ -782,6 +840,28 @@
               <span class="cfp-chip" data-format="pauper">Pauper</span>
               <span class="cfp-chip" data-format="pioneer">Pioneer</span>
               <span class="cfp-chip" data-format="premodern">Premodern</span>
+            </div>
+          </div>
+          <div class="cfp-section">
+            <div class="cfp-label">Rarity</div>
+            <div class="cfp-chips">
+              <span class="cfp-chip" data-rarity="common">Common</span>
+              <span class="cfp-chip" data-rarity="uncommon">Uncommon</span>
+              <span class="cfp-chip" data-rarity="rare">Rare</span>
+              <span class="cfp-chip" data-rarity="mythic">Mythic</span>
+            </div>
+          </div>
+          <div class="cfp-section">
+            <div class="cfp-label">Keywords</div>
+            <div class="cfp-chips">
+              <span class="cfp-chip" data-keyword="flying">Flying</span>
+              <span class="cfp-chip" data-keyword="trample">Trample</span>
+              <span class="cfp-chip" data-keyword="deathtouch">Deathtouch</span>
+              <span class="cfp-chip" data-keyword="lifelink">Lifelink</span>
+              <span class="cfp-chip" data-keyword="haste">Haste</span>
+              <span class="cfp-chip" data-keyword="flash">Flash</span>
+              <span class="cfp-chip" data-keyword="vigilance">Vigilance</span>
+              <span class="cfp-chip" data-keyword="menace">Menace</span>
             </div>
           </div>
         </div>
@@ -2024,19 +2104,22 @@ document.addEventListener('mousedown',function(e){
 //  SEARCH
 // ============================================================
 let searchTimeout=null,activeFilters=new Set();
-document.getElementById('search-input').addEventListener('input',function(){clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>doSearch(),300)});
-document.getElementById('search-input').addEventListener('keydown',function(e){if(e.key==='Enter'){clearTimeout(searchTimeout);doSearch()}});
+document.getElementById('search-input').addEventListener('input',function(){parseSearchToFilters();clearTimeout(searchTimeout);searchTimeout=setTimeout(()=>doSearch(),300)});
+document.getElementById('search-input').addEventListener('keydown',function(e){if(e.key==='Enter'){parseSearchToFilters();clearTimeout(searchTimeout);doSearch()}});
 
 // ── Unified filter state ──────────────────────────────────────────────────────
 const _fs={
   colors:  new Set(),  // 'w','u','b','r','g','c'
   types:   new Set(),  // 'creature','instant', etc
   formats: new Set(),  // 'standard','commander', etc
+  rarities:new Set(),  // 'common','uncommon','rare','mythic'
+  keywords:new Set(),  // 'flying','trample', etc
   cmcOps:  new Set(),  // '>','=','<'
   cmcNum:  null,       // string or null
   powOp:'', powVal:'', touOp:'', touVal:'',
   name: '',
 };
+let _filterPanelOpen=true;
 
 const COLOR_MANA={
   w:{bg:'#f9f3d0',fg:'#5a4a00',sym:'W'},
@@ -2063,6 +2146,8 @@ function syncFilters(){
   _fs.colors.forEach(c=>parts.push('c:'+c));
   _fs.types.forEach(t=>parts.push('t:'+t));
   _fs.formats.forEach(f=>parts.push('f:'+f));
+  _fs.rarities.forEach(r=>parts.push('r:'+r));
+  _fs.keywords.forEach(k=>parts.push('o:'+k));
   const op=_cmcOpStr();
   if(op&&_fs.cmcNum!==null) parts.push('cmc'+op+_fs.cmcNum);
   if(_fs.powOp&&_fs.powVal) parts.push(_fs.powOp+_fs.powVal);
@@ -2071,7 +2156,138 @@ function syncFilters(){
 
   document.getElementById('search-input').value=parts.join(' ');
   updateCardMockup();
+  updateActiveFilterPills();
+  updateFilterToggle();
   clearTimeout(searchTimeout); doSearch();
+}
+
+function parseSearchToFilters(){
+  const q=document.getElementById('search-input').value;
+  const validColors=new Set(['w','u','b','r','g','c']);
+  const validTypes=new Set(['creature','instant','sorcery','enchantment','artifact','planeswalker','land','tribal','legendary']);
+  const validFormats=new Set(['standard','commander','modern','pioneer','legacy','vintage','pauper','brawl']);
+  const validRarities=new Set(['common','uncommon','rare','mythic']);
+  const validKeywords=new Set(['flying','trample','deathtouch','lifelink','haste','flash','vigilance','menace']);
+
+  // Reset all filter state
+  _fs.colors.clear();_fs.types.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
+  _fs.cmcOps.clear();_fs.cmcNum=null;_fs.name='';
+  _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';
+
+  // Parse tokens from search text
+  const tokens=q.match(/(?:[^\s"]+|"[^"]*")/g)||[];
+  const nameWords=[];
+  for(const tok of tokens){
+    const m=tok.match(/^(c|color|ci|identity|t|type|f|format|o|oracle|r|rarity|cmc|mv|pow|tou|name):(.+)$/i);
+    if(!m){
+      // Check for cmc operators: cmc>3, cmc<=2, etc
+      const cmcM=tok.match(/^(?:cmc|mv)([><=]{1,2})(\d+)$/i);
+      if(cmcM){
+        const opStr=cmcM[1],num=cmcM[2];
+        if(opStr.includes('>'))_fs.cmcOps.add('>');
+        if(opStr.includes('<'))_fs.cmcOps.add('<');
+        if(opStr.includes('='))_fs.cmcOps.add('=');
+        _fs.cmcNum=num;
+        continue;
+      }
+      // Check for power/toughness: pow=3, tou>=2
+      const ptM=tok.match(/^(pow|tou)([><=]{1,2})(\d+)$/i);
+      if(ptM){
+        const field=ptM[1].toLowerCase(),op=ptM[1].toLowerCase()+ptM[2],val=ptM[3];
+        if(field==='pow'){_fs.powOp=op;_fs.powVal=val;}
+        else{_fs.touOp=op;_fs.touVal=val;}
+        continue;
+      }
+      // Check bare name: words
+      const nameM=tok.match(/^name:(.+)$/i);
+      if(nameM){nameWords.push(nameM[1]);continue;}
+      // Unrecognized tokens are free-text name searches
+      nameWords.push(tok.replace(/"/g,''));
+      continue;
+    }
+    const key=m[1].toLowerCase(),val=m[2].toLowerCase();
+    if(key==='c'||key==='color'){
+      for(const ch of val)if(validColors.has(ch))_fs.colors.add(ch);
+    } else if(key==='ci'||key==='identity'){
+      for(const ch of val)if(validColors.has(ch))_fs.colors.add(ch);
+    } else if(key==='t'||key==='type'){
+      if(validTypes.has(val))_fs.types.add(val);
+    } else if(key==='f'||key==='format'){
+      if(validFormats.has(val))_fs.formats.add(val);
+    } else if(key==='r'||key==='rarity'){
+      if(validRarities.has(val))_fs.rarities.add(val);
+    } else if(key==='o'||key==='oracle'){
+      if(validKeywords.has(val))_fs.keywords.add(val);
+      else nameWords.push(val);
+    } else if(key==='name'){
+      nameWords.push(val.replace(/"/g,''));
+    } else if(key==='cmc'||key==='mv'){
+      const cmcM2=val.match(/^([><=]{0,2})(\d+)$/);
+      if(cmcM2){
+        const opStr=cmcM2[1]||'=',num=cmcM2[2];
+        if(opStr.includes('>'))_fs.cmcOps.add('>');
+        if(opStr.includes('<'))_fs.cmcOps.add('<');
+        if(opStr.includes('='))_fs.cmcOps.add('=');
+        _fs.cmcNum=num;
+      }
+    }
+  }
+  _fs.name=nameWords.join(' ');
+
+  // Update UI: remove all active, then re-add
+  document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
+  _fs.colors.forEach(c=>{document.querySelector(`.cfp-color-chip[data-color="${c}"]`)?.classList.add('active')});
+  _fs.types.forEach(t=>{document.querySelector(`.cfp-chip[data-type="${t}"]`)?.classList.add('active')});
+  _fs.formats.forEach(f=>{document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.add('active')});
+  _fs.rarities.forEach(r=>{document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.add('active')});
+  _fs.keywords.forEach(k=>{document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.add('active')});
+  _fs.cmcOps.forEach(op=>{document.querySelector(`.cfp-op[data-op="${op}"]`)?.classList.add('active')});
+  if(_fs.cmcNum!==null)document.querySelector(`.cfp-num[data-cmc="${_fs.cmcNum}"]`)?.classList.add('active');
+
+  // Update P/T dropdowns
+  if(_fs.powOp)document.getElementById('pt-power-op').value=_fs.powOp;
+  if(_fs.powVal)document.getElementById('pt-power-val').value=_fs.powVal;
+  if(_fs.touOp)document.getElementById('pt-tough-op').value=_fs.touOp;
+  if(_fs.touVal)document.getElementById('pt-tough-val').value=_fs.touVal;
+
+  // Update card mockup name input
+  const nameIn=document.getElementById('cm-name-input');
+  if(nameIn)nameIn.value=_fs.name;
+
+  // Update visual indicators
+  updateCardMockup();
+  updateActiveFilterPills();
+  updateFilterToggle();
+}
+
+function toggleFilterPanel(){
+  _filterPanelOpen=!_filterPanelOpen;
+  const panel=document.getElementById('card-filter-panel');
+  const btn=document.getElementById('filter-toggle');
+  if(panel)panel.classList.toggle('collapsed',!_filterPanelOpen);
+  if(btn)btn.classList.toggle('collapsed',!_filterPanelOpen);
+}
+function updateFilterToggle(){
+  const btn=document.getElementById('filter-toggle');if(!btn)return;
+  const count=_fs.colors.size+_fs.types.size+_fs.formats.size+_fs.rarities.size+_fs.keywords.size+(_fs.cmcNum!==null?1:0)+(_fs.powVal?1:0)+(_fs.touVal?1:0);
+  btn.classList.toggle('has-filters',count>0);
+  btn.innerHTML=`<span class="arrow">▾</span> Filters${count>0?' ('+count+')':''}`;
+}
+function updateActiveFilterPills(){
+  const el=document.getElementById('active-filter-pills');if(!el)return;
+  const pills=[];
+  const colorNames={w:'White',u:'Blue',b:'Black',r:'Red',g:'Green',c:'Colorless'};
+  _fs.colors.forEach(c=>pills.push({label:colorNames[c]||c,clear:()=>{_fs.colors.delete(c);document.querySelector(`.cfp-color-chip[data-color="${c}"]`)?.classList.remove('active');syncFilters()}}));
+  _fs.types.forEach(t=>pills.push({label:t[0].toUpperCase()+t.slice(1),clear:()=>{_fs.types.delete(t);document.querySelector(`.cfp-chip[data-type="${t}"]`)?.classList.remove('active');syncFilters()}}));
+  _fs.formats.forEach(f=>pills.push({label:f[0].toUpperCase()+f.slice(1),clear:()=>{_fs.formats.delete(f);document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.remove('active');syncFilters()}}));
+  _fs.rarities.forEach(r=>pills.push({label:r[0].toUpperCase()+r.slice(1),clear:()=>{_fs.rarities.delete(r);document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.remove('active');syncFilters()}}));
+  _fs.keywords.forEach(k=>pills.push({label:k[0].toUpperCase()+k.slice(1),clear:()=>{_fs.keywords.delete(k);document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.remove('active');syncFilters()}}));
+  if(_fs.cmcNum!==null){const op=_cmcOpStr();pills.push({label:'CMC'+op+_fs.cmcNum,clear:()=>{_fs.cmcOps.clear();_fs.cmcNum=null;document.querySelectorAll('.cfp-op,.cfp-num').forEach(x=>x.classList.remove('active'));syncFilters()}})}
+  if(_fs.name.trim())pills.push({label:'"'+_fs.name.trim()+'"',clear:()=>{_fs.name='';document.getElementById('cm-name-input').value='';syncFilters()}});
+  if(!pills.length){el.innerHTML='';return;}
+  el.innerHTML=pills.map((p,i)=>`<span class="afp">${p.label}<span class="afp-x" data-idx="${i}">✕</span></span>`).join('')+
+    (pills.length>1?`<span class="afp" style="background:var(--danger-dim);border-color:var(--danger);color:var(--danger);cursor:pointer" onclick="clearAllFilters()">Clear all</span>`:'');
+  el.querySelectorAll('.afp-x').forEach((x,i)=>x.addEventListener('click',e=>{e.stopPropagation();pills[i].clear()}));
 }
 
 function updateCardMockup(){
@@ -2114,12 +2330,18 @@ function updateCardMockup(){
   const typeStr=types.length?types.map(t=>t[0].toUpperCase()+t.slice(1)).join(' — '):'—';
   document.getElementById('cm-typeline').textContent=typeStr;
 
-  // Text box
+  // Text box — show all active filters
   const tb=document.getElementById('cm-textbox');
   const fmts=[..._fs.formats];
-  if(fmts.length){
+  const kws=[..._fs.keywords];
+  const rars=[..._fs.rarities];
+  const textParts=[];
+  if(kws.length) textParts.push(kws.map(k=>k[0].toUpperCase()+k.slice(1)).join(', '));
+  if(fmts.length) textParts.push('Legal in: '+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', '));
+  if(rars.length) textParts.push('Rarity: '+rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '));
+  if(textParts.length){
     tb.style.fontStyle='normal'; tb.style.opacity='1';
-    tb.innerHTML='<em>Legal in:</em><br>'+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', ');
+    tb.innerHTML=textParts.join('<br>');
   } else if(colors.length||types.length||cmc!==null){
     tb.style.fontStyle='italic'; tb.style.opacity='0.55'; tb.textContent='';
   } else {
@@ -2146,7 +2368,7 @@ function cmPtInput(){
 }
 
 function clearAllFilters(){
-  _fs.colors.clear();_fs.types.clear();_fs.formats.clear();
+  _fs.colors.clear();_fs.types.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
   _fs.cmcOps.clear();_fs.cmcNum=null;
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';
   ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -2154,6 +2376,8 @@ function clearAllFilters(){
   document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
   document.getElementById('search-input').value='';
   updateCardMockup();
+  updateActiveFilterPills();
+  updateFilterToggle();
   doSearch();
 }
 
@@ -2182,6 +2406,16 @@ document.querySelectorAll('.cfp-num[data-cmc]').forEach(el=>el.addEventListener(
   const n=this.dataset.cmc;
   if(_fs.cmcNum===n){_fs.cmcNum=null;this.classList.remove('active');}
   else{document.querySelectorAll('.cfp-num').forEach(x=>x.classList.remove('active'));_fs.cmcNum=n;this.classList.add('active');}
+  syncFilters();
+}));
+document.querySelectorAll('.cfp-chip[data-rarity]').forEach(el=>el.addEventListener('click',function(){
+  const r=this.dataset.rarity;
+  _fs.rarities.has(r)?(_fs.rarities.delete(r),this.classList.remove('active')):(_fs.rarities.add(r),this.classList.add('active'));
+  syncFilters();
+}));
+document.querySelectorAll('.cfp-chip[data-keyword]').forEach(el=>el.addEventListener('click',function(){
+  const k=this.dataset.keyword;
+  _fs.keywords.has(k)?(_fs.keywords.delete(k),this.classList.remove('active')):(_fs.keywords.add(k),this.classList.add('active'));
   syncFilters();
 }));
 
@@ -2454,6 +2688,15 @@ document.addEventListener('keydown',function(e){
 });
 document.getElementById('deck-name-input').addEventListener('blur',function(){const d=currentDeck();if(d){d.name=this.value.trim()||'Untitled Deck';this.value=d.name;saveToStorage();syncDeckToApi(d.id)}});
 
+// ── Warn before leaving with unsaved deck changes ──
+window.addEventListener('beforeunload',function(e){
+  const d=currentDeck();
+  if(d&&Object.keys(d.cards).length>0){
+    e.preventDefault();
+    e.returnValue='';
+  }
+});
+
 function init(){
   // If on a splash-only domain, only handle routing — don't boot the full builder
   const host=window.location.hostname;
@@ -2465,6 +2708,12 @@ function init(){
   if(!Object.keys(state.decks).length||!state.currentDeckId)newDeck();
   else{document.getElementById('deck-name-input').value=currentDeck()?.name||'Untitled Deck';renderAll();}
   updateUserUI();
+  // Start with filters collapsed on mobile
+  if(window.innerWidth<=900){
+    _filterPanelOpen=false;
+    document.getElementById('card-filter-panel')?.classList.add('collapsed');
+    document.getElementById('filter-toggle')?.classList.add('collapsed');
+  }
   // Fix: wire up the auth submit button id after DOM is ready
   const authBtn=document.querySelector('#modal-auth .btn.primary');
   if(authBtn)authBtn.id='auth-submit-btn';
