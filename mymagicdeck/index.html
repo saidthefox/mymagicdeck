@@ -2526,6 +2526,7 @@ function updateCardMockup(){
   const kws=[..._fs.keywords];
   const textParts=[];
   if(kws.length) textParts.push(kws.map(k=>k[0].toUpperCase()+k.slice(1)).join(', '));
+  if(_fs.oracleText) textParts.push('\u201c'+_fs.oracleText+'\u201d');
   if(fmts.length) textParts.push('Legal in: '+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', '));
   if(tb){
     if(textParts.length){
