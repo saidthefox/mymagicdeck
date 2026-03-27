@@ -3038,11 +3038,11 @@ function fwComputeDefaults(){
   // Card centered
   layout[CARD.id]={ x:cardX, y:TOP, w:CARD.w, h:CARD.h, anchored:isMobile };
 
-  // Left column: right-edge flush against card left
-  const col1X=cardX - col1W - GAP;
+  // Left column: each widget's RIGHT edge flush against card left
   let cy=TOP;
   col1.forEach(widget=>{
-    layout[widget.id]={ x:Math.max(2, col1X), y:cy, w:widget.w, h:widget.h, anchored:isMobile };
+    const wx=cardX - widget.w - GAP;
+    layout[widget.id]={ x:Math.max(2, wx), y:cy, w:widget.w, h:widget.h, anchored:isMobile };
     cy+=widget.h+GAP;
   });
 
