@@ -98,7 +98,7 @@
     .view-toggle-btn { padding: 4px 12px; font-size: 0.72rem; font-weight: 600; cursor: pointer; color: var(--text-dim); background: transparent; border: none; transition: all 0.15s; white-space: nowrap; }
     .view-toggle-btn:hover { color: var(--text); }
     .view-toggle-btn.active { background: var(--accent); color: #fff; border-radius: 18px; }
-    .search-bar { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; background: var(--surface); }
+    .search-bar { padding: 10px; display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; background: var(--surface); }
     .search-bar-top { display: flex; align-items: center; gap: 6px; }
     .search-input-wrap { position: relative; display: flex; align-items: center; flex: 1; }
     #search-input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-bright); padding: 8px 36px 8px 12px; font-size: 0.9rem; transition: border-color 0.15s; }
@@ -716,7 +716,7 @@
           <button class="view-toggle-btn" data-view="deck" onclick="switchCenterView('deck')">🃏 Deck</button>
         </div>
       </div>
-      <div class="active-filter-pills" id="active-filter-pills"></div>
+      <!-- <div class="active-filter-pills" id="active-filter-pills"></div> -->
       <div class="card-filter-panel" id="card-filter-panel">
 
         <!-- LEFT: Colors + Types + P/T -->
