@@ -237,6 +237,11 @@
     .mtgo-toolbar .deck-zoom-slider { -webkit-appearance:none; appearance:none; width:80px; height:4px; border-radius:2px; background:var(--border); outline:none; cursor:pointer; }
     .mtgo-toolbar .deck-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; }
     .mtgo-toolbar .deck-zoom-slider::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
+    .search-zoom-wrap { display:flex; align-items:center; gap:5px; flex-shrink:0; margin-left:auto; }
+    .search-zoom-wrap .zoom-icon { font-size:0.8rem; color:var(--text-dim); user-select:none; }
+    .search-zoom-slider { -webkit-appearance:none; appearance:none; width:70px; height:4px; border-radius:2px; background:var(--border); outline:none; cursor:pointer; }
+    .search-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; }
+    .search-zoom-slider::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
     .mtgo-toolbar .deck-zoom-val { font-size:0.68rem; color:var(--text-dim); min-width:32px; }
     .mtgo-info { margin-left: auto; font-size: 0.7rem; color: var(--text-dim); }
     .mtgo-columns-wrap { flex: 1; overflow: auto; padding: 8px; }
@@ -490,7 +495,7 @@
       #deck-name-input { min-width: 70px; max-width: 110px; font-size: 0.78rem; padding: 4px 8px; }
       #header .header-right { display: flex; }
       /* Hide filter panel entirely on mobile */
-      .card-filter-panel, #filter-toggle { display: none !important; }
+      .card-filter-panel, #filter-toggle, #search-zoom-wrap { display: none !important; }
       /* Search input full width */
       .search-bar { padding: 8px; }
       .search-bar-top { flex-wrap: wrap; }
@@ -743,6 +748,10 @@
         <div class="view-toggle">
           <button class="view-toggle-btn active" data-view="search" onclick="switchCenterView('search')">🔍 Search</button>
           <button class="view-toggle-btn" data-view="deck" onclick="switchCenterView('deck')">🃏 Deck</button>
+        </div>
+        <div class="search-zoom-wrap" id="search-zoom-wrap">
+          <span class="zoom-icon">🔍</span>
+          <input type="range" class="search-zoom-slider" id="search-zoom-slider" min="80" max="220" value="130" step="10" oninput="searchZoomChange()">
         </div>
       </div>
       <!-- <div class="active-filter-pills" id="active-filter-pills"></div> -->
@@ -1929,6 +1938,11 @@ function deckZoomChange(){
   _deckZoom=parseInt(document.getElementById('deck-zoom-slider')?.value||100);
   document.getElementById('deck-zoom-val').textContent=_deckZoom+'%';
   renderDeckVisual();
+}
+
+function searchZoomChange(){
+  const v=parseInt(document.getElementById('search-zoom-slider')?.value||130);
+  document.getElementById('search-results').style.gridTemplateColumns=`repeat(auto-fill, minmax(${v}px, 1fr))`;
 }
 
 // ── Card hover zoom: fixed-position ghost overlay, no DOM ancestor side-effects ─
