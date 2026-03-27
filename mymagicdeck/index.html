@@ -127,7 +127,7 @@
     .fw { position: absolute; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; min-width: 80px; min-height: 50px; z-index: 10; cursor: grab; }
     .fw:active { cursor: grabbing; }
     .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); cursor: grabbing; }
-    .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; }
+    .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; text-align: center; }
     .fw-body { flex: 1; padding: 3px 6px 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
     .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.35; }
     .fw-resize:hover { opacity: 1; }
@@ -2552,8 +2552,24 @@ document.querySelectorAll('.cfp-op[data-op]').forEach(el=>el.addEventListener('c
 }));
 document.querySelectorAll('.cfp-num[data-cmc]').forEach(el=>el.addEventListener('click',function(){
   const n=this.dataset.cmc;
-  if(_fs.cmcNum===n){_fs.cmcNum=null;this.classList.remove('active');}
-  else{document.querySelectorAll('.cfp-num').forEach(x=>x.classList.remove('active'));_fs.cmcNum=n;this.classList.add('active');}
+  if(_fs.cmcNum===n){
+    _fs.cmcNum=null;
+    this.classList.remove('active');
+    // If '=' was auto-added (only op), clear it too
+    if(_fs.cmcOps.size===1&&_fs.cmcOps.has('=')){
+      _fs.cmcOps.clear();
+      document.querySelector('.cfp-op[data-op="="]')?.classList.remove('active');
+    }
+  } else {
+    document.querySelectorAll('.cfp-num').forEach(x=>x.classList.remove('active'));
+    _fs.cmcNum=n;
+    this.classList.add('active');
+    // Auto-select '=' if no operator is set
+    if(_fs.cmcOps.size===0){
+      _fs.cmcOps.add('=');
+      document.querySelector('.cfp-op[data-op="="]')?.classList.add('active');
+    }
+  }
   syncFilters();
 }));
 document.querySelectorAll('.cfp-chip[data-rarity]').forEach(el=>el.addEventListener('click',function(){
