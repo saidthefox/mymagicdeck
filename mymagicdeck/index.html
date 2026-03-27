@@ -168,7 +168,8 @@
     .cm-name-in::placeholder { color: #999; font-style: italic; font-weight: 400; }
     .cm-name-in:focus { background: rgba(0,0,0,0.05); border-radius: 2px; }
     .cm-mana { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
-    .cm-mana-sym { width: 15px; height: 15px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.56rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; }
+    .cm-mana-sym { width: 15px; height: 15px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.56rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+    .cm-mana-sym:hover { transform: scale(1.25); box-shadow: 0 0 4px rgba(0,0,0,0.5); }
     /* Art region click-to-clear */
     .cm-art-overlay { position: absolute; left: 6%; right: 6%; top: 10.8%; height: 37.5%; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 2px; transition: background 0.12s; }
     .cm-art-overlay:hover { background: rgba(0,0,0,0.06); }
@@ -2122,6 +2123,8 @@ const _fs={
   name: '',
 };
 let _filterPanelOpen=true;
+let _manaPips=[];      // array of pip values: 'generic' or a color key e.g. 'r'
+let _prevManaKey='';   // detect when colors/cmc change so we reset pips
 
 const COLOR_MANA={
   w:{bg:'#f9f3d0',fg:'#5a4a00',sym:'W'},
@@ -2292,6 +2295,60 @@ function updateActiveFilterPills(){
   el.querySelectorAll('.afp-x').forEach((x,i)=>x.addEventListener('click',e=>{e.stopPropagation();pills[i].clear()}));
 }
 
+function _collapseGenericPips(manaEl){
+  // Replace consecutive leading generic spans with a single number span
+  const spans=[...manaEl.children];
+  let genericCount=0;
+  for(const s of spans){
+    if(s.dataset.pip==='generic') genericCount++;
+    else break;
+  }
+  if(genericCount>1){
+    // Remove the individual generic spans, insert one numbered span at front
+    for(let i=0;i<genericCount;i++) manaEl.removeChild(manaEl.firstChild);
+    const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
+    const numSpan=document.createElement('span');
+    numSpan.className='cm-mana-sym';
+    numSpan.style.background=GENERIC.bg;
+    numSpan.style.color=GENERIC.fg;
+    numSpan.textContent=String(genericCount);
+    numSpan.title=genericCount+' generic mana';
+    manaEl.insertBefore(numSpan,manaEl.firstChild);
+  } else if(genericCount===1){
+    manaEl.firstChild.textContent='';
+  }
+}
+
+function renderManaPips(cycleColors, manaKey){
+  const manaEl=document.getElementById('cm-mana');
+  if(!manaEl) return;
+  manaEl.innerHTML='';
+  const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
+  _manaPips.forEach((pip,idx)=>{
+    const isGeneric=pip==='generic';
+    const m=isGeneric?GENERIC:(COLOR_MANA[pip]||GENERIC);
+    const span=document.createElement('span');
+    span.className='cm-mana-sym';
+    span.dataset.pip=pip;
+    span.style.background=m.bg;
+    span.style.color=m.fg;
+    span.textContent=isGeneric?'':m.sym;
+    span.title='Click to cycle color';
+    span.addEventListener('click',()=>{
+      if(cycleColors.length===0) return;
+      const cur=_manaPips[idx];
+      const pos=cycleColors.indexOf(cur);
+      if(cur==='generic') _manaPips[idx]=cycleColors[0];
+      else if(pos>=0&&pos<cycleColors.length-1) _manaPips[idx]=cycleColors[pos+1];
+      else _manaPips[idx]='generic';
+      _prevManaKey=manaKey;
+      renderManaPips(cycleColors,manaKey);
+    });
+    manaEl.appendChild(span);
+  });
+  _collapseGenericPips(manaEl);
+}
+
 function updateCardMockup(){
   const colors=[..._fs.colors], types=[..._fs.types];
 
@@ -2315,18 +2372,34 @@ function updateCardMockup(){
   const svgTextBox=document.querySelector('.cm-svg-card rect:nth-child(7)');
   if(svgTextBox) svgTextBox.setAttribute('fill','#f4f4f2');
 
-  // Mana symbols
+  // Mana symbols — clickable pips that cycle through selected colors
   const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
-  let manaHtml='';
   const colored=colors.filter(c=>c!=='c');
-  if(cmc!==null&&op==='='){
-    const generic=Math.max(0,cmc-colored.length);
-    if(generic>0) manaHtml+=`<span class="cm-mana-sym" style="background:#c8b860;color:#2a1a00">${generic}</span>`;
-    colored.forEach(c=>{const m=COLOR_MANA[c];manaHtml+=`<span class="cm-mana-sym" style="background:${m.bg};color:${m.fg}">${m.sym}</span>`;});
-  } else {
-    colors.forEach(c=>{const m=COLOR_MANA[c]||{bg:'#888',fg:'#fff',sym:'?'};manaHtml+=`<span class="cm-mana-sym" style="background:${m.bg};color:${m.fg}">${m.sym}</span>`;});
+  const cycleColors=colored.slice();
+
+  // Build a key to detect when colors/cmc change (triggers pip reset)
+  const manaKey=JSON.stringify({colors:[...colors].sort(),cmc,op});
+  if(manaKey!==_prevManaKey){
+    _prevManaKey=manaKey;
+    if(cmc!==null&&op==='='){
+      const generic=Math.max(0,cmc-cycleColors.length);
+      _manaPips=[];
+      for(let i=0;i<generic;i++) _manaPips.push('generic');
+      cycleColors.forEach(c=>_manaPips.push(c));
+    } else if(cycleColors.length>0){
+      _manaPips=cycleColors.slice();
+    } else if(colors.includes('c')){
+      _manaPips=['generic'];
+    } else {
+      _manaPips=[];
+    }
+  } else if(cmc!==null&&op==='='){
+    while(_manaPips.length<cmc) _manaPips.push('generic');
+    if(_manaPips.length>cmc) _manaPips=_manaPips.slice(0,cmc);
+    _manaPips=_manaPips.map(p=>(p==='generic'||cycleColors.includes(p))?p:'generic');
   }
-  document.getElementById('cm-mana').innerHTML=manaHtml;
+
+  renderManaPips(cycleColors, manaKey);
 
   // Type line (left) + Rarity (right)
   const typeStr=types.length?types.map(t=>t[0].toUpperCase()+t.slice(1)).join(' — '):'—';
