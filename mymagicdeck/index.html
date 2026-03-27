@@ -472,8 +472,6 @@
       /* Search bar: allow wrapping on tablet */
       .search-bar-top { flex-wrap: wrap; }
       .search-input-wrap { min-width: 200px; }
-      /* Filter panel: scroll on tablet */
-      .card-filter-panel { overflow-x: auto; }
       /* Search results: smaller cards on tablet */
       .search-results { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; }
       /* Panels get proper mobile heights */
@@ -488,8 +486,14 @@
       .header-deck-controls .btn { display: none; }
       #deck-name-input { min-width: 70px; max-width: 110px; font-size: 0.78rem; padding: 4px 8px; }
       #header .header-right { display: flex; }
-      /* Filter panel: scroll on phone */
-      .card-filter-panel { overflow-x: auto; }
+      /* Filter panel: reflow widgets vertically on phone */
+      .card-filter-panel { overflow: visible; min-height: 0; height: auto !important; padding: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; }
+      .card-filter-panel .fw { position: static !important; width: auto !important; height: auto !important; left: auto !important; top: auto !important; flex: 0 0 auto; cursor: default !important; background: var(--surface2) !important; border-color: var(--border) !important; box-shadow: 0 1px 4px rgba(0,0,0,0.2) !important; }
+      .card-filter-panel .fw .fw-body { height: auto !important; overflow: visible; }
+      .card-filter-panel .fw-title { opacity: 1 !important; pointer-events: none; }
+      .card-filter-panel .fw-resize { display: none; }
+      #fw-reset-btn { display: none; }
+      #fw-card { display: none; }
       /* Search input full width */
       .search-bar { padding: 8px; }
       .search-bar-top { flex-wrap: wrap; }
@@ -509,11 +513,12 @@
       /* Sync indicator hide on tiny screens */
       #sync-indicator { display: none !important; }
       /* Deck panel: full height scrollable list */
-      #panel-deck { display: flex; flex-direction: column; height: 100%; }
+      #panel-deck { display: flex; flex-direction: column; }
       #panel-deck .panel-header { flex-shrink: 0; }
       #panel-deck .panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0; max-height: none; }
       /* Hide desktop deck rows on mobile */
-      #panel-deck .deck-section, #panel-deck .deck-section-header, #panel-deck .deck-card-row { display: none; }
+      #panel-deck .deck-section-header, #panel-deck .deck-card-row { display: none; }
+      #panel-deck .deck-section { display: block; }
       /* Show mobile rows */
       .mob-deck-row, .mob-section-header { display: flex; }
     }
