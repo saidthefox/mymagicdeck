@@ -150,6 +150,10 @@
     .cfp-pt-row { display: flex; align-items: center; gap: 4px; }
     .cfp-pt-input { width: 36px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 4px; font-size: 0.75rem; text-align: center; }
     .cfp-pt-input:focus { outline: none; border-color: var(--accent); }
+    .cfp-pt-input::-webkit-inner-spin-button, .cfp-pt-input::-webkit-outer-spin-button { opacity: 0.4; filter: invert(60%) sepia(10%) saturate(400%) hue-rotate(180deg); }
+    .cfp-oracle-input { width: 100%; box-sizing: border-box; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 4px 6px; font-size: 0.72rem; font-family: 'Courier New', monospace; resize: none; outline: none; line-height: 1.4; }
+    .cfp-oracle-input:focus { border-color: var(--accent); color: var(--text-bright); }
+    .cfp-oracle-input::placeholder { color: var(--text-dim); opacity: 0.6; }
     .cfp-pt-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim); padding: 2px 3px; font-size: 0.7rem; cursor: pointer; }
     .cfp-pt-select:focus { outline: none; border-color: var(--accent); }
     /* Filter toggle button */
@@ -896,6 +900,15 @@
               <span class="cfp-chip" data-keyword="vigilance">Vigilance</span>
               <span class="cfp-chip" data-keyword="menace">Menace</span>
             </div>
+          </div>
+          <div class="fw-resize"></div>
+        </div>
+
+        <!-- WIDGET: Oracle Text -->
+        <div class="fw" id="fw-oracle" data-fw="oracle">
+          <div class="fw-title">Oracle Text</div>
+          <div class="fw-body">
+            <textarea class="cfp-oracle-input" id="oracle-text-input" rows="3" placeholder="e.g. flying, draw a card…" oninput="syncFilters()"></textarea>
           </div>
           <div class="fw-resize"></div>
         </div>
@@ -2153,6 +2166,7 @@ const _fs={
   cmcNum:  null,       // string or null
   powOp:'', powVal:'', touOp:'', touVal:'',
   name: '',
+  oracleText: '',
 };
 let _filterPanelOpen=true;
 let _manaPips=[];      // array of pip values: 'generic' or a color key e.g. 'r'
@@ -2178,6 +2192,7 @@ function syncFilters(){
   _fs.powVal = document.getElementById('pt-power-val')?.value||'';
   _fs.touOp  = document.getElementById('pt-tough-op')?.value||'';
   _fs.touVal = document.getElementById('pt-tough-val')?.value||'';
+  _fs.oracleText = (document.getElementById('oracle-text-input')?.value||'').trim();
 
   const parts=[];
   _fs.colors.forEach(c=>parts.push('c:'+c));
@@ -2189,6 +2204,7 @@ function syncFilters(){
   if(op&&_fs.cmcNum!==null) parts.push('cmc'+op+_fs.cmcNum);
   if(_fs.powOp&&_fs.powVal) parts.push(_fs.powOp+_fs.powVal);
   if(_fs.touOp&&_fs.touVal) parts.push(_fs.touOp+_fs.touVal);
+  if(_fs.oracleText) parts.push('o:"'+_fs.oracleText+'"');
   if(_fs.name.trim()) parts.push(..._fs.name.trim().split(/\s+/).map(w=>'name:'+w));
 
   document.getElementById('search-input').value=parts.join(' ');
@@ -2254,8 +2270,9 @@ function parseSearchToFilters(){
     } else if(key==='r'||key==='rarity'){
       if(validRarities.has(val))_fs.rarities.add(val);
     } else if(key==='o'||key==='oracle'){
-      if(validKeywords.has(val))_fs.keywords.add(val);
-      else nameWords.push(val);
+      const unquoted=val.replace(/^"|"$/g,'');
+      if(validKeywords.has(unquoted))_fs.keywords.add(unquoted);
+      else{ _fs.oracleText=unquoted; const el=document.getElementById('oracle-text-input');if(el)el.value=unquoted; }
     } else if(key==='name'){
       nameWords.push(val.replace(/"/g,''));
     } else if(key==='cmc'||key==='mv'){
@@ -2306,7 +2323,7 @@ function toggleFilterPanel(){
 }
 function updateFilterToggle(){
   const btn=document.getElementById('filter-toggle');if(!btn)return;
-  const count=_fs.colors.size+_fs.types.size+_fs.formats.size+_fs.rarities.size+_fs.keywords.size+(_fs.cmcNum!==null?1:0)+(_fs.powVal?1:0)+(_fs.touVal?1:0);
+  const count=_fs.colors.size+_fs.types.size+_fs.formats.size+_fs.rarities.size+_fs.keywords.size+(_fs.cmcNum!==null?1:0)+(_fs.powVal?1:0)+(_fs.touVal?1:0)+(_fs.oracleText?1:0);
   btn.classList.toggle('has-filters',count>0);
   btn.innerHTML=`<span class="arrow">▾</span> Filters${count>0?' ('+count+')':''}`;
 }
@@ -2320,6 +2337,7 @@ function updateActiveFilterPills(){
   _fs.rarities.forEach(r=>pills.push({label:r[0].toUpperCase()+r.slice(1),clear:()=>{_fs.rarities.delete(r);document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.remove('active');syncFilters()}}));
   _fs.keywords.forEach(k=>pills.push({label:k[0].toUpperCase()+k.slice(1),clear:()=>{_fs.keywords.delete(k);document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.remove('active');syncFilters()}}));
   if(_fs.cmcNum!==null){const op=_cmcOpStr();pills.push({label:'CMC'+op+_fs.cmcNum,clear:()=>{_fs.cmcOps.clear();_fs.cmcNum=null;document.querySelectorAll('.cfp-op,.cfp-num').forEach(x=>x.classList.remove('active'));syncFilters()}})}
+  if(_fs.oracleText)pills.push({label:'o:"'+_fs.oracleText+'"',clear:()=>{_fs.oracleText='';const el=document.getElementById('oracle-text-input');if(el)el.value='';syncFilters()}});
   if(_fs.name.trim())pills.push({label:'"'+_fs.name.trim()+'"',clear:()=>{_fs.name='';document.getElementById('cm-name-input').value='';syncFilters()}});
   if(!pills.length){el.innerHTML='';return;}
   el.innerHTML=pills.map((p,i)=>`<span class="afp">${p.label}<span class="afp-x" data-idx="${i}">✕</span></span>`).join('')+
@@ -2544,8 +2562,8 @@ function cmPtInput(){
 function clearAllFilters(){
   _fs.colors.clear();_fs.types.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
   _fs.cmcOps.clear();_fs.cmcNum=null;
-  _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';
-  ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';_fs.oracleText='';
+  ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val','oracle-text-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ['pt-power-op','pt-tough-op'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
   document.getElementById('search-input').value='';
@@ -2938,6 +2956,7 @@ function fwComputeDefaults(){
       { id:'fw-format',   w:200, h:100 },
       { id:'fw-rarity',   w:160, h:62  },
       { id:'fw-keywords', w:200, h:94  },
+      { id:'fw-oracle',   w:200, h:80  },
     ],
   ];
   const layout={};
