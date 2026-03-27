@@ -127,6 +127,12 @@
     .fw { position: absolute; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 2px 10px rgba(0,0,0,0.3); display: flex; flex-direction: column; min-width: 80px; min-height: 50px; z-index: 10; cursor: grab; }
     .fw:active { cursor: grabbing; }
     .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); cursor: grabbing; }
+    .fw.fw-anchored { background: transparent !important; border-color: transparent !important; box-shadow: none !important; cursor: default !important; }
+    .fw.fw-anchored .fw-title { opacity: 0; pointer-events: none; }
+    .fw.fw-anchored .fw-resize { display: none; }
+    .fw.fw-anchored:hover { outline: 1px dashed rgba(255,255,255,0.15); }
+    .fw.fw-anchored .fw-title { transition: opacity 0.15s; }
+    .fw.fw-anchored:hover .fw-title { opacity: 0.3; pointer-events: auto; }
     .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; text-align: center; }
     .fw-body { flex: 1; padding: 3px 6px 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
     .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.35; }
@@ -3019,6 +3025,7 @@ function fwSaveLayout(){
       y:parseInt(el.style.top)||0,
       w:el.offsetWidth,
       h:el.offsetHeight,
+      anchored:el.classList.contains('fw-anchored')||false,
     };
   });
   // Also persist panel height (for search-view resizer)
@@ -3045,6 +3052,7 @@ function fwApplyLayout(layout){
     el.style.top=cfg.y+'px';
     el.style.width=cfg.w+'px';
     el.style.height=cfg.h+'px';
+    el.classList.toggle('fw-anchored', !!cfg.anchored);
     const bottom=cfg.y+cfg.h;
     if(bottom>maxBottom) maxBottom=bottom;
   });
@@ -3078,6 +3086,7 @@ function fwInitDrag(){
     // Drag — whole widget is draggable (skip resize handle and interactive elements)
     let dragDx=0, dragDy=0, dragging=false;
     el.addEventListener('mousedown', e=>{
+      if(el.classList.contains('fw-anchored')) return;
       if(e.target.closest('.fw-resize,button,input,select,textarea,a,span[data-color],span[data-type],span[data-format],span[data-rarity],span[data-keyword],span[data-cmc],span[data-op],span[data-keyword]')) return;
       dragging=true;
       const panelRect=panel.getBoundingClientRect();
@@ -3112,6 +3121,7 @@ function fwInitDrag(){
     // Resize
     let resizing=false, resizeStartX=0, resizeStartY=0, resizeStartW=0, resizeStartH=0;
     resizer.addEventListener('mousedown', e=>{
+      if(el.classList.contains('fw-anchored')) return;
       resizing=true;
       resizeStartX=e.clientX;
       resizeStartY=e.clientY;
@@ -3135,6 +3145,14 @@ function fwInitDrag(){
         panel.style.height=(bottom+8)+'px';
       }
       fwSaveLayout();
+    });
+
+    // Double-click title to anchor/unanchor
+    const title=el.querySelector('.fw-title');
+    if(title) title.addEventListener('dblclick', e=>{
+      el.classList.toggle('fw-anchored');
+      fwSaveLayout();
+      e.stopPropagation();
     });
 
   });
