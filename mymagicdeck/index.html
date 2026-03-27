@@ -91,6 +91,24 @@
     .deck-card-price { font-size: 0.72rem; color: var(--text-dim); flex-shrink: 0; }
     .deck-empty { text-align: center; color: var(--text-dim); font-size: 0.85rem; padding: 32px 12px; line-height: 1.6; }
     .deck-empty .icon { font-size: 2rem; margin-bottom: 8px; }
+    .mob-deck-row { display: none; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; min-height: 64px; }
+    .mob-deck-row:active { background: var(--surface2); }
+    .mob-deck-row.selected { background: var(--accent-dim); }
+    .mob-deck-thumb { width: 42px; height: 58px; border-radius: 4px; object-fit: cover; background: var(--surface2); flex-shrink: 0; display: block; }
+    .mob-deck-thumb-ph { width: 42px; height: 58px; border-radius: 4px; background: var(--surface2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-dim); }
+    .mob-deck-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .mob-deck-name { font-size: 0.88rem; font-weight: 600; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mob-deck-meta { font-size: 0.68rem; color: var(--text-dim); }
+    .mob-deck-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+    .mob-deck-price { font-size: 0.72rem; color: var(--text-dim); }
+    .mob-qty-controls { display: flex; align-items: center; gap: 2px; }
+    .mob-qty-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 1rem; line-height: 1; transition: all 0.1s; }
+    .mob-qty-btn:active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent); }
+    .mob-qty-num { font-size: 0.9rem; font-weight: 700; color: var(--text-bright); width: 22px; text-align: center; }
+    .mob-section-header { display: none; align-items: center; justify-content: space-between; padding: 10px 12px 4px; background: var(--bg); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border); }
+    .mob-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+    .mob-section-icon { font-size: 1rem; }
+    .mob-section-count { background: var(--surface3); border-radius: 8px; padding: 1px 7px; font-size: 0.7rem; color: var(--text-dim); }
 
     /* Middle panel */
     #panel-search { background: var(--bg); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
@@ -490,6 +508,14 @@
       .modal-textarea { min-height: 150px; }
       /* Sync indicator hide on tiny screens */
       #sync-indicator { display: none !important; }
+      /* Deck panel: full height scrollable list */
+      #panel-deck { display: flex; flex-direction: column; height: 100%; }
+      #panel-deck .panel-header { flex-shrink: 0; }
+      #panel-deck .panel-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0; max-height: none; }
+      /* Hide desktop deck rows on mobile */
+      #panel-deck .deck-section, #panel-deck .deck-section-header, #panel-deck .deck-card-row { display: none; }
+      /* Show mobile rows */
+      .mob-deck-row, .mob-section-header { display: flex; }
     }
 
     /* ── User avatar ── */
@@ -1835,18 +1861,35 @@ function removeSBCard(cid,qty=1){const d=currentDeck();if(!d||!d.sideboard||!d.s
 function setSBCardQty(cid,qty){const d=currentDeck();if(!d||!d.sideboard)return;if(qty<=0)delete d.sideboard[cid];else if(d.sideboard[cid])d.sideboard[cid].qty=qty;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function toggleSideboard(){state.sideboardOpen=!state.sideboardOpen;const t=document.getElementById('sideboard-toggle'),s=document.getElementById('sideboard-sections');if(t)t.classList.toggle('collapsed',!state.sideboardOpen);if(s)s.classList.toggle('hidden',!state.sideboardOpen)}
 
+const CAT_ICONS={Creatures:'🐾',Planeswalkers:'⭐',Instants:'⚡',Sorceries:'🔮',Enchantments:'✨',Artifacts:'⚙️',Lands:'🏔️',Other:'📦',Sideboard:'⊞'};
+
 function renderDeckSection(entries,prefix){
   let h='';
   const g={};for(const{card,qty}of entries){const c=getCardCategory(card);if(!g[c])g[c]=[];g[c].push({card,qty})}
   for(const k of Object.keys(g))g[k].sort((a,b)=>(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name));
   for(const cat of CATEGORY_ORDER){if(!g[cat])continue;const ct=g[cat].reduce((s,e)=>s+e.qty,0);
+    const icon=CAT_ICONS[cat]||'📦';
+    // Desktop section header
     h+=`<div class="deck-section${prefix==='sb'?' sideboard':''}"><div class="deck-section-header"><span>${cat}</span><span class="deck-section-count">${ct}</span></div>`;
+    // Mobile section header (sticky)
+    h+=`<div class="mob-section-header"><div class="mob-section-title"><span class="mob-section-icon">${icon}</span>${cat}</div><span class="mob-section-count">${ct}</span></div>`;
     for(const{card,qty}of g[cat]){
       const id=getCardId(card),price=card.prices?.usd?'$'+parseFloat(card.prices.usd).toFixed(2):'',sel=state.selectedCard&&getCardId(state.selectedCard)===id;
       const overcopy=!isBasicLand(card)&&qty>4;
+      const imgSrc=card.image_uris?.small||card.image_uris?.normal||'';
+      const thumbHtml=imgSrc?`<img class="mob-deck-thumb" src="${imgSrc}" loading="lazy" alt="">`:`<div class="mob-deck-thumb-ph">🃏</div>`;
+      const typeLine=(card.type_line||'').replace('—','–').split('–')[0].trim();
+      const cmc=card.cmc!=null?card.cmc:'';
       if(prefix==='sb'){
+        // Desktop row
         h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeSBCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${card.name}</span><span class="deck-card-price">${price}</span></div>`;
+        // Mobile row
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${card.name}</div><div class="mob-deck-meta">${typeLine}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty-1})">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button></div></div></div>`;
       } else {
+        // Desktop row
+        h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${card.name}</span><span class="deck-card-price">${price}</span></div>`;
+        // Mobile row
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${card.name}</div><div class="mob-deck-meta">${typeLine}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button></div></div></div>`;
         h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${card.name}</span><span class="deck-card-price">${price}</span></div>`;
       }
     }
