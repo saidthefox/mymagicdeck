@@ -155,32 +155,33 @@
     .afp-x:hover { opacity: 1; }
 
     /* ── Card Mockup ─────────────────────────────────────────── */
-    .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; }
+    .card-mockup-wrap { display: flex; flex-direction: column; align-items: stretch; align-self: stretch; }
     .card-mockup { width: 100%; flex-shrink: 0; position: relative; user-select: none; }
     /* SVG line-art card shell */
     .cm-svg-card { width: 100%; display: block; }
     /* Overlay inputs positioned absolutely over the SVG regions */
     .cm-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
     .cm-overlay * { pointer-events: all; }
-    /* Name row: sits over the title bar region (~5.5%–13.5% height) */
-    .cm-name-row { position: absolute; left: 8%; right: 8%; top: 5%; height: 8%; display: flex; align-items: center; gap: 2px; }
-    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 0.54rem; font-weight: 700; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0 3px; min-width: 0; }
+    /* Name row */
+    .cm-name-row { position: absolute; left: 8%; right: 8%; top: 3%; height: 6.5%; display: flex; align-items: center; gap: 2px; }
+    .cm-name-in { flex: 1; background: transparent; border: none; border-radius: 2px; color: #111; font-size: 1.08rem; font-weight: 700; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0 3px; min-width: 0; }
     .cm-name-in::placeholder { color: #999; font-style: italic; font-weight: 400; }
     .cm-name-in:focus { background: rgba(0,0,0,0.05); border-radius: 2px; }
-    .cm-mana { display: flex; gap: 1px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
-    .cm-mana-sym { width: 11px; height: 11px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.4rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; }
-    /* Art region click-to-clear (~14%–52% height) */
-    .cm-art-overlay { position: absolute; left: 6%; right: 6%; top: 14%; height: 37%; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 2px; transition: background 0.12s; }
+    .cm-mana { display: flex; gap: 2px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0; }
+    .cm-mana-sym { width: 15px; height: 15px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.56rem; font-weight: 900; border: 1px solid rgba(0,0,0,0.5); background: #ddd; flex-shrink: 0; color: #333; }
+    /* Art region click-to-clear */
+    .cm-art-overlay { position: absolute; left: 6%; right: 6%; top: 10.8%; height: 37.5%; display: flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 2px; transition: background 0.12s; }
     .cm-art-overlay:hover { background: rgba(0,0,0,0.06); }
     .cm-art-icon { font-size: 1.4rem; opacity: 0.25; pointer-events: none; }
-    /* Type line (~53%–60% height) */
-    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 53%; height: 7%; display: flex; align-items: center; }
-    .cm-typeline { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
-    /* Text box (~61%–86% height) */
-    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 61%; height: 25%; display: flex; align-items: flex-start; padding-top: 2px; }
-    .cm-textbox { background: transparent; border: none; font-size: 0.44rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Courier New',Courier,monospace; }
-    /* P/T box (~88%–95% height, right side) — always visible */
-    .cm-pt-row { position: absolute; right: 9%; top: 87%; height: 7%; display: flex; align-items: center; gap: 1px; }
+    /* Type line */
+    .cm-typeline-row { position: absolute; left: 6%; right: 6%; top: 49.4%; height: 5%; display: flex; align-items: center; justify-content: space-between; }
+    .cm-typeline { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cm-rarity { background: transparent; border: none; font-size: 0.46rem; font-weight: 700; color: #222; font-family: 'Courier New',Courier,monospace; white-space: nowrap; text-align: right; flex-shrink: 0; }
+    /* Text box */
+    .cm-textbox-row { position: absolute; left: 6%; right: 6%; top: 55.6%; height: 28.5%; display: flex; align-items: flex-start; padding-top: 2px; }
+    .cm-textbox { background: transparent; border: none; font-size: 0.88rem; line-height: 1.4; color: #333; width: 100%; resize: none; outline: none; font-family: 'Courier New',Courier,monospace; }
+    /* P/T box — always visible */
+    .cm-pt-row { position: absolute; right: 7%; top: 88.3%; height: 6.1%; display: flex; align-items: center; gap: 1px; }
     .cm-pt-in { width: 20px; background: transparent; border: none; text-align: center; font-size: 0.52rem; font-weight: 700; color: #111; font-family: 'Courier New',Courier,monospace; outline: none; padding: 0; }
     .cm-pt-sep { font-size: 0.52rem; font-weight: 700; color: #111; line-height: 1; font-family: 'Courier New',Courier,monospace; }
 
@@ -782,21 +783,21 @@
         <div class="card-mockup-wrap">
           <div class="card-mockup" id="card-mockup">
             <!-- SVG line-art Magic card skeleton -->
-            <svg class="cm-svg-card" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" fill="none">
+            <svg class="cm-svg-card" viewBox="0 0 200 360" xmlns="http://www.w3.org/2000/svg" fill="none">
               <!-- Card body -->
-              <rect x="3" y="3" width="194" height="274" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
+              <rect x="3" y="3" width="194" height="354" rx="10" ry="10" stroke="#222" stroke-width="2" fill="#f8f8f6"/>
               <!-- Inner border -->
-              <rect x="8" y="8" width="184" height="264" rx="7" ry="7" stroke="#555" stroke-width="0.8" stroke-dasharray="0" fill="none"/>
+              <rect x="8" y="8" width="184" height="344" rx="7" ry="7" stroke="#555" stroke-width="0.8" stroke-dasharray="0" fill="none"/>
               <!-- Title bar -->
-              <rect x="11" y="11" width="178" height="22" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
+              <rect x="11" y="11" width="178" height="24" rx="4" ry="4" stroke="#333" stroke-width="0.9" fill="#eee"/>
               <!-- Art box -->
-              <rect x="11" y="37" width="178" height="103" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
+              <rect x="11" y="39" width="178" height="135" rx="2" ry="2" stroke="#333" stroke-width="0.9" fill="#e8e8e6"/>
               <!-- Type line bar -->
-              <rect x="11" y="144" width="178" height="16" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+              <rect x="11" y="178" width="178" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
               <!-- Text box -->
-              <rect x="11" y="164" width="178" height="72" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
+              <rect x="11" y="200" width="178" height="105" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#f4f4f2"/>
               <!-- P/T box -->
-              <rect x="147" y="241" width="44" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
+              <rect x="145" y="318" width="44" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.9" fill="#eee"/>
             </svg>
             <!-- Interactive overlay -->
             <div class="cm-overlay">
@@ -812,6 +813,7 @@
               <!-- Type line -->
               <div class="cm-typeline-row">
                 <div class="cm-typeline" id="cm-typeline">—</div>
+                <div class="cm-rarity" id="cm-rarity"></div>
               </div>
               <!-- Text box -->
               <div class="cm-textbox-row">
@@ -2326,19 +2328,20 @@ function updateCardMockup(){
   }
   document.getElementById('cm-mana').innerHTML=manaHtml;
 
-  // Type line
+  // Type line (left) + Rarity (right)
   const typeStr=types.length?types.map(t=>t[0].toUpperCase()+t.slice(1)).join(' — '):'—';
   document.getElementById('cm-typeline').textContent=typeStr;
+  const rars=[..._fs.rarities];
+  const rarityEl=document.getElementById('cm-rarity');
+  if(rarityEl) rarityEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
 
   // Text box — show all active filters
   const tb=document.getElementById('cm-textbox');
   const fmts=[..._fs.formats];
   const kws=[..._fs.keywords];
-  const rars=[..._fs.rarities];
   const textParts=[];
   if(kws.length) textParts.push(kws.map(k=>k[0].toUpperCase()+k.slice(1)).join(', '));
   if(fmts.length) textParts.push('Legal in: '+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', '));
-  if(rars.length) textParts.push('Rarity: '+rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '));
   if(textParts.length){
     tb.style.fontStyle='normal'; tb.style.opacity='1';
     tb.innerHTML=textParts.join('<br>');
