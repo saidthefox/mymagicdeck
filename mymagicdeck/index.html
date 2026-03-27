@@ -128,11 +128,10 @@
     .fw:active { cursor: grabbing; }
     .fw.dragging { opacity: 0.85; z-index: 100; box-shadow: 0 8px 32px rgba(0,0,0,0.6); cursor: grabbing; }
     .fw.fw-anchored { background: transparent !important; border-color: transparent !important; box-shadow: none !important; cursor: default !important; }
-    .fw.fw-anchored .fw-title { opacity: 0; pointer-events: none; }
+    .fw.fw-anchored .fw-title { opacity: 0.25; pointer-events: none; transition: opacity 0.15s; }
     .fw.fw-anchored .fw-resize { display: none; }
     .fw.fw-anchored:hover { outline: 1px dashed rgba(255,255,255,0.15); }
-    .fw.fw-anchored .fw-title { transition: opacity 0.15s; }
-    .fw.fw-anchored:hover .fw-title { opacity: 0.3; pointer-events: auto; }
+    .fw.fw-anchored:hover .fw-title { opacity: 0.55; pointer-events: auto; }
     .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; text-align: center; }
     .fw-body { flex: 1; padding: 3px 6px 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
     .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.35; }
@@ -2949,6 +2948,7 @@ const FW_STORAGE_KEY = 'mmd_fw_layout_v1';
 // Default layout computed from columns — top-left gravity, 6px gaps
 function fwComputeDefaults(){
   const GAP=6, TOP=2, LEFT=2;
+  const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
   // Each column: array of {id, w, h}
   const cols=[
     [
@@ -2973,7 +2973,7 @@ function fwComputeDefaults(){
     let colW=0;
     let cy=TOP;
     col.forEach(widget=>{
-      layout[widget.id]={ x:cx, y:cy, w:widget.w, h:widget.h };
+      layout[widget.id]={ x:cx, y:cy, w:widget.w, h:widget.h, anchored:isMobile };
       cy+=widget.h+GAP;
       colW=Math.max(colW, widget.w);
     });
@@ -3147,9 +3147,9 @@ function fwInitDrag(){
       fwSaveLayout();
     });
 
-    // Double-click title to anchor/unanchor
-    const title=el.querySelector('.fw-title');
-    if(title) title.addEventListener('dblclick', e=>{
+    // Double-click anywhere on widget (except interactive elements) to anchor/unanchor
+    el.addEventListener('dblclick', e=>{
+      if(e.target.closest('button,input,select,textarea,a,span[data-color],span[data-type],span[data-format],span[data-rarity],span[data-keyword],span[data-cmc],span[data-op]')) return;
       el.classList.toggle('fw-anchored');
       fwSaveLayout();
       e.stopPropagation();
