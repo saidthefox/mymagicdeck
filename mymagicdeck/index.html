@@ -3004,49 +3004,62 @@ init();
 
 // ── Filter Widget Drag/Resize System ──────────────────────────────────────────
 
-const FW_STORAGE_KEY = 'mmd_fw_layout_v1';
+const FW_STORAGE_KEY = 'mmd_fw_layout_v2';
 
-// Default layout computed from columns — top-left gravity, 6px gaps
+// Default layout: card widget centered in panel, other columns snapped to its sides
 function fwComputeDefaults(){
-  const GAP=6, TOP=2, LEFT=2;
+  const GAP=6, TOP=2;
   const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
-  // Each column: array of {id, w, h}
-  const cols=[
-    [
-      { id:'fw-colors',   w:179, h:68  },
-      { id:'fw-cmc',      w:260, h:67  },
-      { id:'fw-types',    w:248, h:75  },
-      { id:'fw-pt',       w:220, h:58  },
-    ],
-    [
-      { id:'fw-card',     w:262, h:350 },
-    ],
-    [
-      { id:'fw-format',   w:200, h:100 },
-      { id:'fw-rarity',   w:160, h:62  },
-      { id:'fw-keywords', w:200, h:94  },
-      { id:'fw-oracle',   w:200, h:80  },
-    ],
+
+  const CARD={ id:'fw-card', w:262, h:350 };
+  const col1=[
+    { id:'fw-colors',   w:179, h:68  },
+    { id:'fw-cmc',      w:260, h:67  },
+    { id:'fw-types',    w:248, h:75  },
+    { id:'fw-pt',       w:220, h:58  },
   ];
+  const col3=[
+    { id:'fw-format',   w:200, h:100 },
+    { id:'fw-rarity',   w:160, h:62  },
+    { id:'fw-keywords', w:200, h:94  },
+    { id:'fw-oracle',   w:200, h:80  },
+  ];
+
+  // Center the card in the panel width (read live if possible, else fallback)
+  const panel=document.getElementById('card-filter-panel');
+  const panelW=panel ? panel.offsetWidth : 900;
+  const cardX=Math.max(2, Math.round((panelW - CARD.w) / 2));
+
+  const col1W=Math.max(...col1.map(w=>w.w));
+  const col3X=cardX+CARD.w+GAP;
+
   const layout={};
-  let cx=LEFT;
-  cols.forEach(col=>{
-    let colW=0;
-    let cy=TOP;
-    col.forEach(widget=>{
-      layout[widget.id]={ x:cx, y:cy, w:widget.w, h:widget.h, anchored:isMobile };
-      cy+=widget.h+GAP;
-      colW=Math.max(colW, widget.w);
-    });
-    cx+=colW+GAP;
+
+  // Card centered
+  layout[CARD.id]={ x:cardX, y:TOP, w:CARD.w, h:CARD.h, anchored:isMobile };
+
+  // Left column: right-edge flush against card left
+  const col1X=cardX - col1W - GAP;
+  let cy=TOP;
+  col1.forEach(widget=>{
+    layout[widget.id]={ x:Math.max(2, col1X), y:cy, w:widget.w, h:widget.h, anchored:isMobile };
+    cy+=widget.h+GAP;
   });
+
+  // Right column: left-edge flush against card right
+  cy=TOP;
+  col3.forEach(widget=>{
+    layout[widget.id]={ x:col3X, y:cy, w:widget.w, h:widget.h, anchored:isMobile };
+    cy+=widget.h+GAP;
+  });
+
   return layout;
 }
 const FW_DEFAULTS=fwComputeDefaults();
 
 function fwResetLayout(){
   try{ localStorage.removeItem(FW_STORAGE_KEY); }catch(e){}
-  fwApplyLayout(FW_DEFAULTS);
+  fwApplyLayout(fwComputeDefaults());
 }
 
 function fwInitSearchResize(){
@@ -3098,7 +3111,7 @@ function fwSaveLayout(){
 function fwLoadLayout(){
   let saved={};
   try{ saved=JSON.parse(localStorage.getItem(FW_STORAGE_KEY)||'{}'); }catch(e){}
-  return Object.assign({}, FW_DEFAULTS, saved);
+  return Object.assign({}, fwComputeDefaults(), saved);
 }
 
 function fwApplyLayout(layout){
@@ -3108,7 +3121,7 @@ function fwApplyLayout(layout){
   let maxBottom=200;
   document.querySelectorAll('.fw').forEach(el=>{
     const id=el.id;
-    const cfg=layout[id]||FW_DEFAULTS[id]||{x:4,y:4,w:160,h:60};
+    const cfg=layout[id]||fwComputeDefaults()[id]||{x:4,y:4,w:160,h:60};
     el.style.left=cfg.x+'px';
     el.style.top=cfg.y+'px';
     el.style.width=cfg.w+'px';
