@@ -2425,12 +2425,13 @@ function renderManaPips(cycleColors, manaKey){
   _collapseGenericPips(manaG, cycleColors, manaKey);
   // Reposition all pips, compressing gap if needed to stay within the pip zone
   const PIP_ZONE=51; // px available right of name input (x:140 to x:191 in SVG)
+  const PIP_PAD=3;  // padding between rightmost pip edge and box edge
   const n=manaG.children.length;
-  // gap between pip centers: shrink if needed so all fit, min = 2*PIP_R (just touching)
-  const gap = n<=1 ? 0 : Math.min(PIP_GAP, (PIP_ZONE - 2*PIP_R) / (n-1));
+  // gap between pip centers: shrink if needed so all fit, min = 2*PIP_R+2 (never overlap)
+  const gap = n<=1 ? 0 : Math.max(2*PIP_R+2, Math.min(PIP_GAP, (PIP_ZONE - 2*PIP_R - PIP_PAD) / (n-1)));
   const totalW = n<=1 ? 2*PIP_R : 2*PIP_R + (n-1)*gap;
-  // right-align: place group so rightmost pip edge = SVG x:189
-  const groupX = 191 - totalW;
+  // right-align: place group so rightmost pip edge = SVG x:191 minus padding
+  const groupX = 191 - PIP_PAD - totalW;
   let x=PIP_R;
   for(const child of manaG.children){
     child.setAttribute('transform',`translate(${x},0)`);
