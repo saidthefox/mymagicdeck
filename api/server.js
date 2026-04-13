@@ -203,10 +203,8 @@ function parseScryfallQuery(q) {
     const colorM = lower.match(/^(?:c|color):([wubrgmc]+)$/);
     if (colorM) {
       const cols = colorM[1].toUpperCase().split('').filter(x => 'WUBRG'.includes(x));
-      for (const col of cols) where.push(`json_each.value = '${col}'`);
-      // Use a simple LIKE check per color
       if (cols.length) {
-        const checks = cols.map(() => `color_identity LIKE ?`);
+        const checks = cols.map(() => `colors LIKE ?`);
         where.push(`(${checks.join(' AND ')})`);
         for (const col of cols) params.push(`%"${col}"%`);
       }
@@ -265,9 +263,11 @@ function parseScryfallQuery(q) {
       continue;
     }
 
-    // Bare keyword/name — goes to FTS
+    // Bare keyword/name — goes to FTS; wrap in double-quotes so FTS5 treats
+    // it as a literal token and special chars (apostrophes, hyphens) don't
+    // break the query syntax.
     const clean = tok.replace(/"/g, '').trim();
-    if (clean) ftsTerms.push(clean);
+    if (clean) ftsTerms.push(`"${clean}"`);
   }
 
   return { where, params, ftsTerms };
