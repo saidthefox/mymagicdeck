@@ -119,6 +119,16 @@ db.exec(`
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_uploads_user ON uploads(user_id, kind);
+
+  CREATE TABLE IF NOT EXISTS upload_reports (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    upload_id   INTEGER NOT NULL REFERENCES uploads(id) ON DELETE CASCADE,
+    reporter    INTEGER,                       -- user id if logged in, else null
+    reason      TEXT,
+    ip          TEXT,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_reports_upload ON upload_reports(upload_id);
 `);
 
 const UPLOAD_LIMIT = parseInt(process.env.UPLOAD_LIMIT || '100', 10); // card-art uploads per user
@@ -1027,6 +1037,36 @@ function revertDeletedUploadFromDecks(userId, key) {
   return count;
 }
 
+// Fully remove an upload (any owner) — files + row + revert that owner's decks.
+// Shared by the owner's DELETE and the admin takedown.
+function purgeUpload(row) {
+  const dir = path.join(UPLOAD_DIR, String(row.user_id));
+  try { for (const f of fs.readdirSync(dir)) { if (f.startsWith(row.key)) fs.rmSync(path.join(dir, f), { force: true }); } }
+  catch (_) { /* dir may not exist */ }
+  db.prepare('DELETE FROM uploads WHERE id = ?').run(row.id);
+  return revertDeletedUploadFromDecks(row.user_id, row.key);
+}
+
+// Soft auth: populate req.user if a valid token is present, but never reject.
+async function softAuthenticate(req) {
+  try { await req.jwtVerify(); } catch { /* anonymous is fine */ }
+}
+
+// Per-IP limiter for abuse-report submissions.
+const _reportBuckets = new Map();
+const REPORT_WINDOW = 15 * 60 * 1000;
+const REPORT_MAX = 20;
+function rateLimitReport(req, reply, done) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now();
+  let b = _reportBuckets.get(ip);
+  if (!b || now - b.start > REPORT_WINDOW) { b = { start: now, count: 0 }; _reportBuckets.set(ip, b); }
+  b.count++;
+  if (b.count > REPORT_MAX) { reply.code(429).send({ error: 'Too many reports. Try again later.' }); return; }
+  done();
+}
+setInterval(() => { const c = Date.now() - REPORT_WINDOW; for (const [k, b] of _reportBuckets) if (b.start < c) _reportBuckets.delete(k); }, 30 * 60 * 1000);
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // Health check
@@ -1529,12 +1569,43 @@ app.delete('/api/uploads/:id', { preHandler: authenticate }, async (req, reply) 
   const userId = req.user.sub, id = parseInt(req.params.id, 10);
   const row = db.prepare('SELECT * FROM uploads WHERE id = ? AND user_id = ?').get(id, userId);
   if (!row) return reply.code(404).send({ error: 'Not found.' });
-  const dir = path.join(UPLOAD_DIR, String(userId));
-  try {
-    for (const f of fs.readdirSync(dir)) { if (f.startsWith(row.key)) fs.rmSync(path.join(dir, f), { force: true }); }
-  } catch (_) { /* dir may not exist */ }
-  db.prepare('DELETE FROM uploads WHERE id = ? AND user_id = ?').run(id, userId);
-  const revertedDecks = revertDeletedUploadFromDecks(userId, row.key);
+  const revertedDecks = purgeUpload(row);
+  return { ok: true, revertedDecks };
+});
+
+// ── Moderation: report an uploaded image (anyone; rate-limited per IP) ─────────
+app.post('/api/uploads/:id/report', { preHandler: [softAuthenticate, rateLimitReport] }, async (req, reply) => {
+  const id = parseInt(req.params.id, 10);
+  const row = db.prepare('SELECT id FROM uploads WHERE id = ?').get(id);
+  if (!row) return reply.code(404).send({ error: 'Not found.' });
+  const reason = (((req.body || {}).reason || '') + '').slice(0, 500);
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || null;
+  db.prepare('INSERT INTO upload_reports (upload_id, reporter, reason, ip) VALUES (?, ?, ?, ?)')
+    .run(id, req.user?.sub || null, reason || null, ip);
+  return { ok: true };
+});
+
+// ── Admin: list reported uploads (most-reported first) ────────────────────────
+app.get('/api/admin/reports', { preHandler: adminOnly }, async () => {
+  const rows = db.prepare(`
+    SELECT u.id, u.user_id, u.kind, u.card_name, u.normal, u.large, us.username,
+           COUNT(r.id) AS reports, MAX(r.created_at) AS last_report,
+           (SELECT group_concat(reason, ' | ') FROM upload_reports WHERE upload_id = u.id AND reason IS NOT NULL) AS reasons
+    FROM upload_reports r
+    JOIN uploads u ON u.id = r.upload_id
+    JOIN users us ON us.id = u.user_id
+    GROUP BY u.id ORDER BY reports DESC, last_report DESC`).all();
+  return { reported: rows };
+});
+
+// ── Admin: take down an upload (any owner) — purge files+row, revert decks ─────
+app.post('/api/admin/uploads/:id/takedown', { preHandler: adminOnly }, async (req, reply) => {
+  const id = parseInt(req.params.id, 10);
+  const row = db.prepare('SELECT * FROM uploads WHERE id = ?').get(id);
+  if (!row) return reply.code(404).send({ error: 'Not found.' });
+  const revertedDecks = purgeUpload(row);
+  db.prepare('DELETE FROM upload_reports WHERE upload_id = ?').run(id);
+  app.log.warn(`admin takedown: upload ${id} (user ${row.user_id}, key ${row.key}), reverted ${revertedDecks} decks`);
   return { ok: true, revertedDecks };
 });
 
