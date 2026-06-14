@@ -14,6 +14,10 @@ const sharp    = require('sharp');
 // ── Config ────────────────────────────────────────────────────────────────────
 const PORT     = parseInt(process.env.PORT || '3002', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+// Admin key for maintenance endpoints (card/hash refresh). If unset, those
+// endpoints are disabled over HTTP entirely (the daily auto-refresh still runs
+// internally via scheduleCardRefresh, so this only locks down the manual triggers).
+const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
 const DB_PATH  = process.env.DB_PATH || path.join(__dirname, 'mymagicdeck.db');
 const BCRYPT_ROUNDS = 12;
 
@@ -426,6 +430,17 @@ async function authenticate(req, reply) {
   }
 }
 
+// Gate for maintenance endpoints: requires the x-admin-key header to match
+// ADMIN_API_KEY. If the key isn't configured, the endpoint is disabled (503).
+async function adminOnly(req, reply) {
+  if (!ADMIN_API_KEY) {
+    return reply.code(503).send({ error: 'Maintenance endpoints are disabled.' });
+  }
+  if (req.headers['x-admin-key'] !== ADMIN_API_KEY) {
+    return reply.code(403).send({ error: 'Forbidden' });
+  }
+}
+
 // ── Upload rate limiter (per user/IP) ──────────────────────────────────────────
 const _uploadBuckets = new Map();
 const UPLOAD_WINDOW = 15 * 60 * 1000;
@@ -451,6 +466,33 @@ function rateLimitUpload(req, reply, done) {
 setInterval(() => {
   const cutoff = Date.now() - UPLOAD_WINDOW;
   for (const [k, b] of _uploadBuckets) if (b.start < cutoff) _uploadBuckets.delete(k);
+}, 30 * 60 * 1000);
+
+// ── AI-background limiter (much stricter than uploads) ─────────────────────────
+// Diffusion runs on the 207 box, which brownout-crashes under heavy concurrent
+// load. So: a tight per-user budget AND a global in-flight cap so we never fan
+// out multiple GPU jobs at once (the image server serializes anyway; this keeps
+// requests from piling up and timing out).
+const _bgBuckets = new Map();
+const BG_WINDOW = 15 * 60 * 1000;
+const BG_MAX = parseInt(process.env.BG_MAX || '6', 10);          // per user / 15 min
+const BG_CONCURRENCY = parseInt(process.env.BG_CONCURRENCY || '1', 10); // global in-flight
+let _bgInFlight = 0;
+function rateLimitBgGen(req, reply, done) {
+  const key = req.user?.sub || req.ip || 'unknown';
+  const now = Date.now();
+  let bucket = _bgBuckets.get(key);
+  if (!bucket || now - bucket.start > BG_WINDOW) { bucket = { start: now, count: 0 }; _bgBuckets.set(key, bucket); }
+  bucket.count++;
+  if (bucket.count > BG_MAX) {
+    reply.code(429).send({ error: 'You’ve generated a lot of backgrounds — please wait a few minutes.' });
+    return;
+  }
+  done();
+}
+setInterval(() => {
+  const cutoff = Date.now() - BG_WINDOW;
+  for (const [k, b] of _bgBuckets) if (b.start < cutoff) _bgBuckets.delete(k);
 }, 30 * 60 * 1000);
 
 // ── Vision: is this a Magic card, and where is it? ─────────────────────────────
@@ -1205,8 +1247,8 @@ app.get('/api/cards/refresh/status', async () => ({
   total: db.prepare('SELECT COUNT(*) as n FROM cards').get().n,
 }));
 
-// ── POST /api/cards/refresh  (manual trigger, no auth for convenience) ────────
-app.post('/api/cards/refresh', async (req, reply) => {
+// ── POST /api/cards/refresh  (manual trigger, admin-key gated) ────────────────
+app.post('/api/cards/refresh', { preHandler: adminOnly }, async (req, reply) => {
   if (_cardRefreshRunning) return reply.code(409).send({ error: 'Refresh already running', state: _cardRefreshState });
   refreshCards(); // fire and forget
   return { ok: true, message: 'Refresh started' };
@@ -1217,7 +1259,7 @@ app.get('/api/cards/hash-refresh/status', async () => ({
   ..._hashState,
   indexed: db.prepare('SELECT COUNT(*) as n FROM card_hashes').get().n,
 }));
-app.post('/api/cards/hash-refresh', async (req, reply) => {
+app.post('/api/cards/hash-refresh', { preHandler: adminOnly }, async (req, reply) => {
   if (_hashRunning) return reply.code(409).send({ error: 'Hash refresh already running', state: _hashState });
   refreshHashes(); // fire and forget
   return { ok: true, message: 'Hash refresh started' };
@@ -1661,10 +1703,15 @@ function buildBgPrompt(slots) {
   return `A background scene of ${scene}${vibe ? `, ${vibe}` : ''}. ${whimsy}. ` +
     `An empty backdrop with no playing cards and no text, leaving room to place cards on top.`;
 }
-app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitBgGen] }, async (req, reply) => {
   const prompt = buildBgPrompt((req.body || {}).slots);
   if (!prompt) return reply.code(400).send({ error: 'Pick a scene from the list.' });
   if (!IMG_GEN_URL) return reply.code(503).send({ error: 'AI backgrounds aren’t enabled yet — coming soon.', enabled: false });
+  // Global concurrency cap — protect the brownout-prone GPU box from pile-ups.
+  if (_bgInFlight >= BG_CONCURRENCY) {
+    return reply.code(429).send({ error: 'The art forge is busy right now — try again in a moment.' });
+  }
+  _bgInFlight++;
   const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), IMG_GEN_TIMEOUT);
   try {
     const r = await fetch(IMG_GEN_URL, {
@@ -1683,7 +1730,7 @@ app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitUpload
   } catch (e) {
     app.log.warn('bg-generate failed: ' + e.message);
     return reply.code(502).send({ error: 'Scene generation failed. Try again.' });
-  } finally { clearTimeout(timer); }
+  } finally { clearTimeout(timer); _bgInFlight--; }
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

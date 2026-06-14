@@ -1615,14 +1615,32 @@ async function doAuth(){
     _updateAuthUI();
   }
 }
-// On login: push any guest decks to the server so they aren't lost
+// On login: push any guest decks to the server so they aren't lost — but skip
+// throwaway empty "Untitled Deck" shells so we don't litter every account with them.
+function _isEmptyShell(d){
+  const noCards=!d.cards||!Object.keys(d.cards).length;
+  const noSB=!d.sideboard||!Object.keys(d.sideboard).length;
+  const defaultName=!d.name||d.name.trim()==='Untitled Deck';
+  return noCards&&noSB&&defaultName;
+}
 async function syncLocalDecksToApi(){
-  for(const id of Object.keys(state.decks))await syncDeckToApi(id);
+  for(const id of Object.keys(state.decks)){
+    if(_isEmptyShell(state.decks[id]))continue;
+    await syncDeckToApi(id);
+  }
 }
 function logout(){
   localStorage.removeItem('mmd_token');
   state.user=null;
-  saveToStorage();
+  // Clear this account's decks from the local session. Otherwise they linger in
+  // localStorage and get pushed up to (and shown under) the NEXT account that signs
+  // in on this browser — a cross-account leak. The decks are safe on the server and
+  // re-pull on next login. Genuine guest decks (never logged in) are unaffected.
+  state.decks={};
+  state.currentDeckId=null;
+  localStorage.removeItem('mmd_decks');
+  localStorage.removeItem('mmd_current');
+  newDeck();            // fresh empty workspace; token is gone so this won't sync
   updateUserUI();
   closeUserMenu();
   toast('Signed out.');
