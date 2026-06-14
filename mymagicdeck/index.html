@@ -1237,6 +1237,7 @@
         <button class="btn primary" id="auth-submit-btn" style="width:100%;justify-content:center;padding:10px" onclick="doAuth()">Sign In</button>
         <div class="auth-switch" id="auth-switch">No account? <a onclick="toggleAuthMode()">Sign up free</a></div>
         <div class="auth-switch" id="auth-forgot-row"><a onclick="openAuth('forgot')">Forgot password?</a></div>
+        <div class="auth-switch" id="auth-terms" style="display:none;font-size:.7rem;margin-top:2px;line-height:1.4">By creating an account you agree to our <a href="/terms.html" target="_blank">Terms</a> &amp; <a href="/privacy.html" target="_blank">Privacy Policy</a>.</div>
       </div>
     </div>
   </div>
@@ -1362,6 +1363,7 @@
       <button class="btn" onclick="splashCopyList()">📋 Copy List</button>
       <button class="btn" onclick="splashDownloadTxt()">⬇ Download</button>
       <button class="btn primary" onclick="splashImportToCurrent()">＋ Load into Builder</button>
+      <button class="btn" id="splash-report" onclick="openReportModal()" style="display:none" title="Report inappropriate uploaded image(s)">⚐ Report</button>
       <button class="btn" onclick="closeSplash()">✕ Close</button>
     </div>
   </div>
@@ -1605,6 +1607,7 @@ function _updateAuthUI(){
   document.getElementById('auth-submit-btn').textContent=isForgot?'Send reset link':(isSignup?'Create Account':'Sign In');
   document.getElementById('auth-switch').innerHTML=isForgot?'Remembered it? <a onclick="openAuth(\'login\')">Sign in</a>':(isSignup?'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>':'No account? <a onclick="toggleAuthMode()">Sign up free</a>');
   document.getElementById('auth-forgot-row').style.display=(isSignup||isForgot)?'none':'';
+  document.getElementById('auth-terms').style.display=isSignup?'':'none';
   document.getElementById('auth-err').textContent='';
 }
 async function doForgot(){
@@ -2010,6 +2013,29 @@ function openSplash(deckObj,username,opts){
   ov.classList.add('open');
   const showUC=(_splashEdit&&initSort==='user')?'':'none';
   document.querySelectorAll('.splash-user-ctl').forEach(el=>el.style.display=showUC);
+  // Show the Report button on public (non-edit) views that contain uploaded images.
+  const hasUploads=JSON.stringify(deckObj||{}).includes('/u/');
+  const rb=document.getElementById('splash-report'); if(rb)rb.style.display=(!_splashEdit&&hasUploads)?'':'none';
+}
+// ── Report uploaded images on a public splash ─────────────────────────────────
+function openReportModal(){
+  const imgs=[...document.querySelectorAll('#splash-body img')].map(i=>i.src).filter(s=>s.includes('/u/'));
+  const seen=new Set(), uniq=[];
+  for(const s of imgs){ const base=s.split('__')[0]; if(!seen.has(base)){seen.add(base);uniq.push(s);} }
+  if(!uniq.length){toast('No uploaded images to report on this page.');return;}
+  const thumbs=uniq.map((u)=>`<div style="display:flex;flex-direction:column;align-items:center;gap:4px;width:100px"><img src="${u}" alt="" style="width:100px;border-radius:6px;border:1px solid var(--border)"/><button class="btn small danger" onclick="reportImage('${u.replace(/'/g,"\\'")}')">Report this</button></div>`).join('');
+  let m=document.getElementById('modal-report');
+  if(!m){ m=document.createElement('div'); m.className='modal-overlay'; m.id='modal-report'; document.body.appendChild(m); }
+  m.innerHTML=`<div class="modal" style="width:460px;max-width:95vw"><div class="modal-header"><div class="modal-title">Report content</div><button class="modal-close" onclick="closeModal('modal-report')">✕</button></div>
+    <div class="modal-body"><div style="font-size:.8rem;color:var(--text-dim);margin-bottom:10px">Flag an uploaded image you believe breaks the rules. A moderator will review it.</div>
+    <input class="auth-input" id="report-reason" placeholder="Reason (optional)" style="margin-bottom:12px"/>
+    <div style="display:flex;flex-wrap:wrap;gap:12px">${thumbs}</div></div></div>`;
+  openModal('modal-report');
+}
+async function reportImage(url){
+  const reason=(document.getElementById('report-reason')||{}).value||'';
+  try{ await apiFetch('/uploads/report',{method:'POST',body:JSON.stringify({url,reason})}); closeModal('modal-report'); toast('Thanks — reported for review. 🙏','success'); }
+  catch(e){ toast('Could not submit report.','error'); }
 }
 function _isBasicLand(card){
   const t=(card.type_line||'').toLowerCase();

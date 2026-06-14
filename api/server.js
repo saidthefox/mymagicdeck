@@ -1655,6 +1655,22 @@ app.post('/api/uploads/:id/report', { preHandler: [softAuthenticate, rateLimitRe
   return { ok: true };
 });
 
+// ── Moderation: report by image URL (what the public splash UI has on hand) ───
+app.post('/api/uploads/report', { preHandler: [softAuthenticate, rateLimitReport] }, async (req, reply) => {
+  const url = (((req.body || {}).url || '') + '');
+  const reason = (((req.body || {}).reason || '') + '').slice(0, 500);
+  const m = url.match(/\/u\/\d+\/([^/?]+)/);            // /u/<userId>/<key>__<size>.<ext>
+  if (!m) return reply.code(400).send({ error: 'Not a valid uploaded-image URL.' });
+  const key = m[1].split('__')[0];
+  const up = db.prepare('SELECT id FROM uploads WHERE key = ?').get(key);
+  if (up) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || null;
+    db.prepare('INSERT INTO upload_reports (upload_id, reporter, reason, ip) VALUES (?, ?, ?, ?)')
+      .run(up.id, req.user?.sub || null, reason || null, ip);
+  }
+  return { ok: true }; // don't reveal whether the key matched
+});
+
 // ── Admin: list reported uploads (most-reported first) ────────────────────────
 app.get('/api/admin/reports', { preHandler: adminOnly }, async () => {
   const rows = db.prepare(`
