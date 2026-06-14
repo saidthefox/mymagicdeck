@@ -1,7 +1,8 @@
 FROM node:20-alpine
 
-# Install build deps for better-sqlite3 (native module)
-RUN apk add --no-cache python3 make g++
+# Build deps for better-sqlite3 (native module) + ImageMagick for perspective deskew
+# + OpenCV (musl-native cv2) for document-scanner card corner detection
+RUN apk add --no-cache python3 make g++ imagemagick py3-opencv py3-numpy ttf-dejavu fontconfig
 
 WORKDIR /app
 
@@ -9,6 +10,7 @@ COPY package.json ./
 RUN npm install --omit=dev
 
 COPY server.js ./
+COPY detect_corners.py ./
 
 # Data directory — mount /srv/data/mymagicdeck here
 RUN mkdir -p /data

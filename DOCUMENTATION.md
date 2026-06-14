@@ -137,6 +137,24 @@ Full-text search index over `name`, `type_line`, `oracle_text`, `keywords`. Cont
 
 **Search returns 503** if card database has not been seeded yet, with `{fallback: true}`.
 
+### Uploads (authenticated) — custom splash art + library
+| Method | Path                                          | Auth | Description                                              |
+|--------|-----------------------------------------------|------|----------------------------------------------------------|
+| POST   | `/api/uploads/card-art?autocrop=1&name=&oracle=` | Yes | Upload a custom card photo (multipart `file`)        |
+| POST   | `/api/uploads/deck-photo`                     | Yes  | Upload a full-deck photo (multipart `file`)              |
+| GET    | `/api/uploads`                                | Yes  | The user's upload library + quota                        |
+| PATCH  | `/api/uploads/:id`                            | Yes  | Set/confirm which card an upload depicts                 |
+| DELETE | `/api/uploads/:id`                            | Yes  | Delete an upload (auto-reverts decks that used it)       |
+
+- **card-art**: best-effort vision pass that (a) checks "is this a Magic card?" — a *confident* non-card → **422**; (b) reads the **card name**; (c) locates the card's **4 corners** (and a bbox fallback). With `autocrop=1` the card is **perspective-deskewed** to straighten a tilted photo (ImageMagick `-distort Perspective` from the corners; falls back to bbox crop, then full frame), then re-encoded to three WebP sizes (small/normal/large, ~63:88). `name`/`oracle` (the card being replaced) auto-label + confirm the upload; otherwise the vision-read name is resolved against the card DB (unconfirmed, user confirms on the page). Returns `{ image_uris, customArt:true, autoCropped, uploadId, cardName, oracleId, confirmed }`.
+- **Quota**: 100 `kind='card'` uploads per user (`UPLOAD_LIMIT`); exceeding → **409**. Deck photos don't count.
+- **GET /api/uploads** → `{ uploads:[{id,kind,card_name,oracle_id,confirmed,small,normal,large,created_at}], cardCount, limit }`.
+- **PATCH** body `{cardName?, oracleId?}` → validates against the card DB, sets `confirmed=1`.
+- **DELETE** removes the files + row, then scans the user's decks and reverts any base art (→ default Scryfall image via `oracle_id`), per-copy `arts[i]`, or `deckPhoto` that referenced the deleted image.
+- Tracked in the **`uploads`** table (`id,user_id,key,kind,card_name,oracle_id,confirmed,small,normal,large,created_at`).
+- **deck-photo**: downsizes to ≤1600px long edge, re-encodes WebP. Returns `{ url }`.
+- Images are stored on local disk under `UPLOAD_DIR/<userId>/<uuid>__<size>.webp` and served read-only by nginx at `/u/...`. Uploads are rate-limited per user, size-capped (12 MB), and re-encoded (strips EXIF / embedded payloads). Filenames are server-generated.
+
 ### Supported Search Syntax (Scryfall subset)
 - `c:wubrg` / `color:wubrg` — Color filter
 - `ci:wubrg` / `identity:wubrg` — Color identity filter
@@ -237,6 +255,31 @@ Full-text search index over `name`, `type_line`, `oracle_text`, `keywords`. Cont
   - `DB_PATH` — Default: `/data/mymagicdeck.db`
   - `PORT` — Default: `3002`
   - `LOG_LEVEL` — Default: `info`
+  - `UPLOAD_DIR` — Default: `<dir of DB_PATH>/uploads` (mount nginx at `/u/` to serve it)
+  - `VLM_ENABLED` — Default: `true` (set `false` to skip the vision card-check)
+  - `VLM_BASE_URL` — OpenAI-compatible multimodal endpoint. Default: `http://192.168.1.207:8081/v1`
+  - `VLM_MODEL` — Default: `local`
+  - `VLM_TIMEOUT` — ms before the vision call is abandoned (falls back to smart-crop). Default: `60000`
+  - `IMG_GEN_URL` — optional text-to-image endpoint for AI splash backgrounds (e.g. a ComfyUI/SD HTTP wrapper). **Unset = feature dormant** (`/api/splash/bg-generate` returns 503). Contract: `POST {prompt,width,height}` → PNG bytes, or JSON `{image|b64_json}`. `IMG_GEN_TIMEOUT` (ms, default 120000).
+  - `UPLOAD_LIMIT` — card-art uploads per user. Default: `100`
+  - `PHASH_THRESHOLD` — max Hamming distance for a confident pHash card match. Default: `14`
+
+### Card recognition pipeline (uploads)
+- **Corners** come from OpenCV (`api/detect_corners.py`, document-scanner: Canny → largest convex quad → ordered TL,TR,BR,BL), invoked from `detectCornersCV()`. The VLM's corners proved unreliable; it's used only to *read the card name*. The cropper seeds its draggable handles from the CV corners (full-frame fallback).
+- **Card identity** uses a **staged cascade** (`cascadeIdentify`), because neither signal is reliable alone on real photos: (1) explicit expected card (splash replace) wins; (2) the VLM-read **name** is fuzzy-matched (Levenshtein) against the card DB — name is ~unique in Magic, so this usually resolves it; (3) a garbled read is disambiguated by **mana cost / CMC**; (4) if several candidates remain, pHash ranks the crop *within those few* (`rankHashAmong` — reliable as a local ranker even though global pHash isn't); (5) otherwise the best fuzzy name is an unconfirmed suggestion, with an `escalateIdentify` stub hook for a future tool-grounded/agentic verifier; (6) no readable name → global `matchHash` as an **unconfirmed suggestion only** (global pHash collides on low-contrast art/photos, so it never auto-confirms). `card_hashes` indexes a 64-bit DCT pHash of every unique Scryfall artwork.
+- **Hash index build**: `POST /api/cards/hash-refresh` (fire-and-forget) streams the `unique_artwork` bulk, downloads each small image, hashes it (resumable; only hashes stored, ~1–2 MB); `GET /api/cards/hash-refresh/status` reports progress. The in-memory index loads on boot and after each refresh.
+
+### Deck `data` blob fields (custom art / photo)
+- Per-card custom art rides inside the deck JSON: the stored card gets `image_uris` pointed at `/u/...` URLs plus `customArt:true` (and `_origImg` preserved so "Revert to original art" works). No schema change — it persists via the normal deck sync.
+- **Per-copy art**: a deck entry (`deck.cards[id] = {card, qty, arts}`) may carry `arts`, an object mapping copy index → `image_uris`, so individual copies of the same card (e.g. 4 different Force of Will photos) can each show different art. The art chooser has an "Apply to: This copy (#N) / All N copies" toggle; "All" sets the base `image_uris` and clears `arts`. Both the splash and the deck-editor render `arts[i]` per copy (copy index parsed from the builder's `cardId_<i>` instance uid).
+- **Splash layout** (blob): `defaultLayout` (`'cmc'|'type'|'user'`) sets which order a splash opens in; `layout = {positions:{ '<cardId>_<copyIdx>': {x,y,z} }}` stores the free-drag **User Layout** (each physical copy positioned independently; last-clicked raised via z). Both pass through `PUT /api/decks/:id`.
+
+### Shareable deck image
+- **`POST /api/splash/render`** (auth): composites a deck PNG server-side (Scryfall images aren't CORS-enabled, so client-side capture can't export). Body: `{width,height, background (key|#hex|null), cards:[{url,x,y,w,h}] (z-order), overlays:{name,price,list,cmcCurve,typeBreakdown}, meta:{deckName,priceText,list[],curve[],typeSeg[]}}`. Cards are fetched with an **allowlist** (our `/u/...` files + `cards.scryfall.io` only — anti-SSRF), composited via `sharp`, then an SVG overlay (name/price banner, CMC-curve, deck-list panel, type-breakdown bar) is drawn on top. The composer UI snapshots the current splash layout (any mode), lets the user pick a background + toggle overlays, and Download/Share the result.
+- **Backgrounds**: placeholder PNGs at `/srv/data/mymagicdeck/uploads/_bg/<key>.png` (served `/u/_bg/...`), generated with ImageMagick. **AI scene backgrounds** (`POST /api/splash/bg-generate`): a constrained prompt builder — closed word-lists only (`BG_SCENES`/`BG_VIBES`, no free text → limits misuse) — plus a hidden server-side "whimsy" modifier (`BG_WHIMSY`, never shown to the user). Calls `IMG_GEN_URL` (dormant/503 until set), saves to `/u/<userId>/bg_*.png`, and the renderer accepts that path as the `background` (validated to the caller's own dir). The diffusion model only makes the *scene*; cards are always composited by our renderer (an LLM can't legibly place specific cards).
+- **Header/footer + title**: the rendered image has top+bottom buffer bands totaling 10% (5% each); the deck name renders in the header as "\<name\> by \<author\>". Cards composite into the middle 90%; type-breakdown bar sits in the footer band.
+- **Splash layouts**: "Deck pic layout" (tidy grid) and **"Fan layout"** (`fanLayout()`) — a staggered cascade where the vertical step exceeds a card's top-strip height so every card's name + mana cost stays visible (the readability guarantee, done deterministically rather than via the AI).
+- `deckPhoto` (deck-level string URL) is passed through by `PUT /api/decks/:id` and rendered as a banner on the splash page.
 
 ### Domain Routing
 - `mymagicdeck.com` → serves `index.html` (static) + `/api/` (proxy to container)
@@ -247,7 +290,7 @@ Full-text search index over `name`, `type_line`, `oracle_text`, `keywords`. Cont
 
 ## Known Limitations & Technical Debt
 
-1. **Search goes directly to Scryfall** — `doSearch()` bypasses the local API entirely and hits `api.scryfall.com`. Only `doImport()` and `loadMoreResults()` use the local API. The local card search endpoint exists but isn't the primary search path.
+1. ~~Search goes directly to Scryfall~~ **(fixed)** — `doSearch()` now queries the local API first (with an `AbortController` + sequence guard to prevent races) and only falls back to `api.scryfall.com` on a genuine local outage (5xx/network), not on a 4xx. Colorless/multicolor (`c:c`, `ci:c`, `c:m`) are handled server-side.
 2. **No DB seeding feedback** — Users see no indication when the card database is being populated on first startup.
 3. **Deck sync is silent** — `syncDeckToApi()` catches errors to console only; users don't know if sync fails.
 4. **Password minimum is 4 characters** — Too weak for production.

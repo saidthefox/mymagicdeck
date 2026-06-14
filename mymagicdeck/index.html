@@ -353,6 +353,125 @@
     .printing-item img { width: 100%; display: block; border-radius: 2px; }
     .printing-item .pi-set { font-size: 0.48rem; color: var(--text-dim); text-align: center; padding: 2px 2px 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .printings-spinner { text-align: center; padding: 20px; color: var(--text-dim); font-size: 0.8rem; }
+    /* Printings popover: tabs + custom-art upload */
+    .printings-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+    .printings-tab { font-size: 0.72rem; font-weight: 700; color: var(--text-dim); padding: 5px 10px; cursor: pointer; border-bottom: 2px solid transparent; }
+    .printings-tab:hover { color: var(--text-bright); }
+    .printings-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .printings-scope { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 0.7rem; color: var(--text-dim); background: var(--surface2); border-radius: 6px; padding: 5px 8px; }
+    .printings-scope label { display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-bright); }
+    .printings-scope input { accent-color: var(--accent); }
+    .pup { display: flex; flex-direction: column; gap: 10px; padding: 4px 2px; }
+    .pup-drop { display: flex; align-items: center; justify-content: center; text-align: center; min-height: 96px; padding: 14px;
+      border: 2px dashed var(--border); border-radius: 8px; color: var(--text-dim); font-size: 0.78rem; cursor: pointer; transition: border-color 0.12s, color 0.12s; }
+    .pup-drop:hover { border-color: var(--accent); color: var(--text-bright); }
+    .pup-drop input { display: none; }
+    .pup-opt { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: var(--text-dim); cursor: pointer; }
+    .pup-opt input { accent-color: var(--accent); }
+    .pup-hint { font-size: 0.66rem; color: var(--text-dim); line-height: 1.4; }
+    .pup-status { font-size: 0.72rem; min-height: 1em; }
+    .pup-status.loading { color: var(--accent); }
+    .pup-status.err { color: var(--warn); }
+    /* Edit affordance on splash cards */
+    .splash-card .splash-edit-badge, .splash-commander-card .splash-edit-badge {
+      position: absolute; top: 4px; right: 4px; z-index: 50; background: rgba(0,0,0,0.7); color: #fff;
+      border-radius: 6px; padding: 2px 6px; font-size: 0.7rem; line-height: 1; pointer-events: none; }
+    .splash-overlay.editing .splash-card { cursor: pointer; }
+    /* Full-deck photo banner on splash */
+    .splash-deckphoto { position: relative; margin-bottom: 16px; border-radius: 10px; overflow: hidden; max-height: 360px; display: flex; justify-content: center; background: var(--surface2); }
+    .splash-deckphoto img { max-width: 100%; max-height: 360px; object-fit: contain; display: block; }
+    .splash-deckphoto.empty { min-height: 110px; align-items: center; border: 2px dashed var(--border); color: var(--text-dim); cursor: pointer; font-size: 0.85rem; }
+    .splash-deckphoto.empty:hover { border-color: var(--accent); color: var(--text-bright); }
+    .splash-photo-edit { position: absolute; top: 8px; right: 8px; }
+    /* My Uploads page */
+    .uploads-count { font-size: 0.78rem; color: var(--text-dim); font-weight: 600; margin-left: 6px; }
+    .uploads-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+    .uploads-hint { font-size: 0.7rem; color: var(--text-dim); flex: 1; min-width: 160px; }
+    .uploads-status { font-size: 0.75rem; min-height: 1em; margin-bottom: 8px; }
+    .uploads-status.loading { color: var(--accent); }
+    .uploads-status.err { color: var(--warn); }
+    .uploads-tray { display: flex; flex-wrap: wrap; gap: 10px; }
+    .uploads-tray:not(:empty) { margin-bottom: 12px; }
+    .uplj { position: relative; width: 92px; }
+    .uplj img { width: 92px; height: 128px; object-fit: cover; border-radius: 6px; display: block; border: 1px solid var(--border); }
+    .uplj .uplj-ov { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(0,0,0,0.5); border-radius: 6px; font-size: 0.62rem; color: #fff; text-align: center; padding: 4px; }
+    .uplj.error .uplj-ov { background: rgba(120,30,30,0.72); }
+    .uplj .uplj-x { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border: none; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.7rem; line-height: 1; cursor: pointer; padding: 0; }
+    .uplj-spin { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: uqspin 0.8s linear infinite; }
+    .uploads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; max-height: 62vh; overflow-y: auto; padding: 2px; align-items: start; }
+    .uploads-empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 30px; grid-column: 1 / -1; }
+    .upl-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+    .upl-thumb { width: 100%; aspect-ratio: 488/680; object-fit: cover; background: var(--surface); display: block; }
+    .upl-body { padding: 7px 8px; display: flex; flex-direction: column; gap: 6px; }
+    .upl-name { font-size: 0.76rem; font-weight: 700; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .upl-detected { font-size: 0.66rem; color: var(--text-dim); }
+    .upl-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .upl-actions .btn { padding: 3px 7px; font-size: 0.66rem; }
+    .upl-badge { display: inline-block; font-size: 0.6rem; padding: 0 5px; border-radius: 8px; background: var(--accent-dim); color: var(--accent); vertical-align: middle; }
+    .upl-search input { width: 100%; box-sizing: border-box; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--text-bright); font-size: 0.72rem; padding: 4px 6px; }
+    /* Inline (not absolute) so it isn't clipped by the tile's overflow; the tile grows instead. */
+    .upl-results { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; margin-top: 3px; max-height: 150px; overflow-y: auto; }
+    .upl-results div { padding: 5px 7px; font-size: 0.72rem; cursor: pointer; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .upl-results div:hover { background: var(--surface2); color: var(--accent); }
+    /* Corner-adjust cropper */
+    #crop-overlay { position: fixed; inset: 0; z-index: 4000; background: rgba(0,0,0,0.88); display: none; align-items: center; justify-content: center; padding: 16px; }
+    #crop-overlay.open { display: flex; }
+    .crop-box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: 0 12px 50px rgba(0,0,0,0.7); padding: 14px; max-width: 96vw; max-height: 94vh; display: flex; flex-direction: column; gap: 10px; }
+    .crop-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .crop-title { font-size: 0.92rem; font-weight: 700; color: var(--text-bright); }
+    .crop-detected { font-size: 0.74rem; font-weight: 600; color: var(--accent); margin-left: 8px; }
+    .crop-x { background: none; border: none; color: var(--text-dim); font-size: 1.1rem; cursor: pointer; }
+    .crop-x:hover { color: var(--text-bright); }
+    .crop-hint { font-size: 0.72rem; color: var(--text-dim); }
+    .crop-stage-wrap { display: flex; align-items: center; justify-content: center; overflow: auto; }
+    .crop-stage { position: relative; line-height: 0; touch-action: none; }
+    .crop-stage img { display: block; max-width: 78vw; max-height: 66vh; user-select: none; -webkit-user-drag: none; }
+    .crop-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+    .crop-svg polygon { fill: rgba(125,224,160,0.14); stroke: var(--accent); stroke-width: 2; stroke-dasharray: 6 4; }
+    .crop-handle { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; background: rgba(0,0,0,0.55); border: 3px solid var(--accent); box-shadow: 0 0 0 2px rgba(0,0,0,0.5); cursor: grab; touch-action: none; z-index: 5; }
+    .crop-handle:active { cursor: grabbing; transform: scale(1.15); }
+    .crop-status { font-size: 0.75rem; min-height: 1em; }
+    .crop-status.loading { color: var(--accent); }
+    .crop-status.err { color: var(--warn); }
+    .crop-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .printings-section { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin: 2px 0 3px; }
+    /* Background upload-queue progress widget */
+    #upload-queue { position: fixed; bottom: 18px; right: 18px; z-index: 4500; display: none; align-items: center; gap: 11px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; box-shadow: 0 8px 30px rgba(0,0,0,0.6); max-width: 290px; }
+    #upload-queue.active { display: flex; }
+    #upload-queue .uq-text { display: flex; flex-direction: column; font-size: 0.74rem; color: var(--text-bright); min-width: 0; }
+    #upload-queue .uq-text strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #upload-queue .uq-text span { font-size: 0.66rem; color: var(--text-dim); }
+    .uq-spin { width: 18px; height: 18px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: uqspin 0.8s linear infinite; flex-shrink: 0; }
+    @keyframes uqspin { to { transform: rotate(360deg); } }
+    /* User Layout (free-drag) */
+    .splash-free { position: relative; }
+    .splash-card.free { position: absolute; transition: none; }
+    .splash-overlay.editing .splash-card.free { cursor: grab; box-shadow: 0 3px 12px rgba(0,0,0,0.65); }
+    .splash-overlay.editing .splash-card.free:active { cursor: grabbing; }
+    .splash-free.snap { background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 30px 30px; }
+    /* Share-image composer */
+    #modal-share-image, #modal-uploads { z-index: 4600; } /* opened from inside the splash overlay (z 2000) */
+    .si-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-dim); margin: 12px 0 6px; }
+    .si-bgs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .si-bg { width: 66px; cursor: pointer; border: 2px solid transparent; border-radius: 7px; overflow: hidden; text-align: center; background: var(--surface2); }
+    .si-bg.active { border-color: var(--accent); }
+    .si-bg img, .si-bg .si-bg-plain { width: 100%; height: 90px; object-fit: cover; display: block; background: linear-gradient(135deg,#1a1f29,#2a2f3a); }
+    .si-bg span { font-size: 0.6rem; color: var(--text-dim); display: block; padding: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .si-ai { margin: 8px 0 4px; padding: 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; }
+    .si-ai-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 0.8rem; color: var(--text-bright); }
+    .si-ai-row select { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; color: var(--text-bright); font-size: 0.78rem; padding: 4px 6px; }
+    .si-ai-status { font-size: 0.72rem; margin-top: 8px; min-height: 1em; }
+    .si-ai-status.loading { color: var(--accent); }
+    .si-ai-status.err { color: var(--warn); }
+    .si-opts { display: flex; flex-wrap: wrap; gap: 10px 16px; }
+    .si-opts label { font-size: 0.78rem; color: var(--text-bright); display: flex; align-items: center; gap: 5px; cursor: pointer; }
+    .si-opts input { accent-color: var(--accent); }
+    .si-actions { display: flex; align-items: center; gap: 10px; margin-top: 14px; }
+    .si-status { font-size: 0.74rem; }
+    .si-status.loading { color: var(--accent); }
+    .si-status.err { color: var(--warn); }
+    .si-img { max-width: 100%; max-height: 52vh; display: block; margin-top: 12px; border: 1px solid var(--border); border-radius: 6px; }
+    .si-dl { display: flex; gap: 8px; margin-top: 8px; }
 
     .mtgo-drop-line {
       position: absolute; left: 0; width: var(--card-w); height: 3px;
@@ -621,11 +740,11 @@
 
     /* ── Share modal ── */
     .share-url-box {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: flex-start; gap: 8px;
       background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
       padding: 8px 12px; margin-bottom: 12px;
     }
-    .share-url { flex: 1; font-family: 'Courier New', monospace; font-size: 0.75rem; color: var(--accent); word-break: break-all; }
+    .share-url { flex: 1; min-width: 0; font-family: 'Courier New', monospace; font-size: 0.75rem; color: var(--accent); word-break: break-all; display: block; max-height: 4.5em; overflow-y: auto; }
     .share-opts { display: flex; flex-direction: column; gap: 10px; }
     .share-opt { display: flex; align-items: flex-start; gap: 10px; font-size: 0.8rem; color: var(--text); padding: 8px; border-radius: var(--radius); background: var(--surface2); border: 1px solid var(--border); cursor: pointer; transition: border-color 0.15s; }
     .share-opt:hover { border-color: var(--accent); }
@@ -769,6 +888,7 @@
     <div class="user-menu" id="user-menu" style="display:none;">
       <div class="user-menu-name" id="user-menu-name"></div>
       <div class="user-menu-item" onclick="openShare();closeUserMenu()">🔗 Share Deck</div>
+      <div class="user-menu-item" onclick="openUploads();closeUserMenu()">🖼 My Uploads</div>
       <div class="user-menu-sep"></div>
       <div class="user-menu-item danger" onclick="logout()">Sign Out</div>
     </div>
@@ -1133,6 +1253,89 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-uploads">
+  <div class="modal" style="width:980px;max-width:96vw">
+    <div class="modal-header">
+      <div class="modal-title">My Uploads <span class="uploads-count" id="uploads-count"></span></div>
+      <button class="modal-close" onclick="closeModal('modal-uploads')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="uploads-toolbar">
+        <label class="btn primary">＋ Upload cards<input type="file" accept="image/*" multiple id="uploads-file" style="display:none" onchange="doDirectUpload(this)"></label>
+        <span class="uploads-hint">Add photos of your cards — each is auto-detected, cropped, and tagged. Queue several; keep adding while they process.</span>
+      </div>
+      <div id="uploads-tray" class="uploads-tray"></div>
+      <div id="uploads-status" class="uploads-status"></div>
+      <div id="uploads-grid" class="uploads-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="crop-overlay">
+  <div class="crop-box">
+    <div class="crop-head">
+      <div class="crop-title">Adjust the corners <span class="crop-detected" id="crop-detected"></span></div>
+      <button class="crop-x" onclick="closeCropper()">✕</button>
+    </div>
+    <div class="crop-hint">Drag each dot onto a corner of your card — we’ll straighten and crop to it.</div>
+    <div class="crop-stage-wrap">
+      <div class="crop-stage" id="crop-stage">
+        <img id="crop-img" alt="your upload" draggable="false"/>
+        <svg class="crop-svg" id="crop-svg"><polygon id="crop-poly"/></svg>
+        <div class="crop-handle" data-i="0" onpointerdown="_cropHandleDown(event)"></div>
+        <div class="crop-handle" data-i="1" onpointerdown="_cropHandleDown(event)"></div>
+        <div class="crop-handle" data-i="2" onpointerdown="_cropHandleDown(event)"></div>
+        <div class="crop-handle" data-i="3" onpointerdown="_cropHandleDown(event)"></div>
+      </div>
+    </div>
+    <div class="crop-status" id="crop-status"></div>
+    <div class="crop-actions">
+      <button class="btn" onclick="_cropReset()">↺ Auto corners</button>
+      <button class="btn" onclick="_cropWhole()">⛶ Whole image</button>
+      <span style="flex:1"></span>
+      <button class="btn" onclick="closeCropper()">Cancel</button>
+      <button class="btn primary" onclick="_cropSave()">Crop &amp; Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="upload-queue"></div>
+
+<div class="modal-overlay" id="modal-share-image">
+  <div class="modal" style="width:580px;max-width:96vw">
+    <div class="modal-header">
+      <div class="modal-title">Share deck image</div>
+      <button class="modal-close" onclick="closeModal('modal-share-image')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="si-label">Background</div>
+      <div class="si-bgs" id="si-bgs"></div>
+      <div id="si-ai" class="si-ai" style="display:none">
+        <div class="si-ai-row">
+          <span>Set my deck in</span>
+          <select id="si-ai-scene"></select>
+          <select id="si-ai-vibe"></select>
+          <button class="btn small primary" onclick="_genBg()">✨ Generate scene</button>
+        </div>
+        <div class="si-ai-status" id="si-ai-status"></div>
+      </div>
+      <div class="si-label">Include</div>
+      <div class="si-opts">
+        <label><input type="checkbox" id="si-name" checked> Deck name</label>
+        <label><input type="checkbox" id="si-price"> Price</label>
+        <label><input type="checkbox" id="si-list"> Deck list</label>
+        <label><input type="checkbox" id="si-curve"> CMC curve</label>
+        <label><input type="checkbox" id="si-type"> Type breakdown</label>
+      </div>
+      <div class="si-actions">
+        <button class="btn primary" onclick="_genShareImage()">Generate image</button>
+        <span class="si-status" id="si-status"></span>
+      </div>
+      <div id="si-preview"></div>
+    </div>
+  </div>
+</div>
+
 <!-- Splash Overlay -->
 <div id="splash-overlay">
   <div class="splash-header">
@@ -1152,7 +1355,13 @@
     <span class="printings-title" id="printings-title">Other Printings</span>
     <button class="printings-close" onclick="closePrintings()">✕</button>
   </div>
+  <div class="printings-tabs" id="printings-tabs" style="display:none">
+    <div class="printings-tab active" id="ptab-prints" onclick="switchPrintingsTab('prints')">Printings</div>
+    <div class="printings-tab" id="ptab-upload" onclick="switchPrintingsTab('upload')">Upload your own</div>
+  </div>
+  <div id="printings-scope" style="display:none"></div>
   <div id="printings-grid-wrap"><div class="printings-spinner">Loading…</div></div>
+  <div id="printings-upload-wrap" style="display:none"></div>
 </div>
 
 <div id="toast-container"></div>
@@ -1257,7 +1466,7 @@ async function apiFetch(path,opts={}){
   const token=apiToken();
   const headers={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})};
   const res=await fetch(API_BASE+path,{...opts,headers});
-  if(!res.ok){const err=await res.json().catch(()=>({error:'Request failed'}));throw new Error(err.error||'Request failed')}
+  if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));const err=new Error(body.error||'Request failed');err.status=res.status;throw err}
   return res.json();
 }
 
@@ -1514,6 +1723,7 @@ function openShare(){
       <button class="btn" onclick="downloadDeckTxt()">⬇ Download .txt</button>
       <button class="btn" onclick="splashCopyListFromCurrent()">📋 Copy List</button>
       <button class="btn" onclick="previewSplash()">👁 Preview</button>
+      <button class="btn primary" onclick="editSplashFromShare()">✎ Edit Splash Page</button>
     </div>`;
   openModal('modal-share');
 }
@@ -1639,8 +1849,10 @@ function getCommanderCard(deckObj){
   return best;
 }
 
-function openSplash(deckObj,username){
+let _splashEdit=false;
+function openSplash(deckObj,username,opts){
   _splashDeck={deck:deckObj,username};
+  _splashEdit=!!(opts&&opts.edit)&&!!state.user;
 
   const allCards=Object.values(deckObj.cards||{});
   const sbCards=Object.values(deckObj.sideboard||{});
@@ -1651,6 +1863,7 @@ function openSplash(deckObj,username){
 
   // Meta bar: deck name + by on one line, counts+price, then sort+zoom
   const byStr=username?`by <strong style="color:var(--accent)">${username}</strong>`:'shared deck';
+  const initSort=['cmc','type','user'].includes(deckObj.defaultLayout)?deckObj.defaultLayout:'cmc';
   const statsHtml=`<div class="splash-meta-bar">
     <div style="display:flex;flex-direction:column;gap:3px">
       <div style="display:flex;align-items:baseline;gap:8px">
@@ -1665,8 +1878,16 @@ function openSplash(deckObj,username){
     </div>
     <div class="splash-sort-wrap">
       <span class="splash-sort-label">Order:</span>
-      <label><input type="radio" name="splash-sort" value="cmc" checked onchange="splashReorder()"> By CMC</label>
-      <label><input type="radio" name="splash-sort" value="type" onchange="splashReorder()"> By Type</label>
+      <label><input type="radio" name="splash-sort" value="cmc" ${initSort==='cmc'?'checked':''} onchange="splashReorder()"> By CMC</label>
+      <label><input type="radio" name="splash-sort" value="type" ${initSort==='type'?'checked':''} onchange="splashReorder()"> By Type</label>
+      <label><input type="radio" name="splash-sort" value="user" ${initSort==='user'?'checked':''} onchange="splashReorder()"> User Layout</label>
+      ${_splashEdit?`<button class="btn small splash-user-ctl" id="splash-save-layout" onclick="saveUserLayout()" style="display:none">💾 Save layout</button>
+      <label class="btn small splash-user-ctl" id="splash-snap-ctl" style="display:none"><input type="checkbox" id="splash-snap" onchange="_snapToggle()" style="margin-right:4px"> Snap grid</label>
+      <button class="btn small splash-user-ctl" id="splash-deckpic" onclick="deckPicLayout()" style="display:none" title="Auto-arrange into a tidy grid">🎴 Deck pic layout</button>
+      <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
+      <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
+      <button class="btn small" onclick="openUploads()">🗂 My Uploads</button>
+      <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
     </div>
     <div class="splash-zoom-wrap">
       <label for="splash-zoom" class="splash-zoom-lbl">🔍</label>
@@ -1702,14 +1923,26 @@ function openSplash(deckObj,username){
   const zoomSlider=document.getElementById('splash-zoom');
   if(zoomSlider){zoomSlider.value=defaultZoom;const lbl=document.getElementById('splash-zoom-label');if(lbl)lbl.textContent=defaultZoom+'%';}
   const zoomPct=defaultZoom;
-  const sortMode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
+  const sortMode=initSort; // radios aren't in the DOM yet; use the resolved default
   const colsHtml=_buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode);
 
-  document.getElementById('splash-body').innerHTML=statsHtml+barHtml+colsHtml;
+  // Full-deck photo banner (read-only for public viewers; editable in edit mode)
+  let photoHtml='';
+  if(deckObj.deckPhoto){
+    photoHtml=`<div class="splash-deckphoto"><img src="${deckObj.deckPhoto}" alt="Full deck photo"/>${_splashEdit?`<button class="btn small primary splash-photo-edit" onclick="triggerDeckPhoto()">Change photo</button>`:''}</div>`;
+  } else if(_splashEdit){
+    photoHtml=`<div class="splash-deckphoto empty" onclick="triggerDeckPhoto()"><span>＋ Add a full-deck photo</span></div>`;
+  }
+  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — click any card to change its art or upload your own.</div>`:'';
+  document.getElementById('splash-body').innerHTML=editHint+photoHtml+statsHtml+barHtml+colsHtml;
   _attachCardHover(document.getElementById('splash-body'));
   const dn=document.getElementById('splash-deck-name');
   if(dn)dn.textContent=deckObj.name||'Untitled Deck';
-  document.getElementById('splash-overlay').classList.add('open');
+  const ov=document.getElementById('splash-overlay');
+  ov.classList.toggle('editing',_splashEdit);
+  ov.classList.add('open');
+  const showUC=(_splashEdit&&initSort==='user')?'':'none';
+  document.querySelectorAll('.splash-user-ctl').forEach(el=>el.style.display=showUC);
 }
 function _isBasicLand(card){
   const t=(card.type_line||'').toLowerCase();
@@ -1717,6 +1950,7 @@ function _isBasicLand(card){
   return t.includes('basic') || basicNames.includes(card.name.toLowerCase());
 }
 function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
+  if(sortMode==='user')return _buildSplashFree(allCards,sbCards,zoomPct);
   const scale=zoomPct/100;
   const CARD_W=Math.round(121*scale);
   const CARD_H=Math.round(184*scale);
@@ -1775,28 +2009,39 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
     const imgN=getCardImage(cmdCard,'normal');
     const imgL=imgN?imgN.replace('/normal/','/large/').replace('_normal.','_large.'):'';
     const esc=JSON.stringify(cmdCard).replace(/"/g,'&quot;');
-    html+=`<div class="splash-commander-col"><div class="splash-commander-label">👑 Commander</div><div class="splash-commander-card" onclick="showCardDetail(${esc})" data-normal="${imgN}" data-large="${imgL||imgN}">`;
+    const cmdClick=_splashEdit?`openSplashCardEdit(event,'${getCardId(cmdCard)}')`:`showCardDetail(${esc})`;
+    html+=`<div class="splash-commander-col"><div class="splash-commander-label">👑 Commander</div><div class="splash-commander-card" onclick="${cmdClick}" data-normal="${imgN}" data-large="${imgL||imgN}">`;
     html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${cmdCard.name}"/>`:`<div class="no-img-ph" style="width:121px;aspect-ratio:488/680">${cmdCard.name}</div>`;
+    if(_splashEdit)html+=`<div class="splash-edit-badge">✎</div>`;
     html+=`</div></div><div class="splash-commander-divider"></div>`;
   }
   for(const{label,entries,gap}of columns){
     if(!entries||!entries.length)continue;
-    const cards=[];
-    for(const{card,qty}of entries)for(let i=0;i<qty;i++)cards.push(card);
-    const stackH=(cards.length-1)*SO+CARD_H;
+    // Flatten to physical copies, each carrying its deck entry + copy index so
+    // per-copy art overrides (entry.arts[i]) render and stay individually editable.
+    const flat=[];
+    for(const{card,qty}of entries){
+      const cid=getCardId(card);
+      const entry=(_splashDeck&&_splashDeck.deck&&(_splashDeck.deck.cards?.[cid]||_splashDeck.deck.sideboard?.[cid]))||null;
+      for(let k=0;k<qty;k++)flat.push({card,cid,entry,copyIdx:k});
+    }
+    const stackH=(flat.length-1)*SO+CARD_H;
     const count=entries.reduce((s,e)=>s+e.qty,0);
     const marginStyle=gap?`margin-left:${Math.round(CARD_W*0.5)}px;`:'';
     html+=`<div class="splash-column" style="min-width:${CARD_W}px;${marginStyle}"><div class="splash-col-header">${label} <span class="cnt">${count}</span></div>`;
     html+=`<div class="splash-col-stack" style="position:relative;width:${CARD_W}px;height:${stackH}px">`;
-    cards.forEach((card,i)=>{
-      const imgNormal=getCardImage(card,'normal');
-      // Derive large URL from normal URL (works even for reconstructed card objects)
-      const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
-      const esc=JSON.stringify(card).replace(/"/g,'&quot;');
-      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="showCardDetail(${esc})" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()">`;
+    flat.forEach((it,i)=>{
+      const ov=it.entry&&it.entry.arts&&it.entry.arts[it.copyIdx];
+      const imgNormal=ov?(ov.normal||ov.small):getCardImage(it.card,'normal');
+      // Derive large URL from normal URL (works for Scryfall and custom /u/ URLs)
+      const imgLarge=ov?(ov.large||ov.normal||imgNormal):(imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'');
+      const esc=JSON.stringify(it.card).replace(/"/g,'&quot;');
+      const cardClick=_splashEdit?`openSplashCardEdit(event,'${it.cid}',${it.copyIdx})`:`showCardDetail(${esc})`;
+      html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="${cardClick}" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()">`;
       html+=imgNormal
-        ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${card.name}"/>`
-        :`<div class="no-img-ph">${card.name}</div>`;
+        ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${it.card.name}"/>`
+        :`<div class="no-img-ph">${it.card.name}</div>`;
+      if(_splashEdit&&i===flat.length-1)html+=`<div class="splash-edit-badge">✎</div>`;
       html+=`</div>`;
     });
     html+=`</div></div>`;
@@ -1818,8 +2063,102 @@ function _splashRebuildColumns(){
   const newNode=tmp.firstElementChild;
   if(existing)existing.replaceWith(newNode);
   else body.appendChild(newNode);
-  _attachCardHover(body);
+  if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
 }
+// ── Share-image composer ──────────────────────────────────────────────────────
+const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island',label:'Island'},{key:'mountain',label:'Mountain'},{key:'forest',label:'Forest'},{key:'plains',label:'Plains'},{key:'wastes',label:'Wastes'},{key:'__ai__',label:'✨ AI scene'}];
+// Closed word-lists (must match the server's allowlists). No free text → limits misuse.
+const BG_SCENE_OPTS=[['desert','a desert'],['forest','a forest'],['random-biome','a random biome'],['ascii','ASCII art'],['tokyo','Tokyo'],['space','outer space'],['underwater','underwater'],['mountains','the mountains'],['city','a city'],['void','the void'],['dream','a dreamscape'],['swamp','a swamp'],['volcano','a volcano'],['library','a library'],['tavern','a tavern'],['meadow','a meadow'],['cosmos','the cosmos']];
+const BG_VIBE_OPTS=[['none','(any vibe)'],['cozy','cozy'],['epic','epic'],['eerie','eerie'],['cheerful','cheerful'],['mysterious','mysterious'],['chaotic','chaotic'],['serene','serene'],['retro','retro']];
+let _siBg='', _shareBlob=null;
+function openShareImage(){ _openShareImage(); }
+function _openShareImage(){
+  if(!_splashDeck){toast('Open your splash first','error');return;}
+  document.getElementById('si-bgs').innerHTML=SHARE_BGS.map(b=>{
+    const inner = b.key==='__ai__' ? `<div class="si-bg-plain" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem">✨</div>`
+      : b.key ? `<img src="/u/_bg/${b.key}.png" alt="${b.label}" onerror="this.style.display='none'"/>`
+      : `<div class="si-bg-plain"></div>`;
+    return `<div class="si-bg${b.key===_siBg?' active':''}" onclick="_pickBg(event,'${b.key}')">${inner}<span>${b.label}</span></div>`;
+  }).join('');
+  // Populate the AI scene dropdowns once.
+  const ss=document.getElementById('si-ai-scene'); if(ss&&!ss.dataset.init){ ss.innerHTML=BG_SCENE_OPTS.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join(''); ss.dataset.init='1'; }
+  const vs=document.getElementById('si-ai-vibe'); if(vs&&!vs.dataset.init){ vs.innerHTML=BG_VIBE_OPTS.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join(''); vs.dataset.init='1'; }
+  document.getElementById('si-ai').style.display='none';
+  document.getElementById('si-ai-status').textContent='';
+  document.getElementById('si-preview').innerHTML='';
+  document.getElementById('si-status').textContent='';
+  openModal('modal-share-image');
+}
+function _pickBg(e,k){
+  document.querySelectorAll('#si-bgs .si-bg').forEach(el=>el.classList.remove('active'));
+  if(e&&e.currentTarget)e.currentTarget.classList.add('active');
+  const ai=document.getElementById('si-ai');
+  if(k==='__ai__'){ if(ai)ai.style.display=''; return; } // builder shown; _siBg set when a scene is generated
+  if(ai)ai.style.display='none';
+  _siBg=k;
+}
+async function _genBg(){
+  const scene=document.getElementById('si-ai-scene').value, vibe=document.getElementById('si-ai-vibe').value;
+  const st=document.getElementById('si-ai-status'); st.className='si-ai-status loading'; st.textContent='Generating scene…';
+  try{
+    const res=await fetch(API_BASE+'/splash/bg-generate',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken()},body:JSON.stringify({slots:{scene,vibe}})});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok){ st.className='si-ai-status err'; st.textContent=j.error||'Generation failed'; return; }
+    _siBg=j.url; st.className='si-ai-status'; st.textContent='Scene ready ✓ — selected as your background. Hit Generate image below.';
+  }catch(e){ st.className='si-ai-status err'; st.textContent='Generation failed. Check your connection.'; }
+}
+function _chk(id){ const el=document.getElementById(id); return !!(el&&el.checked); }
+// Snapshot the currently-rendered card layout (works for columns or free) → rects relative to the layout container.
+function _snapshotLayout(){
+  const cont=document.querySelector('#splash-body .splash-columns'); if(!cont)return null;
+  const cr=cont.getBoundingClientRect();
+  const cards=[];
+  cont.querySelectorAll('.splash-card, .splash-commander-card').forEach(el=>{
+    const img=el.querySelector('img'); if(!img)return;
+    const src=img.getAttribute('src'); if(!src)return;
+    const r=el.getBoundingClientRect();
+    cards.push({ url:src, x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height, z:parseInt(getComputedStyle(el).zIndex)||0 });
+  });
+  cards.sort((a,b)=>a.z-b.z);
+  return { width:cr.width, height:cr.height, cards };
+}
+function _shareMeta(deck, author){
+  const cards=Object.values(deck.cards||{});
+  const sb=Object.values(deck.sideboard||{});
+  let price=0; for(const{card,qty}of cards)price+=parseFloat(card.prices?.usd||0)*qty;
+  for(const{card,qty}of sb)price+=parseFloat(card.prices?.usd||0)*qty;
+  const list=cards.slice().sort((a,b)=>a.card.name.localeCompare(b.card.name)).map(({card,qty})=>qty+' '+card.name);
+  if(sb.length){ list.push('— Sideboard —'); for(const{card,qty}of sb.slice().sort((a,b)=>a.card.name.localeCompare(b.card.name)))list.push(qty+' '+card.name); }
+  const buckets={}; for(const{card,qty}of cards){ if((card.type_line||'').toLowerCase().includes('land'))continue; const m=Math.min(card.cmc||0,7); buckets[m]=(buckets[m]||0)+qty; }
+  const curve=[]; for(let i=0;i<=7;i++)curve.push({label:i===7?'7+':String(i),count:buckets[i]||0});
+  const typeColors={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
+  const g={}; for(const{card,qty}of cards){ const c=getCardCategory(card); g[c]=(g[c]||0)+qty; }
+  const typeSeg=CATEGORY_ORDER.filter(c=>g[c]).map(c=>({label:c,count:g[c],color:typeColors[c]||'#555'}));
+  return { deckName:deck.name||'Untitled Deck', author:author||null, priceText:'$'+price.toFixed(2), list, curve, typeSeg };
+}
+async function _genShareImage(){
+  const snap=_snapshotLayout();
+  if(!snap||!snap.cards.length){ toast('Nothing to render — open the splash with cards','error'); return; }
+  const st=document.getElementById('si-status'); st.className='si-status loading'; st.textContent='Rendering…';
+  // Upscale for a crisp image (cards' source art is higher-res than the on-screen size).
+  const maxDim=Math.max(snap.width,snap.height)||1; const s=Math.min(2.5, 3500/maxDim);
+  const sc=v=>Math.round(v*s);
+  const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x),y:sc(c.y),w:sc(c.w),h:sc(c.h)}));
+  const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type') };
+  try{
+    const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken()},
+      body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
+    if(!res.ok){ const j=await res.json().catch(()=>({})); st.className='si-status err'; st.textContent=j.error||'Render failed'; return; }
+    _shareBlob=await res.blob();
+    const url=URL.createObjectURL(_shareBlob);
+    const canShare=!!(navigator.canShare&&navigator.canShare({files:[new File([_shareBlob],'d.png',{type:'image/png'})]}));
+    document.getElementById('si-preview').innerHTML=`<img src="${url}" class="si-img" alt="deck image"/>`
+      +`<div class="si-dl"><button class="btn primary" onclick="_dlShare()">⬇ Download</button>${canShare?`<button class="btn" onclick="_shareShare()">📤 Share</button>`:''}</div>`;
+    st.textContent='';
+  }catch(e){ st.className='si-status err'; st.textContent='Render failed. Check your connection.'; }
+}
+function _dlShare(){ if(!_shareBlob)return; const a=document.createElement('a'); a.href=URL.createObjectURL(_shareBlob); a.download=((_splashDeck&&_splashDeck.deck.name||'deck').replace(/[^a-z0-9]/gi,'_').toLowerCase())+'.png'; a.click(); }
+async function _shareShare(){ if(!_shareBlob)return; const f=new File([_shareBlob],'deck.png',{type:'image/png'}); try{ if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:(_splashDeck&&_splashDeck.deck.name)||'My deck'}); else _dlShare(); }catch(e){} }
 function splashCardTouch(e,el){
   if(el.classList.contains('zoomed')){
     // Second tap — let onclick fire for card detail
@@ -1842,7 +2181,132 @@ function splashZoom(){
   _splashRebuildColumns();
 }
 function splashReorder(){
+  const mode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
+  const show=(_splashEdit&&mode==='user')?'':'none';
+  document.querySelectorAll('.splash-user-ctl').forEach(el=>el.style.display=show);
   _splashRebuildColumns();
+}
+// ── User Layout (free-drag) ───────────────────────────────────────────────────
+let _freeZ=0, _snapOn=false; const SNAP_GRID=30;
+function _snapToggle(){
+  const cb=document.getElementById('splash-snap'); _snapOn=!!(cb&&cb.checked);
+  const f=document.getElementById('splash-free'); if(f)f.classList.toggle('snap',_snapOn);
+}
+function _buildSplashFree(allCards,sbCards,zoomPct){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
+  const CARD_W=121,CARD_H=169,GAP=12;
+  const scale=zoomPct/100;
+  const ents=[];
+  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const entry=store&&store[cid]; const qty=entry?entry.qty:1; for(let k=0;k<qty;k++)ents.push({card,cid,entry,copyIdx:k,key:cid+'_'+k}); } };
+  collect(allCards,deck.cards); collect(sbCards,deck.sideboard);
+  const positions=(deck.layout&&deck.layout.positions)||{};
+  const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
+  let maxX=0,maxY=0,gi=0;
+  const placed=[];
+  for(const e of ents){
+    let p=positions[e.key];
+    if(!p){ const col=gi%perRow,row=Math.floor(gi/perRow); p={x:col*(CARD_W+GAP),y:row*(CARD_H+GAP),z:gi+1}; gi++; }
+    placed.push({e,p});
+    maxX=Math.max(maxX,p.x+CARD_W); maxY=Math.max(maxY,p.y+CARD_H);
+    if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z);
+  }
+  const W=Math.max(maxX+40,420),H=Math.max(maxY+40,320);
+  let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
+  for(const{e,p}of placed){
+    const ov=e.entry&&e.entry.arts&&e.entry.arts[e.copyIdx];
+    const imgN=ov?(ov.normal||ov.small):getCardImage(e.card,'normal');
+    const imgL=ov?(ov.large||ov.normal||imgN):(imgN?imgN.replace('/normal/','/large/').replace('_normal.','_large.'):'');
+    const esc=JSON.stringify(e.card).replace(/"/g,'&quot;');
+    const handler=_splashEdit
+      ? `onpointerdown="freeCardDown(event,'${e.key}','${e.cid}',${e.copyIdx})"`
+      : `onclick="showCardDetail(${esc})" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()"`;
+    html+=`<div class="splash-card free" data-key="${e.key}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||1};width:${CARD_W}px" ${handler}>`;
+    html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${e.card.name}" draggable="false"/>`:`<div class="no-img-ph">${e.card.name}</div>`;
+    if(_splashEdit)html+=`<div class="splash-edit-badge">✎</div>`;
+    html+=`</div>`;
+  }
+  html+=`</div></div>`;
+  return html;
+}
+function freeCardDown(e,key,cid,copyIdx){
+  if(e.button!==undefined&&e.button!==0)return;
+  e.preventDefault();
+  const el=e.currentTarget;
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+  const scale=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
+  _freeZ++; el.style.zIndex=_freeZ; // last-clicked rises to top
+  const startX=e.clientX,startY=e.clientY;
+  const baseLeft=parseFloat(el.style.left)||0,baseTop=parseFloat(el.style.top)||0;
+  let moved=false;
+  const snap=v=>_snapOn?Math.round(v/SNAP_GRID)*SNAP_GRID:v;
+  const move=(ev)=>{
+    if(!moved&&Math.abs(ev.clientX-startX)+Math.abs(ev.clientY-startY)>4)moved=true;
+    if(moved){ el.style.left=Math.max(0,snap(baseLeft+(ev.clientX-startX)/scale))+'px'; el.style.top=Math.max(0,snap(baseTop+(ev.clientY-startY)/scale))+'px'; }
+  };
+  const up=(ev)=>{
+    window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up);
+    const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0;
+    deck.layout.positions[key]={x,y,z:_freeZ};
+    if(moved){ saveToStorage(); syncDeckToApi(deck.id); } // persist on drag-end
+    else { openSplashCardEdit(ev,cid,copyIdx); } // a click (no drag) opens the art editor
+  };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+function saveUserLayout(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  const free=document.getElementById('splash-free'); if(!free){toast('Switch to User Layout first','info');return;}
+  deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+  free.querySelectorAll('.splash-card').forEach(el=>{ const k=el.dataset.key; if(!k)return;
+    deck.layout.positions[k]={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; });
+  saveToStorage(); syncDeckToApi(deck.id); toast('Layout saved 💾','success');
+}
+function setDefaultLayout(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  const mode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
+  deck.defaultLayout=mode;
+  saveToStorage(); syncDeckToApi(deck.id);
+  toast('Default set: '+(mode==='user'?'User Layout':mode==='type'?'By Type':'By CMC'),'success');
+}
+// One-click tidy arrangement for users who don't want to hand-place every card.
+function deckPicLayout(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  const CARD_W=121,CARD_H=169,GAP=10;
+  const items=[];
+  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:cid+'_'+k}); } };
+  collect(Object.values(deck.cards||{}),deck.cards); collect(Object.values(deck.sideboard||{}),deck.sideboard);
+  items.sort((a,b)=>{
+    const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)), cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card));
+    return ca-cb || (a.card.cmc||0)-(b.card.cmc||0) || a.card.name.localeCompare(b.card.name);
+  });
+  const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
+  const positions={};
+  items.forEach((it,i)=>{ const col=i%perRow,row=Math.floor(i/perRow); positions[it.key]={x:col*(CARD_W+GAP),y:row*(CARD_H+GAP),z:i+1}; });
+  deck.layout=deck.layout||{}; deck.layout.positions=positions;
+  const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true;
+  splashReorder(); // rebuild in user mode + show the user controls
+  saveToStorage(); syncDeckToApi(deck.id);
+  toast('Arranged into a deck-pic grid 🎴','success');
+}
+// Fanned cascade: stagger cards in columns so every card's top strip (name + mana
+// cost) is always exposed — vertical step exceeds the strip height; slight per-card
+// horizontal drift gives the fan; z ascends so lower cards sit in front of upper bodies.
+function fanLayout(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  const CARD_W=121, CARD_H=169, VSTEP=34, DRIFT=7, GAP=18; // VSTEP(34) > ~card top strip (~26px)
+  const items=[];
+  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:cid+'_'+k}); } };
+  collect(Object.values(deck.cards||{}),deck.cards); collect(Object.values(deck.sideboard||{}),deck.sideboard);
+  items.sort((a,b)=>{ const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)),cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card)); return ca-cb||(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name); });
+  const n=items.length;
+  const perCol=Math.max(4,Math.ceil(Math.sqrt(n)));
+  const colSpacing=CARD_W + (perCol-1)*DRIFT + GAP;
+  const positions={};
+  items.forEach((it,i)=>{ const col=Math.floor(i/perCol), row=i%perCol; positions[it.key]={ x:col*colSpacing + row*DRIFT, y:row*VSTEP, z:i+1 }; });
+  deck.layout=deck.layout||{}; deck.layout.positions=positions;
+  const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true;
+  splashReorder(); saveToStorage(); syncDeckToApi(deck.id);
+  toast('Fanned so every card’s name & mana show 🃏','success');
 }
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
@@ -2076,6 +2540,7 @@ function _hoverHideGhost(){
 function _attachCardHover(root){
   root.querySelectorAll('.mtgo-card, .splash-card, .splash-commander-card').forEach(card=>{
     if(card._hoverBound) return;
+    if(_splashEdit && card.classList.contains('free')) return; // no hover-zoom while free-editing layout
     card._hoverBound = true;
     card.addEventListener('mouseenter', function(){
       if(this.classList.contains('dragging')) return;
@@ -2114,8 +2579,12 @@ function renderDeckVisual(){
     for(let i=0;i<count;i++){
       const uid=uids[i],inst=deck._insts[uid];if(!inst)continue;
       const card=inst.card;
-      const imgNormal=getCardImage(card,'normal')||getCardImage(card,'small');
-      const imgLarge=imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'';
+      // Per-copy art override (entry.arts[copyIdx]) wins over the base card image.
+      const _entry=deck.cards[inst.cardId];
+      const _ci=(()=>{const m=String(uid).match(/_(\d+)$/);return m?parseInt(m[1],10):0;})();
+      const _ov=_entry&&_entry.arts&&_entry.arts[_ci];
+      const imgNormal=_ov?(_ov.normal||_ov.small):(getCardImage(card,'normal')||getCardImage(card,'small'));
+      const imgLarge=_ov?(_ov.large||_ov.normal||imgNormal):(imgNormal?imgNormal.replace('/normal/','/large/').replace('_normal.','_large.'):'');
       const setName=card.set_name||'';
       const esc=JSON.stringify(sanitizeCard(card)).replace(/"/g,'&quot;');
       h+=`<div class="mtgo-card" data-uid="${uid}" data-col="${key}" data-idx="${i}" style="top:${i*so}px;z-index:${i+1};width:${cardW}px;height:${cardH}px" onmousedown="cardMouseDown(event,'${uid}','${key}',${i})">`;
@@ -2223,13 +2692,32 @@ function dragEnd(e){
 // ============================================================
 //  PRINTINGS POPOVER
 // ============================================================
-let _printingsUid=null;
-async function openPrintings(e,uid,card){
+// Art chooser context: which deck + stored {card,qty} entry the chosen art applies to,
+// and how to re-render afterwards (builder deck-visual vs splash columns).
+let _printingsCtx=null;
+function _resolveEntry(deck,card){
+  if(!deck)return null;
+  const id=getCardId(card);
+  return (deck.cards&&deck.cards[id])||(deck.sideboard&&deck.sideboard[id])||null;
+}
+async function openPrintings(e,uid,card,source,copyIdxArg){
   e.preventDefault();
-  _printingsUid=uid;
+  const deck = source==='splash' ? _splashDeck?.deck : currentDeck();
+  const entry=_resolveEntry(deck,card);
+  // Which physical copy was clicked: explicit arg (splash) or parsed from the
+  // builder's uid (`cardId_<i>`).
+  let copyIdx = (typeof copyIdxArg==='number') ? copyIdxArg : 0;
+  if(typeof copyIdxArg!=='number'){ const m=String(uid).match(/_(\d+)$/); if(m)copyIdx=parseInt(m[1],10); }
+  _printingsCtx={ deck, entry, card, source: source||'builder', copyIdx, qty: entry?.qty||1 };
+  const canUpload=!!state.user;
   const pop=document.getElementById('printings-popover');
-  document.getElementById('printings-title').textContent=card.name+' — Printings';
+  document.getElementById('printings-title').textContent=card.name;
   document.getElementById('printings-grid-wrap').innerHTML='<div class="printings-spinner">Loading…</div>';
+  // The Upload tab needs an account; only offer it when signed in.
+  document.getElementById('printings-tabs').style.display=canUpload?'':'none';
+  _renderScope();
+  switchPrintingsTab('prints');
+  if(canUpload)_renderUploadTab();
   // Position near click, keep on screen
   pop.classList.add('open');
   const pw=320,ph=420;
@@ -2240,6 +2728,27 @@ async function openPrintings(e,uid,card){
   pop.style.left=x+'px';pop.style.top=y+'px';
   // Fetch all printings by oracle_id
   try{
+    // The user's own uploads tagged as this card (confirmed OR detected) → offer
+    // them as selectable version options, ahead of the Scryfall printings.
+    let myUploadsHtml='';
+    if(canUpload && card.oracle_id){
+      try{
+        const ud=await apiFetch('/uploads');
+        const mine=(ud.uploads||[]).filter(u=>u.kind==='card'&&u.oracle_id===card.oracle_id);
+        if(mine.length){
+          _printingUploads={};
+          myUploadsHtml='<div class="printings-section">Your uploads</div><div class="printings-grid">';
+          for(const u of mine){
+            _printingUploads[u.id]=u;
+            const img=u.small||u.normal||u.large;
+            myUploadsHtml+=`<div class="printing-item" onclick="selectUpload(${u.id})" title="Your upload${u.confirmed?'':' (detected)'}">`
+              +(img?`<img src="${img}" alt="upload"/>`:'')
+              +`<div class="pi-set">yours${u.confirmed?'':' ?'}</div></div>`;
+          }
+          myUploadsHtml+='</div>';
+        }
+      }catch(e){ /* uploads are a bonus; ignore failures */ }
+    }
     const q=card.oracle_id?`oracleid:${card.oracle_id}`:`!"${card.name}"`;
     let prints=[],page=1,hasMore=true;
     while(hasMore&&page<=4){
@@ -2249,38 +2758,460 @@ async function openPrintings(e,uid,card){
       prints=[...prints,...(d.data||[])];
       hasMore=d.has_more;page++;
     }
-    let html='<div class="printings-grid">';
+    let html=(myUploadsHtml?'<div class="printings-section">Scryfall printings</div>':'')+'<div class="printings-grid">';
     for(const p of prints){
       const img=getCardImage(p,'small');
-      const isActive=p.id===card.id;
+      const isActive=p.id===card.id&&!card.customArt;
       const esc=JSON.stringify(sanitizeCard(p)).replace(/"/g,'&quot;');
-      html+=`<div class="printing-item${isActive?' active':''}" onclick="selectPrinting('${uid}',${esc})" title="${p.set_name} (${p.released_at?.slice(0,4)||''})">`;
+      html+=`<div class="printing-item${isActive?' active':''}" onclick="selectPrinting(${esc})" title="${p.set_name} (${p.released_at?.slice(0,4)||''})">`;
       html+=img?`<img src="${img}" alt="${p.set_name}"/>`:`<div style="aspect-ratio:488/680;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-dim);padding:4px">${p.set_name}</div>`;
       html+=`<div class="pi-set">${p.set_name}</div></div>`;
     }
     html+='</div>';
-    document.getElementById('printings-grid-wrap').innerHTML=html;
+    document.getElementById('printings-grid-wrap').innerHTML=myUploadsHtml+html;
   }catch(err){
     document.getElementById('printings-grid-wrap').innerHTML='<div class="printings-spinner">Failed to load printings.</div>';
   }
 }
-function selectPrinting(uid,newCard){
-  const deck=currentDeck();
-  if(!deck)return;
-  ensureLayout(deck);
-  const inst=deck._insts[uid];
-  if(!inst)return;
-  inst.card=newCard;
-  for(const k of Object.keys(deck.cards)){
-    if(deck.cards[k]===inst){deck.cards[k].card=newCard;break;}
-  }
+let _printingUploads={};
+function selectUpload(id){
+  const u=_printingUploads[id]; if(!u)return;
+  _applyArtToEntry(_printingsCtx, _artScope(), { small:u.small, normal:u.normal, large:u.large });
+}
+function switchPrintingsTab(tab){
+  const onPrints=tab!=='upload';
+  document.getElementById('ptab-prints')?.classList.toggle('active',onPrints);
+  document.getElementById('ptab-upload')?.classList.toggle('active',!onPrints);
+  document.getElementById('printings-grid-wrap').style.display=onPrints?'':'none';
+  document.getElementById('printings-upload-wrap').style.display=onPrints?'none':'';
+}
+// Scope selector: only meaningful when an entry has more than one copy.
+// Defaults to "all" but remembers the last choice so the per-copy workflow
+// (upload 4 different arts) doesn't require re-toggling each time.
+let _lastScope='all';
+function _renderScope(){
+  const el=document.getElementById('printings-scope');
+  const ctx=_printingsCtx;
+  if(!el)return;
+  if(!ctx||(ctx.qty||1)<=1){el.style.display='none';el.innerHTML='';return;}
+  const copyChk=_lastScope==='copy'?'checked':'';
+  const allChk=_lastScope==='copy'?'':'checked';
+  el.style.display='';
+  el.innerHTML=`Apply to:
+    <label><input type="radio" name="pscope" value="copy" ${copyChk}> This copy (#${ctx.copyIdx+1})</label>
+    <label><input type="radio" name="pscope" value="all" ${allChk}> All ${ctx.qty} copies</label>`;
+}
+function _artScope(){
+  const el=document.querySelector('input[name="pscope"]:checked');
+  if(el){_lastScope=el.value;return el.value;}
+  return 'all'; // single-copy entries always target the base
+}
+function _renderUploadTab(){
+  const ctx=_printingsCtx;
+  const hasCustom=!!(ctx&&ctx.entry&&ctx.entry.card&&ctx.entry.card.customArt)||!!(ctx&&ctx.entry&&ctx.entry.arts&&ctx.entry.arts[ctx.copyIdx]);
+  document.getElementById('printings-upload-wrap').innerHTML=`
+    <div class="pup">
+      <label class="pup-drop"><input type="file" accept="image/*" onchange="doCardUpload(this)">📷 Choose a photo of your card</label>
+      <div class="pup-hint">Next you’ll drag the corners to straighten &amp; crop it — it becomes this card’s art on your splash page.</div>
+      <div class="pup-status" id="pup-status"></div>
+      ${hasCustom?`<button class="btn small" onclick="revertArt()">↩ Revert to original art</button>`:''}
+    </div>`;
+}
+function _ctxRerender(){
+  const ctx=_printingsCtx; if(!ctx)return;
+  if(ctx.deck)ctx.deck._insts=null;
+  if(ctx.source==='splash')_splashRebuildColumns();
+  else renderDeckVisual();
+}
+// Commit an art change, then close + re-render + persist. Captures refs before
+// closePrintings() clears the context.
+function _finishArt(msg){
+  const ctx=_printingsCtx; const deckId=ctx&&ctx.deck&&ctx.deck.id;
+  _ctxRerender();
   closePrintings();
-  renderDeckVisual();
-  toast('Printing updated to '+newCard.set_name,'success');
+  saveToStorage(); if(deckId)syncDeckToApi(deckId);
+  toast(msg,'success');
+}
+function selectPrinting(newCard){
+  const ctx=_printingsCtx; if(!ctx||!ctx.entry){toast('Could not update printing','error');return;}
+  const e=ctx.entry;
+  if(_artScope()==='copy'){
+    // Only this physical copy gets the new art (image only — same card).
+    if(!e.arts)e.arts={};
+    e.arts[ctx.copyIdx]=newCard.image_uris;
+    _finishArt('Copy #'+(ctx.copyIdx+1)+' set to '+newCard.set_name);
+  } else {
+    // All copies: swap the base printing's data + art and clear per-copy overrides.
+    if(e.arts)delete e.arts;
+    const c=e.card; delete c._origImg; delete c.customArt;
+    Object.assign(c,newCard);
+    _finishArt('Printing updated to '+newCard.set_name);
+  }
+}
+function doCardUpload(input){
+  const f=input.files&&input.files[0]; if(!f)return; input.value='';
+  if(!state.user||!apiToken()){toast('Sign in to upload art','error');return;}
+  // Capture the target entry + scope NOW (the popover may change while cropping).
+  const ctx=_printingsCtx;
+  const scope=_artScope();
+  const card=ctx&&ctx.card;
+  openCropper(f, {
+    expectedName: card?card.name:null,
+    expectedOracle: card?card.oracle_id:null,
+    onDone: (j)=>_applyArtToEntry(ctx, scope, j.image_uris),
+  });
+}
+function applyCustomArt(image_uris){
+  const ctx=_printingsCtx; if(!ctx||!ctx.entry||!image_uris){toast('Could not apply art','error');return;}
+  const e=ctx.entry;
+  if(_artScope()==='copy'){
+    if(!e.arts)e.arts={};
+    e.arts[ctx.copyIdx]=image_uris;
+    _finishArt('Custom art applied to copy #'+(ctx.copyIdx+1)+' ✨');
+  } else {
+    if(e.arts)delete e.arts;
+    const c=e.card;
+    if(!c._origImg&&c.image_uris)c._origImg=c.image_uris; // remember original for revert
+    if(!c.scryfallId&&c.id)c.scryfallId=c.id;
+    c.image_uris=image_uris;
+    c.customArt=true;
+    _finishArt('Custom art applied to all copies ✨');
+  }
+}
+function revertArt(){
+  const ctx=_printingsCtx; if(!ctx||!ctx.entry)return;
+  const e=ctx.entry;
+  // Prefer reverting just this copy's override if it has one.
+  if(e.arts&&e.arts[ctx.copyIdx]!==undefined){
+    delete e.arts[ctx.copyIdx];
+    if(Object.keys(e.arts).length===0)delete e.arts;
+    _finishArt('Reverted copy #'+(ctx.copyIdx+1));
+    return;
+  }
+  const c=e.card;
+  if(c._origImg){c.image_uris=c._origImg;delete c._origImg;}
+  delete c.customArt;
+  _finishArt('Reverted to original art');
+}
+function openSplashCardEdit(e,cardId,copyIdx){
+  e.stopPropagation();
+  const deck=_splashDeck?.deck; if(!deck)return;
+  const entry=(deck.cards&&deck.cards[cardId])||(deck.sideboard&&deck.sideboard[cardId]);
+  if(!entry)return;
+  openPrintings(e,cardId,entry.card,'splash',copyIdx||0);
+}
+function editSplashFromShare(){
+  closeModal('modal-share');
+  const d=currentDeck();
+  if(d)openSplash(d,state.user?.username||'You',{edit:true});
+}
+function triggerDeckPhoto(){
+  if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
+  let inp=document.getElementById('deckphoto-file');
+  if(!inp){inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.id='deckphoto-file';inp.style.display='none';inp.addEventListener('change',()=>doDeckPhotoUpload(inp));document.body.appendChild(inp);}
+  inp.value='';inp.click();
+}
+async function doDeckPhotoUpload(input){
+  const f=input.files&&input.files[0]; if(!f)return;
+  const deck=_splashDeck?.deck; if(!deck)return;
+  toast('Uploading deck photo…','info');
+  try{
+    const fd=new FormData();fd.append('file',f,f.name||'deck.jpg');
+    const res=await fetch(API_BASE+'/uploads/deck-photo',{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd});
+    const j=await res.json().catch(()=>({}));
+    if(!res.ok){toast(j.error||'Upload failed','error');return;}
+    deck.deckPhoto=j.url;
+    saveToStorage();syncDeckToApi(deck.id);
+    openSplash(deck,_splashDeck.username,{edit:true});
+    toast('Deck photo updated 📸','success');
+  }catch(err){toast('Upload failed','error');}
+}
+// ── My Uploads page ───────────────────────────────────────────────────────────
+let _uploadsCache=[];
+const _uplResults={};
+function _uplEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+async function openUploads(){
+  if(!state.user||!apiToken()){toast('Sign in to manage uploads','error');return;}
+  openModal('modal-uploads');
+  document.getElementById('uploads-status').textContent='';
+  _renderUplTray();
+  document.getElementById('uploads-grid').innerHTML='<div class="uploads-empty">Loading…</div>';
+  await refreshUploads();
+}
+async function refreshUploads(){
+  try{
+    const d=await apiFetch('/uploads');
+    _uploadsCache=d.uploads||[];
+    document.getElementById('uploads-count').textContent=`${d.cardCount} / ${d.limit} cards`;
+    renderUploads();
+  }catch(e){ document.getElementById('uploads-grid').innerHTML='<div class="uploads-empty">Failed to load uploads.</div>'; }
+}
+function renderUploads(){
+  const grid=document.getElementById('uploads-grid');
+  const items=_uploadsCache.filter(u=>u.kind==='card');
+  if(!items.length){grid.innerHTML='<div class="uploads-empty">No uploads yet. Click “＋ Upload a card” to add one.</div>';return;}
+  let h='';
+  for(const u of items){
+    const thumb=u.normal||u.small||u.large;
+    h+=`<div class="upl-card" data-id="${u.id}">`;
+    h+=`<img class="upl-thumb" src="${thumb}" alt="${_uplEsc(u.card_name)||'upload'}" loading="lazy"/>`;
+    h+=`<div class="upl-body">`;
+    if(u.confirmed){
+      h+=`<div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)||'—'} <span class="upl-badge">✓</span></div>`;
+      h+=`<div class="upl-actions"><button class="btn" onclick="startChangeUpload(${u.id})">Change card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+    } else if(u.card_name){
+      h+=`<div class="upl-detected">Detected:</div><div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)}</div>`;
+      h+=`<div class="upl-actions"><button class="btn primary" onclick="confirmUpload(${u.id})">✓ Confirm</button><button class="btn" onclick="startChangeUpload(${u.id})">✎ Change</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+    } else {
+      h+=`<div class="upl-detected">Unrecognized card</div>`;
+      h+=`<div class="upl-actions"><button class="btn primary" onclick="startChangeUpload(${u.id})">Set card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+    }
+    h+=`<div id="upl-change-${u.id}" style="display:none"></div>`;
+    h+=`</div></div>`;
+  }
+  grid.innerHTML=h;
+}
+async function confirmUpload(id){
+  const u=_uploadsCache.find(x=>x.id===id);
+  try{ await apiFetch('/uploads/'+id,{method:'PATCH',body:JSON.stringify({cardName:u?.card_name||null,oracleId:u?.oracle_id||null})}); await refreshUploads(); }
+  catch(e){ toast('Could not confirm','error'); }
+}
+function startChangeUpload(id){
+  const box=document.getElementById('upl-change-'+id); if(!box)return;
+  box.style.display='';
+  box.innerHTML=`<div class="upl-search"><input type="text" placeholder="Search card name…" oninput="uplSearch(${id},this.value)"/><div class="upl-results" id="upl-results-${id}" style="display:none"></div></div>`;
+  const inp=box.querySelector('input'); if(inp)inp.focus();
+}
+let _uplSearchTimer=null;
+function uplSearch(id,q){
+  clearTimeout(_uplSearchTimer);
+  const res=document.getElementById('upl-results-'+id); if(!res)return;
+  if(!q||q.trim().length<2){res.style.display='none';res.innerHTML='';return;}
+  _uplSearchTimer=setTimeout(async()=>{
+    try{
+      const d=await apiFetch('/cards/search?q='+encodeURIComponent(q.trim())+'&page=1&per_page=8');
+      const cards=(d&&d.data)||[];
+      _uplResults[id]=cards;
+      res.innerHTML=cards.length?cards.map((c,i)=>`<div onclick="pickUploadCard(${id},${i})">${_uplEsc(c.name)}</div>`).join(''):'<div>No matches</div>';
+      res.style.display='';
+    }catch(e){ res.style.display='none'; }
+  },250);
+}
+async function pickUploadCard(id,i){
+  const c=(_uplResults[id]||[])[i]; if(!c)return;
+  try{ await apiFetch('/uploads/'+id,{method:'PATCH',body:JSON.stringify({oracleId:c.oracle_id||null,cardName:c.name||null})}); await refreshUploads(); }
+  catch(e){ toast('Could not update','error'); }
+}
+async function deleteUpload(id){
+  if(!confirm('Delete this upload? If it’s used on a deck, that card reverts to its default art.'))return;
+  try{
+    const r=await apiFetch('/uploads/'+id,{method:'DELETE'});
+    await refreshUploads();
+    if(r&&r.revertedDecks>0)await pullDecksFromApi(); // reflect reverted art in the open session
+  }catch(e){ toast('Could not delete','error'); }
+}
+// ── My Uploads: queued auto-detect batch ──────────────────────────────────────
+let _uplJobs=[], _uplRunning=false, _uplSeq=0; const UPL_MAX=15;
+function doDirectUpload(input){ const files=[...(input.files||[])]; input.value=''; addUplJobs(files); }
+function addUplJobs(files){
+  if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
+  let space=UPL_MAX - _uplJobs.filter(j=>j.state==='queued'||j.state==='working').length, added=0;
+  for(const f of files){
+    if(space<=0){ toast('Upload queue is full ('+UPL_MAX+') — let some finish first.','info'); break; }
+    _uplJobs.push({id:++_uplSeq,file:f,url:URL.createObjectURL(f),state:'queued',err:''}); space--; added++;
+  }
+  if(added)_renderUplTray();
+  _processUplJobs();
+}
+function _renderUplTray(){
+  const el=document.getElementById('uploads-tray'); if(!el)return;
+  el.innerHTML=_uplJobs.map(j=>{
+    let ov='';
+    if(j.state==='working')ov='<div class="uplj-spin"></div><span>working…</span>';
+    else if(j.state==='queued')ov='<span>queued</span>';
+    else ov='<span>'+_uplEsc(j.err||'failed')+'</span>';
+    const x=(j.state!=='working')?`<button class="uplj-x" title="Remove" onclick="_dismissUplJob(${j.id})">✕</button>`:'';
+    return `<div class="uplj ${j.state}"><img src="${j.url}" alt="upload"/><div class="uplj-ov">${ov}</div>${x}</div>`;
+  }).join('');
+}
+function _dismissUplJob(id){
+  const i=_uplJobs.findIndex(j=>j.id===id); if(i<0||_uplJobs[i].state==='working')return;
+  try{URL.revokeObjectURL(_uplJobs[i].url)}catch(e){}
+  _uplJobs.splice(i,1); _renderUplTray();
+}
+async function _processUplJobs(){
+  if(_uplRunning)return; _uplRunning=true;
+  try{
+    while(true){
+      const job=_uplJobs.find(j=>j.state==='queued'); if(!job)break;
+      job.state='working'; _renderUplTray();
+      try{
+        // 1) detect: corners (OpenCV) + name/mana (VLM)
+        const fd1=new FormData(); fd1.append('file',job.file,job.file.name||'card.jpg');
+        const ar=await fetch(API_BASE+'/uploads/analyze',{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd1});
+        const a=await ar.json().catch(()=>({}));
+        if(!ar.ok){ job.state='error'; job.err=a.error||'detect failed'; _renderUplTray(); continue; }
+        if(a.isMagicCard===false){ job.state='error'; job.err='not a card'; _renderUplTray(); continue; }
+        // 2) crop (detected corners; whole-image fallback) + identify + store
+        let cp='0,0,1,0,1,1,0,1';
+        if(Array.isArray(a.corners)&&a.corners.length===4)cp=a.corners.map(p=>`${(+p[0]).toFixed(4)},${(+p[1]).toFixed(4)}`).join(',');
+        let qp='?corners='+encodeURIComponent(cp);
+        if(a.cardName)qp+='&guess='+encodeURIComponent(a.cardName);
+        if(a.manaCost)qp+='&mana='+encodeURIComponent(a.manaCost);
+        const fd2=new FormData(); fd2.append('file',job.file,job.file.name||'card.jpg');
+        const cr=await fetch(API_BASE+'/uploads/card-art'+qp,{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd2});
+        const c=await cr.json().catch(()=>({}));
+        if(!cr.ok){ job.state='error'; job.err=c.error||'upload failed'; _renderUplTray(); continue; }
+        try{URL.revokeObjectURL(job.url)}catch(e){}
+        _uplJobs=_uplJobs.filter(j=>j!==job);
+        _renderUplTray(); await refreshUploads();
+      }catch(e){ job.state='error'; job.err='failed'; _renderUplTray(); }
+    }
+  } finally { _uplRunning=false; }
+}
+
+// ── Corner-adjust cropper (perspective deskew) ────────────────────────────────
+let _crop=null;
+function openCropper(file, opts){
+  if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
+  _crop={ file, opts:opts||{}, touched:false, autoCorners:null, detected:null,
+    corners:[[0.07,0.07],[0.93,0.07],[0.93,0.93],[0.07,0.93]] };
+  document.getElementById('crop-detected').textContent='';
+  const st=document.getElementById('crop-status'); st.className='crop-status'; st.textContent='';
+  document.getElementById('crop-overlay').classList.add('open'); // visible before load so layout measures right
+  const img=document.getElementById('crop-img');
+  img.onload=_cropLayout;
+  img.src=URL.createObjectURL(file);
+  _cropAnalyze();
+}
+function _cropLayout(){
+  if(!_crop)return;
+  const img=document.getElementById('crop-img'), stage=document.getElementById('crop-stage');
+  stage.style.width=img.clientWidth+'px'; stage.style.height=img.clientHeight+'px';
+  _cropRender();
+}
+function _cropRender(){
+  const stage=document.getElementById('crop-stage'); if(!stage||!_crop)return;
+  const W=stage.clientWidth, H=stage.clientHeight, pts=_crop.corners;
+  const hs=stage.querySelectorAll('.crop-handle');
+  pts.forEach((p,i)=>{ if(hs[i]){ hs[i].style.left=(p[0]*W)+'px'; hs[i].style.top=(p[1]*H)+'px'; } });
+  const svg=document.getElementById('crop-svg');
+  svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  document.getElementById('crop-poly').setAttribute('points', pts.map(p=>`${p[0]*W},${p[1]*H}`).join(' '));
+}
+function _cropHandleDown(e){
+  e.preventDefault(); if(!_crop)return;
+  _crop.touched=true;
+  const i=parseInt(e.currentTarget.dataset.i,10);
+  const stage=document.getElementById('crop-stage');
+  const move=(ev)=>{
+    const r=stage.getBoundingClientRect();
+    const x=(ev.clientX-r.left)/r.width, y=(ev.clientY-r.top)/r.height;
+    _crop.corners[i]=[Math.max(0,Math.min(1,x)), Math.max(0,Math.min(1,y))];
+    _cropRender();
+  };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); };
+  window.addEventListener('pointermove',move);
+  window.addEventListener('pointerup',up);
+}
+async function _cropAnalyze(){
+  if(!_crop)return;
+  const o=_crop.opts;
+  let qp='';
+  if(o.expectedName){ qp='?name='+encodeURIComponent(o.expectedName)+(o.expectedOracle?'&oracle='+encodeURIComponent(o.expectedOracle):''); }
+  try{
+    const fd=new FormData(); fd.append('file',_crop.file,_crop.file.name||'card.jpg');
+    const res=await fetch(API_BASE+'/uploads/analyze'+qp,{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd});
+    const j=await res.json().catch(()=>({}));
+    if(!_crop)return; // closed meanwhile
+    if(!res.ok){ document.getElementById('crop-status').textContent=j.error||''; return; }
+    _crop.detected=j;
+    if(Array.isArray(j.corners)&&j.corners.length===4){
+      _crop.autoCorners=j.corners.map(p=>[Math.max(0,Math.min(1,Number(p[0]))),Math.max(0,Math.min(1,Number(p[1])))]);
+      if(!_crop.touched){ _crop.corners=_crop.autoCorners.map(p=>[...p]); _cropRender(); }
+    }
+    document.getElementById('crop-detected').textContent =
+      j.cardName ? ('Detected: '+j.cardName) : (j.isMagicCard===false ? '⚠ may not be a Magic card' : '');
+  }catch(e){ /* keep default corners */ }
+}
+function _cropReset(){ if(_crop&&_crop.autoCorners){ _crop.corners=_crop.autoCorners.map(p=>[...p]); _cropRender(); } else { toast('No auto-detected corners','info'); } }
+function _cropWhole(){ if(_crop){ _crop.corners=[[0,0],[1,0],[1,1],[0,1]]; _cropRender(); } }
+function closeCropper(){
+  const ov=document.getElementById('crop-overlay'); ov.classList.remove('open');
+  const img=document.getElementById('crop-img'); if(img.src.startsWith('blob:'))URL.revokeObjectURL(img.src);
+  _crop=null;
+}
+// Save = enqueue the crop for background processing and close immediately, so the
+// user can queue up more cards without waiting. A floating widget shows progress.
+function _cropSave(){
+  if(!_crop)return;
+  const o=_crop.opts;
+  const cornersParam=_crop.corners.map(p=>`${p[0].toFixed(4)},${p[1].toFixed(4)}`).join(',');
+  let qp='?corners='+encodeURIComponent(cornersParam);
+  if(o.expectedName){ qp+='&name='+encodeURIComponent(o.expectedName); if(o.expectedOracle)qp+='&oracle='+encodeURIComponent(o.expectedOracle); }
+  else if(_crop.detected&&_crop.detected.cardName){ qp+='&guess='+encodeURIComponent(_crop.detected.cardName); if(_crop.detected.manaCost)qp+='&mana='+encodeURIComponent(_crop.detected.manaCost); }
+  const label=o.expectedName||(_crop.detected&&_crop.detected.cardName)||'card';
+  _enqueueUpload({ file:_crop.file, qp, onDone:o.onDone, label });
+  closeCropper();
+}
+
+// ── Background upload queue ────────────────────────────────────────────────────
+let _uploadQueue=[], _queueRunning=false, _qid=0;
+function _enqueueUpload(job){
+  job.id=++_qid; job.state='pending';
+  _uploadQueue.push(job);
+  _renderQueue();
+  _processQueue();
+}
+async function _processQueue(){
+  if(_queueRunning)return; _queueRunning=true;
+  while(_uploadQueue.length){
+    const job=_uploadQueue[0];
+    job.state='uploading'; _renderQueue();
+    try{
+      const fd=new FormData(); fd.append('file',job.file,'card.jpg');
+      const res=await fetch(API_BASE+'/uploads/card-art'+job.qp,{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd});
+      const j=await res.json().catch(()=>({}));
+      if(res.ok){ try{ job.onDone&&job.onDone(j); }catch(e){} }
+      else { toast('Upload failed ('+job.label+'): '+(j.error||'error'),'error'); }
+    }catch(e){ toast('Upload failed ('+job.label+')','error'); }
+    _uploadQueue.shift();
+    _renderQueue();
+  }
+  _queueRunning=false;
+}
+function _renderQueue(){
+  const el=document.getElementById('upload-queue'); if(!el)return;
+  if(!_uploadQueue.length){ el.classList.remove('active'); el.innerHTML=''; return; }
+  const cur=_uploadQueue[0];
+  const n=_uploadQueue.length;
+  el.classList.add('active');
+  el.innerHTML=`<div class="uq-spin"></div><div class="uq-text"><strong>Uploading ${_uplEsc(cur.label)}…</strong>`
+    +(n>1?`<span>${n-1} more queued</span>`:`<span>processing</span>`)+`</div>`;
+}
+// Apply uploaded art to a specific (captured) deck entry — used by the cropper's onDone.
+function _applyArtToEntry(ctx, scope, image_uris){
+  if(!ctx||!ctx.entry||!image_uris){ toast('Could not apply art','error'); return; }
+  const e=ctx.entry;
+  if(scope==='copy'){
+    if(!e.arts)e.arts={};
+    e.arts[ctx.copyIdx]=image_uris;
+  } else {
+    if(e.arts)delete e.arts;
+    const c=e.card;
+    if(!c._origImg&&c.image_uris)c._origImg=c.image_uris;
+    if(!c.scryfallId&&c.id)c.scryfallId=c.id;
+    c.image_uris=image_uris; c.customArt=true;
+  }
+  if(ctx.deck)ctx.deck._insts=null;
+  if(ctx.source==='splash')_splashRebuildColumns(); else renderDeckVisual();
+  closePrintings();
+  saveToStorage(); if(ctx.deck&&ctx.deck.id)syncDeckToApi(ctx.deck.id);
+  toast(scope==='copy'?('Custom art applied to copy #'+(ctx.copyIdx+1)+' ✨'):'Custom art applied ✨','success');
 }
 function closePrintings(){
   document.getElementById('printings-popover').classList.remove('open');
-  _printingsUid=null;
+  _printingsCtx=null;
 }
 document.addEventListener('mousedown',function(e){
   const pop=document.getElementById('printings-popover');
@@ -2824,42 +3755,63 @@ document.querySelectorAll('.cfp-chip[data-keyword]').forEach(el=>el.addEventList
 // Legacy aliases so any existing code that references old vars still works
 let _cmcOps=_fs.cmcOps, _cmcNum=null;
 
+// Search request coordination: a monotonic sequence number lets us drop stale
+// responses, and an AbortController cancels the in-flight request when a newer
+// search starts — without these, rapid searches race and back up the UI.
+let _searchSeq=0,_searchAbort=null,_loadingMore=false;
 async function doSearch(){
   const q=document.getElementById('search-input').value.trim();
-  if(!q){document.getElementById('search-results').innerHTML=`<div class="search-placeholder"><div class="icon">🔍</div><strong>Search for any Magic card</strong><br/>Use Scryfall syntax:<br/><code style="color:var(--accent)">c:u t:instant</code> — blue instants<br/><code style="color:var(--accent)">cmc=3 t:creature</code> — 3-CMC creatures</div>`;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;return}
+  if(!q){document.getElementById('search-results').innerHTML=`<div class="search-placeholder"><div class="icon">🔍</div><strong>Search for any Magic card</strong><br/>Use Scryfall syntax:<br/><code style="color:var(--accent)">c:u t:instant</code> — blue instants<br/><code style="color:var(--accent)">cmc=3 t:creature</code> — 3-CMC creatures</div>`;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;if(_searchAbort)_searchAbort.abort();_searchSeq++;return}
   if(state.centerView!=='search')switchCenterView('search');
   state.searchQuery=q;state.searchResults=[];state.searchHasMore=false;state.searchNextPage=null;
+  // Cancel any in-flight search and claim this sequence number.
+  if(_searchAbort)_searchAbort.abort();
+  _searchAbort=new AbortController();
+  const signal=_searchAbort.signal;
+  const mySeq=++_searchSeq;
   const sp=document.getElementById('search-spinner');sp.classList.add('active');
   try{
-    // Try local API first — faster and avoids Scryfall rate limits
-    let d=null,usedLocal=false;
+    // Try local API first — faster and avoids Scryfall rate limits.
+    let d=null;
     try{
-      d=await apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=40');
-      usedLocal=true;
+      d=await apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=40',{signal});
     }catch(localErr){
-      // Local API unavailable or DB not seeded — fall back to Scryfall
+      if(localErr.name==='AbortError')return;
+      // A 4xx means the local DB understood the query and has nothing for it
+      // (e.g. unsupported filter) — show empty rather than hammering Scryfall.
+      // Only a 5xx / network error (DB down or unseeded) warrants a fallback.
+      if(localErr.status&&localErr.status<500){
+        if(mySeq===_searchSeq)document.getElementById('search-results').innerHTML='<div class="no-results">No cards found.</div>';
+        return;
+      }
       d=null;
     }
+    if(mySeq!==_searchSeq)return; // superseded by a newer search
     if(d&&d.object==='list'){
       state.searchResults=d.data||[];
       state.searchHasMore=d.has_more||false;
       state.searchNextPage=d.next_page?'local:'+d.next_page:null;
       renderSearchResults();
     } else {
-      // Fallback to Scryfall
-      const r=await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=name&page=1`);const sd=await r.json();
+      // Local API unavailable — fall back to Scryfall.
+      const r=await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(q)}&order=name&page=1`,{signal});const sd=await r.json();
+      if(mySeq!==_searchSeq)return;
       if(sd.object==='error'){document.getElementById('search-results').innerHTML=`<div class="no-results">${sd.details||'No cards found.'}</div>`;return}
       state.searchResults=sd.data||[];state.searchHasMore=sd.has_more||false;state.searchNextPage=sd.next_page||null;renderSearchResults();
     }
-  }catch(e){document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection and try again.</div>'}finally{sp.classList.remove('active');updateSearchClearBtn()}
+  }catch(e){if(e.name==='AbortError')return;if(mySeq===_searchSeq)document.getElementById('search-results').innerHTML='<div class="no-results">Search error. Check your connection and try again.</div>'}
+  finally{if(mySeq===_searchSeq){sp.classList.remove('active');updateSearchClearBtn()}}
 }
 async function loadMoreResults(){
-  if(!state.searchNextPage)return;
+  if(!state.searchNextPage||_loadingMore)return;
+  _loadingMore=true;
+  const mySeq=_searchSeq; // a new search invalidates this load-more
   const btn=document.querySelector('.load-more-btn');if(btn)btn.disabled=true;
   try{
     if(state.searchNextPage.startsWith('local:')){
       const apiPath=state.searchNextPage.slice(6).replace(/^\/api/,'');
       const d=await apiFetch(apiPath);
+      if(mySeq!==_searchSeq)return;
       if(d.object==='list'){
         state.searchResults=[...state.searchResults,...(d.data||[])];
         state.searchHasMore=d.has_more||false;
@@ -2868,8 +3820,10 @@ async function loadMoreResults(){
       }
     }
     const r=await fetch(state.searchNextPage);const d=await r.json();
+    if(mySeq!==_searchSeq)return;
     state.searchResults=[...state.searchResults,...(d.data||[])];state.searchHasMore=d.has_more||false;state.searchNextPage=d.next_page||null;renderSearchResults()
-  }catch(e){toast('Failed to load more results','error')}
+  }catch(e){if(mySeq===_searchSeq)toast('Failed to load more results','error')}
+  finally{_loadingMore=false}
 }
 function renderSearchResults(){
   const c=document.getElementById('search-results'),r=state.searchResults;
