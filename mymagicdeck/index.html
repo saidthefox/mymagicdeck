@@ -871,6 +871,24 @@
       /* Body padding tighter */
       .splash-body { padding: 12px; }
     }
+    /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
+    #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;overflow:auto}
+    #mguess-overlay.open{display:flex}
+    #mguess-card{width:min(86vw,340px);background:#171515;border-radius:16px;padding:10px;box-sizing:border-box;font-family:'Times New Roman',Georgia,serif;box-shadow:0 12px 48px rgba(0,0,0,.6)}
+    #mg-frame{background:#b7a9d0;border-radius:9px;padding:8px;transition:background .15s}
+    .mg-titlebar{display:flex;align-items:center;gap:6px;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:6px 9px}
+    #mg-name{flex:1;font-weight:bold;font-size:16px;color:#1a1a1a;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
+    #mg-art{margin-top:7px;height:42vh;max-height:230px;min-height:168px;background:#017e7e;border:1px solid #2a2a2a;border-radius:4px;position:relative;overflow:hidden}
+    #mg-type{margin-top:7px;display:flex;align-items:center;justify-content:space-between;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:5px 9px;font-size:14px;font-weight:bold;color:#1a1a1a}
+    .mg-textbox{margin-top:7px;background:#efe9dd;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;min-height:54px;font-size:13px;color:#3a3320;position:relative}
+    #mg-readout{font-style:italic;line-height:1.45}
+    #mg-pt{position:absolute;right:7px;bottom:7px;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:3px 11px;font-weight:bold;font-size:15px;color:#1a1a1a}
+    .mg-zone{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+    .mg-zone:active{filter:brightness(1.12)}
+    #mg-hint{font-size:12px;color:#7a87a0;text-align:center;min-height:16px;font-family:-apple-system,system-ui,sans-serif}
+    .mg95{font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
+    .mg-bvl{border:2px solid;border-color:#fff #808080 #808080 #fff}
   </style>
 </head>
 <body>
@@ -4182,6 +4200,86 @@ function init(){
   checkUrlHash();
   // Start polling card DB status (shows banner if seeding)
   startDbStatusPolling();
+  // On phones, open the tactile "guess my card" game over the app (escapable).
+  maybeShowMobileGuess();
+}
+
+/* ── Mobile "guess my card": tactile card UI. Guess engine is TBD; for now the
+   art is a Windows-95 shutdown screen whose Shut Down button exits to the app. ── */
+const MG_COLORS=[{k:'W',n:'White',f:'#efe6c8',pip:'#fffdf0'},{k:'U',n:'Blue',f:'#2f6fb0',pip:'#cfe6ff'},{k:'B',n:'Black',f:'#4a4550',pip:'#d8d2dc'},{k:'R',n:'Red',f:'#c24a3a',pip:'#ffd6cc'},{k:'G',n:'Green',f:'#3f8f63',pip:'#cdeed7'},{k:'M',n:'Multicolor',f:'#d4a843',pip:'#fff2cf'}];
+const MG_ARTIFACT={k:'C',n:'Colorless',f:'#b7a9a0',pip:'#efe9e2'};
+const MG_TYPES=['Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Land'];
+let mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};
+function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
+function mgHint(t){const h=document.getElementById('mg-hint');if(!h)return;h.textContent=t;clearTimeout(h._t);h._t=setTimeout(()=>{h.textContent='';},1400);}
+function mgRender(){
+  const c=mgColor();
+  document.getElementById('mg-frame').style.background=c?c.f:'#b7a9d0';
+  const mana=document.getElementById('mg-mana');mana.innerHTML='';
+  if(c&&mgState.ci<MG_COLORS.length-1){const p=document.createElement('span');p.style.cssText='width:17px;height:17px;border-radius:50%;background:'+c.pip+';border:1px solid #2a2a2a;display:inline-block';mana.appendChild(p);}
+  if(mgState.cmc>0){const b=document.createElement('span');b.textContent=mgState.cmc;b.style.cssText='width:18px;height:18px;border-radius:50%;background:#d9d2c4;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#222;font-family:Tahoma,sans-serif';mana.appendChild(b);}
+  if(!c&&mgState.cmc===0)mana.innerHTML='<span style="font-size:11px;color:#7a6f5a;font-family:Tahoma,sans-serif">cost</span>';
+  document.getElementById('mg-type-label').textContent=mgState.ti<0?'Tap for type…':MG_TYPES[mgState.ti];
+  document.getElementById('mg-pt').textContent=(mgState.p==null?'—':mgState.p)+'/'+(mgState.t==null?'—':mgState.t);
+  const parts=[];
+  if(c)parts.push(c.n);
+  if(mgState.cmc>0)parts.push(mgState.cmc+' CMC');
+  if(mgState.ti>=0)parts.push(MG_TYPES[mgState.ti]);
+  if(mgState.p!=null||mgState.t!=null)parts.push((mgState.p||0)+'/'+(mgState.t||0));
+  if(mgState.name)parts.push('“'+mgState.name+'”');
+  const ro=document.getElementById('mg-readout');
+  if(parts.length)ro.innerHTML='You\'re thinking of a <b>'+parts.join('</b> · <b>')+'</b> card…<br><span style="color:#8a7c55">I\'ll guess when you pause. (guess engine coming soon)</span>';
+  else ro.textContent='Tap the parts of the card to describe what you\'re thinking of — I\'ll guess.';
+}
+function mgTaps(id,single,dbl){
+  const el=document.getElementById(id);if(!el||el._mg)return;el._mg=1;
+  let n=0,tm=null;
+  el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
+}
+function mgDrawArt(){
+  document.getElementById('mg-art').innerHTML=
+   '<div style="position:absolute;inset:0;background:#017e7e"></div>'+
+   '<div class="mg95 mg-bvl" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:236px;max-width:88%;background:#c0c0c0">'+
+   '  <div style="background:#000080;color:#fff;font-size:12px;font-weight:bold;padding:3px 6px">Shut Down the Game</div>'+
+   '  <div style="display:flex;gap:10px;padding:12px 12px 8px;align-items:flex-start">'+
+   '    <div style="width:30px;height:30px;flex-shrink:0;background:#000080;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ff0;font-size:18px">?</div>'+
+   '    <div style="font-size:12px;color:#000;line-height:1.4">Are you sure you want to<br>quit the guessing game?</div>'+
+   '  </div>'+
+   '  <div style="display:flex;gap:8px;justify-content:center;padding:0 12px 12px">'+
+   '    <button id="mg-shut" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 12px;font-weight:bold">Shut Down</button>'+
+   '    <button id="mg-cancel" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 14px">Cancel</button>'+
+   '  </div>'+
+   '</div>';
+  document.getElementById('mg-shut').addEventListener('click',e=>{e.stopPropagation();mgShutScreen();});
+  document.getElementById('mg-cancel').addEventListener('click',e=>{e.stopPropagation();mgHint('the guess will appear here soon');});
+}
+function mgShutScreen(){
+  document.getElementById('mg-art').innerHTML=
+   '<div style="position:absolute;inset:0;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;text-align:center;padding:16px">'+
+   '  <div class="mg95" style="color:#f5a623;font-size:14px;line-height:1.5">It\'s now safe to turn<br>off your game.</div>'+
+   '  <div style="display:flex;gap:8px">'+
+   '    <button id="mg-enter" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:5px 12px;font-weight:bold">Enter the app →</button>'+
+   '    <button id="mg-again" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:5px 12px">Play again</button>'+
+   '  </div>'+
+   '</div>';
+  document.getElementById('mg-enter').addEventListener('click',mgShutdown);
+  document.getElementById('mg-again').addEventListener('click',mgReset);
+}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};document.getElementById('mg-name').textContent='Tap to name…';mgDrawArt();mgRender();}
+function mgShutdown(){try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}document.getElementById('mguess-overlay').classList.remove('open');}
+function maybeShowMobileGuess(){
+  const ov=document.getElementById('mguess-overlay');if(!ov)return;
+  const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
+  let off=false;try{off=sessionStorage.getItem('mmd_mguess_off')==='1';}catch(e){}
+  if(!isMobile||off)return;
+  mgTaps('mg-mana',()=>{mgState.cmc++;mgRender();mgHint('+1 mana value');},()=>{mgState.cmc=Math.max(0,mgState.cmc-1);mgRender();mgHint('−1 mana value');});
+  mgTaps('mg-type',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgRender();mgHint(MG_TYPES[mgState.ti]);},()=>{mgState.ti=-1;mgRender();mgHint('type cleared');});
+  mgTaps('mg-pt',()=>{if(mgState.p==null){mgState.p=1;mgState.t=1;}else{mgState.p++;mgState.t++;}mgRender();mgHint('P/T +1');},()=>{if(mgState.p==null)return;mgState.p--;mgState.t--;if(mgState.p<0){mgState.p=null;mgState.t=null;}mgRender();mgHint('P/T −1');});
+  mgTaps('mg-name',()=>{const v=prompt('Card name (or part of it):',mgState.name||'');if(v!=null){mgState.name=v.trim();document.getElementById('mg-name').textContent=mgState.name||'Tap to name…';mgRender();}},()=>{});
+  const frame=document.getElementById('mg-frame');
+  if(!frame._mg){frame._mg=1;frame.addEventListener('click',e=>{if(e.target.closest('.mg-zone'))return;mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);mgRender();const c=mgColor();mgHint(c?c.n:'colorless');});}
+  mgDrawArt();mgRender();
+  ov.classList.add('open');
 }
 init();
 
@@ -4419,5 +4517,22 @@ function fwInitDrag(){
 fwInitDrag();
 fwInitSearchResize();
 </script>
+<div id="mguess-overlay">
+  <div id="mguess-card">
+    <div id="mg-frame">
+      <div class="mg-titlebar">
+        <div id="mg-name" class="mg-zone">Tap to name…</div>
+        <div id="mg-mana" class="mg-zone" aria-label="mana value"></div>
+      </div>
+      <div id="mg-art"></div>
+      <div id="mg-type" class="mg-zone"><span id="mg-type-label">Tap for type…</span><span style="font-size:11px;color:#7a6f5a">▸</span></div>
+      <div class="mg-textbox">
+        <div id="mg-readout">Tap the parts of the card to describe what you're thinking of — I'll guess.</div>
+        <div id="mg-pt" class="mg-zone">—/—</div>
+      </div>
+    </div>
+  </div>
+  <div id="mg-hint"></div>
+</div>
 </body>
 </html>
