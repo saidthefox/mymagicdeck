@@ -1236,6 +1236,24 @@
         <div class="auth-err" id="auth-err"></div>
         <button class="btn primary" id="auth-submit-btn" style="width:100%;justify-content:center;padding:10px" onclick="doAuth()">Sign In</button>
         <div class="auth-switch" id="auth-switch">No account? <a onclick="toggleAuthMode()">Sign up free</a></div>
+        <div class="auth-switch" id="auth-forgot-row"><a onclick="openAuth('forgot')">Forgot password?</a></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Reset Password Modal (opened from a ?reset=<token> link) -->
+<div class="modal-overlay" id="modal-reset">
+  <div class="modal" style="width:360px;max-width:95vw">
+    <div class="modal-header">
+      <div class="modal-title">Choose a new password</div>
+      <button class="modal-close" onclick="closeModal('modal-reset')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="auth-form">
+        <input class="auth-input" id="reset-password" type="password" placeholder="New password (min 8 chars)" autocomplete="new-password" />
+        <div class="auth-err" id="reset-err"></div>
+        <button class="btn primary" id="reset-submit-btn" style="width:100%;justify-content:center;padding:10px" onclick="doReset()">Set new password</button>
       </div>
     </div>
   </div>
@@ -1575,17 +1593,48 @@ function renderAll(){renderDeck();renderStats();renderSearchResults();renderDeck
   AUTH  (API-backed with JWT; localStorage used as session cache)
 ──────────────────────────────────────────────────────────────*/
 let _authMode='login';
+let _resetToken=null;
 function openAuth(mode='login'){_authMode=mode;_updateAuthUI();document.getElementById('auth-username').value='';document.getElementById('auth-email').value='';document.getElementById('auth-password').value='';document.getElementById('auth-err').textContent='';openModal('modal-auth')}
 function toggleAuthMode(){_authMode=_authMode==='login'?'signup':'login';_updateAuthUI()}
 function _updateAuthUI(){
-  const isSignup=_authMode==='signup';
-  document.getElementById('auth-modal-title').textContent=isSignup?'Create Account':'Sign In';
+  const isSignup=_authMode==='signup', isForgot=_authMode==='forgot';
+  document.getElementById('auth-modal-title').textContent=isForgot?'Reset Password':(isSignup?'Create Account':'Sign In');
   document.getElementById('auth-email').style.display=isSignup?'':'none';
-  document.getElementById('auth-submit-btn').textContent=isSignup?'Create Account':'Sign In';
-  document.getElementById('auth-switch').innerHTML=isSignup?'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>':'No account? <a onclick="toggleAuthMode()">Sign up free</a>';
+  document.getElementById('auth-password').style.display=isForgot?'none':'';
+  document.getElementById('auth-username').placeholder=isForgot?'Username or email':'Username';
+  document.getElementById('auth-submit-btn').textContent=isForgot?'Send reset link':(isSignup?'Create Account':'Sign In');
+  document.getElementById('auth-switch').innerHTML=isForgot?'Remembered it? <a onclick="openAuth(\'login\')">Sign in</a>':(isSignup?'Already have an account? <a onclick="toggleAuthMode()">Sign in</a>':'No account? <a onclick="toggleAuthMode()">Sign up free</a>');
+  document.getElementById('auth-forgot-row').style.display=(isSignup||isForgot)?'none':'';
   document.getElementById('auth-err').textContent='';
 }
+async function doForgot(){
+  const id=document.getElementById('auth-username').value.trim();
+  const err=document.getElementById('auth-err'), btn=document.getElementById('auth-submit-btn');
+  if(!id){err.textContent='Enter your username or email.';return}
+  btn.disabled=true;btn.textContent='…';
+  try{
+    await apiFetch('/auth/forgot',{method:'POST',body:JSON.stringify({username:id})});
+    closeModal('modal-auth');
+    toast('If that account exists, a reset link is on its way. 📧','success');
+  }catch(e){ err.textContent=e.message||'Something went wrong.'; }
+  finally{ btn.disabled=false; _updateAuthUI(); }
+}
+async function doReset(){
+  const password=document.getElementById('reset-password').value;
+  const err=document.getElementById('reset-err'), btn=document.getElementById('reset-submit-btn');
+  if(password.length<8){err.textContent='Password must be at least 8 characters.';return}
+  btn.disabled=true;btn.textContent='…';
+  try{
+    await apiFetch('/auth/reset',{method:'POST',body:JSON.stringify({token:_resetToken,password})});
+    closeModal('modal-reset');
+    history.replaceState(null,'',location.pathname); // strip ?reset= from the URL
+    toast('Password updated — you can sign in now. ✅','success');
+    openAuth('login');
+  }catch(e){ err.textContent=e.message||'This reset link is invalid or expired.'; }
+  finally{ btn.disabled=false; btn.textContent='Set new password'; }
+}
 async function doAuth(){
+  if(_authMode==='forgot')return doForgot();
   const username=document.getElementById('auth-username').value.trim();
   const password=document.getElementById('auth-password').value;
   const email=document.getElementById('auth-email').value.trim();
@@ -2374,6 +2423,9 @@ function splashImportToCurrent(){
 
 // URL hash routing — open splash from a shared link
 function checkUrlHash(){
+  // Password-reset deep link: ?reset=<token> → open the new-password modal.
+  const rt=new URLSearchParams(window.location.search).get('reset');
+  if(rt){ _resetToken=rt; document.getElementById('reset-password').value=''; document.getElementById('reset-err').textContent=''; openModal('modal-reset'); }
   const host=window.location.hostname;
   // Handle site-specific splash domains (root and any subdomain)
   const siteMatch=host.match(/(?:^|\.)myvintagedeck\.com$/i)?'myvintagedeck'

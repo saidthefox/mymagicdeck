@@ -18,6 +18,11 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 // endpoints are disabled over HTTP entirely (the daily auto-refresh still runs
 // internally via scheduleCardRefresh, so this only locks down the manual triggers).
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
+// Password-reset email (Resend). Dormant until RESEND_API_KEY is set: the forgot
+// endpoint still 200s (no account-existence leak) but no mail goes out.
+const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+const RESEND_FROM    = process.env.RESEND_FROM || 'MyMagicDeck <noreply@mymagicdeck.com>';
+const APP_BASE_URL   = (process.env.APP_BASE_URL || 'https://mymagicdeck.com').replace(/\/+$/, '');
 const DB_PATH  = process.env.DB_PATH || path.join(__dirname, 'mymagicdeck.db');
 const BCRYPT_ROUNDS = 12;
 
@@ -129,6 +134,15 @@ db.exec(`
     created_at  INTEGER NOT NULL DEFAULT (unixepoch())
   );
   CREATE INDEX IF NOT EXISTS idx_reports_upload ON upload_reports(upload_id);
+
+  CREATE TABLE IF NOT EXISTS password_resets (
+    token_hash  TEXT    PRIMARY KEY,           -- sha256 of the emailed token
+    user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    expires_at  INTEGER NOT NULL,
+    used        INTEGER NOT NULL DEFAULT 0,
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+  );
+  CREATE INDEX IF NOT EXISTS idx_resets_user ON password_resets(user_id);
 `);
 
 const UPLOAD_LIMIT = parseInt(process.env.UPLOAD_LIMIT || '100', 10); // card-art uploads per user
@@ -1138,6 +1152,62 @@ app.post('/api/auth/login', {
 
   const token = app.jwt.sign({ sub: record.id, username: record.username });
   return { token, user: { username: record.username, email: record.email } };
+});
+
+// ── Password reset ────────────────────────────────────────────────────────────
+const _sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+
+// Send the reset email via Resend's REST API (no SDK dependency). Returns false
+// if mail isn't configured or the send fails — callers must not leak that.
+async function sendResetEmail(to, link) {
+  if (!RESEND_API_KEY) { app.log.warn('password reset requested but RESEND_API_KEY unset — email not sent'); return false; }
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from: RESEND_FROM, to,
+        subject: 'Reset your MyMagicDeck password',
+        html: `<p>We received a request to reset your MyMagicDeck password.</p>
+               <p><a href="${link}">Click here to choose a new password</a>. This link expires in 1 hour.</p>
+               <p>If you didn’t request this, you can ignore this email — your password won’t change.</p>`,
+      }),
+    });
+    if (!r.ok) { app.log.warn('Resend send failed: HTTP ' + r.status + ' ' + (await r.text()).slice(0, 200)); return false; }
+    return true;
+  } catch (e) { app.log.warn('Resend send error: ' + e.message); return false; }
+}
+
+// Request a reset. Always 200 (never reveal whether the account exists).
+app.post('/api/auth/forgot', { preHandler: rateLimitAuth }, async (req) => {
+  const id = (((req.body || {}).username || (req.body || {}).email || '') + '').trim();
+  if (id) {
+    const user = db.prepare('SELECT id, email FROM users WHERE username = ? OR email = ?').get(id, id);
+    if (user && user.email) {
+      const token = crypto.randomBytes(32).toString('hex');
+      db.prepare('INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES (?, ?, ?)')
+        .run(_sha256(token), user.id, Math.floor(Date.now() / 1000) + 3600);
+      await sendResetEmail(user.email, `${APP_BASE_URL}/?reset=${token}`);
+    }
+  }
+  return { ok: true, message: 'If that account exists, a reset link is on its way.' };
+});
+
+// Complete a reset with the emailed token + a new password.
+app.post('/api/auth/reset', { preHandler: rateLimitAuth }, async (req, reply) => {
+  const { token, password } = req.body || {};
+  if (!token || typeof password !== 'string' || password.length < 8 || password.length > 128) {
+    return reply.code(400).send({ error: 'A valid token and a password (8–128 chars) are required.' });
+  }
+  const row = db.prepare('SELECT token_hash, user_id, expires_at, used FROM password_resets WHERE token_hash = ?').get(_sha256(token));
+  if (!row || row.used || row.expires_at < Math.floor(Date.now() / 1000)) {
+    return reply.code(400).send({ error: 'This reset link is invalid or has expired.' });
+  }
+  const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, row.user_id);
+  db.prepare('UPDATE password_resets SET used = 1 WHERE token_hash = ?').run(row.token_hash);
+  db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used = 0').run(row.user_id); // invalidate other outstanding links
+  return { ok: true };
 });
 
 // ── GET /api/decks  (all decks for authenticated user) ────────────────────────
