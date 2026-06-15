@@ -4456,13 +4456,12 @@ function mgShutdown(){document.getElementById('mguess-overlay').classList.remove
 let mgRunning=false, mgBarVisible=false;
 function mgBarUpdate(){
   const bar=document.getElementById('mg-bar');if(!bar)return;
-  bar.classList.toggle('show',mgBarVisible);
   const open=document.getElementById('mguess-overlay').classList.contains('open');
-  const sBtn=document.getElementById('mg-bar-start');if(sBtn)sBtn.style.display=open?'none':''; // in-card Start handles the foreground game
+  bar.classList.toggle('show', mgBarVisible && !open); // bottom OS taskbar only when minimized/closed
   const wins=document.getElementById('mg-bar-wins');if(!wins)return;wins.innerHTML='';
-  if(mgRunning){
-    const b=document.createElement('button');b.className='mg-barwin'+(open?' active':'');b.textContent='🗃️ MyMagicDeck';
-    b.addEventListener('click',e=>{e.stopPropagation();open?mgMinimize():mgRestore();});
+  if(mgRunning){ // running but not open = minimized → restorable window button
+    const b=document.createElement('button');b.className='mg-barwin';b.textContent='🗃️ MyMagicDeck';
+    b.addEventListener('click',e=>{e.stopPropagation();mgRestore();});
     wins.appendChild(b);
   }
 }
@@ -4512,7 +4511,7 @@ function mgRenderDesktop(){
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
-      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button></div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button><button id="mg-incard-win" class="mg-barwin active">🗃️ MyMagicDeck</button></div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   mgUpdateWinTitle();
@@ -4524,6 +4523,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-deck]').forEach(mgWireDeckIcon);
   document.getElementById('mg-newfolder').addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
   document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
+  const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
