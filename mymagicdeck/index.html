@@ -874,7 +874,10 @@
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
     #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:54px 14px 14px;overflow:auto}
     #mguess-overlay.open{display:flex}
-    #mguess-card{width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;box-sizing:border-box;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    #mguess-card{position:relative;width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;padding:0 16px;box-sizing:border-box;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    .mg-edge{position:absolute;top:0;bottom:0;width:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;-webkit-tap-highlight-color:transparent;background:#3a3a3a;color:rgba(255,255,255,.45);font-size:12px;border:2px solid;border-color:#fff #808080 #808080 #fff}
+    .mg-edge-l{left:0}.mg-edge-r{right:0}
+    .mg-edge:active{filter:brightness(1.35)}
     /* the card is a Windows-95 program window */
     #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #808080 #808080 #dfdfdf;padding:3px}
     #mg-exit{position:absolute;top:12px;right:14px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid #2e3a52;color:#c8cdd8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
@@ -1458,6 +1461,8 @@
         <div id="mg-pt"><span id="mg-pow" class="mg-zone">—</span><span class="mg-slash">/</span><span id="mg-tou" class="mg-zone">—</span></div>
       </div>
     </div>
+    <div class="mg-edge mg-edge-l" id="mg-edge-l" aria-label="card color">⋮</div>
+    <div class="mg-edge mg-edge-r" id="mg-edge-r" aria-label="card color">⋮</div>
   </div>
   <div id="mg-hint"></div>
 </div>
@@ -4271,6 +4276,7 @@ function mgHasConstraint(){return mgState.ci>=0||mgState.cmc>0||mgState.ti>=0||m
 function mgRender(){
   const c=mgColor();
   const cb=document.getElementById('mg-colorbtn');if(cb){cb.style.background=c?c.f:'#c0c0c0';cb.textContent=c?'':'+';cb.style.color=c?'transparent':'#444';}
+  ['mg-edge-l','mg-edge-r'].forEach(id=>{const el=document.getElementById(id);if(el){el.style.background=c?c.f:'#3a3a3a';el.style.color=c?'rgba(0,0,0,.35)':'rgba(255,255,255,.45)';}});
   document.getElementById('mg-name').textContent=mgState.name||'Tap to name…';
   const mana=document.getElementById('mg-mana');mana.style.cssText='';mana.innerHTML='';
   // A colored pip counts toward the mana value: 3 mana + white → "2" + W (not 3 + W).
@@ -4299,6 +4305,16 @@ function mgTaps(id,single,dbl){
   const el=document.getElementById(id);if(!el||el._mg)return;el._mg=1;
   let n=0,tm=null;
   el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
+}
+function mgCycleColor(){mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();}
+function mgClearColor(){mgState.ci=-1;mgHint('color cleared');mgTouch();}
+// Render a real mana_cost string ("{1}{R}{W}") as legible Win95 bevel buttons.
+const MG_PIPC={W:'#fffdf0',U:'#cfe6ff',B:'#d8d2dc',R:'#ffd6cc',G:'#cdeed7',C:'#e8e2d6'};
+function mgManaToBtns(mana,cost){
+  mana.innerHTML='';mana.style.cssText='';
+  const toks=(cost||'').match(/\{[^}]+\}/g);
+  if(!toks||!toks.length){const s=document.createElement('span');s.className='mg-winbtn';s.textContent='0';mana.appendChild(s);return;}
+  toks.forEach(t=>{const sym=t.replace(/[{}]/g,'');const s=document.createElement('span');s.className='mg-winbtn';s.textContent=sym;if(MG_PIPC[sym]){s.style.background=MG_PIPC[sym];s.style.color='#1a1a1a';}mana.appendChild(s);});
 }
 function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(!mgHasConstraint()||mgMode==='manual')return;mgGuess.timer=setTimeout(mgDoGuess,MG_DELAY[mgMode]||3000);}
 function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'desktop');mgScheduleGuess();}
@@ -4329,7 +4345,7 @@ function mgShowGuess(){
   document.getElementById('mg-type-label').textContent=c.typeLine||'';
   document.getElementById('mg-pow').textContent=c.power==null?'—':c.power;
   document.getElementById('mg-tou').textContent=c.toughness==null?'—':c.toughness;
-  const mana=document.getElementById('mg-mana');mana.innerHTML='';mana.textContent=(c.manaCost||'').replace(/[{}]/g,'');mana.style.cssText='font-family:Tahoma,sans-serif;font-size:12px;font-weight:bold;color:#1a1a1a';
+  mgManaToBtns(document.getElementById('mg-mana'),c.manaCost);
   document.getElementById('mg-readout').innerHTML='Is this your card? <b>Tap the art</b> to confirm, or <b>↻</b> for another.';
   mgArt('guess',c);
 }
@@ -4480,7 +4496,9 @@ function maybeShowMobileGuess(){
   mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
   mgTaps('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{if(mgState.t!=null){mgState.t--;if(mgState.t<0)mgState.t=null;}mgHint('toughness '+(mgState.t==null?'—':mgState.t));mgTouch();});
   mgTaps('mg-name',()=>{const v=prompt('Card name (or part of it):',mgState.name||'');if(v!=null){mgState.name=v.trim();mgTouch();}},()=>{});
-  mgTaps('mg-colorbtn',()=>{mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();},()=>{mgState.ci=-1;mgHint('color cleared');mgTouch();});
+  mgTaps('mg-colorbtn',mgCycleColor,mgClearColor);
+  mgTaps('mg-edge-l',mgCycleColor,mgClearColor);
+  mgTaps('mg-edge-r',mgCycleColor,mgClearColor);
   const exit=document.getElementById('mg-exit');
   if(exit&&!exit._mg){exit._mg=1;exit.addEventListener('click',mgShutScreen);}
   mgRender();mgArt('desktop');
