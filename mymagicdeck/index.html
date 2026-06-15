@@ -1416,6 +1416,23 @@
   <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🖼</span>Card</button>
 </div>
 
+<div id="mguess-overlay">
+  <div id="mguess-card">
+    <div id="mg-frame">
+      <div class="mg-titlebar">
+        <div id="mg-name" class="mg-zone">Tap to name…</div>
+        <div id="mg-mana" class="mg-zone" aria-label="mana value"></div>
+      </div>
+      <div id="mg-art"></div>
+      <div id="mg-type" class="mg-zone"><span id="mg-type-label">Tap for type…</span><span style="font-size:11px;color:#7a6f5a">▸</span></div>
+      <div class="mg-textbox">
+        <div id="mg-readout">Tap the parts of the card to describe what you're thinking of — I'll guess.</div>
+        <div id="mg-pt" class="mg-zone">—/—</div>
+      </div>
+    </div>
+  </div>
+  <div id="mg-hint"></div>
+</div>
 <script>
 const FORMATS=['standard','pioneer','modern','legacy','vintage','commander','pauper','brawl'];
 const FORMAT_LABELS={standard:'Standard',pioneer:'Pioneer',modern:'Modern',legacy:'Legacy',vintage:'Vintage',commander:'Commander',pauper:'Pauper',brawl:'Brawl'};
@@ -4517,22 +4534,5 @@ function fwInitDrag(){
 fwInitDrag();
 fwInitSearchResize();
 </script>
-<div id="mguess-overlay">
-  <div id="mguess-card">
-    <div id="mg-frame">
-      <div class="mg-titlebar">
-        <div id="mg-name" class="mg-zone">Tap to name…</div>
-        <div id="mg-mana" class="mg-zone" aria-label="mana value"></div>
-      </div>
-      <div id="mg-art"></div>
-      <div id="mg-type" class="mg-zone"><span id="mg-type-label">Tap for type…</span><span style="font-size:11px;color:#7a6f5a">▸</span></div>
-      <div class="mg-textbox">
-        <div id="mg-readout">Tap the parts of the card to describe what you're thinking of — I'll guess.</div>
-        <div id="mg-pt" class="mg-zone">—/—</div>
-      </div>
-    </div>
-  </div>
-  <div id="mg-hint"></div>
-</div>
 </body>
 </html>
