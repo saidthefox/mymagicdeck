@@ -884,6 +884,7 @@
     .mg-barwin{font-size:11px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-barwin.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
     #mg-startmenu-global{position:fixed;left:3px;bottom:38px;z-index:6101}
+    #mg-startmenu-global .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     #mguess-overlay.open{display:flex}
     #mguess-card{position:relative;width:min(96vw,440px);flex:1 1 auto;min-height:0;box-sizing:border-box;background:#c0c0c0;border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
     #mg-artwrap{position:relative;flex:1;min-height:0;display:flex}
@@ -4470,7 +4471,7 @@ function mgMinimize(){document.getElementById('mguess-overlay').classList.remove
 function mgRestore(){document.getElementById('mguess-overlay').classList.add('open');mgBarUpdate();}
 function mgClose(){mgRunning=false;document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();}
 function mgLaunch(){mgRunning=true;mgBarVisible=true;document.getElementById('mguess-overlay').classList.add('open');mgBarUpdate();}
-function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();}
+function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
   const rerender=()=>{m.innerHTML=mgStartMenuHtml(!mgRunning);mgWireStartMenuGlobal(m);};
@@ -4483,7 +4484,16 @@ function mgWireStartMenuGlobal(m){
 function mguessDisabled(){try{return localStorage.getItem('mmd_mguess_disabled')==='1';}catch(e){return false;}}
 function mguessSetDisabled(d){try{d?localStorage.setItem('mmd_mguess_disabled','1'):localStorage.removeItem('mmd_mguess_disabled');}catch(e){}mguessSyncLabel();}
 function mguessSyncLabel(){const el=document.getElementById('mguess-state');if(el)el.textContent=mguessDisabled()?'off':'on';}
-function toggleMguessGame(){const dis=!mguessDisabled();mguessSetDisabled(dis);toast(dis?'Card-guess game disabled.':'Card-guess game on — it\'ll open on your phone.','success');}
+function toggleMguessGame(){
+  if(mguessDisabled()){ // turn back ON / reboot the Win95 UI
+    mguessSetDisabled(false);try{sessionStorage.removeItem('mmd_mguess_off');}catch(e){}
+    toast('Rebooting…','success');maybeShowMobileGuess();
+  }else{
+    mguessSetDisabled(true);try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}
+    mgRunning=false;mgBarVisible=false;const ov=document.getElementById('mguess-overlay');if(ov)ov.classList.remove('open');mgBarUpdate();
+    toast('Card game shut down.','success');
+  }
+}
 // ── Win95 "desktop" in the art area: your decks as files (phase 1, flat) ──────
 function _mgEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function mgDeckName(id){const d=state.decks[id];return d?(d.name||'Untitled Deck'):'—';}
@@ -4517,7 +4527,7 @@ function mgRenderDesktop(){
     '</div>';
   mgUpdateWinTitle();
   // folders: tap = open (unless renaming this one)
-  a.querySelectorAll('.mg-icon[data-folder]').forEach(el=>{const fid=el.getAttribute('data-folder');el.addEventListener('click',e=>{if(fid===mgRenamingId||e.target.closest('.mg-rnm'))return;e.stopPropagation();mgCurrentFolder=fid;mgStartOpen=false;mgRenderDesktop();});});
+  a.querySelectorAll('.mg-icon[data-folder]').forEach(mgWireFolderIcon);
   // inline folder rename (no dialog — type in the label, keyboard pops up)
   if(mgRenamingId){const inp=document.getElementById('mg-rename-input');if(inp){const commit=()=>{const f=mgFs.folders.find(x=>x.id===mgRenamingId);if(f)f.name=(inp.value||'').trim()||'New Folder';mgRenamingId=null;mgFsSave();mgRenderDesktop();};inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}});inp.addEventListener('blur',commit);inp.addEventListener('click',e=>e.stopPropagation());inp.focus();try{inp.select();}catch(_){}}}
   if(mgRenamingDeckId){const inp=document.getElementById('mg-deckrename');if(inp){const did=mgRenamingDeckId;const commit=()=>{const d=state.decks[did];if(d){d.name=(inp.value||'').trim()||'Untitled Deck';saveToStorage();syncDeckToApi(did);if(did===state.currentDeckId){const ni=document.getElementById('deck-name-input');if(ni)ni.value=d.name;}}mgRenamingDeckId=null;mgRenderDesktop();};inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}});inp.addEventListener('blur',commit);inp.addEventListener('touchstart',e=>e.stopPropagation());inp.focus();try{inp.select();}catch(_){}}}
@@ -4565,6 +4575,28 @@ function mgWireDeckIcon(el){
       n=0;
     },240);
   });
+  el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
+}
+function mgFolderIsInside(targetId,ancestorId){let cur=mgFs.folders.find(f=>f.id===targetId),g=0;while(cur&&g++<200){if(cur.id===ancestorId)return true;cur=mgFs.folders.find(f=>f.id===(cur.parent||null));}return false;}
+function mgDeleteFolder(fid){const f=mgFs.folders.find(x=>x.id===fid);if(!f)return;const np=f.parent||null;mgFs.folders.forEach(c=>{if((c.parent||null)===fid)c.parent=np;});Object.keys(mgFs.deckFolder).forEach(d=>{if(mgFs.deckFolder[d]===fid)mgFs.deckFolder[d]=np;});mgFs.folders=mgFs.folders.filter(x=>x.id!==fid);if(mgCurrentFolder===fid)mgCurrentFolder=np;mgFsSave();}
+function mgWireFolderIcon(el){
+  const fid=el.getAttribute('data-folder');
+  if(fid===mgRenamingId)return; // being renamed — let the input take taps
+  let sx=0,sy=0,dragging=false,clone=null,hi=null;
+  const place=(x,y)=>{clone.style.left=x+'px';clone.style.top=y+'px';clone.style.display='none';const u=document.elementFromPoint(x,y);clone.style.display='';let t=u&&u.closest&&u.closest('.mg-icon[data-folder],#mg-bin,.mg-icon[data-up]');if(t===el)t=null;if(hi&&hi!==t)hi.classList.remove('mg-drophi');if(t&&t!==hi)t.classList.add('mg-drophi');hi=t;};
+  const drop=()=>{
+    el.style.opacity='';if(clone){clone.remove();clone=null;}
+    if(hi){
+      if(hi.id==='mg-bin'){mgDeleteFolder(fid);mgHint('Folder deleted (contents moved up)');}
+      else if(hi.hasAttribute('data-folder')){const tid=hi.getAttribute('data-folder');if(tid!==fid&&!mgFolderIsInside(tid,fid)){const f=mgFs.folders.find(x=>x.id===fid);if(f){f.parent=tid;mgFsSave();mgHint('Moved into '+mgFolderName(tid));}}else mgHint("Can't put a folder inside itself");}
+      else if(hi.hasAttribute('data-up')){const f=mgFs.folders.find(x=>x.id===fid);const cur=mgFs.folders.find(x=>x.id===mgCurrentFolder);if(f){f.parent=cur?(cur.parent||null):null;mgFsSave();mgHint('Moved up');}}
+      hi.classList.remove('mg-drophi');hi=null;
+    }
+    mgRenderDesktop();
+  };
+  el.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=false;hi=null;},{passive:true});
+  el.addEventListener('touchmove',e=>{const t=e.touches[0];if(!dragging){if(Math.hypot(t.clientX-sx,t.clientY-sy)<10)return;dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone);}e.preventDefault();place(t.clientX,t.clientY);},{passive:false});
+  el.addEventListener('touchend',e=>{if(dragging){dragging=false;drop();return;}if(e.target.closest('.mg-rnm'))return;mgCurrentFolder=fid;mgStartOpen=false;mgRenderDesktop();});
   el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
 function mgStartMenuHtml(showLaunch){
