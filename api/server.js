@@ -123,6 +123,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS user_fs (
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );`);
 
+// oracle_id → every set it's been printed in (for set-list formats like
+// Middle School / Alpha-to-Alliances-Ante that Scryfall doesn't track as legalities).
+db.exec(`CREATE TABLE IF NOT EXISTS card_printings (
+  oracle_id TEXT NOT NULL,
+  set_code  TEXT NOT NULL,
+  PRIMARY KEY (oracle_id, set_code)
+) WITHOUT ROWID;`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_printings_set ON card_printings(set_code)');
+
 // ── Uploads registry (user image library + quota) ─────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS uploads (
@@ -831,6 +840,58 @@ async function refreshHashes() {
   }
 }
 
+// Populate card_printings (oracle_id → set codes) from Scryfall's default_cards
+// bulk (one row per printing). Lightweight: no image work, batched inserts.
+let _printState = { status: 'idle', done: 0, started: null, finished: null, error: null };
+let _printRunning = false;
+async function refreshPrintings() {
+  if (_printRunning) return;
+  _printRunning = true;
+  _printState = { status: 'fetching-index', done: 0, started: Date.now(), finished: null, error: null };
+  const tmpFile = path.join(os.tmpdir(), 'mmd-default-cards.json');
+  try {
+    const idx = await httpsGet('https://api.scryfall.com/bulk-data');
+    const entry = JSON.parse(idx.body).data.find(d => d.type === 'default_cards');
+    if (!entry) throw new Error('default_cards bulk entry not found');
+    _printState.status = 'downloading';
+    await streamDownload(entry.download_uri, tmpFile);
+    _printState.status = 'importing';
+    const insert = db.prepare('INSERT OR IGNORE INTO card_printings (oracle_id, set_code) VALUES (?,?)');
+    const flush = db.transaction(rows => { for (const r of rows) insert.run(r[0], r[1]); });
+    const { parser } = require('stream-json');
+    const { streamArray } = require('stream-json/streamers/StreamArray');
+    const stream = fs.createReadStream(tmpFile).pipe(parser()).pipe(streamArray());
+    let batch = [];
+    await new Promise((resolve, reject) => {
+      stream.on('data', ({ value: c }) => {
+        const oid = c && (c.oracle_id || (c.card_faces && c.card_faces[0] && c.card_faces[0].oracle_id));
+        if (oid && c.set) { batch.push([oid, c.set]); _printState.done++; if (batch.length >= 3000) { flush(batch); batch = []; } }
+      });
+      stream.on('end', () => { try { if (batch.length) flush(batch); resolve(); } catch (e) { reject(e); } });
+      stream.on('error', reject);
+    });
+    _printState = { ..._printState, status: 'done', finished: Date.now() };
+    app.log.info('Printings refresh complete: ' + _printState.done + ' printings');
+  } catch (err) {
+    _printState = { ..._printState, status: 'error', error: err.message, finished: Date.now() };
+    app.log.error('Printings refresh failed: ' + err.message);
+  } finally {
+    try { fs.rmSync(tmpFile, { force: true }); } catch (_) { }
+    _printRunning = false;
+  }
+}
+// Custom set-list formats Scryfall doesn't track as legalities.
+const CUSTOM_FORMATS = {
+  middleschool: {
+    sets: ['4ed','chr','ice','hml','all','mir','vis','5ed','wth','tmp','sth','exo','usg','ulg','6ed','uds','mmq','nem','pcy','inv','pls','7ed','apc','ody','tor','jud','ons','lgn','scg','por','p02','ptk','s99','ath','brb','btd','dkm','wc97','wc98','wc99','wc00','wc01','wc02','wc03'],
+    banned: ['amulet of quoz','balance','brainstorm','bronze tablet','channel','dark ritual','demonic consultation','flash','goblin recruiter','imperial seal','jeweled bird','mana crypt','mana vault','memory jar',"mind's desire",'mind twist','rebirth','strip mine','tempest efreet','timmerian fiends','tolarian academy','vampiric tutor','windfall',"yawgmoth's bargain","yawgmoth's will"],
+  },
+  aaa: { // Alpha to Alliances Ante
+    sets: ['lea','leb','2ed','ced','cei','arn','atq','3ed','leg','drk','fem','ice','hml','all'],
+    banned: [],
+  },
+};
+
 async function processCardImage(buf, bbox, corners) {
   // Materialize the auto-oriented image FIRST so metadata() reports the real
   // (post-rotation) dimensions — phone photos carry EXIF orientation that swaps
@@ -1394,6 +1455,15 @@ app.post('/api/cards/hash-refresh', { preHandler: adminOnly }, async (req, reply
   refreshHashes(); // fire and forget
   return { ok: true, message: 'Hash refresh started' };
 });
+app.get('/api/cards/printings-refresh/status', async () => ({
+  ..._printState,
+  indexed: db.prepare('SELECT COUNT(*) as n FROM card_printings').get().n,
+}));
+app.post('/api/cards/printings-refresh', { preHandler: adminOnly }, async (req, reply) => {
+  if (_printRunning) return reply.code(409).send({ error: 'Printings refresh already running', state: _printState });
+  refreshPrintings(); // fire and forget
+  return { ok: true, message: 'Printings refresh started' };
+});
 
 // ── GET /api/cards/search?q=...&page=1&per_page=40 ───────────────────────────
 app.get('/api/cards/search', async (req, reply) => {
@@ -1508,6 +1578,12 @@ app.post('/api/cards/guess', async (req, reply) => {
   const FMT_OK = new Set(['standard','pioneer','modern','legacy','vintage','pauper','commander','premodern','oldschool','duel','penny','brawl','predh']);
   const fmt = (b.format || '').toLowerCase();
   if (FMT_OK.has(fmt)) { where.push("json_extract(legalities, '$.' || ?) = 'legal'"); params.push(fmt); }
+  else if (CUSTOM_FORMATS[fmt]) {
+    const cf = CUSTOM_FORMATS[fmt];
+    where.push(`oracle_id IN (SELECT oracle_id FROM card_printings WHERE set_code IN (${cf.sets.map(() => '?').join(',')}))`);
+    cf.sets.forEach(s => params.push(s));
+    if (cf.banned.length) { where.push(`lower(name) NOT IN (${cf.banned.map(() => '?').join(',')})`); cf.banned.forEach(b2 => params.push(b2)); }
+  }
   const exclude = Array.isArray(b.exclude) ? b.exclude.filter(x => typeof x === 'string').slice(0, 200) : [];
   if (exclude.length) where.push('oracle_id NOT IN (' + exclude.map(() => '?').join(',') + ')');
   if (where.length === 1) return { count: 0, candidates: [] }; // need a real constraint to guess

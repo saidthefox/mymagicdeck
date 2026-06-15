@@ -4274,7 +4274,7 @@ const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
 function mgHint(t){const h=document.getElementById('mg-hint');if(!h)return;h.textContent=t;clearTimeout(h._t);h._t=setTimeout(()=>{h.textContent='';},1500);}
 function mgHasConstraint(){return mgState.ci>=0||mgState.cmc>0||mgState.ti>=0||mgState.p!=null||mgState.t!=null||!!mgState.name||!!mgState.format;}
-const MG_FORMATS=[['','Any format'],['standard','Standard'],['pioneer','Pioneer'],['modern','Modern'],['legacy','Legacy'],['vintage','Vintage'],['pauper','Pauper'],['commander','Commander (EDH)'],['premodern','Premodern'],['oldschool','Old School'],['predh','Pre-EDH']];
+const MG_FORMATS=[['','Any format'],['standard','Standard'],['pioneer','Pioneer'],['modern','Modern'],['legacy','Legacy'],['vintage','Vintage'],['pauper','Pauper'],['commander','Commander (EDH)'],['premodern','Premodern'],['oldschool','Old School'],['predh','Pre-EDH'],['middleschool','Middle School'],['aaa','Triple-A Ante']];
 function mgFmtLabel(){const f=MG_FORMATS.find(x=>x[0]===(mgState.format||''));return f?f[1]:'Any format';}
 function mgClearFormat(){mgState.format=null;mgTouch();}
 function mgOpenFormatPicker(){
