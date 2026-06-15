@@ -898,6 +898,16 @@
     .mg-bvl{border:2px solid;border-color:#fff #808080 #808080 #fff}
     .mg-cbx{width:14px;height:14px;flex-shrink:0;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:#000}
     .mg-cbrow{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:12px;color:#000;cursor:pointer}
+    .mg-desk{position:absolute;inset:0;background:#017e7e;display:flex;flex-direction:column}
+    .mg-deskicons{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:10px}
+    .mg-icon{width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px dotted transparent}
+    .mg-icon .mg-ico{font-size:30px;line-height:1}
+    .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:72px}
+    .mg-icon.sel{border:1px dotted #fff}
+    .mg-icon.sel .mg-ilbl{background:#000080;text-shadow:none}
+    .mg-taskbar{flex-shrink:0;min-height:32px;background:#c0c0c0;border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
+    #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;padding:3px 12px}
+    .mg-adding{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   </style>
 </head>
 <body>
@@ -4243,6 +4253,7 @@ const MG_TYPES=['Creature','Instant','Sorcery','Artifact','Enchantment','Planesw
 let mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};
 let mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};
 let mgMode='g3'; // g3 | g5 | manual | insane
+let mgActiveDeckId=null; // the deck confirmed guesses get added to
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
@@ -4281,7 +4292,7 @@ function mgTaps(id,single,dbl){
   el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
 }
 function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(!mgHasConstraint()||mgMode==='manual')return;mgGuess.timer=setTimeout(mgDoGuess,MG_DELAY[mgMode]||3000);}
-function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'shutdown');mgScheduleGuess();}
+function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'desktop');mgScheduleGuess();}
 function mgConstraints(){
   const b={},c=mgColor();
   if(c)b.color=c.k;
@@ -4322,10 +4333,11 @@ function mgNextGuess(){
     .then(d=>{mgGuess.cands=d.candidates||[];mgGuess.idx=0;if(mgGuess.cands.length)mgShowGuess();else document.getElementById('mg-readout').textContent='That\'s all I\'ve got — change a detail to widen it.';})
     .catch(()=>{document.getElementById('mg-readout').textContent='Couldn\'t load more.';});
 }
-function mgAccept(){const c=mgGuess.cands[mgGuess.idx];mgGuess.on=false;mgArt('success',c);document.getElementById('mg-readout').innerHTML='Nailed it — <b>'+(c?c.name:'')+'</b> 🎉';}
+function mgAccept(){const c=mgGuess.cands[mgGuess.idx];mgGuess.on=false;mgArt('success',c);document.getElementById('mg-readout').innerHTML='Nailed it — <b>'+_mgEsc(c?c.name:'')+'</b> 🎉';if(c)mgAddGuessToDeck(c);}
 function mgArtClick(){if(mgGuess.on)mgAccept();}
 function mgArt(mode,c){
   const a=document.getElementById('mg-art');if(!a)return;
+  if(mode==='desktop'){mgRenderDesktop();return;}
   if(mode==='guess'||mode==='success'){
     const src=c&&(c.art||c.image);
     a.innerHTML='<div style="position:absolute;inset:0;background:#0a0a0a"></div>'+
@@ -4364,7 +4376,7 @@ function mgArt(mode,c){
   a.querySelectorAll('.mg-cbrow[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgArt('shutdown');}));
   document.getElementById('mg-perm').addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());mgArt('shutdown');});
   document.getElementById('mg-shut').addEventListener('click',e=>{e.stopPropagation();mgShutScreen();});
-  document.getElementById('mg-cancel').addEventListener('click',e=>{e.stopPropagation();mgArt('building');});
+  document.getElementById('mg-cancel').addEventListener('click',e=>{e.stopPropagation();mgArt('desktop');});
 }
 function mgShutScreen(){
   const a=document.getElementById('mg-art');a.removeEventListener('click',mgArtClick);
@@ -4375,13 +4387,57 @@ function mgShutScreen(){
    '</div>';
   document.getElementById('mg-enter').addEventListener('click',mgShutdown);
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('shutdown');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('desktop');}
 function mgShutdown(){try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');}
 // Persistent (device-level) opt-out for the card-guess game.
 function mguessDisabled(){try{return localStorage.getItem('mmd_mguess_disabled')==='1';}catch(e){return false;}}
 function mguessSetDisabled(d){try{d?localStorage.setItem('mmd_mguess_disabled','1'):localStorage.removeItem('mmd_mguess_disabled');}catch(e){}mguessSyncLabel();}
 function mguessSyncLabel(){const el=document.getElementById('mguess-state');if(el)el.textContent=mguessDisabled()?'off':'on';}
 function toggleMguessGame(){const dis=!mguessDisabled();mguessSetDisabled(dis);toast(dis?'Card-guess game disabled.':'Card-guess game on — it\'ll open on your phone.','success');}
+// ── Win95 "desktop" in the art area: your decks as files (phase 1, flat) ──────
+function _mgEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function mgDeckName(id){const d=state.decks[id];return d?(d.name||'Untitled Deck'):'—';}
+function mgRenderDesktop(){
+  const a=document.getElementById('mg-art');if(!a)return;
+  a.removeEventListener('click',mgArtClick);
+  const decks=Object.values(state.decks||{});
+  if(!mgActiveDeckId||!state.decks[mgActiveDeckId]) mgActiveDeckId=state.currentDeckId||(decks[0]&&decks[0].id)||null;
+  const icons=decks.map(d=>{
+    const sel=d.id===mgActiveDeckId;
+    return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div><div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div></div>';
+  }).join('');
+  a.innerHTML=
+    '<div class="mg-desk">'+
+      '<div class="mg-deskicons">'+icons+
+        '<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>'+
+      '</div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+
+        '<div class="mg-adding">Adding to: <b>'+_mgEsc(mgDeckName(mgActiveDeckId))+'</b></div></div>'+
+    '</div>';
+  a.querySelectorAll('.mg-icon[data-deck]').forEach(el=>{
+    const id=el.getAttribute('data-deck');let n=0,tm=null;
+    el.addEventListener('click',ev=>{ev.stopPropagation();n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{
+      if(n===1){mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));}
+      else{mgOpenInBuilder(id);} n=0;},240);});
+  });
+  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgArt('shutdown');});
+  const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgHint('Recycle Bin — coming soon');});
+}
+function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();}
+async function mgAddGuessToDeck(c){
+  const did=(mgActiveDeckId&&state.decks[mgActiveDeckId])?mgActiveDeckId:state.currentDeckId;
+  if(!did||!state.decks[did])return;
+  try{
+    const full=await apiFetch('/cards/named?name='+encodeURIComponent(c.name));
+    const d=state.decks[did];if(!d.cards)d.cards={};
+    const id=getCardId(full);
+    if(d.cards[id])d.cards[id].qty+=1;else d.cards[id]={card:sanitizeCard(full),qty:1};
+    d._insts=null;saveToStorage();syncDeckToApi(did);
+    if(did===state.currentDeckId)renderAll();
+    const ro=document.getElementById('mg-readout');if(ro)ro.innerHTML='Added <b>'+_mgEsc(full.name)+'</b> → '+_mgEsc(d.name||'your deck')+' 🎉';
+    mgHint('Added '+full.name+' → '+(d.name||'deck'));
+  }catch(e){mgHint('Could not add to deck');}
+}
 function maybeShowMobileGuess(){
   const ov=document.getElementById('mguess-overlay');if(!ov)return;
   const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
@@ -4395,7 +4451,7 @@ function maybeShowMobileGuess(){
   mgTaps('mg-colorbtn',()=>{mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();},()=>{mgState.ci=-1;mgHint('color cleared');mgTouch();});
   const exit=document.getElementById('mg-exit');
   if(exit&&!exit._mg){exit._mg=1;exit.addEventListener('click',mgShutScreen);}
-  mgRender();mgArt('shutdown');
+  mgRender();mgArt('desktop');
   ov.classList.add('open');
 }
 init();
