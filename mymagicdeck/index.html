@@ -873,11 +873,11 @@
     }
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
     #mguess-overlay{position:fixed;top:0;left:0;right:0;bottom:36px;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:14px;overflow:auto}
-    #mg-winbar{display:flex;align-items:center;gap:4px;background:#000080;padding:3px 4px;flex-shrink:0;margin-bottom:3px}
+    #mg-winbar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0;margin-bottom:2px}
     #mg-wintitle{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-winctl{width:24px;height:21px;flex-shrink:0;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;font-size:12px;font-weight:bold;color:#000;display:flex;align-items:center;justify-content:center;line-height:1;font-family:Tahoma,sans-serif}
     .mg-winctl:active{border-color:#808080 #fff #fff #808080}
-    #mg-bar{position:fixed;left:0;right:0;bottom:0;height:36px;z-index:6100;background:#c0c0c0;border-top:2px solid #dfdfdf;display:none;align-items:center;gap:6px;padding:3px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    #mg-bar{position:fixed;left:0;right:0;bottom:0;height:36px;z-index:6100;background:#171b26;border-top:1px solid #2e3a52;display:none;align-items:center;gap:6px;padding:3px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
     #mg-bar.show{display:flex}
     #mg-bar-start{font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;padding:4px 12px;flex-shrink:0}
     #mg-bar-wins{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden}
@@ -885,7 +885,7 @@
     .mg-barwin.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
     #mg-startmenu-global{position:fixed;left:3px;bottom:38px;z-index:6101}
     #mguess-overlay.open{display:flex}
-    #mguess-card{position:relative;width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;box-sizing:border-box;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    #mguess-card{position:relative;width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;box-sizing:border-box;background:#c0c0c0;border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
     #mg-artwrap{position:relative;flex:1;min-height:0;display:flex}
     .mg-edge{position:absolute;top:0;bottom:0;width:22px;z-index:6;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent}
     .mg-edge-l{left:0}.mg-edge-r{right:0}
@@ -4457,9 +4457,10 @@ let mgRunning=false, mgBarVisible=false;
 function mgBarUpdate(){
   const bar=document.getElementById('mg-bar');if(!bar)return;
   bar.classList.toggle('show',mgBarVisible);
+  const open=document.getElementById('mguess-overlay').classList.contains('open');
+  const sBtn=document.getElementById('mg-bar-start');if(sBtn)sBtn.style.display=open?'none':''; // in-card Start handles the foreground game
   const wins=document.getElementById('mg-bar-wins');if(!wins)return;wins.innerHTML='';
   if(mgRunning){
-    const open=document.getElementById('mguess-overlay').classList.contains('open');
     const b=document.createElement('button');b.className='mg-barwin'+(open?' active':'');b.textContent='🗃️ MyMagicDeck';
     b.addEventListener('click',e=>{e.stopPropagation();open?mgMinimize():mgRestore();});
     wins.appendChild(b);
@@ -4511,6 +4512,8 @@ function mgRenderDesktop(){
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button></div>'+
+      (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   mgUpdateWinTitle();
   // folders: tap = open (unless renaming this one)
@@ -4520,6 +4523,9 @@ function mgRenderDesktop(){
   const up=a.querySelector('.mg-icon[data-up]');if(up)up.addEventListener('click',e=>{e.stopPropagation();const cur=mgFs.folders.find(f=>f.id===mgCurrentFolder);mgCurrentFolder=cur?(cur.parent||null):null;mgStartOpen=false;mgRenderDesktop();});
   a.querySelectorAll('.mg-icon[data-deck]').forEach(mgWireDeckIcon);
   document.getElementById('mg-newfolder').addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
+  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
+  if(mgStartOpen)mgWireStartMenu(a);
+  const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ Adding to: '+mgDeckName(mgActiveDeckId);}
@@ -4527,37 +4533,30 @@ function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(e
 // (move), the Recycle Bin (delete), or ".. up" (move to parent). Short tap = select/open.
 function mgWireDeckIcon(el){
   const id=el.getAttribute('data-deck');
-  let n=0,tm=null,downX=0,downY=0,dragging=false,clone=null,hi=null,lp=null,moved=false;
-  const startDrag=()=>{dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';clone.style.left=downX+'px';clone.style.top=downY+'px';document.body.appendChild(clone);};
-  const move=e=>{
-    const dx=e.clientX-downX,dy=e.clientY-downY;
-    if(!dragging){if(Math.hypot(dx,dy)>12){moved=true;clearTimeout(lp);} return;}
-    e.preventDefault();
-    clone.style.left=e.clientX+'px';clone.style.top=e.clientY+'px';
-    clone.style.display='none';const under=document.elementFromPoint(e.clientX,e.clientY);clone.style.display='';
-    const tgt=under&&under.closest&&under.closest('.mg-icon[data-folder],#mg-bin,.mg-icon[data-up]');
-    if(hi&&hi!==tgt)hi.classList.remove('mg-drophi');
-    if(tgt&&tgt!==hi)tgt.classList.add('mg-drophi');
-    hi=tgt;
-  };
-  const end=()=>{
-    clearTimeout(lp);document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',end);document.removeEventListener('pointercancel',end);
-    el.style.opacity='';
-    if(dragging){
-      if(clone)clone.remove();
-      if(hi){
-        if(hi.id==='mg-bin'){if(!mgFs.bin)mgFs.bin=[];if(mgFs.bin.indexOf(id)<0)mgFs.bin.push(id);if(mgActiveDeckId===id)mgActiveDeckId=null;mgFsSave();mgHint('Moved to Recycle Bin 🗑️');}
-        else if(hi.hasAttribute('data-folder')){mgFs.deckFolder[id]=hi.getAttribute('data-folder');mgFsSave();mgHint('Moved to '+mgFolderName(hi.getAttribute('data-folder')));}
-        else if(hi.hasAttribute('data-up')){const cur=mgFs.folders.find(f=>f.id===mgCurrentFolder);mgFs.deckFolder[id]=cur?(cur.parent||null):null;mgFsSave();mgHint('Moved up');}
-        hi.classList.remove('mg-drophi');
-      }
-      hi=null;mgRenderDesktop();return;
+  let n=0,tm=null,sx=0,sy=0,dragging=false,clone=null,hi=null;
+  const place=(x,y)=>{clone.style.left=x+'px';clone.style.top=y+'px';clone.style.display='none';const u=document.elementFromPoint(x,y);clone.style.display='';const t=u&&u.closest&&u.closest('.mg-icon[data-folder],#mg-bin,.mg-icon[data-up]');if(hi&&hi!==t)hi.classList.remove('mg-drophi');if(t&&t!==hi)t.classList.add('mg-drophi');hi=t;};
+  const drop=()=>{
+    el.style.opacity='';if(clone){clone.remove();clone=null;}
+    if(hi){
+      if(hi.id==='mg-bin'){if(!mgFs.bin)mgFs.bin=[];if(mgFs.bin.indexOf(id)<0)mgFs.bin.push(id);if(mgActiveDeckId===id)mgActiveDeckId=null;mgFsSave();mgHint('Moved to Recycle Bin 🗑️');}
+      else if(hi.hasAttribute('data-folder')){mgFs.deckFolder[id]=hi.getAttribute('data-folder');mgFsSave();mgHint('Moved to '+mgFolderName(hi.getAttribute('data-folder')));}
+      else if(hi.hasAttribute('data-up')){const cur=mgFs.folders.find(f=>f.id===mgCurrentFolder);mgFs.deckFolder[id]=cur?(cur.parent||null):null;mgFsSave();mgHint('Moved up');}
+      hi.classList.remove('mg-drophi');hi=null;
     }
-    if(moved)return; // was a scroll, not a tap
-    // short tap → select (1) / open (2)
-    n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{if(n===1){mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));}else{mgOpenInBuilder(id);}n=0;},240);
+    mgRenderDesktop();
   };
-  el.addEventListener('pointerdown',e=>{e.preventDefault();downX=e.clientX;downY=e.clientY;dragging=false;moved=false;hi=null;lp=setTimeout(startDrag,300);document.addEventListener('pointermove',move);document.addEventListener('pointerup',end);document.addEventListener('pointercancel',end);});
+  el.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=false;hi=null;},{passive:true});
+  el.addEventListener('touchmove',e=>{
+    const t=e.touches[0];
+    if(!dragging){if(Math.hypot(t.clientX-sx,t.clientY-sy)<10)return;dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone);}
+    e.preventDefault();
+    place(t.clientX,t.clientY);
+  },{passive:false});
+  el.addEventListener('touchend',e=>{
+    if(dragging){dragging=false;drop();return;}
+    n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{if(n===1){mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));}else{mgOpenInBuilder(id);}n=0;},240);
+  });
+  el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
 function mgStartMenuHtml(showLaunch){
   const modes=MG_MODES.map(m=>'<div class="mg-smitem" data-mode="'+m[0]+'"><span class="mg-cbx">'+(mgMode===m[0]?'✓':'')+'</span>'+m[1]+'</div>').join('');
@@ -4573,7 +4572,7 @@ function mgStartMenuHtml(showLaunch){
 function mgWireStartMenu(a){
   a.querySelectorAll('.mg-smitem[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgRenderDesktop();}));
   const perm=a.querySelector('.mg-smitem[data-perm]');if(perm)perm.addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());mgRenderDesktop();});
-  const sd=a.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgShutScreen();});
+  const sd=a.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgFullExit();});
 }
 function mgRenderBin(){
   const a=document.getElementById('mg-art');if(!a)return;mgArtMode='bin';a.removeEventListener('click',mgArtClick);
