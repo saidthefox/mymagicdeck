@@ -872,9 +872,9 @@
       .splash-body { padding: 12px; }
     }
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
-    #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;overflow:auto}
+    #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:54px 14px 14px;overflow:auto}
     #mguess-overlay.open{display:flex}
-    #mguess-card{width:min(92vw,380px);height:100%;max-height:700px;background:#171515;border-radius:16px;padding:10px;box-sizing:border-box;font-family:'Times New Roman',Georgia,serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    #mguess-card{width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;background:#171515;border-radius:16px;padding:10px;box-sizing:border-box;font-family:'Times New Roman',Georgia,serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
     #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;background:#b7a9d0;border-radius:9px;padding:8px;transition:background .15s}
     #mg-exit{position:absolute;top:12px;right:14px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid #2e3a52;color:#c8cdd8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
     #mg-exit:active{background:rgba(255,255,255,.16)}
@@ -885,9 +885,9 @@
     #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
     #mg-art{flex:1;min-height:140px;margin-top:7px;background:#017e7e;border:1px solid #2a2a2a;border-radius:4px;position:relative;overflow:hidden}
     #mg-type{margin-top:7px;display:flex;align-items:center;justify-content:space-between;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:5px 9px;font-size:14px;font-weight:bold;color:#1a1a1a}
-    .mg-textbox{margin-top:7px;background:#efe9dd;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;min-height:54px;font-size:13px;color:#3a3320;position:relative}
-    #mg-readout{font-style:italic;line-height:1.45}
-    #mg-pt{position:absolute;right:7px;bottom:7px;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:3px 11px;font-weight:bold;font-size:15px;color:#1a1a1a}
+    .mg-textbox{margin-top:7px;background:#efe9dd;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;min-height:54px;font-size:13px;color:#3a3320;display:flex;align-items:center;gap:10px}
+    #mg-readout{flex:1;min-width:0;font-style:italic;line-height:1.4}
+    #mg-pt{flex-shrink:0;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:3px 9px;font-weight:bold;font-size:15px;color:#1a1a1a;white-space:nowrap}
     .mg-zone{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
     .mg-zone:active{filter:brightness(1.12)}
     #mg-hint{font-size:12px;color:#7a87a0;text-align:center;min-height:16px;font-family:-apple-system,system-ui,sans-serif}
@@ -4263,7 +4263,7 @@ function mgTaps(id,single,dbl){
   let n=0,tm=null;
   el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
 }
-function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(mgHasConstraint())mgGuess.timer=setTimeout(mgDoGuess,5000);}
+function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(mgHasConstraint())mgGuess.timer=setTimeout(mgDoGuess,3000);}
 function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'shutdown');mgScheduleGuess();}
 function mgConstraints(){
   const b={},c=mgColor();
