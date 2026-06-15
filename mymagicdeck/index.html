@@ -966,6 +966,10 @@
     /* The whole site is a Win95 program window sitting on the root PC desktop */
     #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:#017e7e;isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #pc-deskcontent{position:absolute;inset:0}
+    #hud-anchor-widget{position:absolute;right:10px;bottom:48px;width:152px;z-index:8;display:none;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.72;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 6px rgba(0,0,0,.4);cursor:pointer}
+    #hud-anchor-widget .hud-aw-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:3px 6px}
+    #hud-anchor-widget .hud-aw-row{display:flex;align-items:center;gap:6px;padding:4px 6px}
+    #hud-anchor-widget .hud-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
     #site-window{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden} /* replicates the old body flex-column shell so #app keeps filling */
     #site-titlebar{display:none}
     #site-window.site-mini{position:fixed;z-index:40;box-shadow:3px 3px 14px rgba(0,0,0,.6);cursor:grab;touch-action:none;-webkit-touch-callout:none;overflow:hidden;background:var(--bg,#0b0d12)}
@@ -973,6 +977,8 @@
     #site-window.site-mini *{pointer-events:none}
     @media (max-width:900px){
       #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
+      #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+      #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
       body.pc-deskmode #pc-desktop, body.site-windowed #pc-desktop{display:block}
       body.pc-deskmode #site-window{display:none}
       body.pc-deskmode #mobile-nav, body.site-windowed #mobile-nav{display:none}
@@ -1339,6 +1345,9 @@
 <div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
 <div class="modal-overlay" id="modal-decks"><div class="modal"><div class="modal-header"><div class="modal-title">My Decks</div><button class="modal-close" onclick="closeModal('modal-decks')">✕</button></div><div class="modal-body" id="deck-manager-list"></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-decks')">Close</button><button class="btn primary" onclick="newDeck();closeModal('modal-decks')">＋ New Deck</button></div></div></div>
+<div class="modal-overlay" id="modal-bin"><div class="modal" style="width:420px;max-width:95vw"><div class="modal-header"><div class="modal-title">Recycle Bin</div><button class="modal-close" onclick="closeModal('modal-bin')">✕</button></div><div class="modal-body" id="bin-list"></div><div class="modal-footer" id="bin-footer"></div></div></div>
+<div class="modal-overlay" id="modal-hud"><div class="modal" style="width:440px;max-width:96vw"><div class="modal-header"><div class="modal-title">HUD — Page Status</div><button class="modal-close" onclick="closeModal('modal-hud')">✕</button></div><div class="modal-body" id="hud-body"></div></div></div>
+<div class="modal-overlay" id="modal-sysset"><div class="modal" style="width:400px;max-width:95vw"><div class="modal-header"><div class="modal-title">System Settings</div><button class="modal-close" onclick="closeModal('modal-sysset')">✕</button></div><div class="modal-body" id="sysset-body"></div></div></div>
 <!-- Auth Modal -->
 <div class="modal-overlay" id="modal-auth">
   <div class="modal" style="width:360px;max-width:95vw">
@@ -4603,10 +4612,52 @@ const MGW_APPS={
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
   storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
+  bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
+  hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
+  sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
   // panel-type programs: inline layout panels shown as Win95 windows (mobile)
   deck:   {overlay:'panel-deck',     win:null, frame:false, panel:true, nav:'deck',   title:'Deck', icon:'📋', open:()=>{}, close:()=>{}},
   card:   {overlay:'panel-detail',   win:null, frame:false, panel:true, nav:'detail', title:'Card', icon:'🃏', open:()=>{}, close:()=>{}},
 };
+function openBin(){renderBinList();openModal('modal-bin');}
+function renderBinList(){
+  const bin=(mgFs.bin||[]).filter(id=>state.decks[id]);
+  const body=document.getElementById('bin-list'), foot=document.getElementById('bin-footer');
+  body.innerHTML=bin.length?bin.map(id=>'<div class="mg-binrow" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border)"><span style="color:var(--text)">🗃️ '+_mgEsc(mgDeckName(id))+'</span><button class="btn" data-restore="'+id+'">Restore</button></div>').join(''):'<div style="color:var(--text-dim);padding:14px">The Recycle Bin is empty.</div>';
+  foot.innerHTML='<button class="btn" onclick="closeModal(\'modal-bin\')">Close</button>'+(bin.length?'<button class="btn danger" id="bin-empty">Empty Bin</button>':'');
+  body.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click',()=>{const id=b.getAttribute('data-restore');mgFs.bin=(mgFs.bin||[]).filter(x=>x!==id);mgFsSave();renderBinList();if(typeof toast==='function')toast('Restored','success');}));
+  const emp=document.getElementById('bin-empty');if(emp)emp.addEventListener('click',()=>{if(!confirm('Permanently delete '+bin.length+" deck(s)? This can't be undone."))return;bin.forEach(id=>{deleteDeckFromApi(id);delete state.decks[id];delete mgFs.deckFolder[id];});mgFs.bin=[];saveToStorage();mgFsSave();if(!state.decks[state.currentDeckId]){const ids=Object.keys(state.decks);state.currentDeckId=ids[0]||null;}if(!state.currentDeckId)newDeck();renderBinList();});
+}
+function openSysset(){renderSysset();openModal('modal-sysset');}
+function renderSysset(){
+  const b=document.getElementById('sysset-body');if(!b)return;
+  b.innerHTML='<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border)"><span>Card Guesser game</span><input type="checkbox" id="ss-cgg" '+(mguessDisabled()?'':'checked')+'></label>'+
+    '<p style="color:var(--text-dim);font-size:.8rem;margin-top:12px">More settings coming soon.</p>';
+  const c=document.getElementById('ss-cgg');if(c)c.addEventListener('change',()=>{mguessSetDisabled(!c.checked);});
+}
+// HUD: live status of your published subdomain page(s). Anchorable as a faded desktop widget.
+let hudAnchored=false;
+function hudData(){
+  // TODO(backend): real up/down + which deck is published per subdomain (mycommander/mymagic/myvintage).
+  const u=state.user?(state.user.username||'you'):null; if(!u)return [];
+  return [{sub:u.toLowerCase()+'.mymagicdeck.com', up:!!(state.user&&state.user.publicDeckId), deck:(state.user&&state.user.publicDeckName)||null}];
+}
+function openHud(){renderHud();openModal('modal-hud');}
+function renderHud(){
+  const b=document.getElementById('hud-body');if(!b)return;
+  if(!state.user){b.innerHTML='<p style="color:var(--text-dim)">Sign in to see your published pages.</p>';return;}
+  const rows=hudData().map(c=>'<div style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--border)"><span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+(c.up?'#39d353':'#888')+'"></span><div style="flex:1;min-width:0"><div style="color:var(--text);font-weight:600">'+_mgEsc(c.sub)+'</div><div style="color:var(--text-dim);font-size:.78rem">'+(c.up?('Deck: '+_mgEsc(c.deck||'(set)')):'Not published')+'</div></div><button class="btn small" onclick="closeModal(\'modal-hud\');mgwLaunch(\'share\')">Change</button></div>').join('');
+  b.innerHTML=rows+'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" id="hud-anchor">📌 '+(hudAnchored?'Un-anchor':'Anchor to desktop')+'</button></div>';
+  const an=document.getElementById('hud-anchor');if(an)an.addEventListener('click',()=>{hudAnchored=!hudAnchored;if(hudAnchored){mgwClose('hud');hudRenderAnchor();}else{hudRemoveAnchor();renderHud();}});
+}
+function hudRenderAnchor(){
+  const d=document.getElementById('pc-desktop');if(!d)return;
+  let w=document.getElementById('hud-anchor-widget');
+  if(!w){w=document.createElement('div');w.id='hud-anchor-widget';d.appendChild(w);w.addEventListener('click',()=>openHud());}
+  w.innerHTML='<div class="hud-aw-bar">📡 HUD</div>'+(hudData().map(c=>'<div class="hud-aw-row"><span class="hud-dot" style="background:'+(c.up?'#39d353':'#888')+'"></span>'+_mgEsc(c.sub.replace('.mymagicdeck.com',''))+'</div>').join('')||'<div class="hud-aw-row" style="color:#444">no pages</div>');
+  w.style.display='block';
+}
+function hudRemoveAnchor(){const w=document.getElementById('hud-anchor-widget');if(w)w.style.display='none';}
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
 function mgwOpenKeys(){return Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s!=='closed');}
@@ -4675,7 +4726,7 @@ function mgwWireMiniDrag(key){
   win.addEventListener('mousedown',e=>{if(!on())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
 }
 function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)&&document.getElementById(mgDeskTarget).querySelector('.mg-desk'))mgRenderDesktop();}
-function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(mgwState[k].s==='full'?' active':'')+'" data-mgw="'+k+'">'+MGW_APPS[k].icon+' '+MGW_APPS[k].title+'</button>').join('');}
+function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin" data-mgw="'+k+'">'+MGW_APPS[k].icon+' '+MGW_APPS[k].title+'</button>').join('');}
 function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
@@ -4727,13 +4778,13 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Back to Search</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Search</div></div>';
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
-      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   if(embedded)a.style.zIndex=mgStartOpen?'9000':''; // lift the desktop (Start menu) above floating minis while open
@@ -4757,7 +4808,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-app]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp(el.getAttribute('data-app'));}));
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
-  const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
+  const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('bin');});
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ CGG — '+mgDeckName(mgActiveDeckId);}
 // Touch drag-and-drop for deck icons: long-press to pick up, drop on a folder
@@ -4827,10 +4878,13 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
     '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
     '<div class="mg-smitem" data-app="storage">💾 Storage</div>'+
-    '<div class="mg-smitem" data-app="account">👤 Account</div>'+
     '<div class="mg-smsep"></div>'+
-    (showDesktop?'<div class="mg-smitem" data-desktop="1">🖥️ Decks (Desktop)</div>':'')+
-    '<div class="mg-smitem" data-backsearch="1">🔍 Back to Search</div>'+
+    '<div class="mg-smitem" data-app="hud">📡 HUD</div>'+
+    '<div style="display:flex">'+
+      '<div class="mg-smitem" data-app="account" style="flex:1">👤 Account</div>'+
+      '<div class="mg-smitem" data-app="sysset" style="flex:1">⚙️ System Settings</div>'+
+    '</div>'+
+    '<div class="mg-smitem" data-backsearch="1">🔍 Search</div>'+
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-shut="1">⏻&nbsp; Shut Down</div>'+
     '</div></div>';
