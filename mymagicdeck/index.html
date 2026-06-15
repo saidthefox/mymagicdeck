@@ -4478,7 +4478,7 @@ function mgShutdown(){document.getElementById('mguess-overlay').classList.remove
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false, mgBarVisible=false;
 function mgBarUpdate(){const bar=document.getElementById('mg-bar');if(bar)bar.classList.remove('show');} // bottom bar retired — the desktop's own taskbar (in the search box) is the taskbar
-function mgUnconfine(){const ov=document.getElementById('mguess-overlay');if(ov.parentElement!==document.body)document.body.appendChild(ov);ov.style.position='';ov.style.inset='';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';} // dock back to body for fullscreen (CSS position:fixed)
+function mgUnconfine(){const ov=document.getElementById('mguess-overlay');if(ov.parentElement!==document.body)document.body.appendChild(ov);ov.style.position='';ov.style.inset='';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';ov.style.zIndex='';} // dock back to body for fullscreen (CSS position:fixed)
 function mgConfineToDesktop(){const ov=document.getElementById('mguess-overlay');const sr=document.getElementById('search-results');if(!sr)return;if(ov.parentElement!==sr)sr.appendChild(ov);ov.style.position='absolute';ov.style.inset='0';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';} // live inside the desktop box — physically can't escape it
 function mgShowGame(){const ov=document.getElementById('mguess-overlay');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgCloseDesktopEmbed();mgDeskTarget='mg-art';ov.classList.add('open');if(!mgHasConstraint()&&!mgGuess.on)mgArt('desktop');} // fullscreen: desktop back in the card art
 function mgMinimize(){mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open','windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
@@ -4493,7 +4493,7 @@ function mgShowFloat(){ // shrink the live card into the draggable mini
   if(!sr||!card)return;
   const cw=card.offsetWidth||360, ch=card.offsetHeight||520; // capture the current (fullscreen) card size
   if(ov.parentElement!==sr)sr.appendChild(ov); // overlay rides transparently inside the desktop box
-  ov.style.position='absolute';ov.style.inset='0';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';
+  ov.style.position='absolute';ov.style.inset='0';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';ov.style.zIndex=(++mgUiZ);
   const s=MG_MINI_W/cw;
   card.classList.add('mg-mini');
   card.style.width=cw+'px';card.style.height=ch+'px';card.style.transformOrigin='top left';card.style.transform='scale('+s+')';
@@ -4511,7 +4511,7 @@ function mgRemoveFloat(){ // restore the card to its full size
 function mgWireCardDrag(card){ // only active while .mg-mini; ignored in fullscreen so normal taps work
   let sx,sy,ox,oy,moved,dragging=false;
   const active=()=>card.classList.contains('mg-mini');
-  const begin=(px,py)=>{if(!active())return;sx=px;sy=py;ox=mgFloatPos.x;oy=mgFloatPos.y;moved=false;dragging=true;card.classList.add('dragging');};
+  const begin=(px,py)=>{if(!active())return;sx=px;sy=py;ox=mgFloatPos.x;oy=mgFloatPos.y;moved=false;dragging=true;card.classList.add('dragging');const ov=document.getElementById('mguess-overlay');if(ov)ov.style.zIndex=(++mgUiZ);};
   const move=(px,py)=>{if(!dragging)return;const dx=px-sx,dy=py-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;const sr=document.getElementById('search-results');if(!sr)return;mgFloatPos.x=ox+dx;mgFloatPos.y=oy+dy;mgClampCard(card,sr.getBoundingClientRect());};
   const end=()=>{if(!dragging)return;dragging=false;card.classList.remove('dragging');if(!moved)mgShowGame();};
   card.addEventListener('touchstart',e=>{if(!active())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
@@ -4561,8 +4561,9 @@ const MGW_APPS={
   splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:false, open:()=>previewSplash(),  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
+  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'🗄️', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
 };
-const mgwState={}; let mgwZ=5200;
+const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
 function mgwOpenKeys(){return Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s!=='closed');}
 function mgwInjectBar(key){
@@ -4589,7 +4590,7 @@ function mgwMakeMini(key){
   const cw=win.offsetWidth||340, ch=win.offsetHeight||440, s=150/cw;
   mgEmbedDesktop();
   if(ov.parentElement!==sr)sr.appendChild(ov);
-  ov.classList.add('open','mgw-mini-ov'); ov.style.position='absolute'; ov.style.inset='0'; ov.style.zIndex=30;
+  ov.classList.add('open'); ov.style.zIndex=(++mgUiZ); if(ov!==win){ov.classList.add('mgw-mini-ov'); ov.style.position='absolute'; ov.style.inset='0';}
   win.classList.add('mgw-mini'); win.style.transformOrigin='top left'; win.style.transform='scale('+s+')'; win.style.width=cw+'px'; win.style.height=ch+'px'; win.style.position='absolute';
   const st=mgwState[key]; if(!st.pos)st.pos={x:8,y:8}; st.vw=cw*s; st.vh=ch*s; st.s='mini';
   mgwClampMini(key); mgwWireMiniDrag(key); mgwSyncTaskbar();
@@ -4608,7 +4609,7 @@ function mgwClampMini(key){
 function mgwWireMiniDrag(key){
   const win=mgwWin(key); if(!win||win._mgwDrag)return; win._mgwDrag=1;
   let sx,sy,ox,oy,moved,drag=false; const on=()=>win.classList.contains('mgw-mini'); const st=()=>mgwState[key];
-  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=st().pos.x;oy=st().pos.y;moved=false;drag=true;win.classList.add('dragging');};
+  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=st().pos.x;oy=st().pos.y;moved=false;drag=true;win.classList.add('dragging');const ov=document.getElementById(MGW_APPS[key].overlay);if(ov)ov.style.zIndex=(++mgUiZ);};
   const move=(x,y)=>{if(!drag)return;const dx=x-sx,dy=y-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;st().pos.x=ox+dx;st().pos.y=oy+dy;mgwClampMini(key);};
   const end=()=>{if(!drag)return;drag=false;win.classList.remove('dragging');if(!moved)mgwToFull(key);};
   win.addEventListener('touchstart',e=>{if(!on())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
@@ -4668,6 +4669,7 @@ function mgRenderDesktop(){
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">🖧</div><div class="mg-ilbl">Storage</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Back to Search</div></div>';
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
@@ -4677,6 +4679,7 @@ function mgRenderDesktop(){
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+mgwTaskbarHtml()+'</div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
+  if(embedded)a.style.zIndex=mgStartOpen?'9000':''; // lift the desktop (Start menu) above floating minis while open
   mgUpdateWinTitle();
   // folders: tap = open (unless renaming this one)
   a.querySelectorAll('.mg-icon[data-folder]').forEach(mgWireFolderIcon);
@@ -4693,6 +4696,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-cgg]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunch();}));
   const bsi=document.getElementById('mg-backsearch');if(bsi)bsi.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   a.querySelectorAll('[data-mgw]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();mgwRestore(b.getAttribute('data-mgw'));}));
+  a.querySelectorAll('.mg-icon[data-app]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp(el.getAttribute('data-app'));}));
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
