@@ -963,10 +963,27 @@
     .mgw-mini *{pointer-events:none}
     .mgw-mini-ov{background:transparent !important;pointer-events:none;overflow:hidden}
     .mgw-win .modal-header{display:none} /* the injected Win95 bar replaces the modal's own header */
+    /* The whole site is a Win95 program window sitting on the root PC desktop */
+    #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:#017e7e;isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
+    #pc-deskcontent{position:absolute;inset:0}
+    #site-window{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden} /* replicates the old body flex-column shell so #app keeps filling */
+    #site-titlebar{display:none}
+    #site-window.site-mini{position:fixed;z-index:40;box-shadow:3px 3px 14px rgba(0,0,0,.6);cursor:grab;touch-action:none;-webkit-touch-callout:none;overflow:hidden;background:var(--bg,#0b0d12)}
+    #site-window.site-mini.dragging{cursor:grabbing;opacity:.95}
+    #site-window.site-mini *{pointer-events:none}
+    @media (max-width:900px){
+      #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
+      body.pc-deskmode #pc-desktop, body.site-windowed #pc-desktop{display:block}
+      body.pc-deskmode #site-window{display:none}
+      body.pc-deskmode #mobile-nav, body.site-windowed #mobile-nav{display:none}
+    }
   </style>
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
+<div id="pc-desktop"><div id="pc-deskcontent"></div></div>
+<div id="site-window">
+<div id="site-titlebar"><span class="mgw-ti"><span class="mgw-ic">✦</span>MyMagicDeck</span><button class="mg-winctl" id="site-min" aria-label="minimize to desktop">_</button><button class="mg-winctl" id="site-max" aria-label="window mode">❐</button></div>
 <div id="header">
   <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
@@ -1318,6 +1335,7 @@
     </div>
   </div>
 </div>
+</div><!-- /site-window -->
 <div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
 <div class="modal-overlay" id="modal-decks"><div class="modal"><div class="modal-header"><div class="modal-title">My Decks</div><button class="modal-close" onclick="closeModal('modal-decks')">✕</button></div><div class="modal-body" id="deck-manager-list"></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-decks')">Close</button><button class="btn primary" onclick="newDeck();closeModal('modal-decks')">＋ New Deck</button></div></div></div>
@@ -4267,6 +4285,9 @@ window.addEventListener('beforeunload',function(e){
     e.returnValue='';
   }
 });
+// Site window controls: _ minimizes the whole site to the PC desktop tray, ❐ windows it
+{const _smn=document.getElementById('site-min');if(_smn)_smn.addEventListener('click',e=>{e.stopPropagation();mgEmbedDesktop();});
+ const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation();siteWindow();});}
 
 function init(){
   // If on a splash-only domain, only handle routing — don't boot the full builder
@@ -4489,7 +4510,7 @@ let mgFloatPos=null;
 const MG_MINI_W=120; // target on-screen width of the mini card
 function mgClampCard(card,r){const vw=parseFloat(card.dataset.mgVw)||120,vh=parseFloat(card.dataset.mgVh)||180;const W=r.width||300,H=r.height||320;mgFloatPos.x=Math.max(0,Math.min(mgFloatPos.x,W-vw));mgFloatPos.y=Math.max(0,Math.min(mgFloatPos.y,H-vh));card.style.left=mgFloatPos.x+'px';card.style.top=mgFloatPos.y+'px';}
 function mgShowFloat(){ // shrink the live card into the draggable mini
-  const sr=document.getElementById('search-results');const ov=document.getElementById('mguess-overlay');const card=document.getElementById('mguess-card');
+  const sr=document.getElementById('pc-desktop');const ov=document.getElementById('mguess-overlay');const card=document.getElementById('mguess-card');
   if(!sr||!card)return;
   const cw=card.offsetWidth||360, ch=card.offsetHeight||520; // capture the current (fullscreen) card size
   if(ov.parentElement!==sr)sr.appendChild(ov); // overlay rides transparently inside the desktop box
@@ -4512,7 +4533,7 @@ function mgWireCardDrag(card){ // only active while .mg-mini; ignored in fullscr
   let sx,sy,ox,oy,moved,dragging=false;
   const active=()=>card.classList.contains('mg-mini');
   const begin=(px,py)=>{if(!active())return;sx=px;sy=py;ox=mgFloatPos.x;oy=mgFloatPos.y;moved=false;dragging=true;card.classList.add('dragging');const ov=document.getElementById('mguess-overlay');if(ov)ov.style.zIndex=(++mgUiZ);};
-  const move=(px,py)=>{if(!dragging)return;const dx=px-sx,dy=py-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;const sr=document.getElementById('search-results');if(!sr)return;mgFloatPos.x=ox+dx;mgFloatPos.y=oy+dy;mgClampCard(card,sr.getBoundingClientRect());};
+  const move=(px,py)=>{if(!dragging)return;const dx=px-sx,dy=py-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;const sr=document.getElementById('pc-desktop');if(!sr)return;mgFloatPos.x=ox+dx;mgFloatPos.y=oy+dy;mgClampCard(card,sr.getBoundingClientRect());};
   const end=()=>{if(!dragging)return;dragging=false;card.classList.remove('dragging');if(!moved)mgShowGame();};
   card.addEventListener('touchstart',e=>{if(!active())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
   card.addEventListener('touchmove',e=>{if(!active()||!dragging)return;const t=e.touches[0];move(t.clientX,t.clientY);e.preventDefault();},{passive:false});
@@ -4520,17 +4541,36 @@ function mgWireCardDrag(card){ // only active while .mg-mini; ignored in fullscr
   card.addEventListener('mousedown',e=>{if(!active())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
 }
 // Spawn the SAME desktop module inside the deckbuilder's search-results box (mobile).
-function mgEmbedDesktop(){
-  const sr=document.getElementById('search-results');if(!sr)return;
-  let emb=document.getElementById('mg-desktop-embed');
-  if(!emb){emb=document.createElement('div');emb.id='mg-desktop-embed';sr.appendChild(emb);}
-  emb.style.display='block';sr.classList.add('mg-has-desktop');
-  mgDeskTarget='mg-desktop-embed';
-  if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('search'); // surface the desktop's host panel on mobile
-  if(state.centerView!=='search'&&typeof switchCenterView==='function')switchCenterView('search');
+function mgEmbedDesktop(){ // enter PC desktop mode: minimize the site, reveal the root desktop
+  const d=document.getElementById('pc-desktop');if(!d)return;
+  document.body.classList.add('pc-deskmode'); document.body.classList.remove('site-windowed');
+  mgDeskTarget='pc-deskcontent';
   mgRenderDesktop();
 }
-function mgCloseDesktopEmbed(){const emb=document.getElementById('mg-desktop-embed');if(emb){emb.innerHTML='';emb.style.display='none';}const sr=document.getElementById('search-results');if(sr)sr.classList.remove('mg-has-desktop');mgDeskTarget='mg-art';}
+function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='mg-art'; } // "Back to Search" = restore the site window
+function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';}}
+let sitePos=null;
+function siteWindow(){ // ❐ : the whole site as a draggable mini over the desktop
+  if(document.body.classList.contains('site-windowed')){siteRestore();return;}
+  const sw=document.getElementById('site-window');if(!sw)return;
+  const cw=sw.offsetWidth||360, ch=sw.offsetHeight||640, s=160/cw;
+  document.body.classList.remove('pc-deskmode'); document.body.classList.add('site-windowed');
+  mgDeskTarget='pc-deskcontent'; mgRenderDesktop();
+  sw.classList.add('site-mini'); sw.style.position='fixed'; sw.style.width=cw+'px'; sw.style.height=ch+'px'; sw.style.transformOrigin='top left'; sw.style.transform='scale('+s+')';
+  sw.dataset.vw=cw*s; sw.dataset.vh=ch*s; if(!sitePos)sitePos={x:8,y:44};
+  siteClampMini(); if(!sw._siteDrag){siteWireDrag(sw);sw._siteDrag=1;}
+}
+function siteClampMini(){const sw=document.getElementById('site-window');if(!sw)return;const vw=parseFloat(sw.dataset.vw)||160,vh=parseFloat(sw.dataset.vh)||260,W=window.innerWidth,H=window.innerHeight;sitePos.x=Math.max(0,Math.min(sitePos.x,W-vw));sitePos.y=Math.max(0,Math.min(sitePos.y,H-vh));sw.style.left=sitePos.x+'px';sw.style.top=sitePos.y+'px';}
+function siteWireDrag(sw){
+  let sx,sy,ox,oy,moved,drag=false; const on=()=>sw.classList.contains('site-mini');
+  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=sitePos.x;oy=sitePos.y;moved=false;drag=true;sw.classList.add('dragging');};
+  const move=(x,y)=>{if(!drag)return;const dx=x-sx,dy=y-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;sitePos.x=ox+dx;sitePos.y=oy+dy;siteClampMini();};
+  const end=()=>{if(!drag)return;drag=false;sw.classList.remove('dragging');if(!moved)siteRestore();};
+  sw.addEventListener('touchstart',e=>{if(!on())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
+  sw.addEventListener('touchmove',e=>{if(!on()||!drag)return;const t=e.touches[0];move(t.clientX,t.clientY);e.preventDefault();},{passive:false});
+  sw.addEventListener('touchend',()=>{if(on())end();}); sw.addEventListener('touchcancel',()=>{if(on())end();});
+  sw.addEventListener('mousedown',e=>{if(!on())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
+}
 function mgClose(){mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
 function mgLaunch(){mgRunning=true;mgShowGame();}
 // CGG settings live in the program's own ⚙ menu (Win95 dropdown), not the Start menu.
@@ -4582,7 +4622,7 @@ function mgwLaunch(key){const a=MGW_APPS[key]; if(!a)return; mgwState[key]=mgwSt
 function mgwHome(){return document.getElementById('app');}
 function mgwToFull(key){
   const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key);
-  if(a.panel){ if(ov.parentElement!==mgwHome())mgwHome().appendChild(ov); ov.classList.remove('mobile-hidden'); mgwState[key].s='full'; if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav(a.nav); mgwSyncTaskbar(); return; }
+  if(a.panel){ siteRestore(); if(ov.parentElement!==mgwHome())mgwHome().appendChild(ov); ov.classList.remove('mobile-hidden'); mgwState[key].s='full'; if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav(a.nav); mgwSyncTaskbar(); return; }
   if(ov.parentElement!==document.body)document.body.appendChild(ov);
   ov.classList.add('open'); ov.style.zIndex=(++mgwZ); mgwState[key].s='full'; mgwSyncTaskbar();
 }
@@ -4601,7 +4641,7 @@ function mgwClose(key){
   mgwSyncTaskbar();
 }
 function mgwMakeMini(key){
-  const a=MGW_APPS[key], ov=document.getElementById(a.overlay), win=mgwWin(key), sr=document.getElementById('search-results');
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay), win=mgwWin(key), sr=document.getElementById('pc-desktop');
   if(!ov||!win||!sr)return;
   const cw=win.offsetWidth||340, ch=win.offsetHeight||440, s=150/cw;
   mgEmbedDesktop();
@@ -4618,7 +4658,7 @@ function mgwUnmini(key){
   if(ov){ov.classList.remove('mgw-mini-ov'); ov.style.position=''; ov.style.inset=''; ov.style.zIndex='';}
 }
 function mgwClampMini(key){
-  const win=mgwWin(key), sr=document.getElementById('search-results'), st=mgwState[key]; if(!win||!sr||!st)return;
+  const win=mgwWin(key), sr=document.getElementById('pc-desktop'), st=mgwState[key]; if(!win||!sr||!st)return;
   const r=sr.getBoundingClientRect(), W=r.width||300, H=r.height||320, vw=st.vw||150, vh=st.vh||200;
   st.pos.x=Math.max(0,Math.min(st.pos.x,W-vw)); st.pos.y=Math.max(0,Math.min(st.pos.y,H-vh));
   win.style.left=st.pos.x+'px'; win.style.top=st.pos.y+'px';
@@ -4668,10 +4708,10 @@ function mgGenId(){return 'f'+Date.now().toString(36)+Math.random().toString(36)
 function mgFolderName(id){const f=mgFs.folders.find(x=>x.id===id);return f?f.name:'';}
 function mgRenderDesktop(){
   const a=document.getElementById(mgDeskTarget);if(!a)return;
-  const embedded=(mgDeskTarget==='mg-desktop-embed');
+  const embedded=(mgDeskTarget==='pc-deskcontent');
   if(!embedded)mgArtMode='desktop';
   // keep the other desktop host empty so element ids don't collide
-  ['mg-art','mg-desktop-embed'].forEach(t=>{if(t!==mgDeskTarget){const o=document.getElementById(t);if(o&&o.querySelector&&o.querySelector('.mg-desk'))o.innerHTML='';}});
+  ['mg-art','pc-deskcontent'].forEach(t=>{if(t!==mgDeskTarget){const o=document.getElementById(t);if(o&&o.querySelector&&o.querySelector('.mg-desk'))o.innerHTML='';}});
   a.removeEventListener('click',mgArtClick);
   if(mgActiveDeckId&&!state.decks[mgActiveDeckId])mgActiveDeckId=null;
   if(!mgActiveDeckId)mgActiveDeckId=state.currentDeckId||(Object.keys(state.decks||{})[0]||null);
@@ -4693,7 +4733,7 @@ function mgRenderDesktop(){
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
-      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+mgwTaskbarHtml()+'</div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   if(embedded)a.style.zIndex=mgStartOpen?'9000':''; // lift the desktop (Start menu) above floating minis while open
@@ -4713,6 +4753,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-cgg]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunch();}));
   const bsi=document.getElementById('mg-backsearch');if(bsi)bsi.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   a.querySelectorAll('[data-mgw]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();mgwRestore(b.getAttribute('data-mgw'));}));
+  const sbn=a.querySelector('[data-site]');if(sbn)sbn.addEventListener('click',e=>{e.stopPropagation();siteRestore();});
   a.querySelectorAll('.mg-icon[data-app]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp(el.getAttribute('data-app'));}));
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
