@@ -911,6 +911,9 @@
     .mg-taskbar{flex-shrink:0;min-height:32px;background:#c0c0c0;border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
     #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;padding:3px 12px}
     .mg-adding{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mg-binrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.16)}
+    .mg-binname{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mg-binrow button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:#c0c0c0;padding:3px 10px;flex-shrink:0}
   </style>
 </head>
 <body>
@@ -4404,7 +4407,7 @@ function toggleMguessGame(){const dis=!mguessDisabled();mguessSetDisabled(dis);t
 // ── Win95 "desktop" in the art area: your decks as files (phase 1, flat) ──────
 function _mgEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 function mgDeckName(id){const d=state.decks[id];return d?(d.name||'Untitled Deck'):'—';}
-function _mgNormalizeFs(d){d=d||{};return{folders:Array.isArray(d.folders)?d.folders:[],deckFolder:(d.deckFolder&&typeof d.deckFolder==='object')?d.deckFolder:{}};}
+function _mgNormalizeFs(d){d=d||{};return{folders:Array.isArray(d.folders)?d.folders:[],deckFolder:(d.deckFolder&&typeof d.deckFolder==='object')?d.deckFolder:{},bin:Array.isArray(d.bin)?d.bin:[]};}
 async function mgLoadFs(){try{if(state.user&&apiToken()){const r=await apiFetch('/fs');mgFs=_mgNormalizeFs(r.data);}else{mgFs=_mgNormalizeFs(JSON.parse(localStorage.getItem('mmd_fs')||'{}'));}}catch(e){mgFs=_mgNormalizeFs({});}}
 function mgFsSave(){try{if(state.user&&apiToken())apiFetch('/fs',{method:'PUT',body:JSON.stringify({data:mgFs})}).catch(()=>{});else localStorage.setItem('mmd_fs',JSON.stringify(mgFs));}catch(e){}}
 function mgGenId(){return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
@@ -4416,8 +4419,9 @@ function mgRenderDesktop(){
   if(!mgActiveDeckId)mgActiveDeckId=state.currentDeckId||(Object.keys(state.decks||{})[0]||null);
   if(mgCurrentFolder&&!mgFs.folders.some(f=>f.id===mgCurrentFolder))mgCurrentFolder=null;
   const subfolders=mgFs.folders.filter(f=>(f.parent||null)===mgCurrentFolder);
+  const binned=new Set(mgFs.bin||[]);
   const inFolder=d=>{const fid=mgFs.deckFolder[d.id]||null;const exists=fid&&mgFs.folders.some(f=>f.id===fid);return exists?(fid===mgCurrentFolder):(mgCurrentFolder===null);};
-  const decks=Object.values(state.decks||{}).filter(inFolder);
+  const decks=Object.values(state.decks||{}).filter(d=>!binned.has(d.id)&&inFolder(d));
   let icons='';
   if(mgCurrentFolder!==null)icons+='<div class="mg-icon" data-up="1"><div class="mg-ico">📂</div><div class="mg-ilbl">.. up</div></div>';
   icons+=subfolders.map(f=>'<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div><div class="mg-ilbl">'+_mgEsc(f.name)+'</div></div>').join('');
@@ -4425,10 +4429,11 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   const canMove=mgActiveDeckId&&state.decks[mgActiveDeckId]&&(mgFs.deckFolder[mgActiveDeckId]||null)!==mgCurrentFolder;
   const moveBtn=canMove?'<button id="mg-move" class="mg95 mg-bvl">Move "'+_mgEsc((mgDeckName(mgActiveDeckId)||'').slice(0,12))+'" here</button>':'';
+  const delBtn=(mgActiveDeckId&&state.decks[mgActiveDeckId])?'<button id="mg-del" class="mg95 mg-bvl">🗑 Delete</button>':'';
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New</button><span class="mg-path">'+path+'</span>'+moveBtn+'</div>'+
+      '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New</button><span class="mg-path">'+path+'</span>'+moveBtn+delBtn+'</div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button><div class="mg-adding">Adding to: <b>'+_mgEsc(mgDeckName(mgActiveDeckId))+'</b></div></div>'+
     '</div>';
@@ -4437,8 +4442,18 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-deck]').forEach(el=>{const id=el.getAttribute('data-deck');let n=0,tm=null;el.addEventListener('click',e=>{e.stopPropagation();n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{if(n===1){mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));}else{mgOpenInBuilder(id);}n=0;},240);});});
   document.getElementById('mg-newfolder').addEventListener('click',e=>{e.stopPropagation();const nm=prompt('New folder name:','New Folder');if(nm&&nm.trim()){mgFs.folders.push({id:mgGenId(),name:nm.trim(),parent:mgCurrentFolder});mgFsSave();mgRenderDesktop();}});
   const mv=document.getElementById('mg-move');if(mv)mv.addEventListener('click',e=>{e.stopPropagation();mgFs.deckFolder[mgActiveDeckId]=mgCurrentFolder;mgFsSave();mgRenderDesktop();mgHint('Moved here');});
+  const del=document.getElementById('mg-del');if(del)del.addEventListener('click',e=>{e.stopPropagation();const id=mgActiveDeckId;if(!mgFs.bin)mgFs.bin=[];if(mgFs.bin.indexOf(id)<0)mgFs.bin.push(id);mgActiveDeckId=null;mgFsSave();mgRenderDesktop();mgHint('Moved to Recycle Bin');});
   document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgArt('shutdown');});
-  const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgHint('Recycle Bin — coming soon');});
+  const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
+}
+function mgRenderBin(){
+  const a=document.getElementById('mg-art');if(!a)return;mgArtMode='bin';a.removeEventListener('click',mgArtClick);
+  const bin=(mgFs.bin||[]).filter(id=>state.decks[id]);
+  const rows=bin.length?bin.map(id=>'<div class="mg-binrow"><span class="mg-binname">🗃️ '+_mgEsc(mgDeckName(id))+'</span><button class="mg95 mg-bvl" data-restore="'+id+'">Restore</button></div>').join(''):'<div style="padding:14px;color:#fff;font-family:Tahoma,sans-serif;font-size:12px">The Recycle Bin is empty.</div>';
+  a.innerHTML='<div class="mg-desk"><div class="mg-toolbar"><button id="mg-binback" class="mg95 mg-bvl">⬅ Back</button><span class="mg-path">Recycle Bin</span>'+(bin.length?'<button id="mg-empty" class="mg95 mg-bvl">Empty Bin</button>':'')+'</div><div class="mg-deskicons" style="display:block;align-content:normal">'+rows+'</div></div>';
+  document.getElementById('mg-binback').addEventListener('click',e=>{e.stopPropagation();mgArt('desktop');});
+  a.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const id=b.getAttribute('data-restore');mgFs.bin=(mgFs.bin||[]).filter(x=>x!==id);mgFsSave();mgRenderBin();mgHint('Restored');}));
+  const emp=document.getElementById('mg-empty');if(emp)emp.addEventListener('click',e=>{e.stopPropagation();if(!confirm('Permanently delete '+bin.length+' deck(s)? This can\'t be undone.'))return;bin.forEach(id=>{deleteDeckFromApi(id);delete state.decks[id];delete mgFs.deckFolder[id];});mgFs.bin=[];saveToStorage();mgFsSave();if(!state.decks[state.currentDeckId]){const ids=Object.keys(state.decks);state.currentDeckId=ids[0]||null;}if(!state.currentDeckId)newDeck();mgHint('Bin emptied');mgArt('desktop');});
 }
 function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();}
 async function mgAddGuessToDeck(c){
