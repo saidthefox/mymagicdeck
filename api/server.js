@@ -108,6 +108,13 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_cards_cmc  ON cards(cmc);
 `);
 
+// Migration: columns the mobile "guess" engine needs (power/toughness to filter,
+// edhrec_rank to rank by popularity). ADD COLUMN throws if it already exists — ignore.
+for (const [col, type] of [['power', 'TEXT'], ['toughness', 'TEXT'], ['edhrec_rank', 'INTEGER']]) {
+  try { db.exec(`ALTER TABLE cards ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
+}
+db.exec('CREATE INDEX IF NOT EXISTS idx_cards_edhrec ON cards(edhrec_rank)');
+
 // ── Uploads registry (user image library + quota) ─────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS uploads (
@@ -214,8 +221,9 @@ async function refreshCards() {
     const upsert = db.prepare(`
       INSERT INTO cards
         (oracle_id, name, mana_cost, cmc, type_line, oracle_text, colors, color_identity,
-         keywords, legalities, set_id, set_name, rarity, image_uris, card_faces, prices, updated_at)
-      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,unixepoch())
+         keywords, legalities, set_id, set_name, rarity, image_uris, card_faces, prices,
+         power, toughness, edhrec_rank, updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,unixepoch())
       ON CONFLICT(oracle_id) DO UPDATE SET
         name=excluded.name, mana_cost=excluded.mana_cost, cmc=excluded.cmc,
         type_line=excluded.type_line, oracle_text=excluded.oracle_text,
@@ -223,7 +231,8 @@ async function refreshCards() {
         keywords=excluded.keywords, legalities=excluded.legalities,
         set_id=excluded.set_id, set_name=excluded.set_name, rarity=excluded.rarity,
         image_uris=excluded.image_uris, card_faces=excluded.card_faces,
-        prices=excluded.prices, updated_at=unixepoch()
+        prices=excluded.prices, power=excluded.power, toughness=excluded.toughness,
+        edhrec_rank=excluded.edhrec_rank, updated_at=unixepoch()
     `);
 
     // Rebuild FTS in one transaction — much faster
@@ -246,7 +255,10 @@ async function refreshCards() {
           c.set || null, c.set_name || null, c.rarity || null,
           JSON.stringify(c.image_uris || null),
           c.card_faces ? JSON.stringify(c.card_faces) : null,
-          JSON.stringify({ usd: c.prices?.usd || null, usd_foil: c.prices?.usd_foil || null })
+          JSON.stringify({ usd: c.prices?.usd || null, usd_foil: c.prices?.usd_foil || null }),
+          c.power ?? c.card_faces?.[0]?.power ?? null,
+          c.toughness ?? c.card_faces?.[0]?.toughness ?? null,
+          Number.isInteger(c.edhrec_rank) ? c.edhrec_rank : null
         );
       }
       // Purge any reversible rows left over from before this filter existed.
@@ -1460,6 +1472,48 @@ app.get('/api/cards/named', async (req, reply) => {
   }
   if (!row) return reply.code(404).send({ object: 'error', details: `No card found named "${name}"` });
   return cardRowToScryfall(row);
+});
+
+// ── POST /api/cards/guess  (mobile "guess my card") ──────────────────────────
+// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, power, toughness, name, exclude:[]}
+// Returns candidates matching the given constraints, ranked by edhrec popularity.
+function _cardImage(row) {
+  let u = null;
+  try { u = JSON.parse(row.image_uris || 'null'); } catch (_) {}
+  if (!u) { try { const f = JSON.parse(row.card_faces || 'null'); u = f && f[0] && f[0].image_uris; } catch (_) {} }
+  if (!u) return { normal: null, art: null };
+  return { normal: u.normal || u.large || u.png || null, art: u.art_crop || u.normal || null };
+}
+app.post('/api/cards/guess', async (req, reply) => {
+  const b = req.body || {};
+  const where = ["image_uris IS NOT NULL AND image_uris != 'null'"];
+  const params = [];
+  const color = (b.color || '').toUpperCase();
+  if (color === 'C') where.push("colors = '[]'");
+  else if (color === 'M') where.push("json_array_length(colors) >= 2");
+  else if (['W', 'U', 'B', 'R', 'G'].includes(color)) { where.push('colors LIKE ?'); params.push('%"' + color + '"%'); }
+  if (Number.isFinite(b.cmc)) { where.push('cmc = ?'); params.push(Number(b.cmc)); }
+  if (b.type) { where.push('type_line LIKE ?'); params.push('%' + String(b.type) + '%'); }
+  if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
+  if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }
+  if (b.name) { where.push('name LIKE ?'); params.push('%' + String(b.name) + '%'); }
+  const exclude = Array.isArray(b.exclude) ? b.exclude.filter(x => typeof x === 'string').slice(0, 200) : [];
+  if (exclude.length) where.push('oracle_id NOT IN (' + exclude.map(() => '?').join(',') + ')');
+  if (where.length === 1) return { count: 0, candidates: [] }; // need a real constraint to guess
+  const cond = where.join(' AND ');
+  const all = [...params, ...exclude];
+  let rows, count;
+  try {
+    rows = db.prepare(`SELECT oracle_id, name, mana_cost, cmc, type_line, colors, power, toughness, image_uris, card_faces, edhrec_rank
+                       FROM cards WHERE ${cond} ORDER BY edhrec_rank IS NULL, edhrec_rank ASC LIMIT 12`).all(...all);
+    count = db.prepare(`SELECT COUNT(*) n FROM cards WHERE ${cond}`).get(...all).n;
+  } catch (e) { app.log.warn('guess failed: ' + e.message); return reply.code(500).send({ error: 'guess failed' }); }
+  const candidates = rows.map(r => {
+    const img = _cardImage(r);
+    return { oracleId: r.oracle_id, name: r.name, manaCost: r.mana_cost, cmc: r.cmc, typeLine: r.type_line,
+             power: r.power, toughness: r.toughness, edhrecRank: r.edhrec_rank, image: img.normal, art: img.art };
+  });
+  return { count, candidates };
 });
 
 // ── POST /api/uploads/card-art?autocrop=1  (custom card art for splash pages) ──
