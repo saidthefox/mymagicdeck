@@ -115,6 +115,14 @@ for (const [col, type] of [['power', 'TEXT'], ['toughness', 'TEXT'], ['edhrec_ra
 }
 db.exec('CREATE INDEX IF NOT EXISTS idx_cards_edhrec ON cards(edhrec_rank)');
 
+// Per-user "filesystem" for the Win95 desktop: folder tree + deck→folder map, as
+// one JSON blob synced across devices. {folders:[{id,name,parent}], deckFolder:{}}
+db.exec(`CREATE TABLE IF NOT EXISTS user_fs (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  data       TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);`);
+
 // ── Uploads registry (user image library + quota) ─────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS uploads (
@@ -1514,6 +1522,22 @@ app.post('/api/cards/guess', async (req, reply) => {
              power: r.power, toughness: r.toughness, edhrecRank: r.edhrec_rank, image: img.normal, art: img.art };
   });
   return { count, candidates };
+});
+
+// ── Win95 desktop filesystem (folder tree), synced per account ────────────────
+app.get('/api/fs', { preHandler: authenticate }, async (req) => {
+  const row = db.prepare('SELECT data FROM user_fs WHERE user_id = ?').get(req.user.sub);
+  let data = {}; try { data = JSON.parse(row && row.data || '{}'); } catch (_) {}
+  return { data };
+});
+app.put('/api/fs', { preHandler: authenticate }, async (req, reply) => {
+  const data = (req.body || {}).data;
+  if (data == null || typeof data !== 'object') return reply.code(400).send({ error: 'data object required' });
+  const json = JSON.stringify(data);
+  if (json.length > 200000) return reply.code(413).send({ error: 'filesystem too large' });
+  db.prepare(`INSERT INTO user_fs (user_id, data, updated_at) VALUES (?, ?, unixepoch())
+    ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = unixepoch()`).run(req.user.sub, json);
+  return { ok: true };
 });
 
 // ── POST /api/uploads/card-art?autocrop=1  (custom card art for splash pages) ──
