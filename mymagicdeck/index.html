@@ -923,6 +923,7 @@
       <div class="user-menu-name" id="user-menu-name"></div>
       <div class="user-menu-item" onclick="openShare();closeUserMenu()">🔗 Share Deck</div>
       <div class="user-menu-item" onclick="openUploads();closeUserMenu()">🖼 My Uploads</div>
+      <div class="user-menu-item" onclick="toggleMguessGame()">🎴 Card-guess game: <span id="mguess-state">on</span></div>
       <div class="user-menu-sep"></div>
       <div class="user-menu-item danger" onclick="logout()">Sign Out</div>
     </div>
@@ -4213,6 +4214,7 @@ function init(){
   if(!Object.keys(state.decks).length||!state.currentDeckId)newDeck();
   else{document.getElementById('deck-name-input').value=currentDeck()?.name||'Untitled Deck';renderAll();}
   updateUserUI();
+  mguessSyncLabel();
   // Start with filters collapsed on mobile
   if(window.innerWidth<=900){
     _filterPanelOpen=false;
@@ -4351,13 +4353,16 @@ function mgArt(mode,c){
    '  <div style="background:#000080;color:#fff;font-size:12px;font-weight:bold;padding:3px 6px">Shut Down the Game</div>'+
    '  <div style="padding:10px 12px 4px">'+
    '    <div style="font-size:12px;color:#000;margin-bottom:6px">When should I guess?</div>'+rows+
+   '    <div style="border-top:1px solid #909090;margin:7px 0 3px"></div>'+
+   '    <div class="mg-cbrow" id="mg-perm"><span class="mg-cbx">'+(mguessDisabled()?'✓':'')+'</span><span>Shut down permanently <span style="color:#5a5a5a">(also changeable in account settings)</span></span></div>'+
    '  </div>'+
    '  <div style="display:flex;gap:8px;justify-content:flex-end;padding:8px 12px 12px">'+
    '    <button id="mg-cancel" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 16px;font-weight:bold">Play</button>'+
    '    <button id="mg-shut" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 12px">Shut Down</button>'+
    '  </div>'+
    '</div>';
-  a.querySelectorAll('.mg-cbrow').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgArt('shutdown');}));
+  a.querySelectorAll('.mg-cbrow[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgArt('shutdown');}));
+  document.getElementById('mg-perm').addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());mgArt('shutdown');});
   document.getElementById('mg-shut').addEventListener('click',e=>{e.stopPropagation();mgShutScreen();});
   document.getElementById('mg-cancel').addEventListener('click',e=>{e.stopPropagation();mgArt('building');});
 }
@@ -4372,11 +4377,16 @@ function mgShutScreen(){
 }
 function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('shutdown');}
 function mgShutdown(){try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');}
+// Persistent (device-level) opt-out for the card-guess game.
+function mguessDisabled(){try{return localStorage.getItem('mmd_mguess_disabled')==='1';}catch(e){return false;}}
+function mguessSetDisabled(d){try{d?localStorage.setItem('mmd_mguess_disabled','1'):localStorage.removeItem('mmd_mguess_disabled');}catch(e){}mguessSyncLabel();}
+function mguessSyncLabel(){const el=document.getElementById('mguess-state');if(el)el.textContent=mguessDisabled()?'off':'on';}
+function toggleMguessGame(){const dis=!mguessDisabled();mguessSetDisabled(dis);toast(dis?'Card-guess game disabled.':'Card-guess game on — it\'ll open on your phone.','success');}
 function maybeShowMobileGuess(){
   const ov=document.getElementById('mguess-overlay');if(!ov)return;
   const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
   let off=false;try{off=sessionStorage.getItem('mmd_mguess_off')==='1';}catch(e){}
-  if(!isMobile||off)return;
+  if(!isMobile||off||mguessDisabled())return;
   mgTaps('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=Math.max(0,mgState.cmc-1);mgHint('mana value '+mgState.cmc);mgTouch();});
   mgTaps('mg-type',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgHint('type cleared');mgTouch();});
   mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
