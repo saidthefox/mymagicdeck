@@ -1505,6 +1505,9 @@ app.post('/api/cards/guess', async (req, reply) => {
   if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
   if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }
   if (b.name) { where.push('name LIKE ?'); params.push('%' + String(b.name) + '%'); }
+  const FMT_OK = new Set(['standard','pioneer','modern','legacy','vintage','pauper','commander','premodern','oldschool','duel','penny','brawl','predh']);
+  const fmt = (b.format || '').toLowerCase();
+  if (FMT_OK.has(fmt)) { where.push("json_extract(legalities, '$.' || ?) = 'legal'"); params.push(fmt); }
   const exclude = Array.isArray(b.exclude) ? b.exclude.filter(x => typeof x === 'string').slice(0, 200) : [];
   if (exclude.length) where.push('oracle_id NOT IN (' + exclude.map(() => '?').join(',') + ')');
   if (where.length === 1) return { count: 0, candidates: [] }; // need a real constraint to guess
