@@ -1513,9 +1513,9 @@
 
 <div id="toast-container"></div>
 <div id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-deck" onclick="mgLaunchApp('deck')"><span class="icon">📋</span>Deck</button>
+  <button class="mobile-nav-btn active" id="mnav-deck" onclick="mobileNav('deck')"><span class="icon">📋</span>Deck</button>
   <button class="mobile-nav-btn" id="mnav-search" onclick="mobileNav('search')"><span class="icon">🔍</span>Search</button>
-  <button class="mobile-nav-btn" id="mnav-detail" onclick="mgLaunchApp('card')"><span class="icon">🃏</span>Card</button>
+  <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🃏</span>Card</button>
 </div>
 
 <div id="mguess-overlay">
@@ -4349,6 +4349,19 @@ let mgDeskTarget='mg-art'; // desktop host: card art when fullscreen, search-box
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
+// CGG card frame reflects the cycled color (M15-ish). Drop real MTG frame images here keyed by
+// color letter to use them instead of the CSS gradient: MG_FRAME_IMAGES.G=['/frames/g1.jpg',...]
+const MG_FRAME_IMAGES={};
+function _mgShade(hex,pct){hex=(hex||'#888').replace('#','');const n=parseInt(hex,16);const r=(n>>16)&255,g=(n>>8)&255,b=n&255;const f=pct/100;const mix=v=>Math.round(f>=0?v+(255-v)*f:v*(1+f));return '#'+[mix(r),mix(g),mix(b)].map(x=>Math.max(0,Math.min(255,x)).toString(16).padStart(2,'0')).join('');}
+function mgApplyFrame(){
+  const fr=document.getElementById('mg-frame');if(!fr)return;
+  const c=mgColor();
+  if(!c){fr.style.background='';fr.style.backgroundSize='';return;} // default parchment
+  const imgs=MG_FRAME_IMAGES[c.k];
+  if(imgs&&imgs.length){fr.style.background="url('"+imgs[Math.floor(Math.random()*imgs.length)]+"') center/cover no-repeat";return;}
+  const v=[[135,16,-16],[160,9,-22],[120,24,-10],[150,12,-18]][Math.floor(Math.random()*4)]; // random variant per color
+  fr.style.backgroundSize='';fr.style.background='linear-gradient('+v[0]+'deg,'+_mgShade(c.f,v[1])+','+_mgShade(c.f,v[2])+')';
+}
 function mgHint(t){const h=document.getElementById('mg-hint');if(!h)return;h.textContent=t;clearTimeout(h._t);h._t=setTimeout(()=>{h.textContent='';},1500);}
 function mgHasConstraint(){return mgState.ci>=0||mgState.cmc>0||mgState.ti>=0||mgState.p!=null||mgState.t!=null||!!mgState.name||!!mgState.format;}
 const MG_FORMATS=[['','Any format'],['standard','Standard'],['pioneer','Pioneer'],['modern','Modern'],['legacy','Legacy'],['vintage','Vintage'],['pauper','Pauper'],['commander','Commander (EDH)'],['premodern','Premodern'],['oldschool','Old School'],['predh','Pre-EDH'],['middleschool','Middle School'],['aaa','Triple-A Ante']];
@@ -4395,8 +4408,8 @@ function mgTaps(id,single,dbl){
   let n=0,tm=null;
   el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
 }
-function mgCycleColor(){mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();}
-function mgClearColor(){mgState.ci=-1;mgHint('color cleared');mgTouch();}
+function mgCycleColor(){mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgApplyFrame();mgTouch();}
+function mgClearColor(){mgState.ci=-1;mgHint('color cleared');mgApplyFrame();mgTouch();}
 // Render a real mana_cost string ("{1}{R}{W}") as legible Win95 bevel buttons.
 const MG_PIPC={W:'#fffdf0',U:'#cfe6ff',B:'#d8d2dc',R:'#ffd6cc',G:'#cdeed7',C:'#e8e2d6'};
 function mgManaToBtns(mana,cost){
@@ -4503,7 +4516,7 @@ function mgShutScreen(){
    '</div>';
   document.getElementById('mg-enter').addEventListener('click',mgShutdown);
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('desktop');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('desktop');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();} // "Enter the app" = minimize to taskbar
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false, mgBarVisible=false;
@@ -4615,9 +4628,6 @@ const MGW_APPS={
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
   hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
-  // panel-type programs: inline layout panels shown as Win95 windows (mobile)
-  deck:   {overlay:'panel-deck',     win:null, frame:false, panel:true, nav:'deck',   title:'Deck', icon:'📋', open:()=>{}, close:()=>{}},
-  card:   {overlay:'panel-detail',   win:null, frame:false, panel:true, nav:'detail', title:'Card', icon:'🃏', open:()=>{}, close:()=>{}},
 };
 function openBin(){renderBinList();openModal('modal-bin');}
 function renderBinList(){
@@ -4878,8 +4888,6 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle">MyMagicDeck</div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs</div>'+
     '<div class="mg-smitem" data-app="cgg">🗃️ Card Guesser Game</div>'+
-    '<div class="mg-smitem" data-app="deck">📋 Deck</div>'+
-    '<div class="mg-smitem" data-app="card">🃏 Card</div>'+
     '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
     '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
     '<div class="mg-smitem" data-app="storage">💾 Storage</div>'+
@@ -4908,7 +4916,7 @@ function mgRenderBin(){
   a.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const id=b.getAttribute('data-restore');mgFs.bin=(mgFs.bin||[]).filter(x=>x!==id);mgFsSave();mgRenderBin();mgHint('Restored');}));
   const emp=document.getElementById('mg-empty');if(emp)emp.addEventListener('click',e=>{e.stopPropagation();if(!confirm('Permanently delete '+bin.length+' deck(s)? This can\'t be undone.'))return;bin.forEach(id=>{deleteDeckFromApi(id);delete state.decks[id];delete mgFs.deckFolder[id];});mgFs.bin=[];saveToStorage();mgFsSave();if(!state.decks[state.currentDeckId]){const ids=Object.keys(state.decks);state.currentDeckId=ids[0]||null;}if(!state.currentDeckId)newDeck();mgHint('Bin emptied');mgRenderDesktop();});
 }
-function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();if(window.innerWidth<=900)mgLaunchApp('deck');}
+function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();siteRestore();if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('deck');}
 async function mgAddGuessToDeck(c){
   const did=(mgActiveDeckId&&state.decks[mgActiveDeckId])?mgActiveDeckId:state.currentDeckId;
   if(!did||!state.decks[did])return;
