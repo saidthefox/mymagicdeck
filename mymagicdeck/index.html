@@ -4301,7 +4301,7 @@ let mgCurrentFolder=null;
 let mgRenamingId=null;
 let mgRenamingDeckId=null;
 let mgStartOpen=false;
-let mgDeskTarget='mg-art'; // where the desktop renders: the card art, or the embedded deckbuilder host
+let mgDeskTarget='mg-desktop-embed'; // the desktop ONLY lives in the search-results box (one PC); the game is just the card program
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
@@ -4362,7 +4362,7 @@ function mgManaToBtns(mana,cost){
   toks.forEach(t=>{const sym=t.replace(/[{}]/g,'');const s=document.createElement('span');s.className='mg-winbtn';s.textContent=sym;if(MG_PIPC[sym]){s.style.background=MG_PIPC[sym];s.style.color='#1a1a1a';}mana.appendChild(s);});
 }
 function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(!mgHasConstraint()||mgMode==='manual')return;mgGuess.timer=setTimeout(mgDoGuess,MG_DELAY[mgMode]||3000);}
-function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'desktop');mgScheduleGuess();}
+function mgTouch(){mgGuess.on=false;mgRender();mgArt('building');mgScheduleGuess();}
 function mgConstraints(){
   const b={},c=mgColor();
   if(c)b.color=c.k;
@@ -4409,7 +4409,6 @@ function mgArtClick(){if(mgGuess.on)mgAccept();}
 function mgArt(mode,c){
   const a=document.getElementById('mg-art');if(!a)return;
   mgArtMode=mode;
-  if(mode==='desktop'){mgDeskTarget='mg-art';mgRenderDesktop();return;}
   if(mode==='guess'||mode==='success'){
     const src=c&&(c.art||c.image);
     a.innerHTML='<div style="position:absolute;inset:0;background:#0a0a0a"></div>'+
@@ -4459,15 +4458,15 @@ function mgShutScreen(){
    '</div>';
   document.getElementById('mg-enter').addEventListener('click',mgShutdown);
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('desktop');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('building');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();} // "Enter the app" = minimize to taskbar
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false, mgBarVisible=false;
 function mgBarUpdate(){const bar=document.getElementById('mg-bar');if(bar)bar.classList.remove('show');} // bottom bar retired — the desktop's own taskbar (in the search box) is the taskbar
-function mgShowGame(){mgCloseDesktopEmbed();const ov=document.getElementById('mguess-overlay');ov.classList.add('open');if(mgArtMode==='desktop')mgArt('desktop');}
-function mgMinimize(){mgRunning=true;document.getElementById('mguess-overlay').classList.remove('open');mgEmbedDesktop();}
+function mgShowGame(){const ov=document.getElementById('mguess-overlay');mgEmbedDesktop();ov.classList.add('open');ov.classList.remove('windowed');} // fullscreen covers the embedded desktop
+function mgMinimize(){mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgEmbedDesktop();}
 function mgRestore(){mgShowGame();}
-function mgMaxToggle(){document.getElementById('mguess-overlay').classList.toggle('windowed');}
+function mgMaxToggle(){const ov=document.getElementById('mguess-overlay');ov.classList.toggle('windowed');mgEmbedDesktop();} // windowed floats over the desktop, so make sure it's showing behind
 // Spawn the SAME desktop module inside the deckbuilder's search-results box (mobile).
 function mgEmbedDesktop(){
   const sr=document.getElementById('search-results');if(!sr)return;
@@ -4476,13 +4475,11 @@ function mgEmbedDesktop(){
   emb.style.display='block';
   mgDeskTarget='mg-desktop-embed';
   if(state.centerView!=='search'&&typeof switchCenterView==='function')switchCenterView('search');
-  const ov=document.getElementById('mguess-overlay');if(ov)ov.classList.remove('open');
-  mgBarUpdate();mgRenderDesktop();
-  mgLoadFs().then(()=>{if(mgDeskTarget==='mg-desktop-embed')mgRenderDesktop();});
+  mgRenderDesktop();
 }
 function mgCloseDesktopEmbed(){const emb=document.getElementById('mg-desktop-embed');if(emb){emb.innerHTML='';emb.style.display='none';}mgDeskTarget='mg-art';}
-function mgClose(){mgRunning=false;document.getElementById('mguess-overlay').classList.remove('open');mgEmbedDesktop();}
-function mgLaunch(){mgRunning=true;mgBarVisible=true;mgShowGame();}
+function mgClose(){mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgEmbedDesktop();}
+function mgLaunch(){mgRunning=true;mgShowGame();}
 function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
@@ -4678,11 +4675,10 @@ function maybeShowMobileGuess(){
   const mx=document.getElementById('mg-max');if(mx&&!mx._mg){mx._mg=1;mx.addEventListener('click',e=>{e.stopPropagation();mgMaxToggle();});}
   const cls=document.getElementById('mg-close');if(cls&&!cls._mg){cls._mg=1;cls.addEventListener('click',e=>{e.stopPropagation();mgClose();});}
   const bs=document.getElementById('mg-bar-start');if(bs&&!bs._mg){bs._mg=1;bs.addEventListener('click',e=>{e.stopPropagation();mgBarStartToggle();});}
-  mgRender();mgArt('desktop');
-  mgRunning=true;mgBarVisible=true;
-  ov.classList.add('open');
-  mgBarUpdate();
-  mgLoadFs().then(()=>{if(mgArtMode==='desktop')mgRenderDesktop();});
+  mgRunning=true;
+  mgLoadFs().then(()=>{mgEmbedDesktop();}); // set up the one desktop in the search box (behind the game)
+  mgRender();mgArt('building');
+  ov.classList.add('open');ov.classList.remove('windowed');
 }
 init();
 
