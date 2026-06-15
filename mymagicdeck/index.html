@@ -966,6 +966,8 @@
     /* The whole site is a Win95 program window sitting on the root PC desktop */
     #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:#017e7e;isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #pc-deskcontent{position:absolute;inset:0}
+    #pc-startmenu{position:absolute;left:4px;bottom:40px;z-index:99999}
+    #pc-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     #hud-anchor-widget{position:absolute;right:10px;bottom:48px;width:152px;z-index:8;display:none;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.72;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 6px rgba(0,0,0,.4);cursor:pointer}
     #hud-anchor-widget .hud-aw-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:3px 6px}
     #hud-anchor-widget .hud-aw-row{display:flex;align-items:center;gap:6px;padding:4px 6px}
@@ -4345,6 +4347,7 @@ let mgCurrentFolder=null;
 let mgRenamingId=null;
 let mgRenamingDeckId=null;
 let mgStartOpen=false;
+let mgToolCollapsed=false;
 let mgDeskTarget='mg-art'; // desktop host: card art when fullscreen, search-box embed when windowed/minimized
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
@@ -4570,7 +4573,7 @@ function mgEmbedDesktop(){ // enter PC desktop mode: minimize the site, reveal t
   mgRenderDesktop();
 }
 function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='mg-art'; } // "Back to Search" = restore the site window
-function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';}}
+function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';sw.style.zIndex='';if(sw.parentElement!==document.body)document.body.appendChild(sw);}}
 let sitePos=null;
 function siteWindow(){ // ❐ : the whole site as a draggable mini over the desktop
   if(document.body.classList.contains('site-windowed')){siteRestore();return;}
@@ -4578,14 +4581,15 @@ function siteWindow(){ // ❐ : the whole site as a draggable mini over the desk
   const cw=sw.offsetWidth||360, ch=sw.offsetHeight||640, s=160/cw;
   document.body.classList.remove('pc-deskmode'); document.body.classList.add('site-windowed');
   mgDeskTarget='pc-deskcontent'; mgRenderDesktop();
-  sw.classList.add('site-mini'); sw.style.position='fixed'; sw.style.width=cw+'px'; sw.style.height=ch+'px'; sw.style.transformOrigin='top left'; sw.style.transform='scale('+s+')';
+  const d=document.getElementById('pc-desktop'); if(d&&sw.parentElement!==d)d.appendChild(sw); // share the desktop stacking context
+  sw.classList.add('site-mini'); sw.style.position='fixed'; sw.style.width=cw+'px'; sw.style.height=ch+'px'; sw.style.transformOrigin='top left'; sw.style.transform='scale('+s+')'; sw.style.zIndex=(++mgUiZ);
   sw.dataset.vw=cw*s; sw.dataset.vh=ch*s; if(!sitePos)sitePos={x:8,y:44};
   siteClampMini(); if(!sw._siteDrag){siteWireDrag(sw);sw._siteDrag=1;}
 }
 function siteClampMini(){const sw=document.getElementById('site-window');if(!sw)return;const vw=parseFloat(sw.dataset.vw)||160,vh=parseFloat(sw.dataset.vh)||260,W=window.innerWidth,H=window.innerHeight;sitePos.x=Math.max(0,Math.min(sitePos.x,W-vw));sitePos.y=Math.max(0,Math.min(sitePos.y,H-vh));sw.style.left=sitePos.x+'px';sw.style.top=sitePos.y+'px';}
 function siteWireDrag(sw){
   let sx,sy,ox,oy,moved,drag=false; const on=()=>sw.classList.contains('site-mini');
-  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=sitePos.x;oy=sitePos.y;moved=false;drag=true;sw.classList.add('dragging');};
+  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=sitePos.x;oy=sitePos.y;moved=false;drag=true;sw.classList.add('dragging');sw.style.zIndex=(++mgUiZ);};
   const move=(x,y)=>{if(!drag)return;const dx=x-sx,dy=y-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;sitePos.x=ox+dx;sitePos.y=oy+dy;siteClampMini();};
   const end=()=>{if(!drag)return;drag=false;sw.classList.remove('dragging');if(!moved)siteRestore();};
   sw.addEventListener('touchstart',e=>{if(!on())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
@@ -4797,12 +4801,16 @@ function mgRenderDesktop(){
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
+      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
-      (mgStartOpen?mgStartMenuHtml(false):'')+
+      ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
     '</div>';
-  if(embedded)a.style.zIndex=mgStartOpen?'9000':''; // lift the desktop (Start menu) above floating minis while open
+  if(embedded){ // root desktop: float the Start menu as a high-z overlay so open windows DON'T disappear
+    const d=document.getElementById('pc-desktop'); let sm=document.getElementById('pc-startmenu');
+    if(mgStartOpen){ if(!sm){sm=document.createElement('div');sm.id='pc-startmenu';d.appendChild(sm);} sm.innerHTML=mgStartMenuHtml(false); }
+    else if(sm){ sm.remove(); }
+  }
   mgUpdateWinTitle();
   // folders: tap = open (unless renaming this one)
   a.querySelectorAll('.mg-icon[data-folder]').forEach(mgWireFolderIcon);
@@ -4811,7 +4819,10 @@ function mgRenderDesktop(){
   if(mgRenamingDeckId){const inp=document.getElementById('mg-deckrename');if(inp){const did=mgRenamingDeckId;const commit=()=>{const d=state.decks[did];if(d){d.name=(inp.value||'').trim()||'Untitled Deck';saveToStorage();syncDeckToApi(did);if(did===state.currentDeckId){const ni=document.getElementById('deck-name-input');if(ni)ni.value=d.name;}}mgRenamingDeckId=null;mgRenderDesktop();};inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();inp.blur();}});inp.addEventListener('blur',commit);inp.addEventListener('touchstart',e=>e.stopPropagation());inp.focus();try{inp.select();}catch(_){}}}
   const up=a.querySelector('.mg-icon[data-up]');if(up)up.addEventListener('click',e=>{e.stopPropagation();const cur=mgFs.folders.find(f=>f.id===mgCurrentFolder);mgCurrentFolder=cur?(cur.parent||null):null;mgStartOpen=false;mgRenderDesktop();});
   a.querySelectorAll('.mg-icon[data-deck]').forEach(mgWireDeckIcon);
-  document.getElementById('mg-newfolder').addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
+  const nf=document.getElementById('mg-newfolder');if(nf)nf.addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
+  const nd=document.getElementById('mg-newdeck');if(nd)nd.addEventListener('click',e=>{e.stopPropagation();newDeck();mgActiveDeckId=state.currentDeckId;mgRenamingDeckId=state.currentDeckId;mgRenderDesktop();});
+  const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
+  const file=document.getElementById('mg-file');if(file)file.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=false;mgRenderDesktop();});
   document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
   const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
   const ec=document.getElementById('mg-embed-close');if(ec)ec.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
@@ -4821,7 +4832,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('[data-mgw]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();mgwRestore(b.getAttribute('data-mgw'));}));
   const sbn=a.querySelector('[data-site]');if(sbn)sbn.addEventListener('click',e=>{e.stopPropagation();siteRestore();});
   a.querySelectorAll('.mg-icon[data-app]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp(el.getAttribute('data-app'));}));
-  if(mgStartOpen)mgWireStartMenu(a);
+  if(mgStartOpen)mgWireStartMenu(embedded?document.getElementById('pc-startmenu'):a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('bin');});
 }
@@ -4891,13 +4902,11 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
     '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
     '<div class="mg-smitem" data-app="storage">💾 Storage</div>'+
-    '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-app="hud">📡 HUD</div>'+
-    '<div style="display:flex">'+
-      '<div class="mg-smitem" data-app="account" style="flex:1">👤 Account</div>'+
-      '<div class="mg-smitem" data-app="sysset" style="flex:1">⚙️ System Settings</div>'+
-    '</div>'+
     '<div class="mg-smitem" data-backsearch="1">🔍 Search</div>'+
+    '<div class="mg-smsep"></div>'+
+    '<div class="mg-smitem" data-app="account">👤 Account</div>'+
+    '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-shut="1">⏻&nbsp; Shut Down</div>'+
     '</div></div>';
