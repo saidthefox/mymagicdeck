@@ -874,25 +874,30 @@
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
     #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:54px 14px 14px;overflow:auto}
     #mguess-overlay.open{display:flex}
-    #mguess-card{width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;background:#171515;border-radius:16px;padding:10px;box-sizing:border-box;font-family:'Times New Roman',Georgia,serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
-    #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;background:#b7a9d0;border-radius:9px;padding:8px;transition:background .15s}
+    #mguess-card{width:min(92vw,380px);flex:1 1 auto;min-height:0;max-height:700px;box-sizing:border-box;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    /* the card is a Windows-95 program window */
+    #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #808080 #808080 #dfdfdf;padding:3px}
     #mg-exit{position:absolute;top:12px;right:14px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid #2e3a52;color:#c8cdd8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
     #mg-exit:active{background:rgba(255,255,255,.16)}
-    #mg-pow,#mg-tou{display:inline-block;min-width:22px;text-align:center;padding:1px 5px;border-radius:5px}
-    .mg-slash{color:#8a8378;padding:0 1px}
-    .mg-titlebar{display:flex;align-items:center;gap:6px;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:6px 9px}
-    #mg-name{flex:1;font-weight:bold;font-size:16px;color:#1a1a1a;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mg-titlebar{display:flex;align-items:center;gap:5px;background:#000080;padding:3px}
+    #mg-colorbtn{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#c0c0c0;color:#444;font-size:13px;font-weight:bold;border:2px solid;border-color:#fff #808080 #808080 #fff}
+    #mg-name{flex:1;font-weight:bold;font-size:14px;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
-    #mg-art{flex:1;min-height:140px;margin-top:7px;background:#017e7e;border:1px solid #2a2a2a;border-radius:4px;position:relative;overflow:hidden}
-    #mg-type{margin-top:7px;display:flex;align-items:center;justify-content:space-between;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:5px 9px;font-size:14px;font-weight:bold;color:#1a1a1a}
-    .mg-textbox{margin-top:7px;background:#efe9dd;border:1px solid #2a2a2a;border-radius:6px;padding:8px 10px;min-height:54px;font-size:13px;color:#3a3320;display:flex;align-items:center;gap:10px}
-    #mg-readout{flex:1;min-width:0;font-style:italic;line-height:1.4}
-    #mg-pt{flex-shrink:0;background:#e8e2d6;border:1px solid #2a2a2a;border-radius:6px;padding:3px 9px;font-weight:bold;font-size:15px;color:#1a1a1a;white-space:nowrap}
+    .mg-winbtn{min-width:21px;height:20px;padding:0 4px;display:inline-flex;align-items:center;justify-content:center;background:#c0c0c0;color:#1a1a1a;font-size:12px;font-weight:bold;border:2px solid;border-color:#fff #808080 #808080 #fff}
+    #mg-art{flex:1;min-height:140px;background:#017e7e;border:2px solid;border-color:#808080 #fff #fff #808080;position:relative;overflow:hidden}
+    #mg-type{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:4px 8px;font-size:13px;font-weight:bold;color:#1a1a1a}
+    .mg-textbox{background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:7px 9px;min-height:48px;font-size:12px;color:#222;display:flex;align-items:center;gap:10px}
+    #mg-readout{flex:1;min-width:0;line-height:1.4}
+    #mg-pt{flex-shrink:0;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:2px 5px;font-weight:bold;font-size:14px;color:#1a1a1a;white-space:nowrap}
+    #mg-pow,#mg-tou{display:inline-block;min-width:18px;text-align:center;padding:1px 4px}
+    .mg-slash{color:#808080;padding:0 1px}
     .mg-zone{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
     .mg-zone:active{filter:brightness(1.12)}
     #mg-hint{font-size:12px;color:#7a87a0;text-align:center;min-height:16px;font-family:-apple-system,system-ui,sans-serif}
     .mg95{font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     .mg-bvl{border:2px solid;border-color:#fff #808080 #808080 #fff}
+    .mg-cbx{width:14px;height:14px;flex-shrink:0;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:#000}
+    .mg-cbrow{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:12px;color:#000;cursor:pointer}
   </style>
 </head>
 <body>
@@ -1425,8 +1430,9 @@
   <div id="mguess-card">
     <div id="mg-frame">
       <div class="mg-titlebar">
+        <span id="mg-colorbtn" class="mg-zone" aria-label="card color">+</span>
         <div id="mg-name" class="mg-zone">Tap to name…</div>
-        <div id="mg-mana" class="mg-zone" aria-label="mana value"></div>
+        <div id="mg-mana" class="mg-zone" aria-label="mana cost">+</div>
       </div>
       <div id="mg-art"></div>
       <div id="mg-type" class="mg-zone"><span id="mg-type-label">Tap for type…</span><span style="font-size:11px;color:#7a6f5a">▸</span></div>
@@ -4234,17 +4240,26 @@ const MG_ARTIFACT={k:'C',n:'Colorless',f:'#b7a9a0',pip:'#efe9e2'};
 const MG_TYPES=['Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Land'];
 let mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:''};
 let mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};
+let mgMode='g3'; // g3 | g5 | manual | insane
+const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
+const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
 function mgHint(t){const h=document.getElementById('mg-hint');if(!h)return;h.textContent=t;clearTimeout(h._t);h._t=setTimeout(()=>{h.textContent='';},1500);}
 function mgHasConstraint(){return mgState.ci>=0||mgState.cmc>0||mgState.ti>=0||mgState.p!=null||mgState.t!=null||!!mgState.name;}
 function mgRender(){
   const c=mgColor();
-  document.getElementById('mg-frame').style.background=c?c.f:'#b7a9d0';
+  const cb=document.getElementById('mg-colorbtn');if(cb){cb.style.background=c?c.f:'#c0c0c0';cb.textContent=c?'':'+';cb.style.color=c?'transparent':'#444';}
   document.getElementById('mg-name').textContent=mgState.name||'Tap to name…';
   const mana=document.getElementById('mg-mana');mana.style.cssText='';mana.innerHTML='';
-  if(c&&mgState.ci<MG_COLORS.length-1){const p=document.createElement('span');p.style.cssText='width:17px;height:17px;border-radius:50%;background:'+c.pip+';border:1px solid #2a2a2a;display:inline-block';mana.appendChild(p);}
-  if(mgState.cmc>0){const b=document.createElement('span');b.textContent=mgState.cmc;b.style.cssText='min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#d9d2c4;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:bold;color:#222;font-family:Tahoma,sans-serif';mana.appendChild(b);}
-  if(!c&&mgState.cmc===0)mana.innerHTML='<span style="font-size:11px;color:#7a6f5a;font-family:Tahoma,sans-serif">cost</span>';
+  // A colored pip counts toward the mana value: 3 mana + white → "2" + W (not 3 + W).
+  const isSingle=c&&mgState.ci<MG_COLORS.length-1, isMulti=c&&mgState.ci===MG_COLORS.length-1;
+  const generic=(isSingle||isMulti)?Math.max(0,mgState.cmc-1):mgState.cmc;
+  const wb=(t,bg,fg)=>{const s=document.createElement('span');s.className='mg-winbtn';s.textContent=t;if(bg)s.style.background=bg;if(fg)s.style.color=fg;return s;};
+  if(mgState.cmc>0||c){
+    if(generic>0)mana.appendChild(wb(String(generic)));
+    if(isSingle)mana.appendChild(wb(c.k,c.pip,'#1a1a1a'));
+    else if(isMulti)mana.appendChild(wb('✦',c.pip,'#5a3a00'));
+  }else{mana.appendChild(wb('+'));}
   document.getElementById('mg-type-label').textContent=mgState.ti<0?'Tap for type…':MG_TYPES[mgState.ti];
   document.getElementById('mg-pow').textContent=mgState.p==null?'—':mgState.p;
   document.getElementById('mg-tou').textContent=mgState.t==null?'—':mgState.t;
@@ -4263,7 +4278,7 @@ function mgTaps(id,single,dbl){
   let n=0,tm=null;
   el.addEventListener('click',()=>{n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{(n===1?single:dbl)();n=0;},230);});
 }
-function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(mgHasConstraint())mgGuess.timer=setTimeout(mgDoGuess,3000);}
+function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(!mgHasConstraint()||mgMode==='manual')return;mgGuess.timer=setTimeout(mgDoGuess,MG_DELAY[mgMode]||3000);}
 function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'shutdown');mgScheduleGuess();}
 function mgConstraints(){
   const b={},c=mgColor();
@@ -4322,20 +4337,27 @@ function mgArt(mode,c){
     return;
   }
   a.removeEventListener('click',mgArtClick);
-  if(mode==='building'){a.innerHTML='<div style="position:absolute;inset:0;background:#017e7e;display:flex;align-items:center;justify-content:center;padding:18px;text-align:center"><div class="mg95" style="color:#eafff9;font-size:13px;line-height:1.5">Keep tapping the card to describe it.<br>I\'ll guess when you pause.</div></div>';return;}
+  if(mode==='building'){
+    const manual=mgMode==='manual';
+    const sub=manual?'Then press Guess.':(mgMode==='insane'?'I\'ll guess the instant you pause.':'I\'ll guess when you pause.');
+    a.innerHTML='<div style="position:absolute;inset:0;background:#017e7e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px;text-align:center"><div class="mg95" style="color:#eafff9;font-size:13px;line-height:1.5">Keep tapping the card to describe it.<br>'+sub+'</div>'+(manual?'<button id="mg-guessnow" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:13px;padding:6px 20px;font-weight:bold">Guess</button>':'')+'</div>';
+    if(manual){const g=document.getElementById('mg-guessnow');if(g)g.addEventListener('click',e=>{e.stopPropagation();mgDoGuess();});}
+    return;
+  }
+  const rows=MG_MODES.map(m=>'<div class="mg-cbrow" data-mode="'+m[0]+'"><span class="mg-cbx">'+(mgMode===m[0]?'✓':'')+'</span>'+m[1]+'</div>').join('');
   a.innerHTML=
    '<div style="position:absolute;inset:0;background:#017e7e"></div>'+
-   '<div class="mg95 mg-bvl" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:240px;max-width:90%;background:#c0c0c0">'+
+   '<div class="mg95 mg-bvl" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:266px;max-width:92%;background:#c0c0c0">'+
    '  <div style="background:#000080;color:#fff;font-size:12px;font-weight:bold;padding:3px 6px">Shut Down the Game</div>'+
-   '  <div style="display:flex;gap:10px;padding:12px 12px 8px;align-items:flex-start">'+
-   '    <div style="width:30px;height:30px;flex-shrink:0;background:#000080;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ff0;font-size:18px">?</div>'+
-   '    <div style="font-size:12px;color:#000;line-height:1.4">Describe a card by tapping<br>its parts — or quit the game.</div>'+
+   '  <div style="padding:10px 12px 4px">'+
+   '    <div style="font-size:12px;color:#000;margin-bottom:6px">When should I guess?</div>'+rows+
    '  </div>'+
-   '  <div style="display:flex;gap:8px;justify-content:center;padding:0 12px 12px">'+
-   '    <button id="mg-shut" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 12px;font-weight:bold">Shut Down</button>'+
-   '    <button id="mg-cancel" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 14px">Cancel</button>'+
+   '  <div style="display:flex;gap:8px;justify-content:flex-end;padding:8px 12px 12px">'+
+   '    <button id="mg-cancel" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 16px;font-weight:bold">Play</button>'+
+   '    <button id="mg-shut" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:12px;padding:4px 12px">Shut Down</button>'+
    '  </div>'+
    '</div>';
+  a.querySelectorAll('.mg-cbrow').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgArt('shutdown');}));
   document.getElementById('mg-shut').addEventListener('click',e=>{e.stopPropagation();mgShutScreen();});
   document.getElementById('mg-cancel').addEventListener('click',e=>{e.stopPropagation();mgArt('building');});
 }
@@ -4360,8 +4382,7 @@ function maybeShowMobileGuess(){
   mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
   mgTaps('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{if(mgState.t!=null){mgState.t--;if(mgState.t<0)mgState.t=null;}mgHint('toughness '+(mgState.t==null?'—':mgState.t));mgTouch();});
   mgTaps('mg-name',()=>{const v=prompt('Card name (or part of it):',mgState.name||'');if(v!=null){mgState.name=v.trim();mgTouch();}},()=>{});
-  const frame=document.getElementById('mg-frame');
-  if(!frame._mg){frame._mg=1;frame.addEventListener('click',e=>{if(e.target.closest('.mg-zone')||e.target.closest('#mg-art'))return;mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();});}
+  mgTaps('mg-colorbtn',()=>{mgState.ci=(mgState.ci+1)%(MG_COLORS.length+1);const c=mgColor();mgHint(c?c.n:'colorless');mgTouch();},()=>{mgState.ci=-1;mgHint('color cleared');mgTouch();});
   const exit=document.getElementById('mg-exit');
   if(exit&&!exit._mg){exit._mg=1;exit.addEventListener('click',mgShutScreen);}
   mgRender();mgArt('shutdown');
