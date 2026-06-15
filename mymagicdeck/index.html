@@ -885,6 +885,8 @@
     .mg-barwin.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
     #mg-startmenu-global{position:fixed;left:3px;bottom:38px;z-index:6101}
     #mg-startmenu-global .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
+    #search-results{position:relative}
+    #mg-desktop-embed{position:absolute;inset:0;min-height:320px;z-index:5;background:#0b0d12;display:none;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #mguess-overlay.open{display:flex}
     #mguess-card{position:relative;width:min(96vw,440px);flex:1 1 auto;min-height:0;box-sizing:border-box;background:#c0c0c0;border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
     #mg-artwrap{position:relative;flex:1;min-height:0;display:flex}
@@ -4295,6 +4297,7 @@ let mgCurrentFolder=null;
 let mgRenamingId=null;
 let mgRenamingDeckId=null;
 let mgStartOpen=false;
+let mgDeskTarget='mg-art'; // where the desktop renders: the card art, or the embedded deckbuilder host
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
@@ -4402,7 +4405,7 @@ function mgArtClick(){if(mgGuess.on)mgAccept();}
 function mgArt(mode,c){
   const a=document.getElementById('mg-art');if(!a)return;
   mgArtMode=mode;
-  if(mode==='desktop'){mgRenderDesktop();return;}
+  if(mode==='desktop'){mgDeskTarget='mg-art';mgRenderDesktop();return;}
   if(mode==='guess'||mode==='success'){
     const src=c&&(c.art||c.image);
     a.innerHTML='<div style="position:absolute;inset:0;background:#0a0a0a"></div>'+
@@ -4468,13 +4471,27 @@ function mgBarUpdate(){
   }
 }
 function mgMinimize(){document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();}
-function mgRestore(){document.getElementById('mguess-overlay').classList.add('open');mgBarUpdate();}
+function mgRestore(){document.getElementById('mguess-overlay').classList.add('open');if(mgArtMode==='desktop')mgArt('desktop');mgBarUpdate();}
+// Spawn the SAME desktop module inside the deckbuilder's search-results box (mobile).
+function mgEmbedDesktop(){
+  const sr=document.getElementById('search-results');if(!sr)return;
+  let emb=document.getElementById('mg-desktop-embed');
+  if(!emb){emb=document.createElement('div');emb.id='mg-desktop-embed';sr.appendChild(emb);}
+  emb.style.display='block';
+  mgDeskTarget='mg-desktop-embed';
+  if(state.centerView!=='search'&&typeof switchCenterView==='function')switchCenterView('search');
+  const ov=document.getElementById('mguess-overlay');if(ov)ov.classList.remove('open');
+  mgBarUpdate();mgRenderDesktop();
+  mgLoadFs().then(()=>{if(mgDeskTarget==='mg-desktop-embed')mgRenderDesktop();});
+}
+function mgCloseDesktopEmbed(){const emb=document.getElementById('mg-desktop-embed');if(emb){emb.innerHTML='';emb.style.display='none';}mgDeskTarget='mg-art';}
 function mgClose(){mgRunning=false;document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();}
 function mgLaunch(){mgRunning=true;mgBarVisible=true;document.getElementById('mguess-overlay').classList.add('open');mgBarUpdate();}
 function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();} // full power-off; reboot from account menu
-function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
+function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
-  const rerender=()=>{m.innerHTML=mgStartMenuHtml(!mgRunning);mgWireStartMenuGlobal(m);};
+  const rerender=()=>{m.innerHTML=mgStartMenuHtml(!mgRunning,true);mgWireStartMenuGlobal(m);};
+  const dk=m.querySelector('.mg-smitem[data-desktop]');if(dk)dk.addEventListener('click',e=>{e.stopPropagation();m.remove();mgEmbedDesktop();});
   m.querySelectorAll('.mg-smitem[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');rerender();}));
   const perm=m.querySelector('.mg-smitem[data-perm]');if(perm)perm.addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());rerender();});
   const lh=m.querySelector('.mg-smitem[data-launch]');if(lh)lh.addEventListener('click',e=>{e.stopPropagation();m.remove();mgLaunch();});
@@ -4503,7 +4520,11 @@ function mgFsSave(){try{if(state.user&&apiToken())apiFetch('/fs',{method:'PUT',b
 function mgGenId(){return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function mgFolderName(id){const f=mgFs.folders.find(x=>x.id===id);return f?f.name:'';}
 function mgRenderDesktop(){
-  const a=document.getElementById('mg-art');if(!a)return;mgArtMode='desktop';
+  const a=document.getElementById(mgDeskTarget);if(!a)return;
+  const embedded=(mgDeskTarget==='mg-desktop-embed');
+  if(!embedded)mgArtMode='desktop';
+  // keep the other desktop host empty so element ids don't collide
+  ['mg-art','mg-desktop-embed'].forEach(t=>{if(t!==mgDeskTarget){const o=document.getElementById(t);if(o&&o.querySelector&&o.querySelector('.mg-desk'))o.innerHTML='';}});
   a.removeEventListener('click',mgArtClick);
   if(mgActiveDeckId&&!state.decks[mgActiveDeckId])mgActiveDeckId=null;
   if(!mgActiveDeckId)mgActiveDeckId=state.currentDeckId||(Object.keys(state.decks||{})[0]||null);
@@ -4522,7 +4543,7 @@ function mgRenderDesktop(){
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
-      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button><button id="mg-incard-win" class="mg-barwin active">🗃️ MyMagicDeck</button></div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?'<button id="mg-embed-close" class="mg-barwin active">🔍 Back to Search</button>':'<button id="mg-incard-win" class="mg-barwin active">🗃️ MyMagicDeck</button>')+'</div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   mgUpdateWinTitle();
@@ -4536,6 +4557,7 @@ function mgRenderDesktop(){
   document.getElementById('mg-newfolder').addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
   document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
   const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
+  const ec=document.getElementById('mg-embed-close');if(ec)ec.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
@@ -4599,9 +4621,10 @@ function mgWireFolderIcon(el){
   el.addEventListener('touchend',e=>{if(dragging){dragging=false;drop();return;}if(e.target.closest('.mg-rnm'))return;mgCurrentFolder=fid;mgStartOpen=false;mgRenderDesktop();});
   el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
-function mgStartMenuHtml(showLaunch){
+function mgStartMenuHtml(showLaunch,showDesktop){
   const modes=MG_MODES.map(m=>'<div class="mg-smitem" data-mode="'+m[0]+'"><span class="mg-cbx">'+(mgMode===m[0]?'✓':'')+'</span>'+m[1]+'</div>').join('');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle">MyMagicDeck</div><div class="mg-smbody">'+
+    (showDesktop?'<div class="mg-smitem" data-desktop="1">🖥️ Decks (Desktop)</div><div class="mg-smsep"></div>':'')+
     '<div class="mg-smhdr">Guess timing</div>'+modes+
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-perm="1"><span class="mg-cbx">'+(mguessDisabled()?'✓':'')+'</span>Shut down permanently</div>'+
