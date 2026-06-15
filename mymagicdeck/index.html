@@ -1486,9 +1486,9 @@
 
 <div id="toast-container"></div>
 <div id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-deck" onclick="mobileNav('deck')"><span class="icon">📋</span>Deck</button>
+  <button class="mobile-nav-btn active" id="mnav-deck" onclick="mgLaunchApp('deck')"><span class="icon">📋</span>Deck</button>
   <button class="mobile-nav-btn" id="mnav-search" onclick="mobileNav('search')"><span class="icon">🔍</span>Search</button>
-  <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🖼</span>Card</button>
+  <button class="mobile-nav-btn" id="mnav-detail" onclick="mgLaunchApp('card')"><span class="icon">🃏</span>Card</button>
 </div>
 
 <div id="mguess-overlay">
@@ -4526,6 +4526,7 @@ function mgEmbedDesktop(){
   if(!emb){emb=document.createElement('div');emb.id='mg-desktop-embed';sr.appendChild(emb);}
   emb.style.display='block';sr.classList.add('mg-has-desktop');
   mgDeskTarget='mg-desktop-embed';
+  if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('search'); // surface the desktop's host panel on mobile
   if(state.centerView!=='search'&&typeof switchCenterView==='function')switchCenterView('search');
   mgRenderDesktop();
 }
@@ -4561,7 +4562,10 @@ const MGW_APPS={
   splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:false, open:()=>previewSplash(),  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
-  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'🗄️', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
+  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
+  // panel-type programs: inline layout panels shown as Win95 windows (mobile)
+  deck:   {overlay:'panel-deck',     win:null, frame:false, panel:true, nav:'deck',   title:'Deck', icon:'📋', open:()=>{}, close:()=>{}},
+  card:   {overlay:'panel-detail',   win:null, frame:false, panel:true, nav:'detail', title:'Card', icon:'🃏', open:()=>{}, close:()=>{}},
 };
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
@@ -4575,21 +4579,34 @@ function mgwInjectBar(key){
   bar.addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;e.stopPropagation();const act=b.getAttribute('data-w');if(act==='min')mgwMin(key);else if(act==='max')mgwToggleMini(key);else mgwClose(key);});
 }
 function mgwLaunch(key){const a=MGW_APPS[key]; if(!a)return; mgwState[key]=mgwState[key]||{s:'closed',pos:null}; a.open(); mgwInjectBar(key); mgwToFull(key);}
+function mgwHome(){return document.getElementById('app');}
 function mgwToFull(key){
   const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key);
+  if(a.panel){ if(ov.parentElement!==mgwHome())mgwHome().appendChild(ov); ov.classList.remove('mobile-hidden'); mgwState[key].s='full'; if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav(a.nav); mgwSyncTaskbar(); return; }
   if(ov.parentElement!==document.body)document.body.appendChild(ov);
   ov.classList.add('open'); ov.style.zIndex=(++mgwZ); mgwState[key].s='full'; mgwSyncTaskbar();
 }
-function mgwMin(key){const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key); ov.classList.remove('open'); mgwState[key].s='min'; mgEmbedDesktop();}
+function mgwMin(key){
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key);
+  if(a.panel){ if(ov.parentElement!==mgwHome())mgwHome().appendChild(ov); ov.classList.add('mobile-hidden'); }
+  else ov.classList.remove('open');
+  mgwState[key].s='min'; mgEmbedDesktop();
+}
 function mgwToggleMini(key){if(mgwState[key].s==='mini'){mgwToFull(key);return;} mgwMakeMini(key);}
 function mgwRestore(key){if(!mgwState[key]||mgwState[key].s==='closed'){mgwLaunch(key);return;} mgwToFull(key);}
-function mgwClose(key){const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key); mgwState[key].s='closed'; try{a.close();}catch(e){ov.classList.remove('open');} mgwSyncTaskbar();}
+function mgwClose(key){
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key); mgwState[key].s='closed';
+  if(a.panel){ if(ov.parentElement!==mgwHome())mgwHome().appendChild(ov); ov.classList.add('mobile-hidden'); mgEmbedDesktop(); }
+  else { try{a.close();}catch(e){ov.classList.remove('open');} }
+  mgwSyncTaskbar();
+}
 function mgwMakeMini(key){
   const a=MGW_APPS[key], ov=document.getElementById(a.overlay), win=mgwWin(key), sr=document.getElementById('search-results');
   if(!ov||!win||!sr)return;
   const cw=win.offsetWidth||340, ch=win.offsetHeight||440, s=150/cw;
   mgEmbedDesktop();
   if(ov.parentElement!==sr)sr.appendChild(ov);
+  if(a.panel)win.classList.remove('mobile-hidden'); // mgEmbedDesktop nav'd away; show the panel as a floating mini
   ov.classList.add('open'); ov.style.zIndex=(++mgUiZ); if(ov!==win){ov.classList.add('mgw-mini-ov'); ov.style.position='absolute'; ov.style.inset='0';}
   win.classList.add('mgw-mini'); win.style.transformOrigin='top left'; win.style.transform='scale('+s+')'; win.style.width=cw+'px'; win.style.height=ch+'px'; win.style.position='absolute';
   const st=mgwState[key]; if(!st.pos)st.pos={x:8,y:8}; st.vw=cw*s; st.vh=ch*s; st.s='mini';
@@ -4669,7 +4686,7 @@ function mgRenderDesktop(){
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">🖧</div><div class="mg-ilbl">Storage</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Back to Search</div></div>';
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
@@ -4764,8 +4781,11 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle">MyMagicDeck</div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs</div>'+
     '<div class="mg-smitem" data-app="cgg">🗃️ Card Guesser Game</div>'+
+    '<div class="mg-smitem" data-app="deck">📋 Deck</div>'+
+    '<div class="mg-smitem" data-app="card">🃏 Card</div>'+
     '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
     '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
+    '<div class="mg-smitem" data-app="storage">💾 Storage</div>'+
     '<div class="mg-smitem" data-app="account">👤 Account</div>'+
     '<div class="mg-smsep"></div>'+
     (showDesktop?'<div class="mg-smitem" data-desktop="1">🖥️ Decks (Desktop)</div>':'')+
@@ -4788,7 +4808,7 @@ function mgRenderBin(){
   a.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();const id=b.getAttribute('data-restore');mgFs.bin=(mgFs.bin||[]).filter(x=>x!==id);mgFsSave();mgRenderBin();mgHint('Restored');}));
   const emp=document.getElementById('mg-empty');if(emp)emp.addEventListener('click',e=>{e.stopPropagation();if(!confirm('Permanently delete '+bin.length+' deck(s)? This can\'t be undone.'))return;bin.forEach(id=>{deleteDeckFromApi(id);delete state.decks[id];delete mgFs.deckFolder[id];});mgFs.bin=[];saveToStorage();mgFsSave();if(!state.decks[state.currentDeckId]){const ids=Object.keys(state.decks);state.currentDeckId=ids[0]||null;}if(!state.currentDeckId)newDeck();mgHint('Bin emptied');mgRenderDesktop();});
 }
-function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();}
+function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();if(window.innerWidth<=900)mgLaunchApp('deck');}
 async function mgAddGuessToDeck(c){
   const did=(mgActiveDeckId&&state.decks[mgActiveDeckId])?mgActiveDeckId:state.currentDeckId;
   if(!did||!state.decks[did])return;
