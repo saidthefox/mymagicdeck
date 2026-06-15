@@ -4638,9 +4638,13 @@ function renderSysset(){
 // HUD: live status of your published subdomain page(s). Anchorable as a faded desktop widget.
 let hudAnchored=false;
 function hudData(){
-  // TODO(backend): real up/down + which deck is published per subdomain (mycommander/mymagic/myvintage).
-  const u=state.user?(state.user.username||'you'):null; if(!u)return [];
-  return [{sub:u.toLowerCase()+'.mymagicdeck.com', up:!!(state.user&&state.user.publicDeckId), deck:(state.user&&state.user.publicDeckName)||null}];
+  if(!state.user)return [];
+  const u=(state.user.username||'you').toLowerCase();
+  const SITES=[{site:'mymagicdeck',short:'MyMagic',dom:'mymagicdeck.com'},{site:'myvintagedeck',short:'MyVintage',dom:'myvintagedeck.com'},{site:'mycommanderdeck',short:'MyCommander',dom:'mycommanderdeck.com'}];
+  return SITES.map(s=>{
+    const d=Object.values(state.decks||{}).find(dk=>dk.splashSite===s.site && dk.splashOwner===state.user.username);
+    return {sub:u+'.'+s.dom, short:s.short, up:!!d, deck:d?(d.name||'Untitled'):null};
+  });
 }
 function openHud(){renderHud();openModal('modal-hud');}
 function renderHud(){
@@ -4654,7 +4658,7 @@ function hudRenderAnchor(){
   const d=document.getElementById('pc-desktop');if(!d)return;
   let w=document.getElementById('hud-anchor-widget');
   if(!w){w=document.createElement('div');w.id='hud-anchor-widget';d.appendChild(w);w.addEventListener('click',()=>openHud());}
-  w.innerHTML='<div class="hud-aw-bar">📡 HUD</div>'+(hudData().map(c=>'<div class="hud-aw-row"><span class="hud-dot" style="background:'+(c.up?'#39d353':'#888')+'"></span>'+_mgEsc(c.sub.replace('.mymagicdeck.com',''))+'</div>').join('')||'<div class="hud-aw-row" style="color:#444">no pages</div>');
+  w.innerHTML='<div class="hud-aw-bar">📡 HUD</div>'+(hudData().map(c=>'<div class="hud-aw-row"><span class="hud-dot" style="background:'+(c.up?'#39d353':'#888')+'"></span>'+_mgEsc(c.short)+'</div>').join('')||'<div class="hud-aw-row" style="color:#444">sign in</div>');
   w.style.display='block';
 }
 function hudRemoveAnchor(){const w=document.getElementById('hud-anchor-widget');if(w)w.style.display='none';}
@@ -4773,12 +4777,13 @@ function mgRenderDesktop(){
   const decks=Object.values(state.decks||{}).filter(d=>!binned.has(d.id)&&inFolder(d));
   let icons='';
   if(mgCurrentFolder!==null)icons+='<div class="mg-icon" data-up="1"><div class="mg-ico">📂</div><div class="mg-ilbl">.. up</div></div>';
-  icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
-  icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
-  if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
+  // core program icons first (at the top), then decks, then folders (new folders spawn after)
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
+  if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Search</div></div>';
+  icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
+  icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
