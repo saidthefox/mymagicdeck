@@ -873,7 +873,7 @@
     }
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
     #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:10px;overflow:auto}
-    #mg-winbar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0;margin-bottom:6px}
+    #mg-winbar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0;margin-bottom:4px}
     #mg-wintitle{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-winctl{width:24px;height:21px;flex-shrink:0;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;font-size:12px;font-weight:bold;color:#000;display:flex;align-items:center;justify-content:center;line-height:1;font-family:Tahoma,sans-serif}
     .mg-winctl:active{border-color:#808080 #fff #fff #808080}
@@ -886,9 +886,12 @@
     #mg-startmenu-global{position:fixed;left:3px;bottom:38px;z-index:6101}
     #mg-startmenu-global .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     #search-results{position:relative}
+    #search-results.mg-has-desktop{overflow:hidden;isolation:isolate} /* trap the windowed CGG mini's z below page-level modals (sign-in, splash builder); fullscreen CGG lives in <body> and stays on top */
     #mg-desktop-embed{position:absolute;inset:0;min-height:320px;z-index:5;background:#0b0d12;display:none;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
-    #mguess-overlay.windowed{background:transparent;pointer-events:none;justify-content:center;padding:0}
-    #mguess-overlay.windowed #mguess-card{pointer-events:auto;flex:0 0 auto;width:min(88vw,360px);max-height:74vh}
+    #mguess-overlay.windowed{background:transparent;pointer-events:none;padding:0;overflow:hidden}
+    #mguess-card.mg-mini{position:absolute;pointer-events:auto;cursor:grab;box-shadow:3px 3px 12px rgba(0,0,0,.55);touch-action:none;-webkit-touch-callout:none}
+    #mguess-card.mg-mini.dragging{cursor:grabbing;opacity:.92}
+    #mguess-card.mg-mini *{pointer-events:none}
     .mg-cggart{display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;background:#000;border:2px solid #888;line-height:1.05;padding:2px;box-sizing:border-box}
     .mg-cggart b{font-size:9px;font-family:'Courier New',monospace;letter-spacing:.5px}
     #mguess-overlay.open{display:flex}
@@ -897,24 +900,24 @@
     .mg-edge{position:absolute;top:0;bottom:0;width:22px;z-index:6;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent}
     .mg-edge-l{left:0}.mg-edge-r{right:0}
     .mg-edge:active{background:rgba(255,255,255,.10)}
-    /* the card is a Windows-95 program window */
-    #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;gap:3px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #808080 #808080 #dfdfdf;padding:3px}
+    /* the card face: Magic-style card, inside the Win95 program window */
+    #mg-frame{flex:1;min-height:0;display:flex;flex-direction:column;gap:5px;background:linear-gradient(165deg,#e9e0c9,#cbbd99);border:7px solid #0b0b0d;border-radius:13px;padding:7px}
     #mg-exit{position:absolute;top:12px;right:14px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid #2e3a52;color:#c8cdd8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
     #mg-exit:active{background:rgba(255,255,255,.16)}
-    .mg-titlebar{display:flex;align-items:center;gap:5px;background:#000080;padding:3px}
+    .mg-titlebar{display:flex;align-items:center;gap:6px;background:linear-gradient(#f4eddb,#dacdaa);border:1px solid #8a7a52;border-radius:9px;padding:5px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
     #mg-colorbtn{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#c0c0c0;color:#444;font-size:13px;font-weight:bold;border:2px solid;border-color:#fff #808080 #808080 #fff}
-    #mg-name{flex:1;font-weight:bold;font-size:14px;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #mg-name{flex:1;font-weight:bold;font-size:15px;color:#191207;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Georgia,'Times New Roman',serif}
     #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
     .mg-winbtn{width:22px;height:22px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#d8d2c4;color:#1a1a1a;font-size:12px;font-weight:bold;border:1px solid #2a2a2a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
-    #mg-art{flex:1;min-height:140px;background:#017e7e;border:2px solid;border-color:#808080 #fff #fff #808080;position:relative;overflow:hidden}
-    #mg-type{display:flex;align-items:center;justify-content:space-between;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:4px 8px;font-size:13px;font-weight:bold;color:#1a1a1a}
+    #mg-art{flex:1;min-height:140px;background:#23232b;border:1px solid #2a2114;border-radius:4px;position:relative;overflow:hidden}
+    #mg-type{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(#f4eddb,#dacdaa);border:1px solid #8a7a52;border-radius:9px;padding:5px 11px;font-size:13px;font-weight:bold;color:#191207;font-family:Georgia,serif}
     #mg-type-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     #mg-fmt{flex-shrink:0;font-size:11px;color:#0a5ca0;font-weight:bold;padding:2px 6px;margin-left:8px}
-    .mg-textbox{background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:7px 9px;min-height:48px;font-size:12px;color:#222;display:flex;align-items:center;gap:10px}
+    .mg-textbox{background:linear-gradient(#f7f1e0,#ece2c8);border:1px solid #8a7a52;border-radius:9px;padding:8px 11px;min-height:48px;font-size:12px;color:#241c10;display:flex;align-items:center;gap:10px;font-family:Georgia,serif}
     #mg-readout{flex:1;min-width:0;line-height:1.4}
-    #mg-pt{flex-shrink:0;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:2px 5px;font-weight:bold;font-size:14px;color:#1a1a1a;white-space:nowrap}
+    #mg-pt{flex-shrink:0;background:linear-gradient(#f4eddb,#d4c498);border:1px solid #2a2114;border-radius:9px;padding:3px 9px;font-weight:bold;font-size:15px;color:#191207;white-space:nowrap;font-family:Georgia,serif;box-shadow:0 1px 3px rgba(0,0,0,.3)}
     #mg-pow,#mg-tou{display:inline-block;min-width:18px;text-align:center;padding:1px 4px}
-    .mg-slash{color:#808080;padding:0 1px}
+    .mg-slash{color:#7a6a44;padding:0 1px}
     .mg-zone{cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
     .mg-zone:active{filter:brightness(1.12)}
     #mg-hint{font-size:12px;color:#7a87a0;text-align:center;min-height:16px;font-family:-apple-system,system-ui,sans-serif}
@@ -949,6 +952,17 @@
     .mg-smitem{display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap}
     .mg-smitem:active{background:#000080;color:#fff}
     .mg-smsep{border-top:1px solid #808080;border-bottom:1px solid #fff;margin:3px 2px}
+    #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:#c0c0c0;z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
+    /* MGW: generic Win95 program windows (Splash / Share / Account / future apps) */
+    .mgw-win{border:3px solid !important;border-color:#dfdfdf #404040 #404040 #dfdfdf !important;border-radius:0 !important;background:#c0c0c0 !important;padding:0 !important;overflow:hidden}
+    .mgw-bar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0}
+    .mgw-bar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:5px}
+    .mgw-bar .mgw-ic{font-size:13px}
+    .mgw-mini{pointer-events:auto;box-shadow:3px 3px 12px rgba(0,0,0,.55);cursor:grab;touch-action:none;-webkit-touch-callout:none}
+    .mgw-mini.dragging{cursor:grabbing;opacity:.92}
+    .mgw-mini *{pointer-events:none}
+    .mgw-mini-ov{background:transparent !important;pointer-events:none;overflow:hidden}
+    .mgw-win .modal-header{display:none} /* the injected Win95 bar replaces the modal's own header */
   </style>
 </head>
 <body>
@@ -1479,7 +1493,7 @@
 
 <div id="mguess-overlay">
   <div id="mguess-card">
-    <div id="mg-winbar"><span id="mg-wintitle">🗃️ CGG</span><button id="mg-min" class="mg-winctl" aria-label="minimize">_</button><button id="mg-max" class="mg-winctl" aria-label="restore size">❐</button><button id="mg-close" class="mg-winctl" aria-label="close">✕</button></div>
+    <div id="mg-winbar"><span id="mg-wintitle">🗃️ CGG</span><button id="mg-cog" class="mg-winctl" aria-label="settings">⚙</button><button id="mg-min" class="mg-winctl" aria-label="minimize">_</button><button id="mg-max" class="mg-winctl" aria-label="restore size">❐</button><button id="mg-close" class="mg-winctl" aria-label="close">✕</button></div>
     <div id="mg-frame">
       <div class="mg-titlebar">
         <div id="mg-name" class="mg-zone">Tap to name…</div>
@@ -4301,7 +4315,7 @@ let mgCurrentFolder=null;
 let mgRenamingId=null;
 let mgRenamingDeckId=null;
 let mgStartOpen=false;
-let mgDeskTarget='mg-desktop-embed'; // the desktop ONLY lives in the search-results box (one PC); the game is just the card program
+let mgDeskTarget='mg-art'; // desktop host: card art when fullscreen, search-box embed when windowed/minimized
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
@@ -4362,7 +4376,7 @@ function mgManaToBtns(mana,cost){
   toks.forEach(t=>{const sym=t.replace(/[{}]/g,'');const s=document.createElement('span');s.className='mg-winbtn';s.textContent=sym;if(MG_PIPC[sym]){s.style.background=MG_PIPC[sym];s.style.color='#1a1a1a';}mana.appendChild(s);});
 }
 function mgScheduleGuess(){clearTimeout(mgGuess.timer);if(!mgHasConstraint()||mgMode==='manual')return;mgGuess.timer=setTimeout(mgDoGuess,MG_DELAY[mgMode]||3000);}
-function mgTouch(){mgGuess.on=false;mgRender();mgArt('building');mgScheduleGuess();}
+function mgTouch(){mgGuess.on=false;mgRender();mgArt(mgHasConstraint()?'building':'desktop');mgScheduleGuess();}
 function mgConstraints(){
   const b={},c=mgColor();
   if(c)b.color=c.k;
@@ -4409,6 +4423,7 @@ function mgArtClick(){if(mgGuess.on)mgAccept();}
 function mgArt(mode,c){
   const a=document.getElementById('mg-art');if(!a)return;
   mgArtMode=mode;
+  if(mode==='desktop'){mgDeskTarget='mg-art';mgRenderDesktop();return;}
   if(mode==='guess'||mode==='success'){
     const src=c&&(c.art||c.image);
     a.innerHTML='<div style="position:absolute;inset:0;background:#0a0a0a"></div>'+
@@ -4458,36 +4473,157 @@ function mgShutScreen(){
    '</div>';
   document.getElementById('mg-enter').addEventListener('click',mgShutdown);
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('building');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgRender();mgArt('desktop');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');mgBarUpdate();} // "Enter the app" = minimize to taskbar
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false, mgBarVisible=false;
 function mgBarUpdate(){const bar=document.getElementById('mg-bar');if(bar)bar.classList.remove('show');} // bottom bar retired — the desktop's own taskbar (in the search box) is the taskbar
-function mgShowGame(){const ov=document.getElementById('mguess-overlay');mgEmbedDesktop();ov.classList.add('open');ov.classList.remove('windowed');} // fullscreen covers the embedded desktop
-function mgMinimize(){mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgEmbedDesktop();}
+function mgUnconfine(){const ov=document.getElementById('mguess-overlay');if(ov.parentElement!==document.body)document.body.appendChild(ov);ov.style.position='';ov.style.inset='';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';} // dock back to body for fullscreen (CSS position:fixed)
+function mgConfineToDesktop(){const ov=document.getElementById('mguess-overlay');const sr=document.getElementById('search-results');if(!sr)return;if(ov.parentElement!==sr)sr.appendChild(ov);ov.style.position='absolute';ov.style.inset='0';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';} // live inside the desktop box — physically can't escape it
+function mgShowGame(){const ov=document.getElementById('mguess-overlay');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgCloseDesktopEmbed();mgDeskTarget='mg-art';ov.classList.add('open');if(!mgHasConstraint()&&!mgGuess.on)mgArt('desktop');} // fullscreen: desktop back in the card art
+function mgMinimize(){mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open','windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
 function mgRestore(){mgShowGame();}
-function mgMaxToggle(){const ov=document.getElementById('mguess-overlay');ov.classList.toggle('windowed');mgEmbedDesktop();} // windowed floats over the desktop, so make sure it's showing behind
+function mgMaxToggle(){const ov=document.getElementById('mguess-overlay');if(ov.classList.contains('windowed')){mgShowGame();return;}if(mgArtMode==='desktop')mgArt('building');ov.classList.add('windowed');mgEmbedDesktop();mgShowFloat();} // windowed: desktop fills the box, the live card shrinks to a draggable mini on it
+// Windowed CGG = the actual card, frozen at its current look and scaled down to a draggable mini. Drag to move (clamped, no folders); tap to go fullscreen.
+let mgFloatPos=null;
+const MG_MINI_W=120; // target on-screen width of the mini card
+function mgClampCard(card,r){const vw=parseFloat(card.dataset.mgVw)||120,vh=parseFloat(card.dataset.mgVh)||180;const W=r.width||300,H=r.height||320;mgFloatPos.x=Math.max(0,Math.min(mgFloatPos.x,W-vw));mgFloatPos.y=Math.max(0,Math.min(mgFloatPos.y,H-vh));card.style.left=mgFloatPos.x+'px';card.style.top=mgFloatPos.y+'px';}
+function mgShowFloat(){ // shrink the live card into the draggable mini
+  const sr=document.getElementById('search-results');const ov=document.getElementById('mguess-overlay');const card=document.getElementById('mguess-card');
+  if(!sr||!card)return;
+  const cw=card.offsetWidth||360, ch=card.offsetHeight||520; // capture the current (fullscreen) card size
+  if(ov.parentElement!==sr)sr.appendChild(ov); // overlay rides transparently inside the desktop box
+  ov.style.position='absolute';ov.style.inset='0';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';
+  const s=MG_MINI_W/cw;
+  card.classList.add('mg-mini');
+  card.style.width=cw+'px';card.style.height=ch+'px';card.style.transformOrigin='top left';card.style.transform='scale('+s+')';
+  card.dataset.mgVw=cw*s;card.dataset.mgVh=ch*s;
+  const r=sr.getBoundingClientRect();
+  if(!mgFloatPos)mgFloatPos={x:Math.max(6,(r.width||300)-cw*s-10),y:8}; // default top-right
+  mgClampCard(card,r);
+  if(!card.dataset.mgDragWired){mgWireCardDrag(card);card.dataset.mgDragWired='1';}
+}
+function mgRemoveFloat(){ // restore the card to its full size
+  const card=document.getElementById('mguess-card');if(!card)return;
+  card.classList.remove('mg-mini','dragging');
+  card.style.position='';card.style.width='';card.style.height='';card.style.transform='';card.style.transformOrigin='';card.style.left='';card.style.top='';
+}
+function mgWireCardDrag(card){ // only active while .mg-mini; ignored in fullscreen so normal taps work
+  let sx,sy,ox,oy,moved,dragging=false;
+  const active=()=>card.classList.contains('mg-mini');
+  const begin=(px,py)=>{if(!active())return;sx=px;sy=py;ox=mgFloatPos.x;oy=mgFloatPos.y;moved=false;dragging=true;card.classList.add('dragging');};
+  const move=(px,py)=>{if(!dragging)return;const dx=px-sx,dy=py-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;const sr=document.getElementById('search-results');if(!sr)return;mgFloatPos.x=ox+dx;mgFloatPos.y=oy+dy;mgClampCard(card,sr.getBoundingClientRect());};
+  const end=()=>{if(!dragging)return;dragging=false;card.classList.remove('dragging');if(!moved)mgShowGame();};
+  card.addEventListener('touchstart',e=>{if(!active())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
+  card.addEventListener('touchmove',e=>{if(!active()||!dragging)return;const t=e.touches[0];move(t.clientX,t.clientY);e.preventDefault();},{passive:false});
+  card.addEventListener('touchend',()=>{if(active())end();});card.addEventListener('touchcancel',()=>{if(active())end();});
+  card.addEventListener('mousedown',e=>{if(!active())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
+}
 // Spawn the SAME desktop module inside the deckbuilder's search-results box (mobile).
 function mgEmbedDesktop(){
   const sr=document.getElementById('search-results');if(!sr)return;
   let emb=document.getElementById('mg-desktop-embed');
   if(!emb){emb=document.createElement('div');emb.id='mg-desktop-embed';sr.appendChild(emb);}
-  emb.style.display='block';
+  emb.style.display='block';sr.classList.add('mg-has-desktop');
   mgDeskTarget='mg-desktop-embed';
   if(state.centerView!=='search'&&typeof switchCenterView==='function')switchCenterView('search');
   mgRenderDesktop();
 }
-function mgCloseDesktopEmbed(){const emb=document.getElementById('mg-desktop-embed');if(emb){emb.innerHTML='';emb.style.display='none';}mgDeskTarget='mg-art';}
-function mgClose(){mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgEmbedDesktop();}
+function mgCloseDesktopEmbed(){const emb=document.getElementById('mg-desktop-embed');if(emb){emb.innerHTML='';emb.style.display='none';}const sr=document.getElementById('search-results');if(sr)sr.classList.remove('mg-has-desktop');mgDeskTarget='mg-art';}
+function mgClose(){mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
 function mgLaunch(){mgRunning=true;mgShowGame();}
-function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgCloseDesktopEmbed();} // full power-off; reboot from account menu
+// CGG settings live in the program's own ⚙ menu (Win95 dropdown), not the Start menu.
+function mgCogToggle(){
+  let p=document.getElementById('mg-cogmenu');if(p){p.remove();return;}
+  const card=document.getElementById('mguess-card');if(!card)return;
+  const modes=MG_MODES.map(m=>'<div class="mg-smitem" data-mode="'+m[0]+'"><span class="mg-cbx">'+(mgMode===m[0]?'✓':'')+'</span>'+m[1]+'</div>').join('');
+  p=document.createElement('div');p.id='mg-cogmenu';p.className='mg-bvl';
+  p.innerHTML='<div class="mg-smbody"><div class="mg-smhdr">Guess timing</div>'+modes+'<div class="mg-smsep"></div><div class="mg-smitem" data-perm="1"><span class="mg-cbx">'+(mguessDisabled()?'✓':'')+'</span>Disable game</div></div>';
+  card.appendChild(p);
+  p.addEventListener('click',e=>e.stopPropagation());
+  p.querySelectorAll('.mg-smitem[data-mode]').forEach(r=>r.addEventListener('click',()=>{mgMode=r.getAttribute('data-mode');mgCogToggle();}));
+  const perm=p.querySelector('[data-perm]');if(perm)perm.addEventListener('click',()=>{const d=!mguessDisabled();mguessSetDisabled(d);p.remove();if(d)mgFullExit();});
+  const close=ev=>{const m=document.getElementById('mg-cogmenu');if(m&&!m.contains(ev.target)&&ev.target.id!=='mg-cog'){m.remove();document.removeEventListener('click',close,true);}};
+  setTimeout(()=>document.addEventListener('click',close,true),0);
+}
+// Launch one of the desktop's programs from the Start menu / desktop icon.
+function mgLaunchApp(app){
+  mgStartOpen=false;
+  if(app==='cgg'){mgLaunch();return;}
+  if(MGW_APPS[app])mgwLaunch(app);
+}
+// ===== MGW: generic Win95 window manager for "programs" =====
+// Any feature can run as a launchable Win95 program with full / mini-drag / minimized
+// states + a desktop-taskbar button. Each app reuses its existing overlay; MGW just
+// adds chrome + state. Register a new program (e.g. a 2-player guessing battle) by
+// adding one entry here with {overlay, win, title, icon, open, close}.
+const MGW_APPS={
+  splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:false, open:()=>previewSplash(),  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
+  share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
+  account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
+};
+const mgwState={}; let mgwZ=5200;
+function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
+function mgwOpenKeys(){return Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s!=='closed');}
+function mgwInjectBar(key){
+  const a=MGW_APPS[key], win=mgwWin(key); if(!win||win._mgwBar)return; win._mgwBar=1;
+  const bar=document.createElement('div'); bar.className='mgw-bar';
+  bar.innerHTML='<span class="mgw-ti"><span class="mgw-ic">'+a.icon+'</span>'+a.title+'</span><button class="mg-winctl" data-w="min">_</button><button class="mg-winctl" data-w="max">❐</button><button class="mg-winctl" data-w="close">✕</button>';
+  win.insertBefore(bar, win.firstChild);
+  if(a.frame!==false)win.classList.add('mgw-win');
+  bar.addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;e.stopPropagation();const act=b.getAttribute('data-w');if(act==='min')mgwMin(key);else if(act==='max')mgwToggleMini(key);else mgwClose(key);});
+}
+function mgwLaunch(key){const a=MGW_APPS[key]; if(!a)return; mgwState[key]=mgwState[key]||{s:'closed',pos:null}; a.open(); mgwInjectBar(key); mgwToFull(key);}
+function mgwToFull(key){
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key);
+  if(ov.parentElement!==document.body)document.body.appendChild(ov);
+  ov.classList.add('open'); ov.style.zIndex=(++mgwZ); mgwState[key].s='full'; mgwSyncTaskbar();
+}
+function mgwMin(key){const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key); ov.classList.remove('open'); mgwState[key].s='min'; mgEmbedDesktop();}
+function mgwToggleMini(key){if(mgwState[key].s==='mini'){mgwToFull(key);return;} mgwMakeMini(key);}
+function mgwRestore(key){if(!mgwState[key]||mgwState[key].s==='closed'){mgwLaunch(key);return;} mgwToFull(key);}
+function mgwClose(key){const a=MGW_APPS[key], ov=document.getElementById(a.overlay); mgwUnmini(key); mgwState[key].s='closed'; try{a.close();}catch(e){ov.classList.remove('open');} mgwSyncTaskbar();}
+function mgwMakeMini(key){
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay), win=mgwWin(key), sr=document.getElementById('search-results');
+  if(!ov||!win||!sr)return;
+  const cw=win.offsetWidth||340, ch=win.offsetHeight||440, s=150/cw;
+  mgEmbedDesktop();
+  if(ov.parentElement!==sr)sr.appendChild(ov);
+  ov.classList.add('open','mgw-mini-ov'); ov.style.position='absolute'; ov.style.inset='0'; ov.style.zIndex=30;
+  win.classList.add('mgw-mini'); win.style.transformOrigin='top left'; win.style.transform='scale('+s+')'; win.style.width=cw+'px'; win.style.height=ch+'px'; win.style.position='absolute';
+  const st=mgwState[key]; if(!st.pos)st.pos={x:8,y:8}; st.vw=cw*s; st.vh=ch*s; st.s='mini';
+  mgwClampMini(key); mgwWireMiniDrag(key); mgwSyncTaskbar();
+}
+function mgwUnmini(key){
+  const a=MGW_APPS[key], ov=document.getElementById(a.overlay), win=mgwWin(key);
+  if(win){win.classList.remove('mgw-mini','dragging'); win.style.transform=''; win.style.transformOrigin=''; win.style.width=''; win.style.height=''; win.style.position=''; win.style.left=''; win.style.top='';}
+  if(ov){ov.classList.remove('mgw-mini-ov'); ov.style.position=''; ov.style.inset=''; ov.style.zIndex='';}
+}
+function mgwClampMini(key){
+  const win=mgwWin(key), sr=document.getElementById('search-results'), st=mgwState[key]; if(!win||!sr||!st)return;
+  const r=sr.getBoundingClientRect(), W=r.width||300, H=r.height||320, vw=st.vw||150, vh=st.vh||200;
+  st.pos.x=Math.max(0,Math.min(st.pos.x,W-vw)); st.pos.y=Math.max(0,Math.min(st.pos.y,H-vh));
+  win.style.left=st.pos.x+'px'; win.style.top=st.pos.y+'px';
+}
+function mgwWireMiniDrag(key){
+  const win=mgwWin(key); if(!win||win._mgwDrag)return; win._mgwDrag=1;
+  let sx,sy,ox,oy,moved,drag=false; const on=()=>win.classList.contains('mgw-mini'); const st=()=>mgwState[key];
+  const begin=(x,y)=>{if(!on())return;sx=x;sy=y;ox=st().pos.x;oy=st().pos.y;moved=false;drag=true;win.classList.add('dragging');};
+  const move=(x,y)=>{if(!drag)return;const dx=x-sx,dy=y-sy;if(Math.abs(dx)+Math.abs(dy)>6)moved=true;st().pos.x=ox+dx;st().pos.y=oy+dy;mgwClampMini(key);};
+  const end=()=>{if(!drag)return;drag=false;win.classList.remove('dragging');if(!moved)mgwToFull(key);};
+  win.addEventListener('touchstart',e=>{if(!on())return;const t=e.touches[0];begin(t.clientX,t.clientY);},{passive:true});
+  win.addEventListener('touchmove',e=>{if(!on()||!drag)return;const t=e.touches[0];move(t.clientX,t.clientY);e.preventDefault();},{passive:false});
+  win.addEventListener('touchend',()=>{if(on())end();}); win.addEventListener('touchcancel',()=>{if(on())end();});
+  win.addEventListener('mousedown',e=>{if(!on())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
+}
+function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)&&document.getElementById(mgDeskTarget).querySelector('.mg-desk'))mgRenderDesktop();}
+function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(mgwState[k].s==='full'?' active':'')+'" data-mgw="'+k+'">'+MGW_APPS[k].icon+' '+MGW_APPS[k].title+'</button>').join('');}
+function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
-  const rerender=()=>{m.innerHTML=mgStartMenuHtml(!mgRunning,true);mgWireStartMenuGlobal(m);};
   const dk=m.querySelector('.mg-smitem[data-desktop]');if(dk)dk.addEventListener('click',e=>{e.stopPropagation();m.remove();mgEmbedDesktop();});
-  m.querySelectorAll('.mg-smitem[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');rerender();}));
-  const perm=m.querySelector('.mg-smitem[data-perm]');if(perm)perm.addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());rerender();});
-  const lh=m.querySelector('.mg-smitem[data-launch]');if(lh)lh.addEventListener('click',e=>{e.stopPropagation();m.remove();mgLaunch();});
+  m.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();m.remove();mgLaunchApp(r.getAttribute('data-app'));}));
+  const bs=m.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();m.remove();mgCloseDesktopEmbed();});
   const sd=m.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();m.remove();mgFullExit();});
 }
 // Persistent (device-level) opt-out for the card-guess game.
@@ -4532,12 +4668,13 @@ function mgRenderDesktop(){
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Back to Search</div></div>';
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
       '<div class="mg-toolbar"><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
-      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button><button id="mg-embed-close" class="mg-barwin">🔍 Back to Search</button>':'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+'</div>'+
+      '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin active">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+mgwTaskbarHtml()+'</div>'+
       (mgStartOpen?mgStartMenuHtml(false):'')+
     '</div>';
   mgUpdateWinTitle();
@@ -4553,7 +4690,9 @@ function mgRenderDesktop(){
   const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
   const ec=document.getElementById('mg-embed-close');if(ec)ec.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   const cr=document.getElementById('mg-cgg-restore');if(cr)cr.addEventListener('click',e=>{e.stopPropagation();mgRestore();});
-  a.querySelectorAll('.mg-icon[data-cgg]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgRestore();}));
+  a.querySelectorAll('.mg-icon[data-cgg]').forEach(el=>el.addEventListener('click',e=>{e.stopPropagation();mgLaunch();}));
+  const bsi=document.getElementById('mg-backsearch');if(bsi)bsi.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
+  a.querySelectorAll('[data-mgw]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();mgwRestore(b.getAttribute('data-mgw'));}));
   if(mgStartOpen)mgWireStartMenu(a);
   const deskbg=a.querySelector('.mg-deskicons');if(deskbg)deskbg.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskbg){mgStartOpen=false;mgRenderDesktop();}});
   const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgRenderBin();});
@@ -4618,20 +4757,22 @@ function mgWireFolderIcon(el){
   el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
 function mgStartMenuHtml(showLaunch,showDesktop){
-  const modes=MG_MODES.map(m=>'<div class="mg-smitem" data-mode="'+m[0]+'"><span class="mg-cbx">'+(mgMode===m[0]?'✓':'')+'</span>'+m[1]+'</div>').join('');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle">MyMagicDeck</div><div class="mg-smbody">'+
-    (showDesktop?'<div class="mg-smitem" data-desktop="1">🖥️ Decks (Desktop)</div><div class="mg-smsep"></div>':'')+
-    '<div class="mg-smhdr">Guess timing</div>'+modes+
+    '<div class="mg-smhdr">Programs</div>'+
+    '<div class="mg-smitem" data-app="cgg">🗃️ Card Guesser Game</div>'+
+    '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
+    '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
+    '<div class="mg-smitem" data-app="account">👤 Account</div>'+
     '<div class="mg-smsep"></div>'+
-    '<div class="mg-smitem" data-perm="1"><span class="mg-cbx">'+(mguessDisabled()?'✓':'')+'</span>Shut down permanently</div>'+
+    (showDesktop?'<div class="mg-smitem" data-desktop="1">🖥️ Decks (Desktop)</div>':'')+
+    '<div class="mg-smitem" data-backsearch="1">🔍 Back to Search</div>'+
     '<div class="mg-smsep"></div>'+
-    (showLaunch?'<div class="mg-smitem" data-launch="1">🗃️ Open Card Guesser</div>':'')+
     '<div class="mg-smitem" data-shut="1">⏻&nbsp; Shut Down</div>'+
     '</div></div>';
 }
 function mgWireStartMenu(a){
-  a.querySelectorAll('.mg-smitem[data-mode]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();mgMode=r.getAttribute('data-mode');mgRenderDesktop();}));
-  const perm=a.querySelector('.mg-smitem[data-perm]');if(perm)perm.addEventListener('click',e=>{e.stopPropagation();mguessSetDisabled(!mguessDisabled());mgRenderDesktop();});
+  a.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();const app=r.getAttribute('data-app');mgLaunchApp(app);if(app!=='cgg')mgRenderDesktop();}));
+  const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
   const sd=a.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgFullExit();});
 }
 function mgRenderBin(){
@@ -4674,11 +4815,12 @@ function maybeShowMobileGuess(){
   const min=document.getElementById('mg-min');if(min&&!min._mg){min._mg=1;min.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});}
   const mx=document.getElementById('mg-max');if(mx&&!mx._mg){mx._mg=1;mx.addEventListener('click',e=>{e.stopPropagation();mgMaxToggle();});}
   const cls=document.getElementById('mg-close');if(cls&&!cls._mg){cls._mg=1;cls.addEventListener('click',e=>{e.stopPropagation();mgClose();});}
+  const cog=document.getElementById('mg-cog');if(cog&&!cog._mg){cog._mg=1;cog.addEventListener('click',e=>{e.stopPropagation();mgCogToggle();});}
   const bs=document.getElementById('mg-bar-start');if(bs&&!bs._mg){bs._mg=1;bs.addEventListener('click',e=>{e.stopPropagation();mgBarStartToggle();});}
   mgRunning=true;
-  mgLoadFs().then(()=>{mgEmbedDesktop();}); // set up the one desktop in the search box (behind the game)
-  mgRender();mgArt('building');
+  mgRender();mgArt('desktop'); // fullscreen idle = the desktop, in the card art
   ov.classList.add('open');ov.classList.remove('windowed');
+  mgLoadFs().then(()=>{if(mgArtMode==='desktop')mgRenderDesktop();});
 }
 init();
 
