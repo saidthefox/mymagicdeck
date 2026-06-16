@@ -1027,7 +1027,7 @@
     .os-widget.pinned:hover{opacity:.95}
     /* MyMagicDeck detachable wings (deck list / card panel) — faded mountable panels */
     .mmd-wing{width:286px}
-    .mmd-wing .ow-body{padding:0;max-height:none;height:46vh;overflow:hidden;display:flex;flex-direction:column}
+    .mmd-wing .ow-body{padding:0;max-height:none;height:64vh;overflow:hidden;display:flex;flex-direction:column}
     .mmd-wing .ow-body .panel{flex:1;min-height:0;border-right:none;background:var(--surface)}
     #app.mmd-clipped{grid-template-columns:1fr}
     #app.mmd-clipped #panel-search{border-right:none}
@@ -5124,7 +5124,7 @@ function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-car
 function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
 function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
 function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ // first open: windowed (not fullscreen), full app — wings attached by default
-    wmWins.site.state='normal'; wmWins.site.rect={x:24,y:18,w:Math.min(1100,innerWidth-50),h:Math.min(720,innerHeight-90)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
+    wmWins.site.state='normal'; wmWins.site.rect={x:18,y:16,w:Math.min(1340,innerWidth-30),h:Math.min(740,innerHeight-80)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
 function wmReleaseSite(){ if(typeof mmdAttach==='function'){ mmdAttach(); _mmdDetached=false; } const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
 function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
 function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
@@ -5169,16 +5169,11 @@ function mmdDetach(){
       el.querySelector('[data-wpin]').addEventListener('click',ev=>{ ev.stopPropagation(); const on=!el.classList.contains('pinned'); el.classList.toggle('pinned',on); el.querySelector('[data-wpin]').textContent=on?'📍':'📌'; mmdWingPosSet(w.key,{pinned:on}); });
       mmdWingDrag(el,w);
     }
-    // Default dock: stack both wings against the left edge; user-dragged positions win.
-    const BUF=12, WINGW=286, wingH=Math.round(innerHeight*0.46);
-    const p=pos[w.key]||{}; el.style.left=((p.x!=null)?p.x:BUF)+'px'; el.style.top=((p.y!=null)?p.y:(74+i*(wingH+26)))+'px';
+    // Default: deck wing on the left, card wing on the right; user-dragged positions win.
+    const p=pos[w.key]||{}; el.style.left=((p.x!=null)?p.x:(i===0?16:Math.max(16,innerWidth-310)))+'px'; el.style.top=((p.y!=null)?p.y:74)+'px';
     el.classList.toggle('pinned',!!p.pinned); el.querySelector('[data-wpin]').textContent=p.pinned?'📍':'📌';
     el.querySelector('.ow-body').appendChild(panel); el.style.display='block';
   });
-  // Left-justify the window just to the right of the wing column (+ buffer), unless the user
-  // has placed it further right already. Set geometry directly to avoid wmApply recursion.
-  const sw=document.getElementById('site-window'), W=wmWins.site;
-  if(sw&&W&&W.state==='normal'){ const minX=12+286+12; if(W.rect.x<minX){ W.rect.x=minX; sw.style.left=minX+'px'; wmSaveRect('site'); } }
 }
 function mmdAttach(){ const app=document.getElementById('app'); if(!app)return;
   const deck=document.getElementById('panel-deck'), detail=document.getElementById('panel-detail'), search=document.getElementById('panel-search');
@@ -6298,6 +6293,15 @@ function fwInitDrag(){
 // Init widgets after DOM ready
 fwInitDrag();
 fwInitSearchResize();
+// Re-flow the filter widgets to the justified two-sided default whenever the panel width
+// changes (window resize / clip / spawn) — but only while the user hasn't customized the
+// layout (no saved positions). This keeps widgets flush to the card on both sides at any width.
+(function(){ const panel=document.getElementById('card-filter-panel'); if(!panel||typeof ResizeObserver==='undefined')return;
+  const reflow=()=>{ let saved=null; try{ saved=localStorage.getItem(FW_STORAGE_KEY); }catch(e){} if(!saved && !panel.classList.contains('collapsed'))fwApplyLayout(fwComputeDefaults()); };
+  let lastW=panel.offsetWidth, raf=null;
+  const ro=new ResizeObserver(()=>{ const w=panel.offsetWidth; if(Math.abs(w-lastW)<2)return; lastW=w; cancelAnimationFrame(raf); raf=requestAnimationFrame(reflow); });
+  ro.observe(panel);
+})();
 </script>
 </body>
 </html>
