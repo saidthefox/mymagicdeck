@@ -936,6 +936,10 @@
     .mg-path{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-seldeck{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%;flex-shrink:0}
     .mg-vsep{flex-shrink:0;width:0;height:15px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 2px}
+    .mg-acct{flex-shrink:0;display:inline-flex;align-items:center;gap:5px;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;cursor:pointer;padding:1px 4px;white-space:nowrap}
+    .mg-acct:hover{background:rgba(0,0,0,.07)}
+    .mg-acct .mg-pres{width:9px;height:9px;border-radius:50%;background:#888;border:1px solid #5a5a5a}
+    .mg-acct .mg-pres.on{background:#39d353;border-color:#1f8b38}
     .mg-taskbar{flex-shrink:0;min-height:32px;background:#c0c0c0;border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
     #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;padding:3px 12px}
     .mg-adding{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -5933,7 +5937,7 @@ function mgRenderDesktop(){
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New</button><button id="mg-open" class="mg95 mg-bvl">🗂️ Open</button><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg95 mg-bvl">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-import" class="mg95 mg-bvl">⬇ Import</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-seldeck">Selected Deck: '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</span><span class="mg-vsep"></span><span class="mg-path">'+path+'</span></div>'+
+      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New</button><button id="mg-open" class="mg95 mg-bvl">🗂️ Open</button><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg95 mg-bvl">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-import" class="mg95 mg-bvl">⬇ Import</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-seldeck">Selected Deck: '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</span><span class="mg-vsep"></span><span class="mg-path">'+path+'</span><span class="mg-vsep"></span><span class="mg-acct" id="mg-acct" title="Toggle online status">'+_mgEsc(state.user?state.user.username:'Guest')+' <span class="mg-pres '+(presenceGet()==='online'?'on':'')+'"></span></span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
@@ -5955,6 +5959,7 @@ function mgRenderDesktop(){
   const nd=document.getElementById('mg-newdeck');if(nd)nd.addEventListener('click',e=>{e.stopPropagation();newDeck();mgActiveDeckId=state.currentDeckId;mgRenamingDeckId=state.currentDeckId;mgRenderDesktop();});
   const rf=document.getElementById('mg-renamefolder');if(rf)rf.addEventListener('click',e=>{e.stopPropagation();const f=mgFs.folders.find(x=>x.id===mgCurrentFolder);if(!f)return;const nm=prompt('Folder name:',f.name||'New Folder');if(nm!=null){f.name=(nm.trim()||f.name);mgFsSave();mgRenderDesktop();}});
   const sv=document.getElementById('mg-save');if(sv)sv.addEventListener('click',e=>{e.stopPropagation();const id=mgActiveDeckId||state.currentDeckId;if(typeof saveToStorage==='function')saveToStorage();if(id&&typeof syncDeckToApi==='function'&&window.DeckOS&&!DeckOS.isLocal())syncDeckToApi(id);if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite();toast('Saved','success');});
+  const acct=document.getElementById('mg-acct');if(acct)acct.addEventListener('click',e=>{e.stopPropagation();presenceToggle();mgRenderDesktop();});
   const op=document.getElementById('mg-open');if(op)op.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('files');});
   const im=document.getElementById('mg-import');if(im)im.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('import');});
   const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
@@ -5985,6 +5990,9 @@ function mgRenderDesktop(){
     if(embedded){ deskc.classList.add('mg-free'); mgLayoutIcons(deskc); } }
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ CGG — '+mgDeckName(mgActiveDeckId);}
+// Account presence in the top toolbar — aesthetic for now (a future friends/chat layer can wire it up).
+function presenceGet(){ try{ return (window.DeckOS&&DeckOS.store.get('presence'))==='offline'?'offline':'online'; }catch(e){ return 'online'; } }
+function presenceToggle(){ try{ DeckOS.store.set('presence', presenceGet()==='online'?'offline':'online'); }catch(e){} }
 // ── Free-positioned desktop icons: drag any program/deck/folder anywhere; positions
 // persist (per account, via the desktop-layout sync) keyed by a stable icon key. ──
 function mgIconKey(el){ if(el.dataset.app)return 'app:'+el.dataset.app; if(el.dataset.cgg)return 'cgg'; if(el.id==='mg-bin')return 'bin'; if(el.id==='mg-backsearch')return 'backsearch'; if(el.dataset.deck)return 'deck:'+el.dataset.deck; if(el.dataset.folder)return 'folder:'+el.dataset.folder; return null; }
