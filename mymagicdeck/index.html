@@ -1083,6 +1083,17 @@
     .tpg-rb{flex:1;min-width:96px;background:#eee;border:2px solid;border-color:#fff #999 #999 #fff;padding:8px 6px;font-family:inherit;font-size:12px;cursor:pointer;color:#222;border-radius:3px}
     .tpg-rb b{display:block;font-size:15px;margin-top:2px}
     .tpg-rb.on{background:#1577d4;color:#fff;border-color:#0a4f93}
+    /* TWENTYFOURTY life counter */
+    .lc-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .lc-bar{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+    .lc-player{display:flex;align-items:center;gap:8px;justify-content:center;background:#1b1b1b;border:2px solid;border-color:#555 #222 #222 #555;border-radius:6px;padding:10px;margin-bottom:10px}
+    .lc-life{font-size:46px;font-weight:800;color:#fff;min-width:96px;text-align:center;font-family:'Courier New',monospace;line-height:1}
+    .lc-life.dead{color:#e24b4a}
+    .lc-step{font-size:17px;font-weight:bold;width:44px;height:48px;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;cursor:pointer;color:#000;border-radius:4px;touch-action:manipulation;user-select:none}
+    .lc-step:active{border-color:#808080 #fff #fff #808080}
+    /* HUD desktop-background swatches */
+    .hud-bg-sw{display:inline-block;width:26px;height:26px;border:2px solid #fff;outline:1px solid #888;border-radius:4px;cursor:pointer;margin:0 6px 6px 0;vertical-align:middle}
+    .hud-bg-sw.on{outline:2px solid #1577d4;border-color:#1577d4}
   </style>
 </head>
 <body>
@@ -4979,13 +4990,18 @@ function renderHud(){
   const mounted=widgetList();
   const avail=Object.keys(WIDGET_TYPES).map(t=>'<button class="btn small" data-mountw="'+t+'">+ '+_mgEsc(WIDGET_TYPES[t].title||t)+'</button>').join(' ');
   const mountedHtml=mounted.length?mounted.map(w=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px;font-size:.82rem;color:var(--text)"><span>'+ (WIDGET_TYPES[w.type]?WIDGET_TYPES[w.type].icon+' '+_mgEsc(WIDGET_TYPES[w.type].title):_mgEsc(w.type))+'</span><button class="btn small" data-unmountw="'+w.id+'">Remove</button></div>').join(''):'<div style="color:var(--text-dim);font-size:.8rem;padding:2px">Nothing mounted.</div>';
+  const curBg=(typeof deskBgGet==='function'?deskBgGet():'');
+  const swatches=DESK_BGS.map(([val,name,col])=>'<span class="hud-bg-sw'+(val===curBg?' on':'')+'" data-bg="'+val+'" title="'+name+'" style="background:'+col+'"></span>').join('');
   b.innerHTML=rows+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop widgets</div>'+
     '<div style="color:var(--text-dim);font-size:.76rem;padding:2px 0 6px">Pin live panels to your desktop:</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:6px">'+avail+'</div>'+
-    mountedHtml;
+    mountedHtml+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop background</div>'+
+    '<div style="padding:4px 0">'+swatches+'</div>';
   b.querySelectorAll('[data-mountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetMount(btn.getAttribute('data-mountw')); renderHud(); DeckOS.ui.toast('Widget mounted on the desktop'); }));
   b.querySelectorAll('[data-unmountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetUnmount(btn.getAttribute('data-unmountw')); renderHud(); }));
+  b.querySelectorAll('[data-bg]').forEach(sw=>sw.addEventListener('click',()=>deskBgSet(sw.getAttribute('data-bg'))));
 }
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
@@ -5228,16 +5244,39 @@ function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }
 // ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
 // Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
 let _deskSyncTimer=null;
-function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList()}})}).catch(()=>{}); }, 600); }
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():'')}})}).catch(()=>{}); }, 600); }
 function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); }
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
       else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
     }catch(e){}
   }
   desktopClearDom(); widgetRenderAll(); notesRenderAll();
+}
+// ===== Desktop background (set from the HUD; persisted locally + per-account) =====
+const DESK_BGS=[['','Default (teal)','#017e7e'],['#000080','Navy','#000080'],['#2f4f6f','Slate','#2f4f6f'],['#3a3a3a','Graphite','#3a3a3a'],['#3b2a5a','Purple','#3b2a5a'],['#1f5132','Forest','#1f5132'],['#5a2a2a','Maroon','#5a2a2a'],['#101218','Midnight','#101218']];
+function deskBgGet(){ try{ return DeckOS.store.get('deskbg')||''; }catch(e){ return ''; } }
+function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(d)d.style.background=c||''; }
+function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApply(c); desktopSyncSoon(); if(typeof renderHud==='function'&&document.getElementById('hud-body'))renderHud(); }
+// ===== TWENTYFOURTY — two-player life counter (taps work for fingers + mouse) =====
+let _lcState=null;
+function lcLoad(){ if(!_lcState){ try{ _lcState=DeckOS.store.get('twentyfourty'); }catch(e){} if(!_lcState||!Array.isArray(_lcState.players))_lcState={start:20,players:[{life:20},{life:20}]}; } return _lcState; }
+function lcSave(){ try{ DeckOS.store.set('twentyfourty', _lcState); }catch(e){} }
+function lcBody(){ return document.querySelector('#modal-prog-twentyfourty .modal-body'); }
+function lcAdj(i,d){ const s=lcLoad(); s.players[i].life+=d; lcSave(); lcRender(lcBody()); }
+function lcReset(){ const s=lcLoad(); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(lcBody()); }
+function lcSetStart(v){ const s=lcLoad(); s.start=v; s.players.forEach(p=>p.life=v); lcSave(); lcRender(lcBody()); }
+function lcRender(body){ if(!body)return; const s=lcLoad();
+  body.innerHTML='<div class="lc-wrap"><div class="lc-bar"><span style="font-size:11px;color:#444">Start:</span>'+
+      '<button class="btn small'+(s.start===20?' primary':'')+'" data-lcstart="20">20</button>'+
+      '<button class="btn small'+(s.start===40?' primary':'')+'" data-lcstart="40">40</button>'+
+      '<span style="flex:1"></span><button class="btn small" data-lcreset>↺ Reset</button></div>'+
+    s.players.map((p,i)=>'<div class="lc-player"><button class="lc-step" data-lc="'+i+'" data-d="-5">−5</button><button class="lc-step" data-lc="'+i+'" data-d="-1">−</button><div class="lc-life'+(p.life<=0?' dead':'')+'">'+p.life+'</div><button class="lc-step" data-lc="'+i+'" data-d="1">+</button><button class="lc-step" data-lc="'+i+'" data-d="5">+5</button></div>').join('')+'</div>';
+  body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); lcAdj(+b.getAttribute('data-lc'), +b.getAttribute('data-d')); }));
+  body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>lcSetStart(+b.getAttribute('data-lcstart'))));
+  body.querySelector('[data-lcreset]').addEventListener('click',lcReset);
 }
 function notesRefreshApp(){ const b=document.querySelector('#modal-prog-notes .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
 function notesRenderApp(body){
@@ -5456,6 +5495,8 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
+  DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
+  deskBgApply(deskBgGet()); // restore desktop background
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
   if(typeof notesRenderAll==='function')notesRenderAll(); // instant local restore of placed notes
   if(state.user&&apiToken()&&typeof desktopPullRender==='function')desktopPullRender(); // then reconcile with this account's server-saved layout
@@ -5730,6 +5771,9 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
@@ -5845,13 +5889,13 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     item('cgg','🗃️ Card Guesser Game')+
     '<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+
     item('splash','🖼️ Splash Builder')+
-    item('share','🔗 Share Deck')+
     item('storage','💾 Storage')+
     item('hud','📡 HUD')+
     (window.DeckOS?DeckOS.programsMenuHtml():'')+
     '<div class="mg-smitem" data-backsearch="1">✦ MyMagicDeck</div>'+
     '<div class="mg-smsep"></div>'+
     item('account','👤 Account')+
+    (state.user?'<div class="mg-smitem" data-logout="1">🚪 Sign out</div>':'')+
     '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
     '<div class="mg-smitem" data-app="about">ℹ️ About</div>'+
     '<div class="mg-smsep"></div>'+
@@ -5861,6 +5905,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
 function mgWireStartMenu(a){
   a.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();const app=r.getAttribute('data-app');mgLaunchApp(app);if(app!=='cgg')mgRenderDesktop();}));
   const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
+  const lo=a.querySelector('.mg-smitem[data-logout]');if(lo)lo.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;if(typeof logout==='function')logout();mgRenderDesktop();});
   const sd=a.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgFullExit();});
 }
 function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();siteRestore();if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('deck');}
