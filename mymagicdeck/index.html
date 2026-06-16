@@ -1024,6 +1024,23 @@
     .cal-add{display:flex;gap:5px;margin-top:8px}
     .cal-add input[type=text]{flex:1;min-width:0}
     .cal-add input{font-family:inherit;font-size:12px;padding:3px 4px;border:2px solid;border-color:#808080 #fff #fff #808080}
+    /* Tournaments program */
+    .t-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#000}
+    .t-tabs{display:flex;gap:2px;border-bottom:2px solid #808080;margin-bottom:8px}
+    .t-tab{padding:4px 10px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;border-bottom:none;cursor:pointer;font-size:12px}
+    .t-tab.on{background:#fff;font-weight:bold;position:relative;top:2px}
+    .t-panel{max-height:60vh;overflow:auto}
+    .t-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+    .t-row label{font-size:11px;color:#444}
+    .t-wrap input,.t-wrap select,.t-wrap textarea{font-family:inherit;font-size:12px;padding:3px 5px;border:2px solid;border-color:#808080 #fff #fff #808080;background:#fff}
+    .t-wrap textarea{width:100%;min-height:46px;resize:vertical}
+    .t-field{display:flex;flex-direction:column;gap:2px}
+    .t-card{border:1px solid #b5b5b5;background:#fff;padding:6px 8px;margin-bottom:6px}
+    .t-card .t-h{font-weight:bold;display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+    .t-card .t-meta{color:#555;font-size:11px;margin-top:2px}
+    .t-badge{display:inline-block;background:#1577d4;color:#fff;border-radius:2px;padding:0 5px;font-size:10px;margin-right:4px}
+    .t-badge.t-online{background:#2c8a4a}.t-badge.t-pro{background:#b23}.t-badge.t-comp{background:#7a5cc7}
+    .t-empty{color:#666;padding:10px 2px}
   </style>
 </head>
 <body>
@@ -1865,6 +1882,7 @@ async function doAuth(){
     await pullDecksFromApi();
     if(typeof mgRenderDesktop==='function')mgRenderDesktop(); // decks just loaded — refresh the desktop now
     if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();
+    if(typeof tRefreshFeed==='function')tRefreshFeed(); // pull the matched tournament feed for the calendar/widget
   }catch(e){
     err.textContent=e.message||'Something went wrong.';
   }finally{
@@ -5322,6 +5340,135 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // restore mounted desktop widgets (runs after DeckOS is defined)
 }
+// ===== Tournaments (Phase 3): post events, subscribe by parameters, matched feed =====
+// Posters create tournaments with match parameters; players subscribe with the params
+// they want. The server matches the two (GET /tournaments/feed). Matched events flow
+// into the Calendar (calAddSource) + a desktop "Tournament feed" widget.
+const T_FORMATS_FE=['Modern','Commander','Standard','Pioneer','Legacy','Vintage','Pauper','Limited','Other'];
+let _tFeedCache=[]; // last matched feed, mapped to calendar events (synchronous source)
+let _tTab='browse';
+function _tSel(id,opts,sel){ return '<select id="'+id+'">'+opts.map(o=>'<option value="'+o[0]+'"'+(o[0]===sel?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'; }
+function _tSignin(action){ return '<div class="t-empty">Sign in to '+action+'. <button class="btn small" onclick="DeckOS.ui.open(\'account\')">Sign in</button></div>'; }
+async function tRefreshFeed(){
+  if(!state.user){ _tFeedCache=[]; return; }
+  try{ const r=await apiFetch('/tournaments/feed'); _tFeedCache=(r.tournaments||[]).map(t=>({id:'t'+t.id,date:t.date,title:t.title,kind:'tournament',_t:t})); }
+  catch(e){ _tFeedCache=[]; }
+  if(typeof calRefresh==='function')calRefresh();
+  if(typeof widgetRefreshAll==='function')widgetRefreshAll();
+}
+function tBadges(t){
+  return '<span class="t-badge'+(t.mode==='online'?' t-online':'')+'">'+(t.mode==='online'?'🌐 Online':'📍 '+_mgEsc(t.region||'In-person'))+'</span>'+
+    '<span class="t-badge">'+_mgEsc(t.format)+'</span>'+
+    '<span class="t-badge'+(t.level==='pro'?' t-pro':t.level==='competitive'?' t-comp':'')+'">'+_mgEsc(t.level)+'</span>'+
+    ((t.entry_fee>0)?'<span class="t-badge">$'+t.entry_fee+'</span>':'');
+}
+function tCardHtml(t,opts){ opts=opts||{};
+  return '<div class="t-card"><div class="t-h"><span>'+_mgEsc(t.title)+'</span><span style="font-weight:normal;color:#00006e">'+_mgEsc(t.date)+(t.time?(' '+_mgEsc(t.time)):'')+'</span></div>'+
+    '<div class="t-meta">'+tBadges(t)+'</div>'+
+    (t.notes?'<div class="t-meta">'+_mgEsc(t.notes)+'</div>':'')+
+    (t.url?'<div class="t-meta"><a href="'+_mgEsc(t.url)+'" target="_blank" rel="noopener">'+_mgEsc(t.url)+'</a></div>':'')+
+    (opts.del?'<div style="margin-top:4px"><button class="btn small" data-tdel="'+t.id+'">Delete</button></div>':'')+
+  '</div>';
+}
+function tRender(body){
+  body._tMounted=true;
+  const tabs=[['browse','Browse'],['feed','My feed'],['subs','Subscriptions'],['post','Post'],['mine','My events']];
+  body.innerHTML='<div class="t-wrap"><div class="t-tabs">'+tabs.map(t=>'<div class="t-tab'+(t[0]===_tTab?' on':'')+'" data-ttab="'+t[0]+'">'+t[1]+'</div>').join('')+'</div><div class="t-panel">Loading…</div></div>';
+  body.querySelectorAll('[data-ttab]').forEach(el=>el.addEventListener('click',()=>{ _tTab=el.getAttribute('data-ttab'); tRender(body); }));
+  tRenderPanel(body.querySelector('.t-panel'), body);
+}
+async function tRenderPanel(panel, body){
+  if(_tTab==='browse'){
+    panel.innerHTML='<div class="t-row">'+
+      _tSel('tf-format',[['','Any format']].concat(T_FORMATS_FE.map(f=>[f,f])),'')+
+      _tSel('tf-mode',[['any','Any mode'],['in-person','In-person'],['online','Online']],'any')+
+      '<input id="tf-region" placeholder="Region…" style="width:110px">'+
+      _tSel('tf-level',[['any','Any level'],['casual','Casual'],['competitive','Competitive'],['pro','Pro']],'any')+
+      '<button class="btn small" id="tf-apply">Filter</button></div><div id="t-browse-list" class="t-empty">Loading…</div>';
+    const load=async()=>{ const q=new URLSearchParams();
+      const f=panel.querySelector('#tf-format').value; if(f)q.set('format',f);
+      const m=panel.querySelector('#tf-mode').value; if(m!=='any')q.set('mode',m);
+      const rg=panel.querySelector('#tf-region').value.trim(); if(rg)q.set('region',rg);
+      const lv=panel.querySelector('#tf-level').value; if(lv!=='any')q.set('level',lv);
+      const list=panel.querySelector('#t-browse-list');
+      try{ const r=await apiFetch('/tournaments'+(q.toString()?('?'+q):'')); list.className=''; list.innerHTML=(r.tournaments||[]).length?r.tournaments.map(t=>tCardHtml(t)).join(''):'<div class="t-empty">No upcoming tournaments match.</div>'; }
+      catch(e){ list.innerHTML='<div class="t-empty">Could not load.</div>'; } };
+    panel.querySelector('#tf-apply').addEventListener('click',load); load();
+    return;
+  }
+  if(_tTab==='feed'){
+    if(!state.user){ panel.innerHTML=_tSignin('see your matched feed'); return; }
+    panel.innerHTML='<div class="t-empty">Loading…</div>';
+    try{ const r=await apiFetch('/tournaments/feed');
+      if(!r.subs){ panel.innerHTML='<div class="t-empty">No subscriptions yet — add one under <b>Subscriptions</b> to build a feed of tournaments that fit your parameters.</div>'; return; }
+      panel.innerHTML=(r.tournaments||[]).length?r.tournaments.map(t=>tCardHtml(t)).join(''):'<div class="t-empty">No upcoming tournaments match your subscriptions yet.</div>';
+    }catch(e){ panel.innerHTML='<div class="t-empty">Could not load.</div>'; }
+    return;
+  }
+  if(_tTab==='subs'){
+    if(!state.user){ panel.innerHTML=_tSignin('subscribe to tournaments'); return; }
+    let subs=[]; try{ subs=(await apiFetch('/tournaments/subs')).subs||[]; }catch(e){}
+    panel.innerHTML='<div style="margin-bottom:10px">'+(subs.length?subs.map(s=>{
+        const desc=[ (s.formats||'(any format)'), (s.mode==='any'?'any mode':s.mode), (s.region||'anywhere'), (s.level==='any'?'any level':s.level), (s.max_entry!=null?('≤ $'+s.max_entry):'any fee') ].join(' · ');
+        return '<div class="t-card"><div class="t-h"><span>'+_mgEsc(s.name)+'</span><button class="btn small" data-tsubdel="'+s.id+'">Remove</button></div><div class="t-meta">'+_mgEsc(desc)+'</div></div>';
+      }).join(''):'<div class="t-empty">No subscriptions yet.</div>')+'</div>'+
+      '<div class="t-card"><div class="t-h"><span>New subscription</span></div>'+
+        '<div class="t-row" style="margin-top:6px"><input id="ts-name" placeholder="Name (e.g. Local Modern)" style="flex:1;min-width:120px"></div>'+
+        '<div class="t-row"><label>Formats:</label>'+T_FORMATS_FE.map(f=>'<label style="font-size:11px"><input type="checkbox" class="ts-fmt" value="'+f+'"> '+f+'</label>').join('')+'</label></div>'+
+        '<div class="t-row">'+_tSel('ts-mode',[['any','Any mode'],['in-person','In-person'],['online','Online']],'any')+
+          '<input id="ts-region" placeholder="Region (substring)" style="width:140px">'+
+          _tSel('ts-level',[['any','Any level'],['casual','Casual'],['competitive','Competitive'],['pro','Pro']],'any')+
+          '<input id="ts-max" type="number" min="0" placeholder="Max $" style="width:80px"></div>'+
+        '<button class="btn small" id="ts-add">Add subscription</button></div>';
+    panel.querySelectorAll('[data-tsubdel]').forEach(b=>b.addEventListener('click',async()=>{ try{ await apiFetch('/tournaments/subs/'+b.getAttribute('data-tsubdel'),{method:'DELETE'}); DeckOS.ui.toast('Removed'); tRefreshFeed(); tRenderPanel(panel,body); }catch(e){ DeckOS.ui.toast('Could not remove'); } }));
+    panel.querySelector('#ts-add').addEventListener('click',async()=>{
+      const formats=Array.from(panel.querySelectorAll('.ts-fmt:checked')).map(c=>c.value);
+      const maxv=panel.querySelector('#ts-max').value;
+      try{ await apiFetch('/tournaments/subs',{method:'POST',body:JSON.stringify({ name:panel.querySelector('#ts-name').value.trim()||'My subscription', formats, mode:panel.querySelector('#ts-mode').value, region:panel.querySelector('#ts-region').value.trim(), level:panel.querySelector('#ts-level').value, max_entry:maxv===''?null:Number(maxv) })});
+        DeckOS.ui.toast('Subscribed'); tRefreshFeed(); tRenderPanel(panel,body);
+      }catch(e){ DeckOS.ui.toast(e.message||'Could not subscribe'); } });
+    return;
+  }
+  if(_tTab==='post'){
+    if(!state.user){ panel.innerHTML=_tSignin('post a tournament'); return; }
+    panel.innerHTML='<div class="t-card">'+
+      '<div class="t-row"><input id="tp-title" placeholder="Tournament title" style="flex:1;min-width:160px"></div>'+
+      '<div class="t-row"><div class="t-field"><label>Date</label><input id="tp-date" type="date"></div>'+
+        '<div class="t-field"><label>Time</label><input id="tp-time" placeholder="e.g. 6pm" style="width:90px"></div>'+
+        '<div class="t-field"><label>Format</label>'+_tSel('tp-format',T_FORMATS_FE.map(f=>[f,f]),'Modern')+'</div>'+
+        '<div class="t-field"><label>Mode</label>'+_tSel('tp-mode',[['in-person','In-person'],['online','Online']],'in-person')+'</div></div>'+
+      '<div class="t-row"><div class="t-field"><label>Region / venue</label><input id="tp-region" placeholder="City, state or Online" style="width:170px"></div>'+
+        '<div class="t-field"><label>Level</label>'+_tSel('tp-level',[['casual','Casual'],['competitive','Competitive'],['pro','Pro']],'casual')+'</div>'+
+        '<div class="t-field"><label>Entry fee ($)</label><input id="tp-entry" type="number" min="0" value="0" style="width:80px"></div></div>'+
+      '<div class="t-row"><div class="t-field" style="flex:1"><label>Link (optional)</label><input id="tp-url" placeholder="https://…" style="width:100%"></div></div>'+
+      '<div class="t-row"><textarea id="tp-notes" placeholder="Notes (optional)"></textarea></div>'+
+      '<button class="btn small" id="tp-submit">Post tournament</button></div>';
+    panel.querySelector('#tp-submit').addEventListener('click',async()=>{
+      const payload={ title:panel.querySelector('#tp-title').value.trim(), date:panel.querySelector('#tp-date').value, time:panel.querySelector('#tp-time').value.trim(), format:panel.querySelector('#tp-format').value, mode:panel.querySelector('#tp-mode').value, region:panel.querySelector('#tp-region').value.trim(), level:panel.querySelector('#tp-level').value, entry_fee:Number(panel.querySelector('#tp-entry').value)||0, url:panel.querySelector('#tp-url').value.trim(), notes:panel.querySelector('#tp-notes').value.trim() };
+      try{ await apiFetch('/tournaments',{method:'POST',body:JSON.stringify(payload)}); DeckOS.ui.toast('Tournament posted'); _tTab='mine'; tRender(body); tRefreshFeed(); }
+      catch(e){ DeckOS.ui.toast(e.message||'Could not post'); } });
+    return;
+  }
+  if(_tTab==='mine'){
+    if(!state.user){ panel.innerHTML=_tSignin('post and manage tournaments'); return; }
+    panel.innerHTML='<div class="t-empty">Loading…</div>';
+    try{ const r=await apiFetch('/tournaments/mine'); panel.innerHTML=(r.tournaments||[]).length?r.tournaments.map(t=>tCardHtml(t,{del:1})).join(''):'<div class="t-empty">You haven\'t posted any tournaments yet.</div>';
+      panel.querySelectorAll('[data-tdel]').forEach(b=>b.addEventListener('click',async()=>{ if(!confirm('Delete this tournament?'))return; try{ await apiFetch('/tournaments/'+b.getAttribute('data-tdel'),{method:'DELETE'}); DeckOS.ui.toast('Deleted'); tRefreshFeed(); tRenderPanel(panel,body); }catch(e){ DeckOS.ui.toast('Could not delete'); } }));
+    }catch(e){ panel.innerHTML='<div class="t-empty">Could not load.</div>'; }
+    return;
+  }
+}
+if(window.DeckOS){
+  calAddSource(()=>_tFeedCache); // matched tournaments appear on the Calendar
+  widgetRegister('tournaments',{ title:'Tournament feed', icon:'🏆', render(b){
+    if(!state.user){ b.innerHTML='<div style="color:#555">Sign in to see your tournament feed.</div>'; return; }
+    const up=_tFeedCache.slice().sort((a,b)=>a.date<b.date?-1:1).slice(0,6);
+    b.innerHTML=up.length?up.map(e=>'<div style="display:flex;gap:6px;padding:1px 0"><b style="color:#00006e;min-width:54px">'+_mgEsc(e.date.slice(5))+'</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_mgEsc(e.title)+'</span></div>').join(''):'<div style="color:#555">No matches yet — subscribe in the Tournaments app.</div>';
+  }});
+  DeckOS.registerProgram({ id:'tournaments', title:'Tournaments', icon:'🏆', width:'620px', desktop:true, mount(body){ tRender(body); } });
+  DeckOS.tournaments={ refreshFeed:tRefreshFeed, feed:()=>_tFeedCache };
+  if(state.user)tRefreshFeed();
+}
 function mgFullExit(){mgRunning=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 // Persistent (device-level) opt-out for the card-guess game.
 function mguessDisabled(){try{return localStorage.getItem('mmd_mguess_disabled')==='1';}catch(e){return false;}}
@@ -5365,6 +5512,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');

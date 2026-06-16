@@ -220,6 +220,41 @@ function recordError(kind, f) {
   } catch (_) {}
 }
 
+// ── Tournaments ────────────────────────────────────────────────────────────────
+// Posters create tournaments (with match parameters); players create subscriptions
+// (the parameters they want). The feed matches the two. Events flow to the Calendar
+// + a desktop widget on the frontend. Param schema is intentionally simple (v1) —
+// format / mode / region / level / entry fee / date — and can grow later.
+db.exec(`CREATE TABLE IF NOT EXISTS tournaments (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  host_id     INTEGER NOT NULL,
+  title       TEXT NOT NULL,
+  format      TEXT NOT NULL DEFAULT 'Other',   -- Modern, Commander, Standard, Pioneer, Legacy, Pauper, Limited, Other
+  mode        TEXT NOT NULL DEFAULT 'in-person',-- 'online' | 'in-person'
+  region      TEXT DEFAULT '',                  -- free text (city/state, or 'Online')
+  date        TEXT NOT NULL,                    -- 'YYYY-MM-DD'
+  time        TEXT DEFAULT '',
+  level       TEXT NOT NULL DEFAULT 'casual',   -- 'casual' | 'competitive' | 'pro'
+  entry_fee   REAL DEFAULT 0,
+  url         TEXT DEFAULT '',
+  notes       TEXT DEFAULT '',
+  created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_tournaments_date ON tournaments(date)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_tournaments_host ON tournaments(host_id)');
+db.exec(`CREATE TABLE IF NOT EXISTS tournament_subs (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL,
+  name        TEXT NOT NULL DEFAULT 'My subscription',
+  formats     TEXT DEFAULT '',                  -- CSV of formats; '' = any
+  mode        TEXT NOT NULL DEFAULT 'any',       -- 'online' | 'in-person' | 'any'
+  region      TEXT DEFAULT '',                  -- substring match; '' = any
+  level       TEXT NOT NULL DEFAULT 'any',       -- 'any' | 'casual' | 'competitive' | 'pro'
+  max_entry   REAL,                             -- NULL = any
+  created_at  INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_tsubs_user ON tournament_subs(user_id)');
+
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
 let _cardRefreshRunning = false;
@@ -1212,6 +1247,108 @@ app.get('/api/admin/errors', { preHandler: adminOnly }, async () => {
 
 // Health check
 app.get('/api/health', async () => ({ ok: true }));
+
+// ── Tournaments ────────────────────────────────────────────────────────────────
+const T_FORMATS = ['Modern', 'Commander', 'Standard', 'Pioneer', 'Legacy', 'Vintage', 'Pauper', 'Limited', 'Other'];
+const T_MODES = ['online', 'in-person'];
+const T_LEVELS = ['casual', 'competitive', 'pro'];
+const _str = (v, max) => String(v == null ? '' : v).slice(0, max);
+const _isYmd = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+const _today = () => new Date().toISOString().slice(0, 10);
+
+// Does an upcoming tournament satisfy a subscription's parameters? (matching is in JS — volume is small)
+function tournamentMatches(t, sub) {
+  const fmts = (sub.formats || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (fmts.length && !fmts.includes(t.format)) return false;
+  if (sub.mode && sub.mode !== 'any' && t.mode !== sub.mode) return false;
+  if (sub.region && !String(t.region || '').toLowerCase().includes(sub.region.toLowerCase())) return false;
+  if (sub.level && sub.level !== 'any' && t.level !== sub.level) return false;
+  if (sub.max_entry != null && (t.entry_fee || 0) > sub.max_entry) return false;
+  return true;
+}
+
+// Create a tournament (poster).
+app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const title = _str(b.title, 120).trim();
+  if (!title) return reply.code(400).send({ error: 'A title is required.' });
+  if (!_isYmd(b.date)) return reply.code(400).send({ error: 'A valid date (YYYY-MM-DD) is required.' });
+  const format = T_FORMATS.includes(b.format) ? b.format : 'Other';
+  const mode = T_MODES.includes(b.mode) ? b.mode : 'in-person';
+  const level = T_LEVELS.includes(b.level) ? b.level : 'casual';
+  const url = _str(b.url, 300).trim();
+  if (url && !/^https?:\/\//i.test(url)) return reply.code(400).send({ error: 'URL must start with http:// or https://' });
+  const entry = Math.max(0, Math.min(100000, Number(b.entry_fee) || 0));
+  const info = db.prepare(
+    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(req.user.sub, title, format, mode, _str(b.region, 80).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000));
+  return { id: info.lastInsertRowid };
+});
+
+// Public browse: upcoming tournaments (optional filters). Soft auth so anyone can look.
+app.get('/api/tournaments', { preHandler: softAuthenticate }, async (req) => {
+  const q = req.query || {};
+  let rows = db.prepare(
+    'SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+  ).all(_today());
+  if (q.format) rows = rows.filter(r => r.format === q.format);
+  if (q.mode && q.mode !== 'any') rows = rows.filter(r => r.mode === q.mode);
+  if (q.level && q.level !== 'any') rows = rows.filter(r => r.level === q.level);
+  if (q.region) rows = rows.filter(r => String(r.region || '').toLowerCase().includes(String(q.region).toLowerCase()));
+  return { tournaments: rows };
+});
+
+// Tournaments I posted.
+app.get('/api/tournaments/mine', { preHandler: authenticate }, async (req) => ({
+  tournaments: db.prepare('SELECT * FROM tournaments WHERE host_id = ? ORDER BY date ASC').all(req.user.sub),
+}));
+
+// Delete one of my tournaments.
+app.delete('/api/tournaments/:id', { preHandler: authenticate }, async (req, reply) => {
+  const r = db.prepare('DELETE FROM tournaments WHERE id = ? AND host_id = ?').run(req.params.id, req.user.sub);
+  if (!r.changes) return reply.code(404).send({ error: 'Not found' });
+  return { ok: true };
+});
+
+// My subscriptions (the params I want matched).
+app.get('/api/tournaments/subs', { preHandler: authenticate }, async (req) => ({
+  subs: db.prepare('SELECT * FROM tournament_subs WHERE user_id = ? ORDER BY id DESC').all(req.user.sub),
+}));
+
+// Create a subscription.
+app.post('/api/tournaments/subs', { preHandler: [authenticate, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const formats = Array.isArray(b.formats)
+    ? b.formats.filter(f => T_FORMATS.includes(f)).join(',')
+    : _str(b.formats, 200).split(',').map(s => s.trim()).filter(f => T_FORMATS.includes(f)).join(',');
+  const mode = ['any', ...T_MODES].includes(b.mode) ? b.mode : 'any';
+  const level = ['any', ...T_LEVELS].includes(b.level) ? b.level : 'any';
+  const maxEntry = (b.max_entry === '' || b.max_entry == null) ? null : Math.max(0, Number(b.max_entry) || 0);
+  const count = db.prepare('SELECT COUNT(*) n FROM tournament_subs WHERE user_id = ?').get(req.user.sub).n;
+  if (count >= 50) return reply.code(400).send({ error: 'Subscription limit reached.' });
+  const info = db.prepare(
+    'INSERT INTO tournament_subs (user_id, name, formats, mode, region, level, max_entry) VALUES (?,?,?,?,?,?,?)'
+  ).run(req.user.sub, _str(b.name, 80).trim() || 'My subscription', formats, mode, _str(b.region, 80).trim(), level, maxEntry);
+  return { id: info.lastInsertRowid };
+});
+
+// Delete a subscription.
+app.delete('/api/tournaments/subs/:id', { preHandler: authenticate }, async (req, reply) => {
+  const r = db.prepare('DELETE FROM tournament_subs WHERE id = ? AND user_id = ?').run(req.params.id, req.user.sub);
+  if (!r.changes) return reply.code(404).send({ error: 'Not found' });
+  return { ok: true };
+});
+
+// My feed: upcoming tournaments matching ANY of my subscriptions. Powers the calendar + feed widget.
+app.get('/api/tournaments/feed', { preHandler: authenticate }, async (req) => {
+  const subs = db.prepare('SELECT * FROM tournament_subs WHERE user_id = ?').all(req.user.sub);
+  if (!subs.length) return { tournaments: [], subs: 0 };
+  const upcoming = db.prepare(
+    'SELECT id, title, format, mode, region, date, time, level, entry_fee, url, notes FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+  ).all(_today());
+  return { tournaments: upcoming.filter(t => subs.some(s => tournamentMatches(t, s))), subs: subs.length };
+});
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
 app.post('/api/auth/register', {
