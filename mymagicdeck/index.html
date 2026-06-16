@@ -1146,7 +1146,6 @@
 <div id="header">
   <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
-    <input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" />
     <button class="btn" onclick="newDeck()">＋ New</button>
     <button class="btn" onclick="saveDeck()">💾 Save</button>
     <span id="sync-indicator"></span>
@@ -1173,7 +1172,7 @@
 </div>
 <div id="app">
     <div class="panel" id="panel-deck">
-    <div class="panel-header"><span>Mainboard</span><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
+    <div class="panel-header"><input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" oninput="deckRename(this.value)" style="flex:1;min-width:0" /><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
     <div class="panel-body" id="deck-panel-body">
       <div class="deck-empty" id="deck-empty"><div class="icon">🃏</div>Search for cards and click<br/>to add them to your deck.</div>
       <div id="deck-sections"></div>
@@ -1775,6 +1774,16 @@ function resetColumns(){const d=currentDeck();if(d){d._insts=null;d._cols=null;}
 // Deck management
 function newDeck(){const id=generateId();state.decks[id]={id,name:'Untitled Deck',cards:{},sideboard:{}};state.currentDeckId=id;document.getElementById('deck-name-input').value='Untitled Deck';renderAll();saveToStorage();syncDeckToApi(id)}
 function saveDeck(){const d=currentDeck();if(!d)return;d.name=document.getElementById('deck-name-input').value.trim()||'Untitled Deck';saveToStorage();syncDeckToApi(d.id);toast('Deck saved!','success')}
+// Live rename from the deck-name box (now in the deck panel): updates the deck, then the
+// desktop file icon + the toolbar "Selected Deck:" + persists/syncs (debounced).
+let _deckRenameTimer=null;
+function deckRename(v){ const d=currentDeck(); if(!d)return; d.name=v;
+  clearTimeout(_deckRenameTimer);
+  _deckRenameTimer=setTimeout(()=>{ d.name=(v||'').trim()||'Untitled Deck';
+    const inp=document.getElementById('deck-name-input'); if(inp&&document.activeElement!==inp)inp.value=d.name;
+    if(typeof saveToStorage==='function')saveToStorage(); if(typeof syncDeckToApi==='function')syncDeckToApi(d.id);
+    if(typeof mgRenderDesktop==='function'&&document.body.classList.contains('deckos'))mgRenderDesktop(); // refresh icon label + Selected Deck
+  },300); }
 function loadDeck(id){if(!state.decks[id])return;state.currentDeckId=id;document.getElementById('deck-name-input').value=state.decks[id].name;state.decks[id]._insts=null;renderAll();switchCenterView('deck')}
 function deleteDeck(id){if(!confirm('Delete this deck?'))return;deleteDeckFromApi(id);delete state.decks[id];const ids=Object.keys(state.decks);if(!ids.length)newDeck();else loadDeck(ids[0]);saveToStorage();openDeckManager()}
 /*──────────────────────────────────────────────────────────────
