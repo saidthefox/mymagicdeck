@@ -4411,7 +4411,7 @@ let mgRenamingId=null;
 let mgRenamingDeckId=null;
 let mgStartOpen=false;
 let mgToolCollapsed=false;
-let mgDeskTarget='mg-art'; // desktop host: card art when fullscreen, search-box embed when windowed/minimized
+let mgDeskTarget='pc-deskcontent'; // the desktop only ever renders into the root #pc-desktop (never the CGG card art)
 const MG_MODES=[['g3','Guess after 3 seconds'],['g5','Guess after 5 seconds'],['manual','Manual — I guess on demand'],['insane','Insane mode — guess instantly']];
 const MG_DELAY={g3:3000,g5:5000,insane:600};
 function mgColor(){return mgState.ci<0?null:(mgState.ci>=MG_COLORS.length?MG_ARTIFACT:MG_COLORS[mgState.ci]);}
@@ -4532,7 +4532,6 @@ function mgArtClick(){if(mgGuess.on)mgAccept();}
 function mgArt(mode,c){
   const a=document.getElementById('mg-art');if(!a)return;
   mgArtMode=mode;
-  if(mode==='desktop'){mgDeskTarget='mg-art';mgRenderDesktop();return;}
   if(mode==='guess'||mode==='success'){
     const src=c&&(c.art||c.image);
     a.innerHTML='<div style="position:absolute;inset:0;background:#0a0a0a"></div>'+
@@ -4554,15 +4553,15 @@ function mgArt(mode,c){
     return;
   }
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('desktop');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('building');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');} // "Enter the app" = hide the game overlay
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false;
 function mgUnconfine(){const ov=document.getElementById('mguess-overlay');if(ov.parentElement!==document.body)document.body.appendChild(ov);ov.style.position='';ov.style.inset='';ov.style.top=ov.style.left=ov.style.width=ov.style.height=ov.style.right=ov.style.bottom='';ov.style.zIndex='';} // dock back to body for fullscreen (CSS position:fixed)
-function mgShowGame(){const ov=document.getElementById('mguess-overlay');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgCloseDesktopEmbed();mgDeskTarget='mg-art';ov.classList.add('open');if(!mgHasConstraint()&&!mgGuess.on)mgArt('desktop');} // fullscreen: desktop back in the card art
-function mgMinimize(){mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open','windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
+function mgShowGame(){const ov=document.getElementById('mguess-overlay');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();ov.classList.add('open');if(!mgHasConstraint()&&!mgGuess.on)mgArt('building');} // CGG is just the guessing card; the desktop lives in #pc-desktop
+function mgMinimize(){ if(wmEligible('cgg')){ wmMin('cgg'); return; } mgRunning=true;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open','windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
 function mgRestore(){mgShowGame();}
-function mgMaxToggle(){const ov=document.getElementById('mguess-overlay');if(ov.classList.contains('windowed')){mgShowGame();return;}if(mgArtMode==='desktop')mgArt('building');ov.classList.add('windowed');mgEmbedDesktop();mgShowFloat();} // windowed: desktop fills the box, the live card shrinks to a draggable mini on it
+function mgMaxToggle(){ if(wmEligible('cgg')){ wmMaxToggle('cgg'); return; } const ov=document.getElementById('mguess-overlay');if(ov.classList.contains('windowed')){mgShowGame();return;}ov.classList.add('windowed');mgEmbedDesktop();mgShowFloat();} // windowed: desktop fills the box, the live card shrinks to a draggable mini on it
 // Windowed CGG = the actual card, frozen at its current look and scaled down to a draggable mini. Drag to move (clamped, no folders); tap to go fullscreen.
 let mgFloatPos=null;
 const MG_MINI_W=120; // target on-screen width of the mini card
@@ -4605,7 +4604,7 @@ function mgEmbedDesktop(){ // show the root desktop. If the site is already a fl
   mgDeskTarget='pc-deskcontent';
   mgRenderDesktop();
 }
-function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='mg-art'; } // "Back to Search" = restore the site window
+function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='pc-deskcontent'; } // "Back to Search" = restore the site window
 function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';sw.style.zIndex='';if(sw.parentElement!==document.body)document.body.appendChild(sw);}}
 let sitePos=null;
 function siteWindow(){ // ❐ : the whole site as a draggable mini over the desktop
@@ -4630,8 +4629,8 @@ function siteWireDrag(sw){
   sw.addEventListener('touchend',()=>{if(on())end();}); sw.addEventListener('touchcancel',()=>{if(on())end();});
   sw.addEventListener('mousedown',e=>{if(!on())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
 }
-function mgClose(){mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
-function mgLaunch(){mgRunning=true;mgShowGame();}
+function mgClose(){ if(wmEligible('cgg')){ wmClose('cgg'); mgRunning=false; return; } mgRunning=false;const ov=document.getElementById('mguess-overlay');ov.classList.remove('open');ov.classList.remove('windowed');mgUnconfine();mgRemoveFloat();mgEmbedDesktop();}
+function mgLaunch(){ mgRunning=true; mgWire(); mgRender(); if(!mgHasConstraint()&&!mgGuess.on)mgArt('building'); if(wmEligible('cgg'))wmOpen('cgg'); else mgShowGame(); }
 // CGG settings live in the program's own ⚙ menu (Win95 dropdown), not the Start menu.
 function mgCogToggle(){
   let p=document.getElementById('mg-cogmenu');if(p){p.remove();return;}
@@ -4825,7 +4824,7 @@ function renderBinList(){
   const bin=(mgFs.bin||[]).filter(id=>state.decks[id]);
   const body=document.getElementById('bin-list'), foot=document.getElementById('bin-footer');
   body.innerHTML=bin.length?bin.map(id=>'<div class="mg-binrow" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 4px;border-bottom:1px solid var(--border)"><span style="color:var(--text)">🗃️ '+_mgEsc(mgDeckName(id))+'</span><button class="btn" data-restore="'+id+'">Restore</button></div>').join(''):'<div style="color:var(--text-dim);padding:14px">The Recycle Bin is empty.</div>';
-  foot.innerHTML='<button class="btn" onclick="closeModal(\'modal-bin\')">Close</button>'+(bin.length?'<button class="btn danger" id="bin-empty">Empty Bin</button>':'');
+  foot.innerHTML=(bin.length?'<button class="btn danger" id="bin-empty">Empty Bin</button>':'');
   body.querySelectorAll('[data-restore]').forEach(b=>b.addEventListener('click',()=>{const id=b.getAttribute('data-restore');mgFs.bin=(mgFs.bin||[]).filter(x=>x!==id);mgFsSave();renderBinList();if(typeof toast==='function')toast('Restored','success');}));
   const emp=document.getElementById('bin-empty');if(emp)emp.addEventListener('click',()=>{if(!confirm('Permanently delete '+bin.length+" deck(s)? This can't be undone."))return;bin.forEach(id=>{deleteDeckFromApi(id);delete state.decks[id];delete mgFs.deckFolder[id];});mgFs.bin=[];saveToStorage();mgFsSave();if(!state.decks[state.currentDeckId]){const ids=Object.keys(state.decks);state.currentDeckId=ids[0]||null;}if(!state.currentDeckId)newDeck();renderBinList();});
 }
@@ -4975,7 +4974,12 @@ const wmEls = {};   // key -> adopted window element (persists across open/close
 const wmWins = {};  // key -> { state:'normal|max|min', rect:{x,y,w,h} } for currently-open windows
 let wmZ = 2000, wmFocusedKey = null;
 function wmDesktop(){ return document.body.classList.contains('wm-on'); }
-function wmEligible(key){ return wmDesktop() && MGW_APPS[key] && MGW_APPS[key].win === '.modal'; }
+const WM_SPECIAL=['cgg','splash']; // overlay-based programs that aren't plain modals (site = later phase)
+function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); return mgwWin(key); }
+function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
+function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
+function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
+function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
 function wmLayer(){ let l=document.getElementById('wm-layer'); if(!l){ l=document.createElement('div'); l.id='wm-layer'; document.body.appendChild(l); } return l; }
 function wmEnsureTaskbar(){
   let t=document.getElementById('wm-taskbar'); if(t) return t;
@@ -4998,7 +5002,7 @@ function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{
 function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } }
 function wmFocus(key){ const el=wmEls[key]; if(!el)return; el.style.zIndex=(++wmZ); wmFocusedKey=key; wmRenderTaskbar(); }
 function wmOpen(key){
-  const el = wmEls[key] || mgwWin(key); if(!el) return; wmEls[key]=el;
+  const el = wmWinEl(key); if(!el) return; wmEls[key]=el;
   wmEnsureTaskbar();
   if(!el.classList.contains('wm-win')){ // first-time adoption
     el.classList.add('wm-win'); el.style.position='fixed'; wmLayer().appendChild(el);
@@ -5006,7 +5010,7 @@ function wmOpen(key){
     el.addEventListener('mousedown', ()=>wmFocus(key), true);
     wmWireDrag(key, el);
   }
-  const ov=document.getElementById(MGW_APPS[key].overlay); if(ov) ov.classList.remove('open'); // no modal backdrop in WM mode
+  const bd=wmBackdropId(key); if(bd){ const ov=document.getElementById(bd); if(ov)ov.classList.remove('open'); } // no fullscreen backdrop in WM mode
   wmWins[key] = wmWins[key] && wmWins[key].state!=='min' ? wmWins[key] : { el, state:'normal', rect:(wmWins[key]&&wmWins[key].rect)||wmRect(key) };
   wmWins[key].el=el; if(wmWins[key].state==='min')wmWins[key].state='normal';
   el.style.display='flex'; wmApply(key); wmFocus(key);
@@ -5020,7 +5024,7 @@ function wmRenderTaskbar(){
   const t=document.getElementById('wm-taskbar'); if(!t)return; const tasks=t.querySelector('.wm-tasks'); if(!tasks)return;
   const siteUp = !document.body.classList.contains('pc-deskmode') && !document.body.classList.contains('site-windowed');
   let html='<button class="wm-task'+(siteUp?' active':'')+'" data-wsite="1">✦ MyMagicDeck</button>';
-  html += Object.keys(wmWins).map(k=>'<button class="wm-task'+(wmFocusedKey===k&&wmWins[k].state!=='min'?' active':'')+'" data-wt="'+k+'">'+(MGW_APPS[k].icon||'🪟')+' '+_mgEsc(MGW_APPS[k].title||k)+'</button>').join('');
+  html += Object.keys(wmWins).map(k=>'<button class="wm-task'+(wmFocusedKey===k&&wmWins[k].state!=='min'?' active':'')+'" data-wt="'+k+'">'+wmIcon(k)+' '+_mgEsc(wmTitle(k))+'</button>').join('');
   tasks.innerHTML=html;
   const sb=tasks.querySelector('[data-wsite]'); if(sb)sb.addEventListener('click',e=>{ e.stopPropagation(); if(typeof siteRestore==='function')siteRestore(); wmRenderTaskbar(); });
   tasks.querySelectorAll('[data-wt]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); wmTaskClick(b.getAttribute('data-wt')); }));
@@ -5218,7 +5222,6 @@ function mgRenderDesktop(){
   const embedded=(mgDeskTarget==='pc-deskcontent');
   if(!embedded)mgArtMode='desktop';
   // keep the other desktop host empty so element ids don't collide
-  ['mg-art','pc-deskcontent'].forEach(t=>{if(t!==mgDeskTarget){const o=document.getElementById(t);if(o&&o.querySelector&&o.querySelector('.mg-desk'))o.innerHTML='';}});
   a.removeEventListener('click',mgArtClick);
   if(mgActiveDeckId&&!state.decks[mgActiveDeckId])mgActiveDeckId=null;
   if(!mgActiveDeckId)mgActiveDeckId=state.currentDeckId||(Object.keys(state.decks||{})[0]||null);
@@ -5232,6 +5235,7 @@ function mgRenderDesktop(){
   // core program icons first (at the top), then decks, then folders (new folders spawn after)
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Search</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
@@ -5380,6 +5384,16 @@ function maybeShowMobileGuess(){
   const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
   let off=false;try{off=sessionStorage.getItem('mmd_mguess_off')==='1';}catch(e){}
   if(!isMobile||off||mguessDisabled())return;
+  mgWire();
+  mgRunning=true;
+  mgRender();mgArt('building'); // CGG idle = the guessing card (desktop lives in #pc-desktop)
+  ov.classList.add('open');ov.classList.remove('windowed');
+  mgLoadFs();
+}
+// Wire the CGG card's tap-zones + window controls (idempotent; used by mobile auto-launch + desktop launch).
+let _mgWired=false;
+function mgWire(){
+  if(_mgWired)return; _mgWired=true;
   mgTaps('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=Math.max(0,mgState.cmc-1);mgHint('mana value '+mgState.cmc);mgTouch();});
   mgTaps('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgHint('type cleared');mgTouch();});
   mgTaps('mg-fmt',mgOpenFormatPicker,mgClearFormat);
@@ -5392,10 +5406,6 @@ function maybeShowMobileGuess(){
   const mx=document.getElementById('mg-max');if(mx&&!mx._mg){mx._mg=1;mx.addEventListener('click',e=>{e.stopPropagation();mgMaxToggle();});}
   const cls=document.getElementById('mg-close');if(cls&&!cls._mg){cls._mg=1;cls.addEventListener('click',e=>{e.stopPropagation();mgClose();});}
   const cog=document.getElementById('mg-cog');if(cog&&!cog._mg){cog._mg=1;cog.addEventListener('click',e=>{e.stopPropagation();mgCogToggle();});}
-  mgRunning=true;
-  mgRender();mgArt('desktop'); // fullscreen idle = the desktop, in the card art
-  ov.classList.add('open');ov.classList.remove('windowed');
-  mgLoadFs().then(()=>{if(mgArtMode==='desktop')mgRenderDesktop();});
 }
 init();
 
