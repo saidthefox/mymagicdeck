@@ -104,26 +104,35 @@ Other surface:
 
 ### Personal (local) mode
 
-Set in **System Settings → Mode**, or `DeckOS.mode = 'local'`. Personal mode is for running the app
+Set in **System Settings → Mode**, or `DeckOS.mode = 'local'`. Personal mode runs the app
 **account-less for yourself**: it hides the account/subdomain programs (Share, HUD, Account, Storage)
-from the desktop, and your decks live in this browser via `DeckOS.store`. The deckbuilder, search,
-Card Guesser, folders, and any installed mods stay. (Card search/guess still use the public API;
-a fully offline/self-hosted build that points `DeckOS.store` at a folder or a private API is the
-next step on the roadmap.)
+from the desktop **and the header sign-in chrome**, and your decks live in this browser via
+`DeckOS.store`. The deckbuilder, search, Card Guesser, folders, and installed mods stay.
 
-### Mods, and the trust model (roadmap)
+**Backup / "rewire where your data lives"** — System Settings → Storage & backup → **Export decks**
+(writes a JSON file via the File System Access API where available, else a download) and **Import**.
+This is the portable, you-own-it path. *(Roadmap: an auto-syncing folder-backed `DeckOS.store`
+backend, and a "point at my own API URL" backend; the store interface is already swappable.)*
 
-Because a program is just `DeckOS.registerProgram(...)`, third-party **mods** are loadable JS that
-call it. The intended split:
+Card search/guess still use the public API in personal mode; a fully offline self-hosted build is
+the remaining roadmap piece.
 
-- **Local / self-hosted → full trust.** It's your machine; a mod is a JS file you load (like a
-  userscript). Your PC can have a lamp, a price tracker, whatever — most people's won't.
-- **Hosted multi-tenant → sandboxed, opt-in.** Mods run in a sandboxed iframe and talk to the host
-  over a narrow `postMessage` capability API, so an installed mod can't read your account or affect
-  other users. Cosmetic widgets are easy; deeper tools get a bounded API surface.
+### Mods — installed today (local-trust), sandboxed model next
 
-The `DeckOS` facade is the stable contract both paths target; keep it versioned so community mods
-don't break when the core changes.
+A program is just `DeckOS.registerProgram(...)`, so a **mod** is loadable JS that calls it.
+**Installed now:** System Settings → **Mods** → paste a `…/mod.js` URL → it's fetched, run, and
+remembered in `DeckOS.store` (re-loaded every boot). This is the **local-trust** model: a mod runs
+with full access to your session (like a userscript), so the UI warns you to install only mods you
+trust. A minimal mod:
+
+```js
+DeckOS.registerProgram({ id:'lamp', title:'Lamp', icon:'💡',
+  mount(b){ b.innerHTML = '<p style="padding:16px">💡 a cozy desktop lamp</p>'; } });
+```
+
+**Next:** for untrusted/hosted mods, run them in a **sandboxed iframe** talking to the host over a
+narrow `postMessage` capability API, so a mod can't read your account or affect other users. The
+`DeckOS` facade is the versioned contract both paths target.
 
 ---
 
