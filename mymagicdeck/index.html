@@ -5382,7 +5382,7 @@ function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApp
 // ===== Web shortcuts — load an external MTG site inside a Win95 program window.
 // Only works for sites that allow framing (e.g. mtgtop8); blocked sites (scryfall, edhrec…)
 // refuse to embed, so every window also offers "Open ↗" in a real tab as a fallback. =====
-const WEB_APPS=[{id:'mtgtop8',title:'MTGTop8',icon:'🌐',url:'https://www.mtgtop8.com'}];
+const WEB_APPS=[{id:'mtgtop8',title:'MTGTop8',icon:'🌐',url:'https://www.mtgtop8.com'},{id:'stonesmtg',title:'Stones MTG',icon:'🪨',url:'https://stonesmtg.com'}];
 function webMount(body, app){
   body.style.padding='0';
   body.innerHTML='<div class="web-wrap"><div class="web-bar">'+
@@ -5980,6 +5980,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-stonesmtg"><div class="mg-ico">🪨</div><div class="mg-ilbl">Stones MTG</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
