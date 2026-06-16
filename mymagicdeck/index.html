@@ -963,6 +963,19 @@
     .mgw-mini *{pointer-events:none}
     .mgw-mini-ov{background:transparent !important;pointer-events:none;overflow:hidden}
     .mgw-win .modal-header{display:none} /* the injected Win95 bar replaces the modal's own header */
+    /* Win95 windows: re-skin the modern theme so generic program content (System Settings,
+       HUD, Storage, About, Share…) is readable on the gray window. Redefining the theme vars
+       flips even inline var(--text) usages to dark. The MyMagicDeck site window + Splash Builder
+       never get .mgw-win, so they keep their own modern look. */
+    .mgw-win{ --text:#101010; --text-dim:#3a3a3a; --text-bright:#000; --bg:#fff; --surface:#c0c0c0; --surface2:#c0c0c0; --surface3:#d8d4cc; --border:#808080; --border-strong:#808080; --radius:2px; --accent:#000080; --accent-hover:#000080; }
+    .mgw-win .modal-body{ color:#101010; }
+    .mgw-win .modal-body .btn{ border-width:2px; border-style:solid; border-color:#fff #808080 #808080 #fff; box-shadow:none; color:#000; background:#c0c0c0; }
+    .mgw-win .modal-body .btn:hover{ color:#000; background:#c8c8c8; border-color:#fff #808080 #808080 #fff; }
+    .mgw-win .modal-body .btn:active{ border-color:#808080 #fff #fff #808080; }
+    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:#000; background:#c0c0c0; }
+    .mgw-win .modal-body .btn.danger{ color:#a00; }
+    .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:#808080 #fff #fff #808080; border-radius:0; background:#fff; color:#000; }
+    .mgw-win .modal-body a{ color:#00006e; }
     /* The whole site is a Win95 program window sitting on the root PC desktop */
     #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:#017e7e;isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #pc-deskcontent{position:absolute;inset:0}
@@ -5769,23 +5782,25 @@ function mgRenderDesktop(){
   let icons='';
   if(mgCurrentFolder!==null)icons+='<div class="mg-icon" data-up="1"><div class="mg-ico">📂</div><div class="mg-ilbl">.. up</div></div>';
   // core program icons first (at the top), then decks, then folders (new folders spawn after)
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
+  // Default desktop layout order: Recycle Bin, Storage, Calendar, Notes, HUD, Tournaments,
+  // MyMagicDeck, Splash, CGG, Card Duel, TWENTYFOURTY (then decks, then folders).
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button><button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-path">'+path+'</span></div>'+
+      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg95 mg-bvl">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
@@ -5805,6 +5820,7 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-deck]').forEach(mgWireDeckIcon);
   const nf=document.getElementById('mg-newfolder');if(nf)nf.addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
   const nd=document.getElementById('mg-newdeck');if(nd)nd.addEventListener('click',e=>{e.stopPropagation();newDeck();mgActiveDeckId=state.currentDeckId;mgRenamingDeckId=state.currentDeckId;mgRenderDesktop();});
+  const rf=document.getElementById('mg-renamefolder');if(rf)rf.addEventListener('click',e=>{e.stopPropagation();const f=mgFs.folders.find(x=>x.id===mgCurrentFolder);if(!f)return;const nm=prompt('Folder name:',f.name||'New Folder');if(nm!=null){f.name=(nm.trim()||f.name);mgFsSave();mgRenderDesktop();}});
   const sv=document.getElementById('mg-save');if(sv)sv.addEventListener('click',e=>{e.stopPropagation();const id=mgActiveDeckId||state.currentDeckId;if(typeof saveToStorage==='function')saveToStorage();if(id&&typeof syncDeckToApi==='function'&&window.DeckOS&&!DeckOS.isLocal())syncDeckToApi(id);if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite();toast('Saved','success');});
   const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
   const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
@@ -5839,10 +5855,13 @@ function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(e
 function mgIconKey(el){ if(el.dataset.app)return 'app:'+el.dataset.app; if(el.dataset.cgg)return 'cgg'; if(el.id==='mg-bin')return 'bin'; if(el.id==='mg-backsearch')return 'backsearch'; if(el.dataset.deck)return 'deck:'+el.dataset.deck; if(el.dataset.folder)return 'folder:'+el.dataset.folder; return null; }
 function mgIconPosGet(){ try{ return (window.DeckOS&&DeckOS.store.get('iconpos'))||{}; }catch(e){ return {}; } }
 function mgIconPosSet(key,x,y){ if(!key)return; const m=mgIconPosGet(); m[key]={x:Math.round(x),y:Math.round(y)}; try{ DeckOS.store.set('iconpos',m); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
-function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8; const rows=Math.max(1,Math.floor((c.clientHeight-PAD)/ROWH)); let auto=0;
-  Array.from(c.querySelectorAll('.mg-icon')).forEach(el=>{ const key=mgIconKey(el); if(key)el.dataset.ikey=key; const p=key&&pos[key];
-    if(p){ el.style.left=Math.max(0,Math.min(p.x, Math.max(0,c.clientWidth-74)))+'px'; el.style.top=Math.max(0,p.y)+'px'; }
-    else { const col=Math.floor(auto/rows), row=auto%rows; el.style.left=(PAD+col*COLW)+'px'; el.style.top=(PAD+row*ROWH)+'px'; auto++; } }); }
+function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8;
+  const cw=c.clientWidth||600, ch=c.clientHeight||400, rows=Math.max(1,Math.floor((ch-PAD)/ROWH));
+  const placed=[]; const overlaps=(x,y)=>placed.some(p=>Math.abs(p.x-x)<COLW-6 && Math.abs(p.y-y)<ROWH-6);
+  const els=Array.from(c.querySelectorAll('.mg-icon'));
+  els.forEach(el=>{ const key=mgIconKey(el); if(key)el.dataset.ikey=key; const p=key&&pos[key];
+    if(p){ const x=Math.max(0,Math.min(p.x,Math.max(0,cw-74))), y=Math.max(0,p.y); el.style.left=x+'px'; el.style.top=y+'px'; el._placed=true; placed.push({x,y}); } else el._placed=false; });
+  let slot=0; els.forEach(el=>{ if(el._placed)return; let x,y,g=0; do{ const col=Math.floor(slot/rows), row=slot%rows; x=PAD+col*COLW; y=PAD+row*ROWH; slot++; g++; }while(overlaps(x,y)&&g<400); el.style.left=x+'px'; el.style.top=y+'px'; placed.push({x,y}); }); }
 // Tap-vs-drag pointer handler for the simple icons (programs / CGG / Bin / MyMagicDeck).
 function mgWireIconDrag(el, onTap){
   el.addEventListener('pointerdown',e=>{ if(e.button>0)return; const c=el.parentElement; const sx=e.clientX, sy=e.clientY; const r=el.getBoundingClientRect(), pr=c.getBoundingClientRect(); const ox=r.left-pr.left, oy=r.top-pr.top; let dragging=false, nx=ox, ny=oy;
