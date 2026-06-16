@@ -1360,6 +1360,7 @@
 <div class="modal-overlay" id="modal-hud"><div class="modal" style="width:440px;max-width:96vw"><div class="modal-header"><div class="modal-title">HUD — Page Status</div><button class="modal-close" onclick="closeModal('modal-hud')">✕</button></div><div class="modal-body" id="hud-body"></div></div></div>
 <div class="modal-overlay" id="modal-sysset"><div class="modal" style="width:400px;max-width:95vw"><div class="modal-header"><div class="modal-title">System Settings</div><button class="modal-close" onclick="closeModal('modal-sysset')">✕</button></div><div class="modal-body" id="sysset-body"></div></div></div>
 <div class="modal-overlay" id="modal-about"><div class="modal" style="width:380px;max-width:94vw"><div class="modal-header"><div class="modal-title">About</div><button class="modal-close" onclick="closeModal('modal-about')">✕</button></div><div class="modal-body" id="about-body"></div></div></div>
+<div class="modal-overlay" id="modal-battle"><div class="modal" style="width:460px;max-width:96vw"><div class="modal-header"><div class="modal-title">⚔️ Card Duel</div><button class="modal-close" onclick="closeModal('modal-battle')">✕</button></div><div class="modal-body" id="battle-body"></div></div></div>
 <!-- Auth Modal -->
 <div class="modal-overlay" id="modal-auth">
   <div class="modal" style="width:360px;max-width:95vw">
@@ -4651,6 +4652,7 @@ const MGW_APPS={
   hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
   about:  {overlay:'modal-about',    win:'.modal', title:'About',          icon:'ℹ️', open:()=>openAbout(),  close:()=>closeModal('modal-about')},
+  battle: {overlay:'modal-battle',   win:'.modal', title:'Card Duel',      icon:'⚔️', open:()=>openBattle(), close:()=>closeModal('modal-battle')},
 };
 function openAbout(){renderAbout();openModal('modal-about');}
 function renderAbout(){
@@ -4662,6 +4664,75 @@ function renderAbout(){
     '<div style="color:var(--text);line-height:1.55">'+owner+'MyMagicDeck — a Magic: The Gathering deckbuilder reimagined as a tiny Windows&nbsp;95 PC. Decks are files, cards can be guessed, and you publish your own splash pages from your own machine.</div>'+
     '<div style="color:var(--text-dim);font-size:.76rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MTG content © Wizards of the Coast. Card data via Scryfall. Not affiliated with Wizards.</div>'+
     '</div>';
+}
+// ===== Card Duel — 2-player guessing battle =====
+// v1 = LOCAL hot-seat: one device, both players race to guess a hidden card as clues reveal one
+// at a time; first correct guess wins the round. Online async (words-with-friends style) is a
+// drop-in later: same clue schedule keyed off a shared seed in a backend "battle room" (create/
+// join by code; POST guesses; poll/long-poll state). See README → "Card Duel".
+let mgbattle=null;
+const BATTLE_QUERIES=['t:creature cmc=2','c:r','c:u t:instant','t:legendary creature','c:g cmc>=4','t:artifact','c:b t:creature','c:w t:enchantment','t:sorcery cmc<=3','c:m'];
+function battleScores(){ return (window.DeckOS&&DeckOS.store.get('battle_scores'))||{p1:0,p2:0}; }
+function battleNames(){ return (window.DeckOS&&DeckOS.store.get('battle_names'))||['Player 1','Player 2']; }
+function battleNorm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function battleClues(card){
+  const cl=[]; const C={W:'White',U:'Blue',B:'Black',R:'Red',G:'Green'};
+  const cs=(card.colors||[]).map(c=>C[c]).filter(Boolean);
+  cl.push('Color: '+(cs.length?cs.join(' / '):'Colorless'));
+  cl.push('Mana value: '+(card.cmc!=null?card.cmc:'?'));
+  cl.push('Type: '+((card.type_line||'?').split('—')[0].trim()));
+  if(card.power!=null&&card.toughness!=null)cl.push('Power / Toughness: '+card.power+' / '+card.toughness);
+  if(card.rarity)cl.push('Rarity: '+card.rarity.charAt(0).toUpperCase()+card.rarity.slice(1));
+  if(card.mana_cost)cl.push('Mana cost: '+card.mana_cost.replace(/[{}]/g,' ').trim());
+  const n=card.name||'';
+  cl.push('Name length: '+n.replace(/[^A-Za-z]/g,'').length+' letters');
+  cl.push('Starts with: '+n.charAt(0).toUpperCase());
+  if(n.length>2)cl.push('First two letters: '+n.slice(0,2));
+  return cl;
+}
+async function battlePickTarget(){
+  const q=BATTLE_QUERIES[Math.floor(Math.random()*BATTLE_QUERIES.length)];
+  try{ const d=await apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=40'); const arr=(d&&d.data)||[]; const named=arr.filter(c=>c.name&&!/ \/\/ /.test(c.name)); return named.length?named[Math.floor(Math.random()*named.length)]:null; }
+  catch(e){ return null; }
+}
+function openBattle(){ if(!mgbattle)battleNew(); else renderBattle(); }
+async function battleNew(){
+  const body=document.getElementById('battle-body'); if(!body)return;
+  body.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-dim)">Dealing a card… 🎴</div>';
+  const card=await battlePickTarget();
+  if(!card){ body.innerHTML='<div style="padding:24px;text-align:center;color:var(--text-dim)">Couldn\'t load a card.<br><button class="btn" style="margin-top:8px" onclick="battleNew()">Retry</button></div>'; return; }
+  mgbattle={ target:card, clues:battleClues(card), revealed:1, over:false, winner:null, names:battleNames() };
+  renderBattle();
+}
+function battleReveal(){ if(mgbattle&&!mgbattle.over){ mgbattle.revealed=Math.min(mgbattle.clues.length,mgbattle.revealed+1); renderBattle(); } }
+function battleGiveUp(){ if(mgbattle){ mgbattle.over=true; mgbattle.winner=null; mgbattle.revealed=mgbattle.clues.length; renderBattle(); } }
+function battleGuess(pi){
+  if(!mgbattle||mgbattle.over)return;
+  const inp=document.getElementById('battle-g'+pi); if(!inp)return; const g=battleNorm(inp.value); if(!g)return;
+  const name=mgbattle.target.name||''; const t=battleNorm(name); const tFirst=battleNorm(name.split(/[ ,]/)[0]);
+  const hit = g===t || (g.length>=5 && t.indexOf(g)===0) || (g.length>=4 && g===tFirst);
+  if(hit){ mgbattle.over=true; mgbattle.winner=pi; const s=battleScores(); s['p'+(pi+1)]=(s['p'+(pi+1)]||0)+1; if(window.DeckOS)DeckOS.store.set('battle_scores',s); }
+  else { inp.value=''; if(window.DeckOS)DeckOS.ui.toast('Not it — keep going'); }
+  renderBattle();
+}
+function renderBattle(){
+  const body=document.getElementById('battle-body'); if(!body||!mgbattle)return;
+  const b=mgbattle, s=battleScores();
+  const head='<div style="display:flex;justify-content:space-between;font-weight:700;color:var(--text);padding:2px 2px 8px"><span>'+_mgEsc(b.names[0])+' · '+(s.p1||0)+'</span><span>'+_mgEsc(b.names[1])+' · '+(s.p2||0)+'</span></div>';
+  const clues='<div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="font-size:.72rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Clues</div>'+b.clues.slice(0,b.revealed).map(c=>'<div style="padding:3px 0;color:var(--text)">• '+_mgEsc(c)+'</div>').join('')+'</div>';
+  let mid;
+  if(b.over){
+    const img=(b.target.image_uris&&b.target.image_uris.normal)?'<img src="'+b.target.image_uris.normal+'" style="max-width:200px;border-radius:9px;margin-top:8px">':'';
+    mid='<div style="text-align:center;padding:12px 4px">'+
+      (b.winner!=null?'<div style="font-weight:800;color:var(--accent);font-size:1.15rem">🏆 '+_mgEsc(b.names[b.winner])+' wins!</div>':'<div style="font-weight:700;color:var(--text-dim)">No winner that round</div>')+
+      '<div style="color:var(--text);margin:6px 0">It was <b>'+_mgEsc(b.target.name)+'</b></div>'+img+
+      '<div style="margin-top:12px"><button class="btn primary" onclick="battleNew()">Next card →</button></div></div>';
+  } else {
+    const reveal=b.revealed<b.clues.length?'<button class="btn" onclick="battleReveal()">🔎 Reveal next clue ('+(b.clues.length-b.revealed)+' left)</button>':'<span style="color:var(--text-dim);font-size:.8rem">All clues revealed</span>';
+    const rows=[0,1].map(i=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 2px"><span style="width:70px;flex-shrink:0;color:var(--text);font-weight:600;font-size:.8rem">'+_mgEsc(b.names[i])+'</span><input id="battle-g'+i+'" placeholder="Guess the card…" onkeydown="if(event.key===\'Enter\')battleGuess('+i+')" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px"><button class="btn" onclick="battleGuess('+i+')">Guess</button></div>').join('');
+    mid='<div style="display:flex;justify-content:center;margin:10px 0">'+reveal+'</div>'+rows+'<div style="text-align:center;margin-top:8px"><button class="btn small" onclick="battleGiveUp()">Give up / reveal</button></div>';
+  }
+  body.innerHTML=head+clues+mid+'<div style="text-align:center;color:var(--text-dim);font-size:.72rem;margin-top:10px">Local hot-seat — pass the device. Online play coming soon.</div>';
 }
 function openBin(){renderBinList();openModal('modal-bin');}
 function renderBinList(){
@@ -5078,6 +5149,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
     item('cgg','🗃️ Card Guesser Game')+
+    '<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+
     item('splash','🖼️ Splash Builder')+
     item('share','🔗 Share Deck')+
     item('storage','💾 Storage')+

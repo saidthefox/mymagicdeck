@@ -57,6 +57,7 @@ the desktop browser is unaffected.
 | Program | What it is |
 |---|---|
 | **CGG — Card Guesser Game** | A tactile, mobile-only card the player taps to describe (color/CMC/type/P-T/name/format); the engine guesses via rules + EDHREC popularity (no LLM — must be instant). Lives as `mg*` functions; the card face is a real Magic-card frame inside a Win95 program window, and the frame tints to the cycled color. Confirming a guess adds the card to the active deck. |
+| **Card Duel** | 2-player guessing battle (`battle*` functions). v1 is **local hot-seat**: a hidden real card is dealt, clues reveal one at a time, both players race to guess; first correct wins the round (scores persist in `DeckOS.store`). **Online async** (words-with-friends style) is a planned drop-in: the same clue schedule keyed off a shared seed in a backend "battle room" — create/join by code, POST guesses, poll state. |
 | **Splash Builder** | Designs/edits the public splash page for a deck. |
 | **Share Deck** | Public share link + sets which deck is published to each splash site. |
 | **Storage** | The "My Uploads" custom-card-art library. |
