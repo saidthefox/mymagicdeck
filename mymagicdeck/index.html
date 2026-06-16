@@ -982,6 +982,9 @@
     #hud-anchor-widget .hud-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
     #site-window{flex:1 1 auto;display:flex;flex-direction:column;min-height:0;overflow:hidden} /* replicates the old body flex-column shell so #app keeps filling */
     body.deckos-local #user-btn-area{display:none} /* personal mode: account-less, hide sign-in/avatar */
+    .battle-ac{position:absolute;left:0;right:0;top:100%;z-index:60;margin-top:2px;background:var(--surface);border:1px solid var(--border);border-radius:6px;max-height:184px;overflow:auto;display:none;box-shadow:0 6px 18px rgba(0,0,0,.4)}
+    .battle-ac div{padding:7px 10px;cursor:pointer;font-size:.85rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .battle-ac div:hover{background:var(--surface2);color:var(--accent)}
     #site-titlebar{display:none}
     #site-window.site-mini{position:fixed;z-index:40;box-shadow:3px 3px 14px rgba(0,0,0,.6);cursor:grab;touch-action:none;-webkit-touch-callout:none;overflow:hidden;background:var(--bg,#0b0d12)}
     #site-window.site-mini.dragging{cursor:grabbing;opacity:.95}
@@ -4729,10 +4732,24 @@ function renderBattle(){
       '<div style="margin-top:12px"><button class="btn primary" onclick="battleNew()">Next card →</button></div></div>';
   } else {
     const reveal=b.revealed<b.clues.length?'<button class="btn" onclick="battleReveal()">🔎 Reveal next clue ('+(b.clues.length-b.revealed)+' left)</button>':'<span style="color:var(--text-dim);font-size:.8rem">All clues revealed</span>';
-    const rows=[0,1].map(i=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 2px"><span style="width:70px;flex-shrink:0;color:var(--text);font-weight:600;font-size:.8rem">'+_mgEsc(b.names[i])+'</span><input id="battle-g'+i+'" placeholder="Guess the card…" onkeydown="if(event.key===\'Enter\')battleGuess('+i+')" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px"><button class="btn" onclick="battleGuess('+i+')">Guess</button></div>').join('');
+    const rows=[0,1].map(i=>'<div style="display:flex;align-items:center;gap:8px;padding:5px 2px"><span style="width:70px;flex-shrink:0;color:var(--text);font-weight:600;font-size:.8rem">'+_mgEsc(b.names[i])+'</span><div style="position:relative;flex:1;min-width:0"><input id="battle-g'+i+'" autocomplete="off" placeholder="Guess the card…" onkeydown="if(event.key===\'Enter\')battleGuess('+i+')" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px"><div id="battle-ac'+i+'" class="battle-ac"></div></div><button class="btn" onclick="battleGuess('+i+')">Guess</button></div>').join('');
     mid='<div style="display:flex;justify-content:center;margin:10px 0">'+reveal+'</div>'+rows+'<div style="text-align:center;margin-top:8px"><button class="btn small" onclick="battleGiveUp()">Give up / reveal</button></div>';
   }
   body.innerHTML=head+clues+mid+'<div style="text-align:center;color:var(--text-dim);font-size:.72rem;margin-top:10px">Local hot-seat — pass the device. Online play coming soon.</div>';
+  if(!b.over){ battleAutocomplete(0); battleAutocomplete(1); }
+}
+function battleAutocomplete(i){
+  const inp=document.getElementById('battle-g'+i), dd=document.getElementById('battle-ac'+i); if(!inp||!dd)return;
+  let timer,seq=0;
+  inp.addEventListener('input',()=>{ const q=inp.value.trim(); clearTimeout(timer); if(q.length<2){dd.style.display='none';return;}
+    timer=setTimeout(async()=>{ const my=++seq; try{ const d=await apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=10'); if(my!==seq)return;
+      const names=[...new Set((d.data||[]).map(c=>c.name))].slice(0,8);
+      if(!names.length){dd.style.display='none';return;}
+      dd.innerHTML=names.map(n=>'<div>'+_mgEsc(n)+'</div>').join('');
+      dd.querySelectorAll('div').forEach((el,idx)=>el.addEventListener('mousedown',e=>{e.preventDefault();inp.value=names[idx];dd.style.display='none';}));
+      dd.style.display='block';
+    }catch(e){dd.style.display='none';} },200); });
+  inp.addEventListener('blur',()=>setTimeout(()=>{dd.style.display='none';},150));
 }
 function openBin(){renderBinList();openModal('modal-bin');}
 function renderBinList(){
