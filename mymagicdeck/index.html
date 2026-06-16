@@ -946,7 +946,8 @@
     .mg-dragclone .mg-ico{font-size:30px}.mg-dragclone .mg-ilbl{font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
     .mg-drophi{outline:2px dotted #fff;outline-offset:-2px;background:rgba(0,0,128,.45)}
     .mg-startmenu{position:absolute;left:3px;bottom:34px;width:210px;max-width:92%;background:#c0c0c0;z-index:20;display:flex;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
-    .mg-smtitle{writing-mode:vertical-rl;transform:rotate(180deg);background:#000080;color:#fff;font-weight:bold;font-size:13px;padding:8px 3px;flex-shrink:0;letter-spacing:.5px}
+    .mg-smtitle{writing-mode:vertical-rl;transform:rotate(180deg);background:#000080;color:#fff;font-weight:bold;font-size:13px;padding:8px 3px;flex-shrink:0;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+    .mg-smtitle-os{font-size:10px;opacity:.82;font-weight:normal;letter-spacing:.5px}
     .mg-smbody{flex:1;min-width:0;padding:3px}
     .mg-smhdr{font-size:10px;color:#555;padding:3px 7px 1px;text-transform:uppercase}
     .mg-smitem{display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap}
@@ -1350,6 +1351,7 @@
 <div class="modal-overlay" id="modal-bin"><div class="modal" style="width:420px;max-width:95vw"><div class="modal-header"><div class="modal-title">Recycle Bin</div><button class="modal-close" onclick="closeModal('modal-bin')">✕</button></div><div class="modal-body" id="bin-list"></div><div class="modal-footer" id="bin-footer"></div></div></div>
 <div class="modal-overlay" id="modal-hud"><div class="modal" style="width:440px;max-width:96vw"><div class="modal-header"><div class="modal-title">HUD — Page Status</div><button class="modal-close" onclick="closeModal('modal-hud')">✕</button></div><div class="modal-body" id="hud-body"></div></div></div>
 <div class="modal-overlay" id="modal-sysset"><div class="modal" style="width:400px;max-width:95vw"><div class="modal-header"><div class="modal-title">System Settings</div><button class="modal-close" onclick="closeModal('modal-sysset')">✕</button></div><div class="modal-body" id="sysset-body"></div></div></div>
+<div class="modal-overlay" id="modal-about"><div class="modal" style="width:380px;max-width:94vw"><div class="modal-header"><div class="modal-title">About</div><button class="modal-close" onclick="closeModal('modal-about')">✕</button></div><div class="modal-body" id="about-body"></div></div></div>
 <!-- Auth Modal -->
 <div class="modal-overlay" id="modal-auth">
   <div class="modal" style="width:360px;max-width:95vw">
@@ -4632,7 +4634,19 @@ const MGW_APPS={
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
   hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
+  about:  {overlay:'modal-about',    win:'.modal', title:'About',          icon:'ℹ️', open:()=>openAbout(),  close:()=>closeModal('modal-about')},
 };
+function openAbout(){renderAbout();openModal('modal-about');}
+function renderAbout(){
+  const b=document.getElementById('about-body');if(!b)return;
+  const owner=state.user?(_mgEsc(state.user.username)+"'s "):'';
+  b.innerHTML='<div style="text-align:center;padding:12px 6px">'+
+    '<div style="font-size:1.5rem;font-weight:800;letter-spacing:2px;color:var(--text-bright)">DECK OS</div>'+
+    '<div style="color:var(--accent);font-weight:700;margin:3px 0 16px">v1 · 2026</div>'+
+    '<div style="color:var(--text);line-height:1.55">'+owner+'MyMagicDeck — a Magic: The Gathering deckbuilder reimagined as a tiny Windows&nbsp;95 PC. Decks are files, cards can be guessed, and you publish your own splash pages from your own machine.</div>'+
+    '<div style="color:var(--text-dim);font-size:.76rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MTG content © Wizards of the Coast. Card data via Scryfall. Not affiliated with Wizards.</div>'+
+    '</div>';
+}
 function openBin(){renderBinList();openModal('modal-bin');}
 function renderBinList(){
   const bin=(mgFs.bin||[]).filter(id=>state.decks[id]);
@@ -4896,7 +4910,8 @@ function mgWireFolderIcon(el){
   el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
 function mgStartMenuHtml(showLaunch,showDesktop){
-  return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle">MyMagicDeck</div><div class="mg-smbody">'+
+  const owner=(state.user&&state.user.username)?(_mgEsc(state.user.username)+"'s MyMagicDeck"):'MyMagicDeck';
+  return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs</div>'+
     '<div class="mg-smitem" data-app="cgg">🗃️ Card Guesser Game</div>'+
     '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
@@ -4907,6 +4922,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-app="account">👤 Account</div>'+
     '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
+    '<div class="mg-smitem" data-app="about">ℹ️ About</div>'+
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-shut="1">⏻&nbsp; Shut Down</div>'+
     '</div></div>';
