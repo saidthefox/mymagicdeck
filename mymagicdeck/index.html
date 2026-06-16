@@ -12,6 +12,13 @@
   <meta name="twitter:title" content="MyMagicDeck — MTG Deck Builder" />
   <meta name="twitter:description" content="Build, share, and manage MTG decks. Search every card, track stats, share with friends." />
   <title>MyMagicDeck — MTG Deck Builder</title>
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="theme-color" content="#0f1117" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Deck OS" />
+  <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -4301,6 +4308,12 @@ window.addEventListener('beforeunload',function(e){
 // Site window controls: _ minimizes the whole site to the PC desktop tray, ❐ windows it
 {const _smn=document.getElementById('site-min');if(_smn)_smn.addEventListener('click',e=>{e.stopPropagation();mgEmbedDesktop();});
  const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation();siteWindow();});}
+// PWA: register the service worker (skip splash-only subdomains, which serve a single deck page).
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{
+  const host=location.hostname;
+  const splashOnly=/^[a-z0-9_-]+\.mymagicdeck\.com$/i.test(host)&&!host.startsWith('www');
+  if(!splashOnly)navigator.serviceWorker.register('/sw.js').catch(()=>{});
+});}
 
 function init(){
   // If on a splash-only domain, only handle routing — don't boot the full builder
