@@ -110,13 +110,13 @@ Set in **System Settings → Mode**, or `DeckOS.mode = 'local'`. Personal mode r
 from the desktop **and the header sign-in chrome**, and your decks live in this browser via
 `DeckOS.store`. The deckbuilder, search, Card Guesser, folders, and installed mods stay.
 
-**Backup / "rewire where your data lives"** — System Settings → Storage & backup → **Export decks**
-(writes a JSON file via the File System Access API where available, else a download) and **Import**.
-This is the portable, you-own-it path. *(Roadmap: an auto-syncing folder-backed `DeckOS.store`
-backend, and a "point at my own API URL" backend; the store interface is already swappable.)*
+**Own your data** — System Settings → Storage & backup gives three levels:
+- **Export / Import** decks as a JSON file (File System Access API where available, else download) — portable, works everywhere.
+- **Folder auto-save** (desktop Chromium): pick a folder once and decks mirror to `decks.json` there on every save (handle persisted in IndexedDB; re-permissioned each session). `DeckOS.store.backend === 'folder'`.
+- **Self-hosted API** (advanced): set an API base URL to point the PWA at *your own* MyMagicDeck server (`deckos_api_base`; blank = this site). Reloads on save. Your server needs permissive CORS (the bundled API uses `origin:true`).
 
-Card search/guess still use the public API in personal mode; a fully offline self-hosted build is
-the remaining roadmap piece.
+So a personal instance can run account-less, keep decks in a folder it controls, and talk to its
+own backend — the hosted multi-tenant site and a self-hosted personal one are the same code.
 
 ### Mods — installed today (local-trust), sandboxed model next
 

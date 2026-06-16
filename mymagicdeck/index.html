@@ -1642,7 +1642,8 @@ function deleteDeck(id){if(!confirm('Delete this deck?'))return;deleteDeckFromAp
 /*──────────────────────────────────────────────────────────────
   API CLIENT
 ──────────────────────────────────────────────────────────────*/
-const API_BASE='/api';
+// API base: same-origin /api by default; a self-hosted instance can point at its own server.
+let API_BASE=(function(){try{const b=localStorage.getItem('deckos_api_base');return (b&&/^https?:\/\//.test(b))?b.replace(/\/$/,'')+'/api':'/api';}catch(e){return '/api';}})();
 function apiToken(){return localStorage.getItem('mmd_token')||null}
 async function apiFetch(path,opts={}){
   const token=apiToken();
@@ -1687,6 +1688,7 @@ function saveToStorage(){
     if(state.user)localStorage.setItem('mmd_user',JSON.stringify(state.user));
     else localStorage.removeItem('mmd_user');
   }catch(e){}
+  if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite(); // mirror decks to the connected folder
 }
 
 // Push a single deck to the API with sync indicator feedback
@@ -4319,8 +4321,11 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   const splashOnly=/^[a-z0-9_-]+\.mymagicdeck\.com$/i.test(host)&&!host.startsWith('www');
   if(!splashOnly)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 });}
-// Deck OS: apply personal/hosted mode + load any installed mods.
-if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u)); }
+// Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
+if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
+  DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
+  if(DeckOS.store.backend==='folder'&&DeckOS.fsSupported())window.addEventListener('load',()=>{DeckOS.folderLoad();});
+}
 
 function init(){
   // If on a splash-only domain, only handle routing — don't boot the full builder
@@ -4831,6 +4836,12 @@ function renderSysset(){
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Storage &amp; backup</div>'+
     '<div style="padding:6px 2px;color:var(--text-dim);font-size:.8rem">Decks are saved in this browser ('+(window.DeckOS?DeckOS.store.keys().length:0)+' app item(s)). Back them up to a file you control:</div>'+
     '<div style="display:flex;gap:8px;padding:4px 2px"><button class="btn" id="ss-export">⬇ Export decks</button><button class="btn" id="ss-import-btn">⬆ Import</button><input type="file" id="ss-import" accept="application/json,.json" style="display:none"></div>'+
+    ((window.DeckOS&&DeckOS.fsSupported())
+      ? '<div style="padding:6px 2px 2px;color:var(--text-dim);font-size:.78rem">Or auto-save decks to a folder you pick ('+(DeckOS.store.backend==='folder'?'<b style="color:var(--accent)">connected</b>':'browser storage')+'):</div><div style="display:flex;gap:8px;padding:2px 2px"><button class="btn" id="ss-folder">📁 '+(DeckOS.store.backend==='folder'?'Reconnect folder':'Use a folder')+'</button>'+(DeckOS.store.backend==='folder'?'<button class="btn small" id="ss-folderoff">Disconnect</button>':'')+'</div>'
+      : '<div style="padding:5px 2px;color:var(--text-dim);font-size:.72rem">(Folder auto-save needs a desktop Chromium browser.)</div>')+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Self-hosted (advanced)</div>'+
+    '<div style="padding:4px 2px;color:var(--text-dim);font-size:.74rem">Point the app at your own MyMagicDeck API server (blank = this site). Reloads on save.</div>'+
+    '<div style="display:flex;gap:8px;padding:2px 2px"><input id="ss-apibase" placeholder="https://my-server.example" value="'+_mgEsc(window.DeckOS?DeckOS.getApiBase():'')+'" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem"><button class="btn" id="ss-apisave">Save</button></div>'+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Mods</div>'+
     '<div style="padding:6px 2px;color:var(--text-dim);font-size:.74rem">Add programs by URL. <b>Sandboxed</b> mods run isolated (read-only deck access, scoped storage) and are safe; <b>trusted</b> mods run with full access to your session — only install those you trust.</div>'+
     (smods.map(u=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 2px"><span style="background:#1f6f4a;color:#cdeed7;font-size:.62rem;padding:1px 5px;border-radius:4px;flex-shrink:0">SANDBOX</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;color:var(--text)">'+_mgEsc(u)+'</span><button class="btn small" data-rmsmod="'+_mgEsc(u)+'">Remove</button></div>').join('')+
@@ -4843,6 +4854,9 @@ function renderSysset(){
   const lc=document.getElementById('ss-local');if(lc)lc.addEventListener('change',()=>{if(window.DeckOS){DeckOS.mode=lc.checked?'local':'hosted';DeckOS.applyMode();DeckOS.ui.toast(lc.checked?'Personal mode on':'Connected mode on');}});
   const ex=document.getElementById('ss-export');if(ex)ex.addEventListener('click',()=>DeckOS.exportDecks());
   const ib=document.getElementById('ss-import-btn'),inp=document.getElementById('ss-import');if(ib&&inp){ib.addEventListener('click',()=>inp.click());inp.addEventListener('change',()=>{if(inp.files&&inp.files[0])DeckOS.importDecks(inp.files[0]);});}
+  const fb=document.getElementById('ss-folder');if(fb)fb.addEventListener('click',()=>DeckOS.connectFolder().then(()=>renderSysset()));
+  const fo=document.getElementById('ss-folderoff');if(fo)fo.addEventListener('click',()=>{DeckOS.disconnectFolder();renderSysset();});
+  const ab=document.getElementById('ss-apisave');if(ab)ab.addEventListener('click',()=>{DeckOS.setApiBase(document.getElementById('ss-apibase').value);DeckOS.ui.toast('Saved — reloading…');setTimeout(()=>location.reload(),700);});
   b.querySelectorAll('[data-rmmod]').forEach(btn=>btn.addEventListener('click',()=>{DeckOS.removeMod(btn.getAttribute('data-rmmod'));renderSysset();DeckOS.ui.toast('Mod removed (reload to unload it)');}));
   b.querySelectorAll('[data-rmsmod]').forEach(btn=>btn.addEventListener('click',()=>{DeckOS.removeSandboxMod(btn.getAttribute('data-rmsmod'));renderSysset();DeckOS.ui.toast('Mod removed (reload to unload it)');}));
   const ma=document.getElementById('ss-modadd');if(ma)ma.addEventListener('click',async()=>{const u=document.getElementById('ss-modurl').value;const sb=document.getElementById('ss-modsandbox');const ok=(sb&&sb.checked)?DeckOS.installSandboxMod(u):await DeckOS.installMod(u);if(ok)renderSysset();});
@@ -5066,6 +5080,30 @@ window.DeckOS = {
   },
   installSandboxMod(url){ url=(url||'').trim(); if(!url)return false; const list=this.store.get('smods')||[]; if(list.indexOf(url)<0){ list.push(url); this.store.set('smods',list); } this.registerSandboxProgram(url); this.ui.toast('Sandboxed mod installed'); return true; },
   removeSandboxMod(url){ this.store.set('smods',(this.store.get('smods')||[]).filter(u=>u!==url)); },
+  // --- self-hosted: point at your own API server (requires reload) ---
+  getApiBase(){ try{ return localStorage.getItem('deckos_api_base')||''; }catch(e){ return ''; } },
+  setApiBase(url){ url=(url||'').trim().replace(/\/$/,''); try{ if(url&&/^https?:\/\//.test(url))localStorage.setItem('deckos_api_base',url); else localStorage.removeItem('deckos_api_base'); }catch(e){} },
+  // --- folder-backed deck storage (File System Access API; desktop Chromium only) ---
+  fsSupported(){ return typeof window!=='undefined' && 'showDirectoryPicker' in window; },
+  _idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('deckos',1); r.onupgradeneeded=()=>r.result.createObjectStore('kv'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  async _idbSet(k,v){ const db=await this._idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readwrite'); t.objectStore('kv').put(v,k); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); },
+  async _idbGet(k){ const db=await this._idb(); return new Promise((res,rej)=>{ const t=db.transaction('kv','readonly'); const q=t.objectStore('kv').get(k); q.onsuccess=()=>res(q.result); q.onerror=()=>rej(q.error); }); },
+  async connectFolder(){
+    if(!this.fsSupported()){ this.ui.toast('Folder storage needs a desktop Chromium browser'); return false; }
+    try{ const h=await window.showDirectoryPicker({mode:'readwrite'}); await this._idbSet('folderHandle',h); this.store.backend='folder'; this.store.set('store_backend','folder'); await this.folderWrite(); this.ui.toast('Folder connected — decks save here'); return true; }
+    catch(e){ return false; }
+  },
+  disconnectFolder(){ this.store.backend='local'; this.store.set('store_backend','local'); try{ this._idbSet('folderHandle',null); }catch(e){} this.ui.toast('Back to browser storage'); },
+  async _folderHandle(){ try{ const h=await this._idbGet('folderHandle'); if(!h)return null; const opt={mode:'readwrite'}; if((await h.queryPermission(opt))!=='granted'){ if((await h.requestPermission(opt))!=='granted')return null; } return h; }catch(e){ return null; } },
+  folderWrite(){
+    clearTimeout(this._fwTimer);
+    this._fwTimer=setTimeout(async()=>{ const h=await this._folderHandle(); if(!h)return;
+      try{ const fh=await h.getFileHandle('decks.json',{create:true}); const w=await fh.createWritable(); await w.write(JSON.stringify({app:'deckos',version:1,savedAt:new Date().toISOString(),decks:state.decks||{}},null,2)); await w.close(); }catch(e){} },800);
+  },
+  async folderLoad(){
+    const h=await this._folderHandle(); if(!h)return false;
+    try{ const fh=await h.getFileHandle('decks.json'); const f=await fh.getFile(); const d=JSON.parse(await f.text()); const decks=d.decks||{}; let n=0; Object.values(decks).forEach(dk=>{ if(dk&&dk.id){ state.decks[dk.id]=dk; n++; } }); if(typeof renderAll==='function')renderAll(); this.store.backend='folder'; return n; }catch(e){ return false; }
+  },
 };
 function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
