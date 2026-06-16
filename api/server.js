@@ -194,6 +194,17 @@ try {
   `);
 } catch (_) { /* already exists */ }
 
+// Card Duel — ephemeral online battle rooms (no account needed; code + per-player token).
+db.exec(`CREATE TABLE IF NOT EXISTS battles (
+  code        TEXT PRIMARY KEY,
+  target_name TEXT NOT NULL,
+  state       TEXT NOT NULL,          -- JSON: { clues, revealed, guesses, scores, players, status, winner, target }
+  created_at  INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated_at  INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+// Reap rooms older than 6h.
+setInterval(() => { try { db.prepare('DELETE FROM battles WHERE updated_at < ?').run(Math.floor(Date.now()/1000) - 6*3600); } catch (_) {} }, 30*60*1000);
+
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
 let _cardRefreshRunning = false;
@@ -2045,6 +2056,117 @@ app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitBgGen]
     app.log.warn('bg-generate failed: ' + e.message);
     return reply.code(502).send({ error: 'Scene generation failed. Try again.' });
   } finally { clearTimeout(timer); _bgInFlight--; }
+});
+
+// ── Card Duel (online) ──────────────────────────────────────────────────────
+const _battleBuckets = new Map();
+function rateLimitBattle(req, reply, done) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now(); let b = _battleBuckets.get(ip);
+  if (!b || now - b.start > 60000) { b = { start: now, count: 0 }; _battleBuckets.set(ip, b); }
+  if (++b.count > 20) { reply.code(429).send({ error: 'Slow down.' }); return; }
+  done();
+}
+function battleNorm(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function battleCluesFor(card) {
+  const cl = [];
+  const C = { W: 'White', U: 'Blue', B: 'Black', R: 'Red', G: 'Green' };
+  const cs = (JSON.parse(card.colors || '[]')).map(c => C[c]).filter(Boolean);
+  cl.push('Color: ' + (cs.length ? cs.join(' / ') : 'Colorless'));
+  cl.push('Mana value: ' + (card.cmc != null ? card.cmc : '?'));
+  cl.push('Type: ' + ((card.type_line || '?').split('—')[0].trim()));
+  if (card.power != null && card.toughness != null) cl.push('Power / Toughness: ' + card.power + ' / ' + card.toughness);
+  if (card.rarity) cl.push('Rarity: ' + card.rarity.charAt(0).toUpperCase() + card.rarity.slice(1));
+  if (card.mana_cost) cl.push('Mana cost: ' + card.mana_cost.replace(/[{}]/g, ' ').trim());
+  const n = card.name || '';
+  cl.push('Name length: ' + n.replace(/[^A-Za-z]/g, '').length + ' letters');
+  cl.push('Starts with: ' + n.charAt(0).toUpperCase());
+  if (n.length > 2) cl.push('First two letters: ' + n.slice(0, 2));
+  return cl;
+}
+function battlePublic(row) {
+  const st = JSON.parse(row.state);
+  const over = st.status === 'over';
+  return {
+    code: row.code, status: st.status, revealed: st.revealed,
+    clues: st.clues.slice(0, st.revealed), clueCount: st.clues.length,
+    guesses: st.guesses, scores: st.scores, winner: st.winner,
+    joined: [!!st.players[0], !!st.players[1]],
+    target: over ? { name: row.target_name, image: st.target.image } : null,
+    updatedAt: row.updated_at,
+  };
+}
+function battleGet(code) { return db.prepare('SELECT * FROM battles WHERE code = ?').get((code || '').toUpperCase()); }
+function battleSave(code, st) {
+  db.prepare('UPDATE battles SET state = ?, updated_at = unixepoch() WHERE code = ?').run(JSON.stringify(st), code);
+}
+
+app.post('/api/battle/create', { preHandler: rateLimitBattle }, async (req, reply) => {
+  const card = db.prepare(`SELECT oracle_id,name,colors,cmc,type_line,power,toughness,rarity,mana_cost,image_uris
+                           FROM cards WHERE image_uris IS NOT NULL AND edhrec_rank IS NOT NULL
+                           AND type_line NOT LIKE '%//%' ORDER BY RANDOM() LIMIT 1`).get();
+  if (!card) return reply.code(503).send({ error: 'Card library not ready.' });
+  let code; for (let i = 0; i < 8; i++) { code = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5); if (!battleGet(code)) break; }
+  const img = JSON.parse(card.image_uris || 'null'); const token = crypto.randomBytes(12).toString('hex');
+  const st = { clues: battleCluesFor(card), revealed: 1, guesses: [], scores: [0, 0], players: [token, null], status: 'waiting', winner: null,
+               target: { name: card.name, image: img ? (img.normal || img.large || img.small) : null } };
+  db.prepare('INSERT INTO battles (code, target_name, state) VALUES (?,?,?)').run(code, card.name, JSON.stringify(st));
+  const row = battleGet(code);
+  return { code, token, player: 0, state: battlePublic(row) };
+});
+
+app.post('/api/battle/:code/join', { preHandler: rateLimitBattle }, async (req, reply) => {
+  const row = battleGet(req.params.code); if (!row) return reply.code(404).send({ error: 'Room not found.' });
+  const st = JSON.parse(row.state);
+  if (st.players[1]) return reply.code(409).send({ error: 'Room is full.' });
+  const token = crypto.randomBytes(12).toString('hex'); st.players[1] = token; st.status = 'playing';
+  battleSave(row.code, st);
+  return { code: row.code, token, player: 1, state: battlePublic(battleGet(row.code)) };
+});
+
+app.get('/api/battle/:code', async (req, reply) => {
+  const row = battleGet(req.params.code); if (!row) return reply.code(404).send({ error: 'Room not found.' });
+  return battlePublic(row);
+});
+
+app.post('/api/battle/:code/reveal', async (req, reply) => {
+  const row = battleGet(req.params.code); if (!row) return reply.code(404).send({ error: 'Room not found.' });
+  const st = JSON.parse(row.state);
+  if ((st.players.indexOf((req.body || {}).token)) < 0) return reply.code(403).send({ error: 'Not a player.' });
+  if (st.status !== 'over') st.revealed = Math.min(st.clues.length, st.revealed + 1);
+  battleSave(row.code, st);
+  return battlePublic(battleGet(row.code));
+});
+
+app.post('/api/battle/:code/guess', async (req, reply) => {
+  const row = battleGet(req.params.code); if (!row) return reply.code(404).send({ error: 'Room not found.' });
+  const st = JSON.parse(row.state);
+  const pi = st.players.indexOf((req.body || {}).token);
+  if (pi < 0) return reply.code(403).send({ error: 'Not a player.' });
+  if (st.status === 'over') return { correct: false, state: battlePublic(row) };
+  const g = battleNorm((req.body || {}).guess); if (!g) return reply.code(400).send({ error: 'Empty guess.' });
+  const t = battleNorm(row.target_name), tFirst = battleNorm((row.target_name || '').split(/[ ,]/)[0]);
+  const correct = g === t || (g.length >= 5 && t.indexOf(g) === 0) || (g.length >= 4 && g === tFirst);
+  st.guesses.push({ player: pi, text: String((req.body || {}).guess).slice(0, 60), correct });
+  if (st.guesses.length > 100) st.guesses = st.guesses.slice(-100);
+  if (correct) { st.status = 'over'; st.winner = pi; st.scores[pi]++; st.revealed = st.clues.length; }
+  battleSave(row.code, st);
+  return { correct, state: battlePublic(battleGet(row.code)) };
+});
+
+app.post('/api/battle/:code/rematch', { preHandler: rateLimitBattle }, async (req, reply) => {
+  const row = battleGet(req.params.code); if (!row) return reply.code(404).send({ error: 'Room not found.' });
+  const st = JSON.parse(row.state);
+  if (st.players.indexOf((req.body || {}).token) < 0) return reply.code(403).send({ error: 'Not a player.' });
+  const card = db.prepare(`SELECT name,colors,cmc,type_line,power,toughness,rarity,mana_cost,image_uris
+                           FROM cards WHERE image_uris IS NOT NULL AND edhrec_rank IS NOT NULL
+                           AND type_line NOT LIKE '%//%' ORDER BY RANDOM() LIMIT 1`).get();
+  if (!card) return reply.code(503).send({ error: 'Card library not ready.' });
+  const img = JSON.parse(card.image_uris || 'null');
+  st.clues = battleCluesFor(card); st.revealed = 1; st.guesses = []; st.status = 'playing'; st.winner = null;
+  st.target = { name: card.name, image: img ? (img.normal || img.large || img.small) : null };
+  db.prepare('UPDATE battles SET target_name = ?, state = ?, updated_at = unixepoch() WHERE code = ?').run(card.name, JSON.stringify(st), row.code);
+  return battlePublic(battleGet(row.code));
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────
