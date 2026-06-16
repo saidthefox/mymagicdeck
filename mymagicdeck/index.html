@@ -1009,6 +1009,21 @@
     .os-widget .ow-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
     .os-widget .ow-bar button{background:#c0c0c0;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:10px;font-weight:bold;width:16px;height:14px;line-height:1;padding:0;cursor:pointer;color:#000}
     .os-widget .ow-body{padding:6px 8px;max-height:300px;overflow:auto;line-height:1.45}
+    /* Calendar program */
+    .cal-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#000}
+    .cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px}
+    .cal-mlabel{font-weight:bold;font-size:13px}
+    .cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;font-weight:bold;color:#444;text-align:center;font-size:11px;margin-bottom:2px}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+    .cal-cell{min-height:58px;background:#fff;border:1px solid #b5b5b5;padding:2px 3px;font-size:11px;cursor:pointer;overflow:hidden}
+    .cal-cell.cal-empty{background:transparent;border-color:transparent;cursor:default}
+    .cal-cell.cal-today{background:#fff7d6;border-color:#d4a017}
+    .cal-dnum{color:#666;font-size:10px;text-align:right;line-height:1}
+    .cal-ev{background:#1577d4;color:#fff;border-radius:2px;padding:1px 3px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+    .cal-ev.cal-evt{background:#7a5cc7}
+    .cal-add{display:flex;gap:5px;margin-top:8px}
+    .cal-add input[type=text]{flex:1;min-width:0}
+    .cal-add input{font-family:inherit;font-size:12px;padding:3px 4px;border:2px solid;border-color:#808080 #fff #fff #808080}
   </style>
 </head>
 <body>
@@ -4368,7 +4383,7 @@ function deckosToggle(){
   else if(typeof wmReleaseSite==='function')wmReleaseSite();
 }
 deckosShellInit();
-if(typeof widgetRenderAll==='function')widgetRenderAll(); // restore mounted desktop widgets
+// (desktop widgets are restored after the DeckOS object is defined — see widgetRenderAll() there)
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
 if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
   DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
@@ -5261,6 +5276,52 @@ window.DeckOS = {
     try{ const fh=await h.getFileHandle('decks.json'); const f=await fh.getFile(); const d=JSON.parse(await f.text()); const decks=d.decks||{}; let n=0; Object.values(decks).forEach(dk=>{ if(dk&&dk.id){ state.decks[dk.id]=dk; n++; } }); if(typeof renderAll==='function')renderAll(); this.store.backend='folder'; return n; }catch(e){ return false; }
   },
 };
+// ===== Calendar (Phase 2): events + a Win95 Calendar program + a calendar widget =====
+// Local events live in DeckOS.store('cal_events') as [{id,date:'YYYY-MM-DD',title,kind:'local'}].
+// Other features (tournament subscriptions) inject READ-ONLY events via calAddSource(fn=>[...]).
+const CAL_SOURCES=[];
+function calAddSource(fn){ if(typeof fn==='function')CAL_SOURCES.push(fn); }
+function calLocal(){ try{ return DeckOS.store.get('cal_events')||[]; }catch(e){ return []; } }
+function calSaveLocal(list){ try{ DeckOS.store.set('cal_events',list); }catch(e){} }
+function calAllEvents(){ let ev=calLocal().slice(); CAL_SOURCES.forEach(fn=>{ try{ const r=fn(); if(Array.isArray(r))ev=ev.concat(r); }catch(e){} }); return ev; }
+function _calYmd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function calAdd(date,title){ if(!date||!title)return; const list=calLocal(); list.push({id:'c'+Math.random().toString(36).slice(2,8),date,title:String(title).slice(0,120),kind:'local'}); calSaveLocal(list); calRefresh(); }
+function calRemove(id){ calSaveLocal(calLocal().filter(e=>e.id!==id)); calRefresh(); }
+function calRefresh(){ const b=document.querySelector('#modal-prog-calendar .modal-body'); if(b&&b._calMounted)calRender(b); if(typeof widgetRefreshAll==='function')widgetRefreshAll(); }
+let _calView=null; // {y,m} of the month on screen
+function calRender(body){
+  body._calMounted=true;
+  const now=new Date(); if(!_calView)_calView={y:now.getFullYear(),m:now.getMonth()};
+  const y=_calView.y, m=_calView.m, first=new Date(y,m,1), startDow=first.getDay(), days=new Date(y,m+1,0).getDate(), todayYmd=_calYmd(now);
+  const byDate={}; calAllEvents().forEach(e=>{ (byDate[e.date]=byDate[e.date]||[]).push(e); });
+  let cells='';
+  for(let i=0;i<startDow;i++)cells+='<div class="cal-cell cal-empty"></div>';
+  for(let d=1;d<=days;d++){ const ymd=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); const evs=byDate[ymd]||[];
+    cells+='<div class="cal-cell'+(ymd===todayYmd?' cal-today':'')+'" data-day="'+ymd+'"><div class="cal-dnum">'+d+'</div>'+
+      evs.map(e=>'<div class="cal-ev'+(e.kind==='tournament'?' cal-evt':'')+'" data-evid="'+e.id+'" data-evkind="'+(e.kind||'local')+'" title="'+_mgEsc(e.title)+'">'+(e.kind==='tournament'?'🏆 ':'')+_mgEsc(e.title)+'</div>').join('')+'</div>';
+  }
+  body.innerHTML='<div class="cal-wrap">'+
+    '<div class="cal-head"><button class="btn small" data-calprev>◀</button><div class="cal-mlabel">'+first.toLocaleString(undefined,{month:'long'})+' '+y+'</div><button class="btn small" data-calnext>▶</button></div>'+
+    '<div class="cal-dow">'+['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d=>'<div>'+d+'</div>').join('')+'</div>'+
+    '<div class="cal-grid">'+cells+'</div>'+
+    '<div class="cal-add"><input type="date" id="cal-add-date" value="'+todayYmd+'"><input type="text" id="cal-add-title" placeholder="New event…" maxlength="120"><button class="btn small" id="cal-add-btn">Add</button></div>'+
+  '</div>';
+  body.querySelector('[data-calprev]').onclick=()=>{ _calView={y:m===0?y-1:y,m:m===0?11:m-1}; calRender(body); };
+  body.querySelector('[data-calnext]').onclick=()=>{ _calView={y:m===11?y+1:y,m:m===11?0:m+1}; calRender(body); };
+  body.querySelector('#cal-add-btn').onclick=()=>{ const dt=body.querySelector('#cal-add-date').value, ti=(body.querySelector('#cal-add-title').value||'').trim(); if(dt&&ti)calAdd(dt,ti); };
+  body.querySelectorAll('.cal-cell[data-day]').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.cal-ev'))return; const di=body.querySelector('#cal-add-date'); if(di)di.value=c.getAttribute('data-day'); const ti=body.querySelector('#cal-add-title'); if(ti)ti.focus(); }));
+  body.querySelectorAll('.cal-ev').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); if(el.getAttribute('data-evkind')!=='local'){ DeckOS.ui.toast('Tournament events come from your subscriptions'); return; } if(confirm('Remove this event?'))calRemove(el.getAttribute('data-evid')); }));
+}
+widgetRegister('calendar', { title:'Calendar', icon:'📅', render(b){
+  const today=_calYmd(new Date());
+  const up=calAllEvents().filter(e=>e.date>=today).sort((a,b)=>a.date<b.date?-1:1).slice(0,6);
+  b.innerHTML=up.length?up.map(e=>'<div style="display:flex;gap:6px;padding:1px 0"><b style="color:#00006e;min-width:54px">'+_mgEsc(e.date.slice(5))+'</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.kind==='tournament'?'🏆 ':'')+_mgEsc(e.title)+'</span></div>').join(''):'<div style="color:#555">No upcoming events.</div>';
+}});
+if(window.DeckOS){
+  DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
+  DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
+  if(typeof widgetRenderAll==='function')widgetRenderAll(); // restore mounted desktop widgets (runs after DeckOS is defined)
+}
 function mgFullExit(){mgRunning=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 // Persistent (device-level) opt-out for the card-guess game.
 function mguessDisabled(){try{return localStorage.getItem('mmd_mguess_disabled')==='1';}catch(e){return false;}}
@@ -5303,6 +5364,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
