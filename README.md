@@ -184,6 +184,15 @@ mymagicdeck/
 └── DOCUMENTATION.md
 ```
 
+## Maintenance & tests
+
+- **`AGENTS.md`** — operating manual for the AI agent that maintains this app (the change→verify→commit
+  loop, architecture map, guardrails, playbooks). Read it first if you're an agent.
+- **`agent/`** — ops scripts (`verify.sh`, `rebuild-api.sh`, `health.sh`), step-by-step `playbooks/`,
+  and an optional MCP server (`agent/mcp/`) exposing those ops as tools.
+- **`tests/run.sh`** — frontend static checks + API smoke tests; the regression loop. Run before committing.
+- **`SECURITY.md`** — security posture + the reasoning behind each decision.
+
 ## Related
 
 - Homelab service doc: wiki → *DL380 → Services → Docker → `mymagicdeck-api`*.
