@@ -257,12 +257,20 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_tsubs_user ON tournament_subs(user_id)')
 // Geo columns (added later): tournaments get a geocoded venue; subs get free-typed
 // regions + an optional radius-around-a-point. Geocoding happens client-side (Photon);
 // we just store the structured result and match on it.
-for (const [col, type] of [['lat','REAL'],['lon','REAL'],['address','TEXT'],['country','TEXT'],['state','TEXT']]) {
+for (const [col, type] of [['lat','REAL'],['lon','REAL'],['address','TEXT'],['country','TEXT'],['state','TEXT'],['proxies','INTEGER DEFAULT 0']]) {
   try { db.exec(`ALTER TABLE tournaments ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
 }
-for (const [col, type] of [['regions','TEXT'],['center_lat','REAL'],['center_lon','REAL'],['center_label','TEXT'],['radius','REAL'],['radius_unit','TEXT']]) {
+for (const [col, type] of [['regions','TEXT'],['center_lat','REAL'],['center_lon','REAL'],['center_label','TEXT'],['radius','REAL'],['radius_unit','TEXT'],['proxies',"TEXT DEFAULT 'any'"]]) {
   try { db.exec(`ALTER TABLE tournament_subs ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
 }
+// RSVPs: one row per (tournament, user). status: going | maybe | no.
+db.exec(`CREATE TABLE IF NOT EXISTS tournament_rsvps (
+  tournament_id INTEGER NOT NULL,
+  user_id       INTEGER NOT NULL,
+  status        TEXT NOT NULL,
+  updated_at    INTEGER NOT NULL DEFAULT (unixepoch()),
+  PRIMARY KEY (tournament_id, user_id)
+)`);
 
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
@@ -1313,6 +1321,8 @@ function tournamentMatches(t, sub) {
   if (sub.mode && sub.mode !== 'any' && t.mode !== sub.mode) return false;
   if (sub.level && sub.level !== 'any' && t.level !== sub.level) return false;
   if (sub.max_entry != null && (t.entry_fee || 0) > sub.max_entry) return false;
+  if (sub.proxies === 'yes' && !t.proxies) return false;
+  if (sub.proxies === 'no' && t.proxies) return false;
   if (!locationMatch(t, sub)) return false;
   return true;
 }
@@ -1331,10 +1341,10 @@ app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, as
   const entry = Math.max(0, Math.min(100000, Number(b.entry_fee) || 0));
   const lat = _coord(b.lat, 90), lon = _coord(b.lon, 180);
   const info = db.prepare(
-    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(req.user.sub, title, format, mode, _str(b.region, 120).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000),
-        lat, lon, _str(b.address, 200).trim(), _str(b.country, 80).trim(), _str(b.state, 80).trim());
+        lat, lon, _str(b.address, 200).trim(), _str(b.country, 80).trim(), _str(b.state, 80).trim(), b.proxies ? 1 : 0);
   return { id: info.lastInsertRowid };
 });
 
@@ -1342,7 +1352,7 @@ app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, as
 app.get('/api/tournaments', { preHandler: softAuthenticate }, async (req) => {
   const q = req.query || {};
   let rows = db.prepare(
-    'SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+    'SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
   ).all(_today());
   if (q.format) rows = rows.filter(r => r.format === q.format);
   if (q.mode && q.mode !== 'any') rows = rows.filter(r => r.mode === q.mode);
@@ -1382,12 +1392,13 @@ app.post('/api/tournaments/subs', { preHandler: [authenticate, rateLimitReport] 
   const hasCenter = cLat != null && cLon != null;
   const radius = hasCenter ? Math.max(1, Math.min(20000, Number(b.radius) || 50)) : null;
   const radiusUnit = b.radius_unit === 'km' ? 'km' : 'mi';
+  const proxies = ['yes', 'no'].includes(b.proxies) ? b.proxies : 'any';
   const count = db.prepare('SELECT COUNT(*) n FROM tournament_subs WHERE user_id = ?').get(req.user.sub).n;
   if (count >= 50) return reply.code(400).send({ error: 'Subscription limit reached.' });
   const info = db.prepare(
-    'INSERT INTO tournament_subs (user_id, name, formats, mode, level, max_entry, regions, center_lat, center_lon, center_label, radius, radius_unit) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+    'INSERT INTO tournament_subs (user_id, name, formats, mode, level, max_entry, regions, center_lat, center_lon, center_label, radius, radius_unit, proxies) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
   ).run(req.user.sub, _str(b.name, 80).trim() || 'My subscription', formats, mode, level, maxEntry,
-        regions, hasCenter ? cLat : null, hasCenter ? cLon : null, hasCenter ? _str(b.center_label, 160).trim() : null, radius, hasCenter ? radiusUnit : null);
+        regions, hasCenter ? cLat : null, hasCenter ? cLon : null, hasCenter ? _str(b.center_label, 160).trim() : null, radius, hasCenter ? radiusUnit : null, proxies);
   return { id: info.lastInsertRowid };
 });
 
@@ -1403,9 +1414,36 @@ app.get('/api/tournaments/feed', { preHandler: authenticate }, async (req) => {
   const subs = db.prepare('SELECT * FROM tournament_subs WHERE user_id = ?').all(req.user.sub);
   if (!subs.length) return { tournaments: [], subs: 0 };
   const upcoming = db.prepare(
-    'SELECT id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+    'SELECT id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
   ).all(_today());
   return { tournaments: upcoming.filter(t => subs.some(s => tournamentMatches(t, s))), subs: subs.length };
+});
+
+// Single tournament detail (for the mini "tournament page") + RSVP tallies + my RSVP.
+app.get('/api/tournaments/:id', { preHandler: softAuthenticate }, async (req, reply) => {
+  const t = db.prepare('SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies FROM tournaments WHERE id = ?').get(req.params.id);
+  if (!t) return reply.code(404).send({ error: 'Not found' });
+  const counts = { going: 0, maybe: 0, no: 0 };
+  for (const r of db.prepare('SELECT status, COUNT(*) n FROM tournament_rsvps WHERE tournament_id = ? GROUP BY status').all(t.id)) if (counts[r.status] != null) counts[r.status] = r.n;
+  const mine = req.user ? db.prepare('SELECT status FROM tournament_rsvps WHERE tournament_id = ? AND user_id = ?').get(t.id, req.user.sub) : null;
+  return { tournament: t, rsvp: counts, myStatus: mine ? mine.status : null };
+});
+
+// Set / change / clear my RSVP for a tournament.
+app.post('/api/tournaments/:id/rsvp', { preHandler: authenticate }, async (req, reply) => {
+  const t = db.prepare('SELECT id FROM tournaments WHERE id = ?').get(req.params.id);
+  if (!t) return reply.code(404).send({ error: 'Not found' });
+  const status = req.body && req.body.status;
+  if (status === 'clear' || status == null) {
+    db.prepare('DELETE FROM tournament_rsvps WHERE tournament_id = ? AND user_id = ?').run(t.id, req.user.sub);
+  } else if (['going', 'maybe', 'no'].includes(status)) {
+    db.prepare('INSERT INTO tournament_rsvps (tournament_id, user_id, status, updated_at) VALUES (?,?,?,unixepoch()) ON CONFLICT(tournament_id, user_id) DO UPDATE SET status = excluded.status, updated_at = unixepoch()').run(t.id, req.user.sub, status);
+  } else {
+    return reply.code(400).send({ error: 'Bad status' });
+  }
+  const counts = { going: 0, maybe: 0, no: 0 };
+  for (const r of db.prepare('SELECT status, COUNT(*) n FROM tournament_rsvps WHERE tournament_id = ? GROUP BY status').all(t.id)) if (counts[r.status] != null) counts[r.status] = r.n;
+  return { rsvp: counts, myStatus: status === 'clear' ? null : status };
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────

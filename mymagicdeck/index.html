@@ -1062,13 +1062,27 @@
     .geo-item{padding:4px 7px;font-size:11px;cursor:pointer;border-bottom:1px solid #eee;white-space:normal;line-height:1.3}
     .geo-item:hover,.geo-item.sel{background:#1577d4;color:#fff}
     .geo-picked{font-size:11px;color:#2c6e2c;margin-top:3px}
-    /* Tournament hover details (pinned feed widget + calendar) */
-    .tfw-row{position:relative}
-    .tfw-row .tfw-pop,.cal-ev .cal-pop{display:none;position:absolute;z-index:60;left:0;top:100%;min-width:160px;background:#fffbe6;border:1px solid #c9bf57;box-shadow:2px 2px 6px rgba(0,0,0,.3);padding:5px 7px;font-size:10px;line-height:1.45;color:#222;white-space:normal;border-radius:2px}
-    .tfw-row:hover .tfw-pop,.cal-ev:hover .cal-pop{display:block}
-    .cal-ev{position:relative;overflow:visible}
-    .cal-cell:hover{overflow:visible;z-index:5}
-    .cal-pop .tp-badge{display:inline-block;background:#1577d4;color:#fff;border-radius:2px;padding:0 4px;margin:0 3px 2px 0;font-size:9px}
+    /* Cursor-anchored quick-detail tooltip (pinned feed widget + calendar) */
+    #t-cursortip{position:fixed;z-index:99999;display:none;max-width:240px;background:#fffbe6;border:1px solid #c9bf57;box-shadow:2px 2px 8px rgba(0,0,0,.35);padding:6px 8px;font-size:11px;line-height:1.45;color:#222;border-radius:3px;font-family:Tahoma,'MS Sans Serif',sans-serif;pointer-events:none}
+    .tfw-row{cursor:pointer}
+    .cal-ev[data-evkind="tournament"]{cursor:pointer}
+    /* Tournament mini-page (RSVP) */
+    .tpg{font-family:Tahoma,'MS Sans Serif',sans-serif;color:#1a1a1a}
+    .tpg-hero{background:linear-gradient(135deg,#00006e,#1577d4);color:#fff;padding:18px}
+    .tpg-hero h1{margin:4px 0 6px;font-size:20px;line-height:1.15}
+    .tpg-fmt{font-size:11px;text-transform:uppercase;letter-spacing:1px;opacity:.85}
+    .tpg-when{font-size:13px;font-weight:bold}
+    .tpg-body{padding:14px 18px 18px}
+    .tpg-meta{font-size:13px;margin-bottom:8px}
+    .tpg-chips{margin-bottom:10px}
+    .tpg-notes{background:#f5f5f5;border-left:3px solid #1577d4;padding:8px 10px;font-size:12px;line-height:1.5;margin-bottom:10px;white-space:pre-wrap}
+    .tpg-link{margin:4px 0;font-size:12px}.tpg-link a{color:#1577d4}
+    .tpg-rsvp{margin-top:14px;border-top:1px solid #ddd;padding-top:12px}
+    .tpg-rsvp-h{font-weight:bold;font-size:13px;margin-bottom:8px}
+    .tpg-rsvp-btns{display:flex;gap:8px;flex-wrap:wrap}
+    .tpg-rb{flex:1;min-width:96px;background:#eee;border:2px solid;border-color:#fff #999 #999 #fff;padding:8px 6px;font-family:inherit;font-size:12px;cursor:pointer;color:#222;border-radius:3px}
+    .tpg-rb b{display:block;font-size:15px;margin-top:2px}
+    .tpg-rb.on{background:#1577d4;color:#fff;border-color:#0a4f93}
   </style>
 </head>
 <body>
@@ -5399,7 +5413,7 @@ function calRender(body){
   for(let i=0;i<startDow;i++)cells+='<div class="cal-cell cal-empty"></div>';
   for(let d=1;d<=days;d++){ const ymd=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0'); const evs=byDate[ymd]||[];
     cells+='<div class="cal-cell'+(ymd===todayYmd?' cal-today':'')+'" data-day="'+ymd+'"><div class="cal-dnum">'+d+'</div>'+
-      evs.map(e=>'<div class="cal-ev'+(e.kind==='tournament'?' cal-evt':'')+'" data-evid="'+e.id+'" data-evkind="'+(e.kind||'local')+'" title="'+_mgEsc(e.title)+'">'+(e.kind==='tournament'?'🏆 ':'')+_mgEsc(e.title)+(e._t?'<div class="cal-pop">'+tPopHtml(e._t)+'</div>':'')+'</div>').join('')+'</div>';
+      evs.map(e=>'<div class="cal-ev'+(e.kind==='tournament'?' cal-evt':'')+'" data-evid="'+e.id+'" data-evkind="'+(e.kind||'local')+'"'+(e._t?' data-tid="'+e._t.id+'"':'')+' title="'+_mgEsc(e.title)+'">'+(e.kind==='tournament'?'🏆 ':'')+_mgEsc(e.title)+'</div>').join('')+'</div>';
   }
   body.innerHTML='<div class="cal-wrap">'+
     '<div class="cal-head"><button class="btn small" data-calprev>◀</button><div class="cal-mlabel">'+first.toLocaleString(undefined,{month:'long'})+' '+y+'</div><button class="btn small" data-calnext>▶</button></div>'+
@@ -5411,7 +5425,7 @@ function calRender(body){
   body.querySelector('[data-calnext]').onclick=()=>{ _calView={y:m===11?y+1:y,m:m===11?0:m+1}; calRender(body); };
   body.querySelector('#cal-add-btn').onclick=()=>{ const dt=body.querySelector('#cal-add-date').value, ti=(body.querySelector('#cal-add-title').value||'').trim(); if(dt&&ti)calAdd(dt,ti); };
   body.querySelectorAll('.cal-cell[data-day]').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.cal-ev'))return; const di=body.querySelector('#cal-add-date'); if(di)di.value=c.getAttribute('data-day'); const ti=body.querySelector('#cal-add-title'); if(ti)ti.focus(); }));
-  body.querySelectorAll('.cal-ev').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); if(el.getAttribute('data-evkind')!=='local'){ DeckOS.ui.toast('Tournament events come from your subscriptions'); return; } if(confirm('Remove this event?'))calRemove(el.getAttribute('data-evid')); }));
+  body.querySelectorAll('.cal-ev').forEach(el=>el.addEventListener('click',e=>{ e.stopPropagation(); if(el.getAttribute('data-evkind')!=='local'){ const tid=el.getAttribute('data-tid'); if(tid&&typeof tOpenPage==='function')tOpenPage(tid); return; } if(confirm('Remove this event?'))calRemove(el.getAttribute('data-evid')); }));
 }
 widgetRegister('calendar', { title:'Calendar', icon:'📅', render(b){
   const today=_calYmd(new Date());
@@ -5460,10 +5474,12 @@ function geoAutocomplete(input, opts){
 }
 // Quick-detail popover shown on hover (pinned feed widget + calendar).
 function tPopHtml(t){ if(!t)return ''; return '<b>'+_mgEsc(t.date)+(t.time?(' '+_mgEsc(t.time)):'')+'</b><div style="margin:2px 0">'+tBadges(t)+'</div>'+((t.address||t.region)?'<div>📍 '+_mgEsc(t.address||t.region)+'</div>':'')+(t.entry_fee>0?'<div>Entry $'+t.entry_fee+'</div>':'')+(t.url?'<div>🔗 has link</div>':''); }
+let _tById={}; // id -> full tournament (for cursor tooltips on the widget + calendar)
 async function tRefreshFeed(){
-  if(!state.user){ _tFeedCache=[]; return; }
+  if(!state.user){ _tFeedCache=[]; _tById={}; return; }
   try{ const r=await apiFetch('/tournaments/feed'); _tFeedCache=(r.tournaments||[]).map(t=>({id:'t'+t.id,date:t.date,title:t.title,kind:'tournament',_t:t})); }
   catch(e){ _tFeedCache=[]; }
+  _tById={}; _tFeedCache.forEach(e=>{ if(e._t)_tById[e._t.id]=e._t; });
   if(typeof calRefresh==='function')calRefresh();
   if(typeof widgetRefreshAll==='function')widgetRefreshAll();
 }
@@ -5471,7 +5487,42 @@ function tBadges(t){
   return '<span class="t-badge'+(t.mode==='online'?' t-online':'')+'">'+(t.mode==='online'?'🌐 Online':'📍 '+_mgEsc(t.region||'In-person'))+'</span>'+
     '<span class="t-badge">'+_mgEsc(t.format)+'</span>'+
     '<span class="t-badge'+(t.level==='pro'?' t-pro':t.level==='competitive'?' t-comp':'')+'">'+_mgEsc(t.level)+'</span>'+
-    ((t.entry_fee>0)?'<span class="t-badge">$'+t.entry_fee+'</span>':'');
+    ((t.entry_fee>0)?'<span class="t-badge">$'+t.entry_fee+'</span>':'')+
+    (t.proxies?'<span class="t-badge" style="background:#2c8a4a">proxy OK</span>':'');
+}
+// Cursor-anchored quick-detail tooltip (shared by the feed widget + calendar).
+let _tTipEl=null;
+function tTipShow(html,x,y){ if(!_tTipEl){ _tTipEl=document.createElement('div'); _tTipEl.id='t-cursortip'; document.body.appendChild(_tTipEl); } _tTipEl.innerHTML=html; _tTipEl.style.display='block'; tTipMove(x,y); }
+function tTipMove(x,y){ if(!_tTipEl)return; const w=_tTipEl.offsetWidth||200, h=_tTipEl.offsetHeight||90; let lx=x+14, ly=y+16; if(lx+w>innerWidth-8)lx=x-w-14; if(ly+h>innerHeight-8)ly=innerHeight-h-8; _tTipEl.style.left=Math.max(4,lx)+'px'; _tTipEl.style.top=Math.max(4,ly)+'px'; }
+function tTipHide(){ if(_tTipEl)_tTipEl.style.display='none'; }
+// The mini tournament "page" (RSVP). Opened from the feed widget / calendar.
+let _tPageId=null;
+function tOpenPage(id){ _tPageId=id; tTipHide(); if(typeof mgLaunchApp==='function')mgLaunchApp('tpage'); }
+async function tRenderPage(body){
+  body=body||document.getElementById('tpage-body'); if(!body)return; const id=_tPageId;
+  body.innerHTML='<div class="tpg"><div class="t-empty" style="padding:18px">Loading…</div></div>';
+  let data; try{ data=await apiFetch('/tournaments/'+id); }catch(e){ body.innerHTML='<div class="t-empty" style="padding:18px">Could not load tournament.</div>'; return; }
+  const t=data.tournament, c=data.rsvp||{going:0,maybe:0,no:0}, mine=data.myStatus;
+  const venue = t.mode==='online'?'🌐 Online event':('📍 '+_mgEsc(t.address||t.region||'Venue TBA'));
+  body.innerHTML='<div class="tpg">'+
+    '<div class="tpg-hero"><div class="tpg-fmt">'+_mgEsc(t.format)+' · '+_mgEsc(t.level)+'</div><h1>'+_mgEsc(t.title)+'</h1><div class="tpg-when">'+_mgEsc(t.date)+(t.time?(' · '+_mgEsc(t.time)):'')+'</div></div>'+
+    '<div class="tpg-body">'+
+      '<div class="tpg-meta">'+venue+'</div>'+
+      '<div class="tpg-chips">'+tBadges(t)+(t.proxies?'':'<span class="t-badge" style="background:#888">no proxies</span>')+'</div>'+
+      (t.notes?'<div class="tpg-notes">'+_mgEsc(t.notes)+'</div>':'')+
+      (t.url?'<div class="tpg-link"><a href="'+_mgEsc(t.url)+'" target="_blank" rel="noopener">Visit event page ↗</a></div>':'')+
+      (t.lat!=null?'<div class="tpg-link"><a href="https://www.openstreetmap.org/?mlat='+t.lat+'&mlon='+t.lon+'#map=13/'+t.lat+'/'+t.lon+'" target="_blank" rel="noopener">View on map ↗</a></div>':'')+
+      '<div class="tpg-rsvp"><div class="tpg-rsvp-h">Are you going?</div><div class="tpg-rsvp-btns">'+
+        '<button class="tpg-rb'+(mine==='going'?' on':'')+'" data-rsvp="going">✅ Going<b>'+c.going+'</b></button>'+
+        '<button class="tpg-rb'+(mine==='maybe'?' on':'')+'" data-rsvp="maybe">🤔 Might go<b>'+c.maybe+'</b></button>'+
+        '<button class="tpg-rb'+(mine==='no'?' on':'')+'" data-rsvp="no">🚫 Not going<b>'+c.no+'</b></button>'+
+      '</div>'+(state.user?'':'<div style="color:#888;font-size:11px;margin-top:6px">Sign in to RSVP.</div>')+'</div>'+
+    '</div></div>';
+  body.querySelectorAll('[data-rsvp]').forEach(btn=>btn.addEventListener('click',async()=>{
+    if(!state.user){ DeckOS.ui.open('account'); return; }
+    const want=btn.getAttribute('data-rsvp'), status=(mine===want)?'clear':want;
+    try{ await apiFetch('/tournaments/'+id+'/rsvp',{method:'POST',body:JSON.stringify({status})}); tRenderPage(body); }
+    catch(e){ DeckOS.ui.toast('Could not RSVP'); } }));
 }
 function tCardHtml(t,opts){ opts=opts||{};
   return '<div class="t-card"><div class="t-h"><span>'+_mgEsc(t.title)+'</span><span style="font-weight:normal;color:#00006e">'+_mgEsc(t.date)+(t.time?(' '+_mgEsc(t.time)):'')+'</span></div>'+
@@ -5522,7 +5573,7 @@ async function tRenderPanel(panel, body){
     _tSubCenter={};
     panel.innerHTML='<div style="margin-bottom:10px">'+(subs.length?subs.map(s=>{
         const loc=[]; if(s.regions)loc.push(s.regions); if(s.center_label&&s.radius)loc.push('≤'+s.radius+(s.radius_unit||'mi')+' of '+s.center_label); if(!loc.length)loc.push('anywhere');
-        const desc=[ (s.formats||'any format'), (s.mode==='any'?'any mode':s.mode), loc.join(' / '), (s.level==='any'?'any level':s.level), (s.max_entry!=null?('≤ $'+s.max_entry):'any fee') ].join(' · ');
+        const desc=[ (s.formats||'any format'), (s.mode==='any'?'any mode':s.mode), loc.join(' / '), (s.level==='any'?'any level':s.level), (s.max_entry!=null?('≤ $'+s.max_entry):'any fee') ].concat(s.proxies&&s.proxies!=='any'?[s.proxies==='yes'?'proxies OK':'no proxies']:[]).join(' · ');
         return '<div class="t-card"><div class="t-h"><span>'+_mgEsc(s.name)+'</span><button class="btn small" data-tsubdel="'+s.id+'">Remove</button></div><div class="t-meta">'+_mgEsc(desc)+'</div></div>';
       }).join(''):'<div class="t-empty">No subscriptions yet.</div>')+'</div>'+
       '<div class="t-card"><div class="t-h"><span>New subscription</span></div>'+
@@ -5530,6 +5581,7 @@ async function tRenderPanel(panel, body){
         '<div class="t-row"><label>Formats:</label>'+T_FORMATS_FE.map(f=>'<label style="font-size:11px"><input type="checkbox" class="ts-fmt" value="'+f+'"> '+f+'</label>').join('')+'</div>'+
         '<div class="t-row">'+_tSel('ts-mode',[['any','Any mode'],['in-person','In-person'],['online','Online']],'any')+
           _tSel('ts-level',[['any','Any level'],['casual','Casual'],['competitive','Competitive'],['pro','Pro']],'any')+
+          _tSel('ts-proxies',[['any','Proxies: any'],['yes','Proxies allowed'],['no','No proxies']],'any')+
           '<input id="ts-max" type="number" min="0" placeholder="Max $" style="width:80px"></div>'+
         '<div class="t-section"><div class="t-sh">Regions</div><div style="color:#666;font-size:10px;margin-bottom:4px">Countries, states, or e.g. east coast / west coast / central us / europe — comma-separated. Type for suggestions.</div>'+
           '<input id="ts-regions" placeholder="e.g. Oregon, Japan, east coast" style="width:100%"></div>'+
@@ -5548,7 +5600,7 @@ async function tRenderPanel(panel, body){
     panel.querySelector('#ts-add').addEventListener('click',async()=>{
       const formats=Array.from(panel.querySelectorAll('.ts-fmt:checked')).map(c=>c.value);
       const maxv=panel.querySelector('#ts-max').value;
-      const payload={ name:panel.querySelector('#ts-name').value.trim()||'My subscription', formats, mode:panel.querySelector('#ts-mode').value, level:panel.querySelector('#ts-level').value, max_entry:maxv===''?null:Number(maxv),
+      const payload={ name:panel.querySelector('#ts-name').value.trim()||'My subscription', formats, mode:panel.querySelector('#ts-mode').value, level:panel.querySelector('#ts-level').value, proxies:panel.querySelector('#ts-proxies').value, max_entry:maxv===''?null:Number(maxv),
         regions:panel.querySelector('#ts-regions').value.split(',').map(s=>s.trim()).filter(Boolean) };
       if(_tSubCenter.lat!=null){ payload.center_lat=_tSubCenter.lat; payload.center_lon=_tSubCenter.lon; payload.center_label=_tSubCenter.label; payload.radius=Number(panel.querySelector('#ts-radius').value); payload.radius_unit=panel.querySelector('#ts-unit').value; }
       try{ await apiFetch('/tournaments/subs',{method:'POST',body:JSON.stringify(payload)}); DeckOS.ui.toast('Subscribed'); tRefreshFeed(); tRenderPanel(panel,body); }
@@ -5567,7 +5619,8 @@ async function tRenderPanel(panel, body){
       '<div class="t-row" id="tp-venue-row"><div class="t-field" style="flex:1"><label>Venue address (type to search)</label><input id="tp-venue" placeholder="Start typing a venue or city…" style="width:100%"></div></div>'+
       '<div id="tp-venue-picked" class="geo-picked" style="display:none"></div>'+
       '<div class="t-row"><div class="t-field"><label>Level</label>'+_tSel('tp-level',[['casual','Casual'],['competitive','Competitive'],['pro','Pro']],'casual')+'</div>'+
-        '<div class="t-field"><label>Entry fee ($)</label><input id="tp-entry" type="number" min="0" value="0" style="width:80px"></div></div>'+
+        '<div class="t-field"><label>Entry fee ($)</label><input id="tp-entry" type="number" min="0" value="0" style="width:80px"></div>'+
+        '<div class="t-field"><label>&nbsp;</label><label style="font-size:12px;display:flex;align-items:center;gap:5px;padding:4px 0"><input type="checkbox" id="tp-proxies"> Proxies allowed</label></div></div>'+
       '<div class="t-row"><div class="t-field" style="flex:1"><label>Link (optional)</label><input id="tp-url" placeholder="https://…" style="width:100%"></div></div>'+
       '<div class="t-row"><textarea id="tp-notes" placeholder="Notes (optional)"></textarea></div>'+
       '<button class="btn small" id="tp-submit">Post tournament</button></div>';
@@ -5577,7 +5630,7 @@ async function tRenderPanel(panel, body){
     modeSel.addEventListener('change',syncMode); syncMode();
     panel.querySelector('#tp-submit').addEventListener('click',async()=>{
       const mode=modeSel.value, online=mode==='online';
-      const payload={ title:panel.querySelector('#tp-title').value.trim(), date:panel.querySelector('#tp-date').value, time:panel.querySelector('#tp-time').value.trim(), format:panel.querySelector('#tp-format').value, mode, level:panel.querySelector('#tp-level').value, entry_fee:Number(panel.querySelector('#tp-entry').value)||0, url:panel.querySelector('#tp-url').value.trim(), notes:panel.querySelector('#tp-notes').value.trim(),
+      const payload={ title:panel.querySelector('#tp-title').value.trim(), date:panel.querySelector('#tp-date').value, time:panel.querySelector('#tp-time').value.trim(), format:panel.querySelector('#tp-format').value, mode, level:panel.querySelector('#tp-level').value, entry_fee:Number(panel.querySelector('#tp-entry').value)||0, url:panel.querySelector('#tp-url').value.trim(), notes:panel.querySelector('#tp-notes').value.trim(), proxies:panel.querySelector('#tp-proxies').checked,
         region: online?'Online':(_tPostGeo.address||panel.querySelector('#tp-venue').value.trim()) };
       if(!online && _tPostGeo.lat!=null){ payload.lat=_tPostGeo.lat; payload.lon=_tPostGeo.lon; payload.address=_tPostGeo.address; payload.country=_tPostGeo.country; payload.state=_tPostGeo.state; }
       try{ await apiFetch('/tournaments',{method:'POST',body:JSON.stringify(payload)}); DeckOS.ui.toast('Tournament posted'); _tTab='mine'; tRender(body); tRefreshFeed(); }
@@ -5595,10 +5648,18 @@ async function tRenderPanel(panel, body){
 }
 if(window.DeckOS){
   calAddSource(()=>_tFeedCache); // matched tournaments appear on the Calendar
+  // Cursor-anchored quick-detail tooltip, delegated for any [data-tid] (widget rows + calendar).
+  document.addEventListener('mouseover',e=>{ const el=e.target.closest&&e.target.closest('[data-tid]'); if(!el)return; const t=_tById[el.getAttribute('data-tid')]; if(t)tTipShow(tPopHtml(t), e.clientX, e.clientY); });
+  document.addEventListener('mousemove',e=>{ if(!_tTipEl||_tTipEl.style.display!=='block')return; const el=e.target.closest&&e.target.closest('[data-tid]'); if(el&&_tById[el.getAttribute('data-tid')])tTipMove(e.clientX,e.clientY); else tTipHide(); });
+  // The tournament mini-page: a hidden .modal opened through the WM (not listed in Start).
+  { const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='modal-tpage'; ov.innerHTML='<div class="modal" style="width:480px;max-width:96vw"><div class="modal-header"><div class="modal-title">Tournament</div><button class="modal-close">✕</button></div><div class="modal-body" id="tpage-body" style="padding:0"></div></div>'; document.body.appendChild(ov);
+    ov.querySelector('.modal-close').addEventListener('click',()=>{ if(typeof wmWins!=='undefined'&&wmWins.tpage)wmClose('tpage'); else closeModal('modal-tpage'); }); }
+  MGW_APPS.tpage={ overlay:'modal-tpage', win:'.modal', title:'Tournament', icon:'🏆', open:()=>tRenderPage(), close:()=>closeModal('modal-tpage') };
   widgetRegister('tournaments',{ title:'Tournament feed', icon:'🏆', render(b){
     if(!state.user){ b.innerHTML='<div style="color:#555">Sign in to see your tournament feed.</div>'; return; }
     const up=_tFeedCache.slice().sort((a,b)=>a.date<b.date?-1:1).slice(0,6);
-    b.innerHTML=up.length?up.map(e=>'<div class="tfw-row" style="display:flex;gap:6px;padding:1px 0"><b style="color:#00006e;min-width:54px">'+_mgEsc(e.date.slice(5))+'</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_mgEsc(e.title)+'</span>'+(e._t?'<div class="tfw-pop">'+tPopHtml(e._t)+'</div>':'')+'</div>').join(''):'<div style="color:#555">No matches yet — subscribe in the Tournaments app.</div>';
+    b.innerHTML=up.length?up.map(e=>'<div class="tfw-row"'+(e._t?' data-tid="'+e._t.id+'" data-topen="'+e._t.id+'"':'')+' style="display:flex;gap:6px;padding:2px 0"><b style="color:#00006e;min-width:54px">'+_mgEsc(e.date.slice(5))+'</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+_mgEsc(e.title)+'</span></div>').join(''):'<div style="color:#555">No matches yet — subscribe in the Tournaments app.</div>';
+    b.querySelectorAll('[data-topen]').forEach(el=>el.addEventListener('click',ev=>{ ev.stopPropagation(); tOpenPage(el.getAttribute('data-topen')); }));
   }});
   DeckOS.registerProgram({ id:'tournaments', title:'Tournaments', icon:'🏆', width:'620px', desktop:true, mount(body){ tRender(body); } });
   DeckOS.tournaments={ refreshFeed:tRefreshFeed, feed:()=>_tFeedCache };
