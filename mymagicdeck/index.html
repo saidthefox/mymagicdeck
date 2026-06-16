@@ -5591,7 +5591,7 @@ function mgRenderDesktop(){
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-path">'+path+'</span></div>'+
+      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button><button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
@@ -5611,6 +5611,8 @@ function mgRenderDesktop(){
   a.querySelectorAll('.mg-icon[data-deck]').forEach(mgWireDeckIcon);
   const nf=document.getElementById('mg-newfolder');if(nf)nf.addEventListener('click',e=>{e.stopPropagation();const id=mgGenId();mgFs.folders.push({id,name:'New Folder',parent:mgCurrentFolder});mgRenamingId=id;mgFsSave();mgRenderDesktop();});
   const nd=document.getElementById('mg-newdeck');if(nd)nd.addEventListener('click',e=>{e.stopPropagation();newDeck();mgActiveDeckId=state.currentDeckId;mgRenamingDeckId=state.currentDeckId;mgRenderDesktop();});
+  const sv=document.getElementById('mg-save');if(sv)sv.addEventListener('click',e=>{e.stopPropagation();const id=mgActiveDeckId||state.currentDeckId;if(typeof saveToStorage==='function')saveToStorage();if(id&&typeof syncDeckToApi==='function'&&window.DeckOS&&!DeckOS.isLocal())syncDeckToApi(id);if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite();toast('Saved','success');});
+  const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
   const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
   const file=document.getElementById('mg-file');if(file)file.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=false;mgRenderDesktop();});
   document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
