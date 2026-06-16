@@ -1530,7 +1530,7 @@ function _isPrivateIp(ip) {
   const o = ip.split('.').map(Number); if (o.length !== 4 || o.some(isNaN)) return true;
   return o[0] === 10 || o[0] === 127 || o[0] === 0 || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31) || (o[0] === 169 && o[1] === 254) || o[0] >= 224;
 }
-app.get('/api/web/framecheck', { preHandler: [authenticate, rateLimitReport] }, async (req) => {
+app.get('/api/web/framecheck', { preHandler: rateLimitReport }, async (req) => { // open to guests too (rate-limited + SSRF-guarded)
   let url; try { url = new URL(String((req.query || {}).url || '').trim()); } catch (_) { return { ok: false, reason: 'Not a valid URL.' }; }
   if (!/^https?:$/.test(url.protocol)) return { ok: false, reason: 'Only http(s) sites.' };
   const host = url.hostname.toLowerCase();
