@@ -1835,11 +1835,14 @@ async function doAuth(){
     state.user=data.user;
     saveToStorage();
     closeModal('modal-auth');
+    if(typeof wmWins!=='undefined' && wmWins.account)wmClose('account'); // close the Account window in WM mode too
     updateUserUI();
     toast(_authMode==='signup'?`Welcome, ${data.user.username}! 🎉`:`Welcome back, ${data.user.username}!`,'success');
     // Pull decks from server, merging with any local guest decks
     await syncLocalDecksToApi();
     await pullDecksFromApi();
+    if(typeof mgRenderDesktop==='function')mgRenderDesktop(); // decks just loaded — refresh the desktop now
+    if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();
   }catch(e){
     err.textContent=e.message||'Something went wrong.';
   }finally{
@@ -4997,7 +5000,12 @@ function wmStartMenu(){
   m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); mgWireStartMenu(m);
   setTimeout(()=>{ const close=e=>{ const mm=document.getElementById('wm-startmenu'); if(mm && !mm.contains(e.target) && !e.target.closest('.wm-start')){ mm.remove(); document.removeEventListener('click', close, true); } }; document.addEventListener('click', close, true); }, 0);
 }
-function wmRect(key){ try{ const r=DeckOS.store.get('wm:rect:'+key); if(r&&r.w) return {...r}; }catch(e){} const n=Object.keys(wmWins).length; return { x:Math.max(8,Math.min(60+n*30, innerWidth-380)), y:Math.max(8,Math.min(48+n*26, innerHeight-320)), w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) }; }
+function wmRect(key){
+  try{ const r=DeckOS.store.get('wm:rect:'+key); if(r&&r.w) return {...r}; }catch(e){}
+  const n=Object.keys(wmWins).length, x=Math.max(8,Math.min(60+n*30, innerWidth-380)), y=Math.max(8,Math.min(48+n*26, innerHeight-340));
+  if(key==='cgg'){ const h=Math.min(560, innerHeight-120); return { x, y, w:Math.round(h*0.7), h }; } // CGG opens at a Magic-card ratio
+  return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
+}
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
 function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } }
 function wmFocus(key){ const el=wmEls[key]; if(!el)return; el.style.zIndex=(++wmZ); wmFocusedKey=key; wmRenderTaskbar(); }
@@ -5030,7 +5038,7 @@ function wmRenderTaskbar(){
   tasks.querySelectorAll('[data-wt]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); wmTaskClick(b.getAttribute('data-wt')); }));
 }
 function wmWireDrag(key, el){
-  const bar=el.querySelector('.mgw-bar'); if(!bar || bar._wmDrag)return; bar._wmDrag=1;
+  const bar=el.querySelector('.mgw-bar, #mg-winbar, #site-titlebar'); if(!bar || bar._wmDrag)return; bar._wmDrag=1;
   bar.addEventListener('mousedown', e=>{
     if(e.target.closest('button'))return; const w=wmWins[key]; if(!w || w.state==='max')return;
     const sx=e.clientX, sy=e.clientY, ox=w.rect.x, oy=w.rect.y; wmFocus(key); e.preventDefault();
@@ -5237,7 +5245,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">🔍</div><div class="mg-ilbl">Search</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
@@ -5296,24 +5304,23 @@ function mgWireDeckIcon(el){
     }
     mgRenderDesktop();
   };
-  el.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=false;hi=null;},{passive:true});
-  el.addEventListener('touchmove',e=>{
-    const t=e.touches[0];
-    if(!dragging){if(Math.hypot(t.clientX-sx,t.clientY-sy)<10)return;dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone);}
-    e.preventDefault();
-    place(t.clientX,t.clientY);
-  },{passive:false});
-  el.addEventListener('touchend',e=>{
-    if(dragging){dragging=false;drop();return;}
-    const wasActive=(mgActiveDeckId===id);
-    n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{
-      if(n>=2){mgOpenInBuilder(id);}              // double-tap → open in builder
-      else if(wasActive){mgRenamingDeckId=id;mgRenderDesktop();} // tap a selected deck → rename
-      else{mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));} // tap → select
-      n=0;
-    },240);
+  el.addEventListener('pointerdown',e=>{
+    if(e.button>0)return; sx=e.clientX;sy=e.clientY;dragging=false;hi=null;
+    const mm=ev=>{ if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)<10)return; dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone); } ev.preventDefault(); place(ev.clientX,ev.clientY); };
+    const cleanup=()=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',pc); };
+    const up=()=>{ cleanup();
+      if(dragging){dragging=false;drop();return;}
+      const wasActive=(mgActiveDeckId===id);
+      n++;if(tm)clearTimeout(tm);tm=setTimeout(()=>{
+        if(n>=2){mgOpenInBuilder(id);}                                   // double-click → open in builder
+        else if(wasActive){mgRenamingDeckId=id;mgRenderDesktop();}        // click the selected deck → rename
+        else{mgActiveDeckId=id;mgRenderDesktop();mgHint('Adding to '+mgDeckName(id));} // click → select ("Adding to")
+        n=0;
+      },240);
+    };
+    const pc=()=>{ cleanup(); if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}} };
+    document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',pc);
   });
-  el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
 }
 function mgFolderIsInside(targetId,ancestorId){let cur=mgFs.folders.find(f=>f.id===targetId),g=0;while(cur&&g++<200){if(cur.id===ancestorId)return true;cur=mgFs.folders.find(f=>f.id===(cur.parent||null));}return false;}
 function mgDeleteFolder(fid){const f=mgFs.folders.find(x=>x.id===fid);if(!f)return;const np=f.parent||null;mgFs.folders.forEach(c=>{if((c.parent||null)===fid)c.parent=np;});Object.keys(mgFs.deckFolder).forEach(d=>{if(mgFs.deckFolder[d]===fid)mgFs.deckFolder[d]=np;});mgFs.folders=mgFs.folders.filter(x=>x.id!==fid);if(mgCurrentFolder===fid)mgCurrentFolder=np;mgFsSave();}
@@ -5332,10 +5339,14 @@ function mgWireFolderIcon(el){
     }
     mgRenderDesktop();
   };
-  el.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=false;hi=null;},{passive:true});
-  el.addEventListener('touchmove',e=>{const t=e.touches[0];if(!dragging){if(Math.hypot(t.clientX-sx,t.clientY-sy)<10)return;dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone);}e.preventDefault();place(t.clientX,t.clientY);},{passive:false});
-  el.addEventListener('touchend',e=>{if(dragging){dragging=false;drop();return;}if(e.target.closest('.mg-rnm'))return;mgCurrentFolder=fid;mgStartOpen=false;mgRenderDesktop();});
-  el.addEventListener('touchcancel',()=>{if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}}});
+  el.addEventListener('pointerdown',e=>{
+    if(e.button>0)return; sx=e.clientX;sy=e.clientY;dragging=false;hi=null;
+    const mm=ev=>{ if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)<10)return; dragging=true;el.style.opacity='.4';clone=el.cloneNode(true);clone.className='mg-dragclone';document.body.appendChild(clone); } ev.preventDefault(); place(ev.clientX,ev.clientY); };
+    const cleanup=()=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',pc); };
+    const up=ev=>{ cleanup(); if(dragging){dragging=false;drop();return;} if(ev.target&&ev.target.closest&&ev.target.closest('.mg-rnm'))return; mgCurrentFolder=fid;mgStartOpen=false;mgRenderDesktop(); };
+    const pc=()=>{ cleanup(); if(dragging){dragging=false;el.style.opacity='';if(clone){clone.remove();clone=null;}if(hi){hi.classList.remove('mg-drophi');hi=null;}} };
+    document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',pc);
+  });
 }
 function mgStartMenuHtml(showLaunch,showDesktop){
   const owner=(state.user&&state.user.username)?(_mgEsc(state.user.username)+"'s MyMagicDeck"):'MyMagicDeck';
@@ -5350,7 +5361,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     item('storage','💾 Storage')+
     item('hud','📡 HUD')+
     (window.DeckOS?DeckOS.programsMenuHtml():'')+
-    '<div class="mg-smitem" data-backsearch="1">🔍 Search</div>'+
+    '<div class="mg-smitem" data-backsearch="1">✦ MyMagicDeck</div>'+
     '<div class="mg-smsep"></div>'+
     item('account','👤 Account')+
     '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
