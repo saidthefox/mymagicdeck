@@ -1521,6 +1521,33 @@ app.post('/api/tournaments/:id/rsvp', { preHandler: authenticate }, async (req, 
   return { rsvp: counts, myStatus: status === 'clear' ? null : status };
 });
 
+// ── Web shortcut frame check: can a URL be embedded in an iframe? (server-side header
+// inspection — the browser can't see X-Frame-Options/CSP blocks). SSRF-guarded. ──────
+const { lookup: _dnsLookup } = require('dns').promises;
+function _isPrivateIp(ip) {
+  if (!ip) return true;
+  if (ip.includes(':')) { const l = ip.toLowerCase(); return l === '::1' || l.startsWith('fc') || l.startsWith('fd') || l.startsWith('fe80') || l === '::'; }
+  const o = ip.split('.').map(Number); if (o.length !== 4 || o.some(isNaN)) return true;
+  return o[0] === 10 || o[0] === 127 || o[0] === 0 || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31) || (o[0] === 169 && o[1] === 254) || o[0] >= 224;
+}
+app.get('/api/web/framecheck', { preHandler: [authenticate, rateLimitReport] }, async (req) => {
+  let url; try { url = new URL(String((req.query || {}).url || '').trim()); } catch (_) { return { ok: false, reason: 'Not a valid URL.' }; }
+  if (!/^https?:$/.test(url.protocol)) return { ok: false, reason: 'Only http(s) sites.' };
+  const host = url.hostname.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return { ok: false, reason: 'That host is not allowed.' };
+  try { const { address } = await _dnsLookup(host); if (_isPrivateIp(address)) return { ok: false, reason: 'That host is not allowed.' }; }
+  catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
+  try {
+    const r = await fetch(url.href, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (MyMagicDeck framecheck)' }, signal: AbortSignal.timeout(8000) });
+    const xfo = (r.headers.get('x-frame-options') || '').toLowerCase();
+    const csp = (r.headers.get('content-security-policy') || '').toLowerCase();
+    const fa = (csp.match(/frame-ancestors([^;]*)/) || [, ''])[1].trim();
+    const blocked = xfo.includes('deny') || xfo.includes('sameorigin') || (fa && !fa.includes('*'));
+    if (blocked) return { ok: false, reason: 'frames-blocked' };
+    return { ok: true, finalUrl: r.url };
+  } catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
+});
+
 // ── POST /api/auth/register ───────────────────────────────────────────────────
 app.post('/api/auth/register', {
   preHandler: rateLimitAuth,

@@ -1122,7 +1122,9 @@
     /* Embedded web-shortcut windows (load an external site in a Win95 frame) */
     .web-wrap{display:flex;flex-direction:column;height:100%;min-height:340px;background:#fff}
     .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
-    .web-url{flex:1;min-width:0;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .web-url{flex:0 1 38%;min-width:0;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .web-sep{flex-shrink:0;width:0;height:18px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 4px}
+    .web-newurl{flex:1 1 38%;min-width:90px;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .web-frame{flex:1;min-height:0;width:100%;border:0;background:#fff;display:block}
     /* In Deck OS the desktop File toolbar owns file ops, so hide MMD's header buttons
        (deck name + sync stay). Classic mode keeps them — it has no desktop toolbar. */
@@ -5363,15 +5365,16 @@ function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }
 // ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
 // Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
 let _deskSyncTimer=null;
-function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{})}})}).catch(()=>{}); }, 600); }
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[])}})}).catch(()=>{}); }, 600); }
 function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
       else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
     }catch(e){}
   }
+  if(typeof webRegisterAll==='function')webRegisterAll(); // register any synced web shortcuts
   desktopClearDom(); widgetRenderAll(); notesRenderAll(); if(typeof mgRenderDesktop==='function')mgRenderDesktop();
 }
 // ===== Desktop background (set from the HUD; persisted locally + per-account) =====
@@ -5383,18 +5386,39 @@ function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApp
 // Only works for sites that allow framing (e.g. mtgtop8); blocked sites (scryfall, edhrec…)
 // refuse to embed, so every window also offers "Open ↗" in a real tab as a fallback. =====
 const WEB_APPS=[{id:'mtgtop8',title:'MTGTop8',icon:'🌐',url:'https://www.mtgtop8.com'},{id:'stonesmtg',title:'Stones MTG',icon:'🪨',url:'https://stonesmtg.com'}];
+function webUserShortcuts(){ try{ return (window.DeckOS&&DeckOS.store.get('webshortcuts'))||[]; }catch(e){ return []; } }
+function webRegister(app){ if(window.DeckOS&&typeof MGW_APPS!=='undefined'&&!MGW_APPS['web-'+app.id])DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon||'🌐', width:'940px', mount(body){ webMount(body,app); } }); }
+function webRegisterAll(){ webUserShortcuts().forEach(webRegister); }
+function webAddShortcut(url){ let host; try{ host=new URL(url).hostname.replace(/^www\./,''); }catch(e){ host=url; }
+  const id=(host.replace(/[^a-z0-9]/gi,'').slice(0,18)||'site')+Math.random().toString(36).slice(2,5);
+  const app={id,title:host,icon:'🌐',url}; const list=webUserShortcuts(); list.push(app); try{ DeckOS.store.set('webshortcuts',list); }catch(e){}
+  webRegister(app); if(typeof desktopSyncSoon==='function')desktopSyncSoon(); if(typeof mgRenderDesktop==='function'&&document.body.classList.contains('deckos'))mgRenderDesktop();
+  if(typeof mgLaunchApp==='function')mgLaunchApp('web-'+id); }
 function webMount(body, app){
   body.style.padding='0';
   body.innerHTML='<div class="web-wrap"><div class="web-bar">'+
       '<button class="btn small" data-wbhome title="home">🏠</button>'+
       '<button class="btn small" data-wbreload title="reload">⟳</button>'+
       '<span class="web-url">'+_mgEsc(app.url.replace(/^https?:\/\//,''))+'</span>'+
-      '<button class="btn small" data-wbtab title="open in a real browser tab">Open ↗</button></div>'+
+      '<button class="btn small" data-wbtab title="open in a real browser tab">Open ↗</button>'+
+      '<span class="web-sep"></span>'+
+      '<input class="web-newurl" placeholder="https://… new shortcut">'+
+      '<button class="btn small" data-wbcreate>Create Shortcut</button></div>'+
     '<iframe class="web-frame" src="'+_mgEsc(app.url)+'" referrerpolicy="no-referrer-when-downgrade" allow="clipboard-write"></iframe></div>';
   const fr=body.querySelector('.web-frame');
   body.querySelector('[data-wbhome]').onclick=()=>{ fr.src=app.url; };
   body.querySelector('[data-wbreload]').onclick=()=>{ try{ fr.contentWindow.location.reload(); }catch(e){ fr.src=fr.src; } };
   body.querySelector('[data-wbtab]').onclick=()=>{ window.open(app.url,'_blank','noopener'); };
+  const inp=body.querySelector('.web-newurl'), btn=body.querySelector('[data-wbcreate]');
+  const create=async()=>{ let u=(inp.value||'').trim(); if(!u)return; if(!/^https?:\/\//i.test(u))u='https://'+u;
+    btn.disabled=true; const orig=btn.textContent; btn.textContent='Checking…';
+    try{ const r=await apiFetch('/web/framecheck?url='+encodeURIComponent(u));
+      if(r.ok){ inp.value=''; DeckOS.ui.toast('Shortcut created'); webAddShortcut(r.finalUrl||u); }
+      else if(r.reason==='frames-blocked'){ DeckOS.ui.toast("That site doesn't allow embedding (frames not allowed). Use Open ↗ in a tab instead."); }
+      else { DeckOS.ui.toast(r.reason||'Could not create that shortcut.'); }
+    }catch(e){ DeckOS.ui.toast('Could not check that site.'); }
+    btn.disabled=false; btn.textContent=orig; };
+  btn.onclick=create; inp.addEventListener('keydown',e=>{ if(e.key==='Enter')create(); });
 }
 // ===== Open — a Finder/Explorer window over the user's folder tree (decks are loadable) =====
 let _fbExpanded=null;
@@ -5693,6 +5717,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
+  if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
   DeckOS.registerProgram({ id:'mail', title:'Mail', icon:'📬', width:'480px', mount(body){ mailRender(body); } });
   if(state.user&&apiToken()&&typeof mailRefreshBadge==='function')mailRefreshBadge();
@@ -5981,6 +6006,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-stonesmtg"><div class="mg-ico">🪨</div><div class="mg-ilbl">Stones MTG</div></div>';
+  if(mgCurrentFolder===null&&embedded&&typeof webUserShortcuts==='function')webUserShortcuts().forEach(a=>{ icons+='<div class="mg-icon" data-app="web-'+a.id+'"><div class="mg-ico">'+(a.icon||'🌐')+'</div><div class="mg-ilbl">'+_mgEsc(a.title)+'</div></div>'; });
   icons+=decks.map(d=>{const sel=d.id===mgActiveDeckId;const lbl=d.id===mgRenamingDeckId?'<input id="mg-deckrename" class="mg-rnm" value="'+_mgEsc(d.name||'Untitled')+'">':'<div class="mg-ilbl">'+_mgEsc(d.name||'Untitled')+'</div>';return '<div class="mg-icon'+(sel?' sel':'')+'" data-deck="'+d.id+'"><div class="mg-ico">🗃️</div>'+lbl+'</div>';}).join('');
   icons+=subfolders.map(f=>{const lbl=f.id===mgRenamingId?'<input id="mg-rename-input" class="mg-rnm" value="'+_mgEsc(f.name)+'">':'<div class="mg-ilbl">'+_mgEsc(f.name)+'</div>';return '<div class="mg-icon" data-folder="'+f.id+'"><div class="mg-ico">📁</div>'+lbl+'</div>';}).join('');
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
