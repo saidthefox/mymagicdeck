@@ -1530,22 +1530,44 @@ function _isPrivateIp(ip) {
   const o = ip.split('.').map(Number); if (o.length !== 4 || o.some(isNaN)) return true;
   return o[0] === 10 || o[0] === 127 || o[0] === 0 || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31) || (o[0] === 169 && o[1] === 254) || o[0] >= 224;
 }
-app.get('/api/web/framecheck', { preHandler: rateLimitReport }, async (req) => { // open to guests too (rate-limited + SSRF-guarded)
-  let url; try { url = new URL(String((req.query || {}).url || '').trim()); } catch (_) { return { ok: false, reason: 'Not a valid URL.' }; }
+// Validate a single URL: http(s) only, standard ports, public host (DNS-resolved, not private).
+async function _guardWebUrl(raw) {
+  let url; try { url = new URL(raw); } catch (_) { return { ok: false, reason: 'Not a valid URL.' }; }
   if (!/^https?:$/.test(url.protocol)) return { ok: false, reason: 'Only http(s) sites.' };
+  if (url.port && !['', '80', '443'].includes(url.port)) return { ok: false, reason: 'That port is not allowed.' };
   const host = url.hostname.toLowerCase();
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return { ok: false, reason: 'That host is not allowed.' };
   try { const { address } = await _dnsLookup(host); if (_isPrivateIp(address)) return { ok: false, reason: 'That host is not allowed.' }; }
   catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
-  try {
-    const r = await fetch(url.href, { redirect: 'follow', headers: { 'User-Agent': 'Mozilla/5.0 (MyMagicDeck framecheck)' }, signal: AbortSignal.timeout(8000) });
+  return { ok: true, url };
+}
+// Dedicated limiter so framecheck can't drain (or be drained by) the report budget.
+const _fcBuckets = new Map(); const FC_WINDOW = 10 * 60 * 1000; const FC_MAX = 40;
+function rateLimitFrameCheck(req, reply, done) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const now = Date.now(); let b = _fcBuckets.get(ip);
+  if (!b || now - b.start > FC_WINDOW) { b = { start: now, count: 0 }; _fcBuckets.set(ip, b); }
+  if (++b.count > FC_MAX) { reply.code(429).send({ ok: false, reason: 'Too many checks — try again shortly.' }); return; }
+  done();
+}
+setInterval(() => { const c = Date.now() - FC_WINDOW; for (const [k, b] of _fcBuckets) if (b.start < c) _fcBuckets.delete(k); }, 30 * 60 * 1000);
+
+app.get('/api/web/framecheck', { preHandler: rateLimitFrameCheck }, async (req) => { // open to guests; rate-limited + SSRF-guarded (incl. every redirect hop)
+  let next = String((req.query || {}).url || '').trim();
+  for (let hop = 0; hop < 4; hop++) {
+    const g = await _guardWebUrl(next); if (!g.ok) return g;             // re-validate the URL AND every redirect target
+    let r; try { r = await fetch(g.url.href, { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (MyMagicDeck framecheck)' }, signal: AbortSignal.timeout(8000) }); }
+    catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
+    const loc = r.headers.get('location');
+    if (r.status >= 300 && r.status < 400 && loc) { try { next = new URL(loc, g.url).href; } catch (_) { return { ok: false, reason: 'Bad redirect.' }; } continue; }
     const xfo = (r.headers.get('x-frame-options') || '').toLowerCase();
     const csp = (r.headers.get('content-security-policy') || '').toLowerCase();
     const fa = (csp.match(/frame-ancestors([^;]*)/) || [, ''])[1].trim();
     const blocked = xfo.includes('deny') || xfo.includes('sameorigin') || (fa && !fa.includes('*'));
     if (blocked) return { ok: false, reason: 'frames-blocked' };
-    return { ok: true, finalUrl: r.url };
-  } catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
+    return { ok: true, finalUrl: g.url.href };
+  }
+  return { ok: false, reason: 'Too many redirects.' };
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
