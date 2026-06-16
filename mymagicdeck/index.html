@@ -1949,6 +1949,7 @@ async function doAuth(){
     // Pull decks from server, merging with any local guest decks
     await syncLocalDecksToApi();
     await pullDecksFromApi();
+    if(typeof mgLoadFs==='function')await mgLoadFs(); // load THIS account's folders/organization
     if(typeof mgRenderDesktop==='function')mgRenderDesktop(); // decks just loaded — refresh the desktop now
     if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();
     if(typeof tRefreshFeed==='function')tRefreshFeed(); // pull the matched tournament feed for the calendar/widget
@@ -1991,6 +1992,7 @@ function logout(){
   // reloads on next login) — so it can't bleed into the next account on this browser.
   try{ if(window.DeckOS){ DeckOS.store.remove('widgets'); DeckOS.store.remove('notes'); DeckOS.store.remove('iconpos'); } }catch(e){}
   if(typeof desktopClearDom==='function')desktopClearDom();
+  mgFs={folders:[],deckFolder:{},bin:[]}; mgCurrentFolder=null; // drop this account's folder tree from the device
   if(typeof mgRenderDesktop==='function')mgRenderDesktop();
   updateUserUI();
   closeUserMenu();
@@ -4507,6 +4509,9 @@ function init(){
   if(authBtn)authBtn.id='auth-submit-btn';
   // If we have a saved token, pull the latest decks from the server
   if(state.user&&apiToken())pullDecksFromApi();
+  // Load the desktop filesystem (folders + which decks live in them) — this was only ever
+  // loaded on the mobile path, so on desktop folders kept resetting. Re-render once it's in.
+  if(typeof mgLoadFs==='function')mgLoadFs().then(()=>{ if(typeof mgRenderDesktop==='function'&&document.body.classList.contains('deckos'))mgRenderDesktop(); });
   // Check for shared deck in URL hash
   checkUrlHash();
   // Start polling card DB status (shows banner if seeding)
@@ -5300,12 +5305,14 @@ function notesRenderApp(body){
   body._notesMounted=true; const list=notesList();
   body.innerHTML='<div class="t-wrap"><div style="margin-bottom:8px"><button class="btn small" id="notes-new">＋ New note</button></div>'+
     (list.length?list.map(n=>'<div class="t-card"><div class="t-h"><span>'+_mgEsc(n.title||'Note')+(n.pinned?' 📍':'')+'</span><span style="display:flex;gap:4px">'+
+      '<button class="btn small" data-nrename="'+n.id+'">✎</button>'+
       '<button class="btn small" data-nshow="'+n.id+'">'+(n.placed?'Hide':'Show')+'</button>'+
       '<button class="btn small" data-npintog="'+n.id+'">'+(n.pinned?'Unpin':'Pin')+'</button>'+
       '<button class="btn small" data-ndel="'+n.id+'">🗑️</button></span></div>'+
       (n.body?'<div class="t-meta" style="white-space:pre-wrap;max-height:38px;overflow:hidden">'+_mgEsc(n.body.slice(0,140))+'</div>':'')+
     '</div>').join(''):'<div class="t-empty">No notes yet. Create one and it lands on your desktop.</div>')+'</div>';
   body.querySelector('#notes-new').addEventListener('click',()=>{ notesCreate(); notesRenderApp(body); });
+  body.querySelectorAll('[data-nrename]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-nrename'), n=notesGet(id); const nm=prompt('Note name:', (n&&n.title)||'Note'); if(nm!=null){ notesUpdate(id,{title:nm.trim()||'Note'}); const el=document.getElementById('note-'+id); if(el){ const ti=el.querySelector('.on-title'); if(ti)ti.value=(nm.trim()||'Note'); } notesRenderApp(body); } }));
   body.querySelectorAll('[data-nshow]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-nshow'), n=notesGet(id); notesSetPlaced(id, !(n&&n.placed)); }));
   body.querySelectorAll('[data-npintog]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-npintog'), n=notesGet(id); notesSetPinned(id, !(n&&n.pinned)); }));
   body.querySelectorAll('[data-ndel]').forEach(b2=>b2.addEventListener('click',()=>{ if(confirm('Delete this note?'))notesDelete(b2.getAttribute('data-ndel')); }));
