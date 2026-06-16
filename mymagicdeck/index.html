@@ -5437,16 +5437,17 @@ window.DeckOS = {
   _programs: [], // user/mod-registered programs (built-ins live in MGW_APPS directly)
   registerProgram(spec){
     if(!spec||!spec.id||MGW_APPS[spec.id])return false;
-    let overlayId=spec.overlay;
+    let overlayId=spec.overlay, bodyEl=null;
     if(!overlayId && typeof spec.mount==='function'){ // auto-create a Win95 window for the mod
       overlayId='modal-prog-'+spec.id;
       const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id=overlayId;
       ov.innerHTML='<div class="modal" style="width:'+(spec.width||'440px')+';max-width:96vw"><div class="modal-header"><div class="modal-title">'+(spec.title||spec.id)+'</div><button class="modal-close">✕</button></div><div class="modal-body"></div></div>';
       document.body.appendChild(ov);
+      bodyEl=ov.querySelector('.modal-body'); // stable ref — the .modal gets moved into the WM layer, so re-querying the overlay later returns null
       ov.querySelector('.modal-close').addEventListener('click',()=>mgwClose(spec.id));
     }
     MGW_APPS[spec.id]={ overlay:overlayId, win:'.modal', title:spec.title||spec.id, icon:spec.icon||'🧩',
-      open:()=>{ if(typeof spec.mount==='function')spec.mount(document.getElementById(overlayId).querySelector('.modal-body')); if(typeof spec.open==='function')spec.open(); openModal(overlayId); },
+      open:()=>{ const b=bodyEl||(document.getElementById(overlayId)&&document.getElementById(overlayId).querySelector('.modal-body')); if(typeof spec.mount==='function'&&b)spec.mount(b); if(typeof spec.open==='function')spec.open(); openModal(overlayId); },
       close:spec.close||(()=>closeModal(overlayId)) };
     this._programs.push({id:spec.id,title:spec.title||spec.id,icon:spec.icon||'🧩',desktop:!!spec.desktop});
     if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar();
