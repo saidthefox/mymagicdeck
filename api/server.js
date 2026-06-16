@@ -254,6 +254,15 @@ db.exec(`CREATE TABLE IF NOT EXISTS tournament_subs (
   created_at  INTEGER NOT NULL DEFAULT (unixepoch())
 )`);
 db.exec('CREATE INDEX IF NOT EXISTS idx_tsubs_user ON tournament_subs(user_id)');
+// Geo columns (added later): tournaments get a geocoded venue; subs get free-typed
+// regions + an optional radius-around-a-point. Geocoding happens client-side (Photon);
+// we just store the structured result and match on it.
+for (const [col, type] of [['lat','REAL'],['lon','REAL'],['address','TEXT'],['country','TEXT'],['state','TEXT']]) {
+  try { db.exec(`ALTER TABLE tournaments ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
+}
+for (const [col, type] of [['regions','TEXT'],['center_lat','REAL'],['center_lon','REAL'],['center_label','TEXT'],['radius','REAL'],['radius_unit','TEXT']]) {
+  try { db.exec(`ALTER TABLE tournament_subs ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
+}
 
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
@@ -1255,15 +1264,56 @@ const T_LEVELS = ['casual', 'competitive', 'pro'];
 const _str = (v, max) => String(v == null ? '' : v).slice(0, max);
 const _isYmd = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
 const _today = () => new Date().toISOString().slice(0, 10);
+const _coord = (v, max) => { const n = Number(v); return (isFinite(n) && Math.abs(n) <= max && v !== '' && v != null) ? n : null; };
 
+// Macro-regions that aren't single geocode entities — resolved against a tournament's state/country.
+const MACRO_REGIONS = {
+  'east coast': { states: ['Maine','New Hampshire','Vermont','Massachusetts','Rhode Island','Connecticut','New York','New Jersey','Pennsylvania','Delaware','Maryland','Virginia','North Carolina','South Carolina','Georgia','Florida','District of Columbia'] },
+  'west coast': { states: ['California','Oregon','Washington'] },
+  'central us': { states: ['North Dakota','South Dakota','Nebraska','Kansas','Minnesota','Iowa','Missouri','Wisconsin','Illinois','Indiana','Michigan','Ohio','Oklahoma','Texas'] },
+  'midwest': { states: ['North Dakota','South Dakota','Nebraska','Kansas','Minnesota','Iowa','Missouri','Wisconsin','Illinois','Indiana','Michigan','Ohio'] },
+  'europe': { countries: ['Albania','Austria','Belgium','Bosnia and Herzegovina','Bulgaria','Croatia','Czechia','Czech Republic','Denmark','Estonia','Finland','France','Germany','Greece','Hungary','Iceland','Ireland','Italy','Latvia','Lithuania','Luxembourg','Malta','Moldova','Montenegro','Netherlands','North Macedonia','Norway','Poland','Portugal','Romania','Serbia','Slovakia','Slovenia','Spain','Sweden','Switzerland','Ukraine','United Kingdom'] },
+};
+const _macroAliases = { 'east coast us':'east coast','eastcoast':'east coast','west coast us':'west coast','westcoast':'west coast','central united states':'central us','mid west':'midwest','europe (eu)':'europe' };
+function haversineKm(la1, lo1, la2, lo2) {
+  const R = 6371, toR = x => x * Math.PI / 180;
+  const dLa = toR(la2 - la1), dLo = toR(lo2 - lo1);
+  const a = Math.sin(dLa / 2) ** 2 + Math.cos(toR(la1)) * Math.cos(toR(la2)) * Math.sin(dLo / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function regionMatch(t, regions) {
+  const hay = [t.country, t.state, t.address, t.region].map(x => String(x || '').toLowerCase());
+  return regions.some(term => {
+    const k = (_macroAliases[term] || term);
+    const macro = MACRO_REGIONS[k];
+    if (macro) {
+      if (macro.states && t.state && macro.states.some(s => s.toLowerCase() === String(t.state).toLowerCase())) return true;
+      if (macro.countries && t.country && macro.countries.some(c => c.toLowerCase() === String(t.country).toLowerCase())) return true;
+      return false;
+    }
+    return hay.some(h => h && h.includes(term)); // plain substring against the venue's country/state/address
+  });
+}
+function locationMatch(t, sub) {
+  if (t.mode === 'online') return true;                       // online events aren't geo-bound
+  const regions = String(sub.regions || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const hasRadius = sub.center_lat != null && sub.center_lon != null && sub.radius;
+  if (!regions.length && !hasRadius) return true;             // no location constraint = anywhere
+  if (regions.length && regionMatch(t, regions)) return true;
+  if (hasRadius && t.lat != null && t.lon != null) {
+    const km = (sub.radius_unit === 'mi') ? sub.radius * 1.60934 : sub.radius;
+    if (haversineKm(t.lat, t.lon, sub.center_lat, sub.center_lon) <= km) return true;
+  }
+  return false;
+}
 // Does an upcoming tournament satisfy a subscription's parameters? (matching is in JS — volume is small)
 function tournamentMatches(t, sub) {
   const fmts = (sub.formats || '').split(',').map(s => s.trim()).filter(Boolean);
   if (fmts.length && !fmts.includes(t.format)) return false;
   if (sub.mode && sub.mode !== 'any' && t.mode !== sub.mode) return false;
-  if (sub.region && !String(t.region || '').toLowerCase().includes(sub.region.toLowerCase())) return false;
   if (sub.level && sub.level !== 'any' && t.level !== sub.level) return false;
   if (sub.max_entry != null && (t.entry_fee || 0) > sub.max_entry) return false;
+  if (!locationMatch(t, sub)) return false;
   return true;
 }
 
@@ -1279,10 +1329,12 @@ app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, as
   const url = _str(b.url, 300).trim();
   if (url && !/^https?:\/\//i.test(url)) return reply.code(400).send({ error: 'URL must start with http:// or https://' });
   const entry = Math.max(0, Math.min(100000, Number(b.entry_fee) || 0));
+  const lat = _coord(b.lat, 90), lon = _coord(b.lon, 180);
   const info = db.prepare(
-    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?)`
-  ).run(req.user.sub, title, format, mode, _str(b.region, 80).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000));
+    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(req.user.sub, title, format, mode, _str(b.region, 120).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000),
+        lat, lon, _str(b.address, 200).trim(), _str(b.country, 80).trim(), _str(b.state, 80).trim());
   return { id: info.lastInsertRowid };
 });
 
@@ -1290,12 +1342,12 @@ app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, as
 app.get('/api/tournaments', { preHandler: softAuthenticate }, async (req) => {
   const q = req.query || {};
   let rows = db.prepare(
-    'SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+    'SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
   ).all(_today());
   if (q.format) rows = rows.filter(r => r.format === q.format);
   if (q.mode && q.mode !== 'any') rows = rows.filter(r => r.mode === q.mode);
   if (q.level && q.level !== 'any') rows = rows.filter(r => r.level === q.level);
-  if (q.region) rows = rows.filter(r => String(r.region || '').toLowerCase().includes(String(q.region).toLowerCase()));
+  if (q.region) { const rq = String(q.region).toLowerCase(); rows = rows.filter(r => [r.region, r.state, r.country, r.address].some(x => String(x || '').toLowerCase().includes(rq))); }
   return { tournaments: rows };
 });
 
@@ -1325,11 +1377,17 @@ app.post('/api/tournaments/subs', { preHandler: [authenticate, rateLimitReport] 
   const mode = ['any', ...T_MODES].includes(b.mode) ? b.mode : 'any';
   const level = ['any', ...T_LEVELS].includes(b.level) ? b.level : 'any';
   const maxEntry = (b.max_entry === '' || b.max_entry == null) ? null : Math.max(0, Number(b.max_entry) || 0);
+  const regions = (Array.isArray(b.regions) ? b.regions : _str(b.regions, 400).split(',')).map(s => String(s).trim()).filter(Boolean).slice(0, 20).join(',');
+  const cLat = _coord(b.center_lat, 90), cLon = _coord(b.center_lon, 180);
+  const hasCenter = cLat != null && cLon != null;
+  const radius = hasCenter ? Math.max(1, Math.min(20000, Number(b.radius) || 50)) : null;
+  const radiusUnit = b.radius_unit === 'km' ? 'km' : 'mi';
   const count = db.prepare('SELECT COUNT(*) n FROM tournament_subs WHERE user_id = ?').get(req.user.sub).n;
   if (count >= 50) return reply.code(400).send({ error: 'Subscription limit reached.' });
   const info = db.prepare(
-    'INSERT INTO tournament_subs (user_id, name, formats, mode, region, level, max_entry) VALUES (?,?,?,?,?,?,?)'
-  ).run(req.user.sub, _str(b.name, 80).trim() || 'My subscription', formats, mode, _str(b.region, 80).trim(), level, maxEntry);
+    'INSERT INTO tournament_subs (user_id, name, formats, mode, level, max_entry, regions, center_lat, center_lon, center_label, radius, radius_unit) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)'
+  ).run(req.user.sub, _str(b.name, 80).trim() || 'My subscription', formats, mode, level, maxEntry,
+        regions, hasCenter ? cLat : null, hasCenter ? cLon : null, hasCenter ? _str(b.center_label, 160).trim() : null, radius, hasCenter ? radiusUnit : null);
   return { id: info.lastInsertRowid };
 });
 
@@ -1345,7 +1403,7 @@ app.get('/api/tournaments/feed', { preHandler: authenticate }, async (req) => {
   const subs = db.prepare('SELECT * FROM tournament_subs WHERE user_id = ?').all(req.user.sub);
   if (!subs.length) return { tournaments: [], subs: 0 };
   const upcoming = db.prepare(
-    'SELECT id, title, format, mode, region, date, time, level, entry_fee, url, notes FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
+    'SELECT id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state FROM tournaments WHERE date >= ? ORDER BY date ASC LIMIT 300'
   ).all(_today());
   return { tournaments: upcoming.filter(t => subs.some(s => tournamentMatches(t, s))), subs: subs.length };
 });
