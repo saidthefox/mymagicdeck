@@ -982,8 +982,9 @@
     body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
     body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
     body.deckos #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
-    body.deckos.pc-deskmode #pc-desktop, body.deckos.site-windowed #pc-desktop{display:block}
-    body.deckos.pc-deskmode #site-window{display:none}
+    body.deckos.pc-deskmode #pc-desktop, body.deckos.site-windowed #pc-desktop, body.wm-on #pc-desktop{display:block}
+    body.wm-on #pc-desktop{z-index:0}
+    body.deckos:not(.wm-on).pc-deskmode #site-window{display:none}
     body.deckos.pc-deskmode #mobile-nav, body.deckos.site-windowed #mobile-nav{display:none}
     @media (max-width:900px){ #deckos-toggle{display:none} } /* mobile = shell always on, no toggle needed */
     /* ── WM (Level B): real floating windows on desktop, active when body.wm-on ── */
@@ -4332,8 +4333,8 @@ window.addEventListener('beforeunload',function(e){
   }
 });
 // Site window controls: _ minimizes the whole site to the PC desktop tray, ❐ windows it
-{const _smn=document.getElementById('site-min');if(_smn)_smn.addEventListener('click',e=>{e.stopPropagation();mgEmbedDesktop();});
- const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation();siteWindow();});}
+{const _smn=document.getElementById('site-min');if(_smn)_smn.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on'))wmMin('site'); else mgEmbedDesktop();});
+ const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on'))wmMaxToggle('site'); else siteWindow();});}
 // PWA: register the service worker (skip splash-only subdomains, which serve a single deck page).
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   const host=location.hostname;
@@ -4348,7 +4349,7 @@ function deckosShellInit(){
   document.body.classList.toggle('deckos', on);
   document.body.classList.toggle('wm-on', on && window.matchMedia('(min-width:901px)').matches); // floating windows on desktop only
   deckosSyncToggle();
-  if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); wmRenderTaskbar(); }
+  if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }
 }
 function deckosToggle(){
   const on=!document.body.classList.contains('deckos');
@@ -4357,7 +4358,8 @@ function deckosToggle(){
   document.body.classList.toggle('wm-on', on && window.matchMedia('(min-width:901px)').matches);
   if(!on && typeof siteRestore==='function')siteRestore(); // leaving the shell: drop any min/window state
   deckosSyncToggle();
-  if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); wmRenderTaskbar(); }
+  if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }
+  else if(typeof wmReleaseSite==='function')wmReleaseSite();
 }
 deckosShellInit();
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
@@ -4978,9 +4980,11 @@ const wmWins = {};  // key -> { state:'normal|max|min', rect:{x,y,w,h} } for cur
 let wmZ = 2000, wmFocusedKey = null;
 function wmDesktop(){ return document.body.classList.contains('wm-on'); }
 const WM_SPECIAL=['cgg','splash']; // overlay-based programs that aren't plain modals (site = later phase)
-function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); return mgwWin(key); }
-function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
-function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
+function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); if(key==='site')return document.getElementById('site-window'); return mgwWin(key); }
+function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
+function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
+function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ wmWins.site.state='max'; wmApply('site'); } wmRenderTaskbar(); }
+function wmReleaseSite(){ const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
 function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
 function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
 function wmLayer(){ let l=document.getElementById('wm-layer'); if(!l){ l=document.createElement('div'); l.id='wm-layer'; document.body.appendChild(l); } return l; }
@@ -5030,11 +5034,7 @@ function wmClose(key){ const w=wmWins[key]; if(w){ wmSaveRect(key); (w.el||wmEls
 function wmTaskClick(key){ const w=wmWins[key]; if(!w)return; if(w.state==='min')wmRestore(key); else if(wmFocusedKey===key)wmMin(key); else wmFocus(key); }
 function wmRenderTaskbar(){
   const t=document.getElementById('wm-taskbar'); if(!t)return; const tasks=t.querySelector('.wm-tasks'); if(!tasks)return;
-  const siteUp = !document.body.classList.contains('pc-deskmode') && !document.body.classList.contains('site-windowed');
-  let html='<button class="wm-task'+(siteUp?' active':'')+'" data-wsite="1">✦ MyMagicDeck</button>';
-  html += Object.keys(wmWins).map(k=>'<button class="wm-task'+(wmFocusedKey===k&&wmWins[k].state!=='min'?' active':'')+'" data-wt="'+k+'">'+wmIcon(k)+' '+_mgEsc(wmTitle(k))+'</button>').join('');
-  tasks.innerHTML=html;
-  const sb=tasks.querySelector('[data-wsite]'); if(sb)sb.addEventListener('click',e=>{ e.stopPropagation(); if(typeof siteRestore==='function')siteRestore(); wmRenderTaskbar(); });
+  tasks.innerHTML=Object.keys(wmWins).map(k=>'<button class="wm-task'+(wmFocusedKey===k&&wmWins[k].state!=='min'?' active':'')+'" data-wt="'+k+'">'+wmIcon(k)+' '+_mgEsc(wmTitle(k))+'</button>').join('');
   tasks.querySelectorAll('[data-wt]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); wmTaskClick(b.getAttribute('data-wt')); }));
 }
 function wmWireDrag(key, el){
