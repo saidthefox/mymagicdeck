@@ -279,6 +279,27 @@ db.exec(`CREATE TABLE IF NOT EXISTS tournament_rsvps (
   PRIMARY KEY (tournament_id, user_id)
 )`);
 
+// ── Mail (async inbox): system/subscription mail + admin messages. No user→user yet. ──
+db.exec(`CREATE TABLE IF NOT EXISTS mail (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL,
+  from_kind  TEXT NOT NULL DEFAULT 'system',   -- 'system' | 'admin'
+  from_label TEXT DEFAULT '',
+  subject    TEXT NOT NULL,
+  body       TEXT DEFAULT '',
+  link       TEXT DEFAULT '',                  -- e.g. 'tournament:42' → opens that page client-side
+  is_read    INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_mail_user ON mail(user_id, is_read)');
+try { db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (_) { /* exists */ }
+try { db.prepare('UPDATE users SET is_admin = 1 WHERE username = ?').run(process.env.ADMIN_USERNAME || 'jake'); } catch (_) {}
+function isAdminUser(id) { try { const r = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(id); return !!(r && r.is_admin); } catch (_) { return false; } }
+function mailSend(userId, { from_kind = 'system', from_label = '', subject, body = '', link = '' }) {
+  try { db.prepare('INSERT INTO mail (user_id, from_kind, from_label, subject, body, link) VALUES (?,?,?,?,?,?)')
+    .run(userId, from_kind, String(from_label).slice(0, 60), String(subject).slice(0, 160), String(body).slice(0, 4000), String(link).slice(0, 200)); } catch (_) {}
+}
+
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
 let _cardRefreshRunning = false;
@@ -1352,7 +1373,21 @@ app.post('/api/tournaments', { preHandler: [authenticate, rateLimitReport] }, as
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(req.user.sub, title, format, mode, _str(b.region, 120).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000),
         lat, lon, _str(b.address, 200).trim(), _str(b.country, 80).trim(), _str(b.state, 80).trim(), b.proxies ? 1 : 0);
-  return { id: info.lastInsertRowid };
+  const id = info.lastInsertRowid;
+  // Subscription mail: notify anyone (other than the poster) whose subscription matches.
+  try {
+    const t = { id, title, format, mode, region: _str(b.region, 120).trim(), date: b.date, level, entry_fee: entry, proxies: b.proxies ? 1 : 0,
+      lat, lon, address: _str(b.address, 200).trim(), country: _str(b.country, 80).trim(), state: _str(b.state, 80).trim() };
+    const notified = new Set();
+    for (const s of db.prepare('SELECT * FROM tournament_subs').all()) {
+      if (s.user_id === req.user.sub || notified.has(s.user_id)) continue;
+      if (tournamentMatches(t, s)) { notified.add(s.user_id);
+        mailSend(s.user_id, { from_kind: 'system', from_label: 'Tournaments', subject: 'New '+format+' tournament: '+title,
+          body: [t.date + (t.region ? (' · ' + t.region) : ''), level + (entry > 0 ? (' · $' + entry) : '')].join('\n'), link: 'tournament:' + id });
+      }
+    }
+  } catch (e) { app.log.error(e); }
+  return { id };
 });
 
 // Public browse: upcoming tournaments (optional filters). Soft auth so anyone can look.
@@ -1426,6 +1461,39 @@ app.get('/api/tournaments/feed', { preHandler: authenticate }, async (req) => {
   return { tournaments: upcoming.filter(t => subs.some(s => tournamentMatches(t, s))), subs: subs.length };
 });
 
+// ── Mail ──────────────────────────────────────────────────────────────────────
+app.get('/api/mail', { preHandler: authenticate }, async (req) => ({
+  mail: db.prepare('SELECT id, from_kind, from_label, subject, body, link, is_read, created_at FROM mail WHERE user_id = ? ORDER BY id DESC LIMIT 200').all(req.user.sub),
+  unread: db.prepare('SELECT COUNT(*) n FROM mail WHERE user_id = ? AND is_read = 0').get(req.user.sub).n,
+  is_admin: isAdminUser(req.user.sub),
+}));
+app.get('/api/mail/unread', { preHandler: authenticate }, async (req) => ({
+  unread: db.prepare('SELECT COUNT(*) n FROM mail WHERE user_id = ? AND is_read = 0').get(req.user.sub).n,
+  is_admin: isAdminUser(req.user.sub),
+}));
+app.post('/api/mail/:id/read', { preHandler: authenticate }, async (req) => {
+  db.prepare('UPDATE mail SET is_read = 1 WHERE id = ? AND user_id = ?').run(req.params.id, req.user.sub); return { ok: true };
+});
+app.post('/api/mail/read-all', { preHandler: authenticate }, async (req) => {
+  db.prepare('UPDATE mail SET is_read = 1 WHERE user_id = ?').run(req.user.sub); return { ok: true };
+});
+app.delete('/api/mail/:id', { preHandler: authenticate }, async (req) => {
+  db.prepare('DELETE FROM mail WHERE id = ? AND user_id = ?').run(req.params.id, req.user.sub); return { ok: true };
+});
+// Admin: send mail to one user or broadcast to everyone. Gated by the is_admin flag.
+app.post('/api/mail/admin/send', { preHandler: [authenticate, rateLimitReport] }, async (req, reply) => {
+  if (!isAdminUser(req.user.sub)) return reply.code(403).send({ error: 'Admins only.' });
+  const b = req.body || {};
+  const subject = _str(b.subject, 160).trim(); if (!subject) return reply.code(400).send({ error: 'Subject required.' });
+  const body = _str(b.body, 4000), link = _str(b.link, 200).trim();
+  const label = 'Admin' + (req.user.username ? (' · ' + req.user.username) : '');
+  let recipients;
+  if (b.to === '*' || b.to == null || b.to === '') recipients = db.prepare('SELECT id FROM users').all().map(r => r.id);
+  else { const u = db.prepare('SELECT id FROM users WHERE username = ?').get(String(b.to)); if (!u) return reply.code(404).send({ error: 'No such user.' }); recipients = [u.id]; }
+  for (const uid of recipients) mailSend(uid, { from_kind: 'admin', from_label: label, subject, body, link });
+  return { ok: true, sent: recipients.length };
+});
+
 // Single tournament detail (for the mini "tournament page") + RSVP tallies + my RSVP.
 app.get('/api/tournaments/:id', { preHandler: softAuthenticate }, async (req, reply) => {
   const t = db.prepare('SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies FROM tournaments WHERE id = ?').get(req.params.id);
@@ -1485,7 +1553,7 @@ app.post('/api/auth/register', {
 
   const user = { id: result.lastInsertRowid, username, email };
   const token = app.jwt.sign({ sub: user.id, username: user.username });
-  return { token, user: { username, email } };
+  return { token, user: { username, email, is_admin: isAdminUser(user.id) } };
 });
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
@@ -1505,7 +1573,7 @@ app.post('/api/auth/login', {
   const { username, password } = req.body;
 
   const record = db.prepare(
-    'SELECT id, username, email, password FROM users WHERE username = ?'
+    'SELECT id, username, email, password, is_admin FROM users WHERE username = ?'
   ).get(username);
 
   if (!record) {
@@ -1518,7 +1586,7 @@ app.post('/api/auth/login', {
   }
 
   const token = app.jwt.sign({ sub: record.id, username: record.username });
-  return { token, user: { username: record.username, email: record.email } };
+  return { token, user: { username: record.username, email: record.email, is_admin: !!record.is_admin } };
 });
 
 // ── Password reset ────────────────────────────────────────────────────────────
