@@ -4577,9 +4577,9 @@ function mgWireCardDrag(card){ // only active while .mg-mini; ignored in fullscr
   card.addEventListener('mousedown',e=>{if(!active())return;begin(e.clientX,e.clientY);e.preventDefault();const mm=ev=>move(ev.clientX,ev.clientY);const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);end();};document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);});
 }
 // Spawn the SAME desktop module inside the deckbuilder's search-results box (mobile).
-function mgEmbedDesktop(){ // enter PC desktop mode: minimize the site, reveal the root desktop
+function mgEmbedDesktop(){ // show the root desktop. If the site is already a floating window, leave it be
   const d=document.getElementById('pc-desktop');if(!d)return;
-  document.body.classList.add('pc-deskmode'); document.body.classList.remove('site-windowed');
+  if(!document.body.classList.contains('site-windowed')) document.body.classList.add('pc-deskmode'); // only minimize the site if it isn't already windowed
   mgDeskTarget='pc-deskcontent';
   mgRenderDesktop();
 }
