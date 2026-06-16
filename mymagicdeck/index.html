@@ -1025,6 +1025,12 @@
     .os-widget.pinned{opacity:.5;transition:opacity .15s}
     .os-widget.pinned .ow-bar{cursor:default}
     .os-widget.pinned:hover{opacity:.95}
+    /* MyMagicDeck detachable wings (deck list / card panel) — faded mountable panels */
+    .mmd-wing{width:286px}
+    .mmd-wing .ow-body{padding:0;max-height:none;height:64vh;overflow:hidden;display:flex;flex-direction:column}
+    .mmd-wing .ow-body .panel{flex:1;min-height:0;border-right:none;background:var(--surface)}
+    #app.mmd-clipped{grid-template-columns:1fr}
+    #app.mmd-clipped #panel-search{border-right:none}
     /* Notes — sticky-note files that live on the desktop (same pin/fade as widgets) */
     .os-note{position:absolute;z-index:14;width:200px;background:#fdf6b2;border:2px solid;border-color:#fff8c8 #c9bf57 #c9bf57 #fff8c8;box-shadow:2px 2px 8px rgba(0,0,0,.35);font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#222;display:flex;flex-direction:column}
     .os-note .on-bar{display:flex;align-items:center;gap:4px;background:#f2e14e;padding:2px 3px 2px 5px;cursor:move}
@@ -1116,7 +1122,7 @@
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
 <div id="pc-desktop"><div id="pc-deskcontent"></div></div>
 <div id="site-window">
-<div id="site-titlebar"><span class="mgw-ti"><span class="mgw-ic">✦</span>MyMagicDeck</span><button class="mg-winctl" id="site-min" aria-label="minimize to desktop">_</button><button class="mg-winctl" id="site-max" aria-label="window mode">❐</button></div>
+<div id="site-titlebar"><span class="mgw-ti"><span class="mgw-ic">✦</span>MyMagicDeck</span><button class="mg-winctl" id="site-clip" aria-label="attach/detach side panels" title="Attach / detach the deck list + card panels">▐</button><button class="mg-winctl" id="site-min" aria-label="minimize to desktop">_</button><button class="mg-winctl" id="site-max" aria-label="window mode">❐</button></div>
 <div id="header">
   <div class="logo" onclick="window.location.href='/'" style="cursor:pointer;">✦ My<span>Magic</span>Deck</div>
   <div class="header-deck-controls">
@@ -4451,7 +4457,8 @@ window.addEventListener('beforeunload',function(e){
 });
 // Site window controls: _ minimizes the whole site to the PC desktop tray, ❐ windows it
 {const _smn=document.getElementById('site-min');if(_smn)_smn.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on'))wmMin('site'); else mgEmbedDesktop();});
- const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on'))wmMaxToggle('site'); else siteWindow();});}
+ const _smx=document.getElementById('site-max');if(_smx)_smx.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on'))wmMaxToggle('site'); else siteWindow();});
+ const _sclip=document.getElementById('site-clip');if(_sclip)_sclip.addEventListener('click',e=>{e.stopPropagation(); if(document.body.classList.contains('wm-on')&&typeof mmdToggleClip==='function')mmdToggleClip();});}
 // PWA: register the service worker (skip splash-only subdomains, which serve a single deck page).
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   const host=location.hostname;
@@ -4478,6 +4485,9 @@ function deckosToggle(){
   if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }
   else if(typeof wmReleaseSite==='function')wmReleaseSite();
 }
+// MyMagicDeck wing state — declared before the boot shell-init runs (which can call mmdApply).
+const MMD_WINGS=[{key:'deck',panel:'panel-deck',title:'Deck list',icon:'🗃️'},{key:'card',panel:'panel-detail',title:'Card / Stats',icon:'🃏'}];
+let _mmdClipped=null, _mmdDetached=false;
 deckosShellInit();
 // (desktop widgets are restored after the DeckOS object is defined — see widgetRenderAll() there)
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
@@ -5113,8 +5123,9 @@ function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-car
   return mgwWin(key); }
 function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
 function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
-function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ wmWins.site.state='max'; wmApply('site'); } wmRenderTaskbar(); }
-function wmReleaseSite(){ const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
+function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ // first open: spawn clipped + windowed (center only), not fullscreen
+    wmWins.site.state='normal'; wmWins.site.rect={x:24,y:18,w:Math.min(560,innerWidth-40),h:Math.min(640,innerHeight-90)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
+function wmReleaseSite(){ if(typeof mmdAttach==='function'){ mmdAttach(); _mmdDetached=false; } const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
 function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
 function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
 function wmLayer(){ let l=document.getElementById('wm-layer'); if(!l){ l=document.createElement('div'); l.id='wm-layer'; document.body.appendChild(l); } return l; }
@@ -5141,7 +5152,44 @@ function wmRect(key){
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
 }
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
-function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } }
+function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } if(key==='site'&&typeof mmdApply==='function')mmdApply(); }
+// ===== MyMagicDeck "wings": in windowed mode the deck-list + card/stats panels detach into
+// faded mountable desktop panels; the window keeps just the center. Fullscreen re-grabs them. =====
+function mmdIsClipped(){ if(_mmdClipped==null){ let v=null; try{ v=window.DeckOS&&DeckOS.store.get('mmd_clipped'); }catch(e){} _mmdClipped=(v==null?true:!!v); } return _mmdClipped; }
+function mmdWindowed(){ return document.body.classList.contains('wm-on') && wmWins.site && wmWins.site.state!=='max'; }
+function mmdWingPos(){ try{ return (window.DeckOS&&DeckOS.store.get('mmd_wingpos'))||{}; }catch(e){ return {}; } }
+function mmdWingPosSet(key,patch){ const m=mmdWingPos(); m[key]=Object.assign({},m[key],patch); try{ DeckOS.store.set('mmd_wingpos',m); }catch(e){} }
+function mmdDetach(){
+  const d=document.getElementById('pc-desktop'); if(!d)return; const app=document.getElementById('app'); if(app)app.classList.add('mmd-clipped');
+  const pos=mmdWingPos();
+  MMD_WINGS.forEach((w,i)=>{ const panel=document.getElementById(w.panel); if(!panel)return; let el=document.getElementById('mmd-wing-'+w.key);
+    if(!el){ el=document.createElement('div'); el.id='mmd-wing-'+w.key; el.className='os-widget mmd-wing';
+      el.innerHTML='<div class="ow-bar"><span>'+w.icon+' '+w.title+'</span><span class="ow-btns"><button data-wpin title="pin in place + fade">📌</button></span></div><div class="ow-body"></div>';
+      d.appendChild(el);
+      el.querySelector('[data-wpin]').addEventListener('click',ev=>{ ev.stopPropagation(); const on=!el.classList.contains('pinned'); el.classList.toggle('pinned',on); el.querySelector('[data-wpin]').textContent=on?'📍':'📌'; mmdWingPosSet(w.key,{pinned:on}); });
+      mmdWingDrag(el,w);
+    }
+    const p=pos[w.key]||{}; el.style.left=((p.x!=null)?p.x:(i===0?16:Math.max(16,innerWidth-310)))+'px'; el.style.top=((p.y!=null)?p.y:74)+'px';
+    el.classList.toggle('pinned',!!p.pinned); el.querySelector('[data-wpin]').textContent=p.pinned?'📍':'📌';
+    el.querySelector('.ow-body').appendChild(panel); el.style.display='block';
+  });
+}
+function mmdAttach(){ const app=document.getElementById('app'); if(!app)return;
+  const deck=document.getElementById('panel-deck'), detail=document.getElementById('panel-detail'), search=document.getElementById('panel-search');
+  if(deck&&search&&deck.parentElement!==app)app.insertBefore(deck,search); // native order: deck, search, detail
+  if(detail&&detail.parentElement!==app)app.appendChild(detail);
+  app.classList.remove('mmd-clipped');
+  MMD_WINGS.forEach(w=>{ const el=document.getElementById('mmd-wing-'+w.key); if(el)el.remove(); });
+}
+function mmdApply(){ const want=mmdWindowed()&&mmdIsClipped(); if(want&&!_mmdDetached){ mmdDetach(); _mmdDetached=true; } else if(!want&&_mmdDetached){ mmdAttach(); _mmdDetached=false; } }
+function mmdWingDrag(el,w){ const bar=el.querySelector('.ow-bar'); bar.addEventListener('pointerdown',e=>{ if(e.target.closest('button')||el.classList.contains('pinned'))return; const sx=e.clientX,sy=e.clientY,ox=parseFloat(el.style.left)||0,oy=parseFloat(el.style.top)||0; e.preventDefault(); let nx=ox,ny=oy;
+  const mm=ev=>{ nx=Math.max(0,ox+ev.clientX-sx); ny=Math.max(0,oy+ev.clientY-sy); el.style.left=nx+'px'; el.style.top=ny+'px'; };
+  const up=()=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); mmdWingPosSet(w.key,{x:nx,y:ny}); };
+  document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); }); }
+function mmdToggleClip(){ _mmdClipped=!mmdIsClipped(); try{ DeckOS.store.set('mmd_clipped',_mmdClipped); }catch(e){}
+  const w=wmWins&&wmWins.site;
+  if(w){ if(_mmdClipped){ w.state='normal'; w.rect.w=Math.min(560,innerWidth-40); if(w.rect.x+w.rect.w>innerWidth)w.rect.x=20; } else { w.rect.w=Math.min(1180,innerWidth-50); } wmApply('site'); wmSaveRect('site'); wmRenderTaskbar(); }
+  else mmdApply(); }
 function wmFocus(key){ const el=wmEls[key]; if(!el)return; el.style.zIndex=(++wmZ); wmFocusedKey=key; wmRenderTaskbar(); }
 function wmOpen(key){
   const bd0=wmBackdropId(key); if(bd0){ const ov=document.getElementById(bd0); if(ov)ov.classList.remove('open'); } // never leave a fullscreen backdrop in WM mode
