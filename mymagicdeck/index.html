@@ -4659,8 +4659,15 @@ function renderBinList(){
 function openSysset(){renderSysset();openModal('modal-sysset');}
 function renderSysset(){
   const b=document.getElementById('sysset-body');if(!b)return;
-  b.innerHTML='<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border)"><span>Card Guesser game</span><input type="checkbox" id="ss-cgg" '+(mguessDisabled()?'':'checked')+'></label>'+
-    '<p style="color:var(--text-dim);font-size:.8rem;margin-top:12px">More settings coming soon.</p>';
+  const local=!!(window.DeckOS&&DeckOS.isLocal());
+  b.innerHTML=
+    '<div class="mg-smhdr" style="padding-left:0">Mode</div>'+
+    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px;border-bottom:1px solid var(--border)"><span>Personal mode <span style="color:var(--text-dim);font-size:.76rem">— account-less; hides Share / HUD / Account / subdomains</span></span><input type="checkbox" id="ss-local" '+(local?'checked':'')+'></label>'+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Storage</div>'+
+    '<div style="padding:8px 2px;color:var(--text-dim);font-size:.82rem">Backend: <b style="color:var(--text)">'+(window.DeckOS?DeckOS.store.backend:'local')+'</b> · '+(window.DeckOS?DeckOS.store.keys().length:0)+' app item(s). Your decks are saved in this browser.</div>'+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Game</div>'+
+    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px"><span>Card Guesser game</span><input type="checkbox" id="ss-cgg" '+(mguessDisabled()?'':'checked')+'></label>';
+  const lc=document.getElementById('ss-local');if(lc)lc.addEventListener('change',()=>{if(window.DeckOS){DeckOS.mode=lc.checked?'local':'hosted';DeckOS.ui.toast(lc.checked?'Personal mode on':'Connected mode on');}});
   const c=document.getElementById('ss-cgg');if(c)c.addEventListener('change',()=>{mguessSetDisabled(!c.checked);});
 }
 // HUD: live status of your published subdomain page(s). Anchorable as a faded desktop widget.
@@ -4759,6 +4766,60 @@ function mgwWireMiniDrag(key){
 }
 function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)&&document.getElementById(mgDeskTarget).querySelector('.mg-desk'))mgRenderDesktop();}
 function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin" data-mgw="'+k+'">'+MGW_APPS[k].icon+' '+MGW_APPS[k].title+'</button>').join('');}
+
+// ===== DeckOS: the public, versioned API for the Deck OS shell =====
+// Stable surface for programs/mods + a swappable storage layer + the local/hosted mode.
+// Anyone can add a program with DeckOS.registerProgram({id,title,icon,mount(bodyEl){...}}).
+// See README → "Writing a Deck OS program".
+window.DeckOS = {
+  version: '1.0',
+  // --- mode: 'hosted' (accounts + subdomains) or 'local' (personal, account-less) ---
+  get mode(){ try{ return localStorage.getItem('deckos_mode') || 'hosted'; }catch(e){ return 'hosted'; } },
+  set mode(m){ try{ localStorage.setItem('deckos_mode', m); }catch(e){} },
+  isLocal(){ return this.mode === 'local'; },
+  HOSTED_ONLY: ['splash','share','hud','account','storage'], // programs that need an account/subdomains
+  // --- storage abstraction (mods + future backends). Default backend = localStorage. ---
+  store: {
+    backend: 'local',
+    _k(k){ return 'deckos:'+k; },
+    get(k){ try{ const v=localStorage.getItem(this._k(k)); return v==null?null:JSON.parse(v); }catch(e){ return null; } },
+    set(k,v){ try{ localStorage.setItem(this._k(k), JSON.stringify(v)); return true; }catch(e){ return false; } },
+    remove(k){ try{ localStorage.removeItem(this._k(k)); }catch(e){} },
+    keys(){ try{ return Object.keys(localStorage).filter(x=>x.indexOf('deckos:')===0).map(x=>x.slice(7)); }catch(e){ return []; } },
+  },
+  // --- deck data access ---
+  decks: {
+    list(){ return Object.values(state.decks||{}); },
+    get(id){ return (state.decks||{})[id]; },
+    active(){ return (typeof mgActiveDeckId!=='undefined' && mgActiveDeckId && state.decks[mgActiveDeckId]) ? state.decks[mgActiveDeckId] : (typeof currentDeck==='function'?currentDeck():null); },
+    save(id){ if(typeof saveToStorage==='function')saveToStorage(); if(id && typeof syncDeckToApi==='function' && !DeckOS.isLocal())syncDeckToApi(id); },
+  },
+  // --- small UI helpers ---
+  ui: {
+    toast(m,t){ if(typeof toast==='function')toast(m,t); },
+    open(id){ if(typeof mgLaunchApp==='function')mgLaunchApp(id); },
+  },
+  // --- programs ---
+  _programs: [], // user/mod-registered programs (built-ins live in MGW_APPS directly)
+  registerProgram(spec){
+    if(!spec||!spec.id||MGW_APPS[spec.id])return false;
+    let overlayId=spec.overlay;
+    if(!overlayId && typeof spec.mount==='function'){ // auto-create a Win95 window for the mod
+      overlayId='modal-prog-'+spec.id;
+      const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id=overlayId;
+      ov.innerHTML='<div class="modal" style="width:'+(spec.width||'440px')+';max-width:96vw"><div class="modal-header"><div class="modal-title">'+(spec.title||spec.id)+'</div><button class="modal-close">✕</button></div><div class="modal-body"></div></div>';
+      document.body.appendChild(ov);
+      ov.querySelector('.modal-close').addEventListener('click',()=>mgwClose(spec.id));
+    }
+    MGW_APPS[spec.id]={ overlay:overlayId, win:'.modal', title:spec.title||spec.id, icon:spec.icon||'🧩',
+      open:()=>{ if(typeof spec.mount==='function')spec.mount(document.getElementById(overlayId).querySelector('.modal-body')); if(typeof spec.open==='function')spec.open(); openModal(overlayId); },
+      close:spec.close||(()=>closeModal(overlayId)) };
+    this._programs.push({id:spec.id,title:spec.title||spec.id,icon:spec.icon||'🧩',desktop:!!spec.desktop});
+    if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar();
+    return true;
+  },
+  programsMenuHtml(){ return this._programs.map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+p.icon+' '+_mgEsc(p.title)+'</div>').join(''); },
+};
 function mgFullExit(){mgRunning=false;mgBarVisible=false;try{sessionStorage.setItem('mmd_mguess_off','1');}catch(e){}mguessSetDisabled(true);clearTimeout(mgGuess.timer);document.getElementById('mguess-overlay').classList.remove('open');mgRemoveFloat();mgCloseDesktopEmbed();} // full power-off; reboot from account menu
 function mgBarStartToggle(){let m=document.getElementById('mg-startmenu-global');if(m){m.remove();return;}m=document.createElement('div');m.id='mg-startmenu-global';m.innerHTML=mgStartMenuHtml(!mgRunning,true);document.body.appendChild(m);mgWireStartMenuGlobal(m);}
 function mgWireStartMenuGlobal(m){
@@ -4911,16 +4972,19 @@ function mgWireFolderIcon(el){
 }
 function mgStartMenuHtml(showLaunch,showDesktop){
   const owner=(state.user&&state.user.username)?(_mgEsc(state.user.username)+"'s MyMagicDeck"):'MyMagicDeck';
+  const local=!!(window.DeckOS&&DeckOS.isLocal());
+  const item=(id,label)=>(local&&DeckOS.HOSTED_ONLY.indexOf(id)>=0)?'':'<div class="mg-smitem" data-app="'+id+'">'+label+'</div>';
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1</span></div><div class="mg-smbody">'+
-    '<div class="mg-smhdr">Programs</div>'+
-    '<div class="mg-smitem" data-app="cgg">🗃️ Card Guesser Game</div>'+
-    '<div class="mg-smitem" data-app="splash">🖼️ Splash Builder</div>'+
-    '<div class="mg-smitem" data-app="share">🔗 Share Deck</div>'+
-    '<div class="mg-smitem" data-app="storage">💾 Storage</div>'+
-    '<div class="mg-smitem" data-app="hud">📡 HUD</div>'+
+    '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
+    item('cgg','🗃️ Card Guesser Game')+
+    item('splash','🖼️ Splash Builder')+
+    item('share','🔗 Share Deck')+
+    item('storage','💾 Storage')+
+    item('hud','📡 HUD')+
+    (window.DeckOS?DeckOS.programsMenuHtml():'')+
     '<div class="mg-smitem" data-backsearch="1">🔍 Search</div>'+
     '<div class="mg-smsep"></div>'+
-    '<div class="mg-smitem" data-app="account">👤 Account</div>'+
+    item('account','👤 Account')+
     '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
     '<div class="mg-smitem" data-app="about">ℹ️ About</div>'+
     '<div class="mg-smsep"></div>'+

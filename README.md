@@ -46,15 +46,11 @@ the desktop browser is unaffected.
 - **The whole site is a program window** (`#site-window`) with its own Win95 title bar.
   Minimize (`_`) sends the entire site to the desktop tray; window (`❐`) shrinks it to a
   draggable mini; the **✦ MyMagicDeck** taskbar button restores it.
-- **MGW window manager** (`MGW_APPS` / `mgw*` in `index.html`): a generic host that gives any
+- **MGW window manager** (`MGW_APPS` / `mgw*` in `index.html`): the generic host that gives any
   "program" the three window states — **full**, **windowed** (a live, scaled, draggable mini),
   **minimized** (hidden, in the taskbar) — plus a taskbar button and z-order focus
-  (`mgUiZ`, last-touched on top). Registering a new program is one entry:
-  ```js
-  MGW_APPS.myprog = { overlay:'modal-myprog', win:'.modal', title:'My Program', icon:'🎲',
-                      open:()=>openMyProg(), close:()=>closeModal('modal-myprog') };
-  ```
-  Add it to the Start menu (`mgStartMenuHtml`) and/or a desktop icon (`data-app="myprog"`).
+  (`mgUiZ`, last-touched on top). Built-in programs live in `MGW_APPS`; third-party ones register
+  through the public `DeckOS` API (below).
 
 ### Programs
 
@@ -71,6 +67,63 @@ the desktop browser is unaffected.
 The desktop also holds your **decks as file icons** (single-tap = set the "adding-to" deck,
 double-tap = open in the builder), **folders** (account-synced tree, drag to nest / bin),
 and a toolbar (**New Folder / New Deck**, collapsible into a **File** button).
+
+---
+
+## Extending Deck OS — `window.DeckOS` (programs, mods, personal mode)
+
+`index.html` exposes a small, **versioned public API** so anyone (a human, or an LLM you hand the
+file + this README) can add features without spelunking internals.
+
+### Write a program
+
+```js
+DeckOS.registerProgram({
+  id:    'lamp',                 // unique key
+  title: 'Lamp',
+  icon:  '💡',
+  mount(body){                   // body = the window's content element; render anything
+    body.innerHTML = '<p style="padding:16px">A cozy desktop lamp. 🔆</p>';
+  },
+});
+```
+
+That's it — DeckOS builds the Win95 window, adds it to the Start menu's **Programs** list, and it
+gets full / windowed-mini / minimized / taskbar behavior for free. (Pass your own `overlay` id
+instead of `mount` if you want to supply custom markup.)
+
+Other surface:
+
+| API | What |
+|---|---|
+| `DeckOS.version` | API version (`'1.0'`). |
+| `DeckOS.mode` / `isLocal()` | `'hosted'` or `'local'`. |
+| `DeckOS.store` | Swappable key/value storage — `get/set/remove/keys` (default backend: localStorage). Use this for mod data. |
+| `DeckOS.decks` | `list()`, `get(id)`, `active()`, `save(id)`. |
+| `DeckOS.ui` | `toast(msg)`, `open(programId)`. |
+
+### Personal (local) mode
+
+Set in **System Settings → Mode**, or `DeckOS.mode = 'local'`. Personal mode is for running the app
+**account-less for yourself**: it hides the account/subdomain programs (Share, HUD, Account, Storage)
+from the desktop, and your decks live in this browser via `DeckOS.store`. The deckbuilder, search,
+Card Guesser, folders, and any installed mods stay. (Card search/guess still use the public API;
+a fully offline/self-hosted build that points `DeckOS.store` at a folder or a private API is the
+next step on the roadmap.)
+
+### Mods, and the trust model (roadmap)
+
+Because a program is just `DeckOS.registerProgram(...)`, third-party **mods** are loadable JS that
+call it. The intended split:
+
+- **Local / self-hosted → full trust.** It's your machine; a mod is a JS file you load (like a
+  userscript). Your PC can have a lamp, a price tracker, whatever — most people's won't.
+- **Hosted multi-tenant → sandboxed, opt-in.** Mods run in a sandboxed iframe and talk to the host
+  over a narrow `postMessage` capability API, so an installed mod can't read your account or affect
+  other users. Cosmetic widgets are easy; deeper tools get a bounded API surface.
+
+The `DeckOS` facade is the stable contract both paths target; keep it versioned so community mods
+don't break when the core changes.
 
 ---
 
