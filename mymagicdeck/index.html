@@ -1883,6 +1883,7 @@ async function doAuth(){
     if(typeof mgRenderDesktop==='function')mgRenderDesktop(); // decks just loaded — refresh the desktop now
     if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();
     if(typeof tRefreshFeed==='function')tRefreshFeed(); // pull the matched tournament feed for the calendar/widget
+    if(typeof renderHud==='function' && typeof wmWins!=='undefined' && wmWins.hud)renderHud(); // refresh an open HUD now that we're signed in
   }catch(e){
     err.textContent=e.message||'Something went wrong.';
   }finally{
@@ -5031,7 +5032,11 @@ const wmWins = {};  // key -> { state:'normal|max|min', rect:{x,y,w,h} } for cur
 let wmZ = 2000, wmFocusedKey = null;
 function wmDesktop(){ return document.body.classList.contains('wm-on'); }
 const WM_SPECIAL=['cgg','splash']; // overlay-based programs that aren't plain modals (site = later phase)
-function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); if(key==='site')return document.getElementById('site-window'); return mgwWin(key); }
+function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); if(key==='site')return document.getElementById('site-window');
+  // A .modal window gets MOVED into the WM layer on first open, so it's no longer found via
+  // the overlay's querySelector on reopen — return the already-adopted element if we have it.
+  if(wmEls[key] && wmEls[key].classList.contains('wm-win') && document.body.contains(wmEls[key]))return wmEls[key];
+  return mgwWin(key); }
 function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
 function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
 function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ wmWins.site.state='max'; wmApply('site'); } wmRenderTaskbar(); }
@@ -5065,6 +5070,7 @@ function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{
 function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } }
 function wmFocus(key){ const el=wmEls[key]; if(!el)return; el.style.zIndex=(++wmZ); wmFocusedKey=key; wmRenderTaskbar(); }
 function wmOpen(key){
+  const bd0=wmBackdropId(key); if(bd0){ const ov=document.getElementById(bd0); if(ov)ov.classList.remove('open'); } // never leave a fullscreen backdrop in WM mode
   const el = wmWinEl(key); if(!el) return; wmEls[key]=el;
   wmEnsureTaskbar();
   if(!el.classList.contains('wm-win')){ // first-time adoption
