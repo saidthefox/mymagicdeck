@@ -921,7 +921,7 @@
     .mg-bvl{border:2px solid;border-color:#fff #808080 #808080 #fff}
     .mg-cbx{width:14px;height:14px;flex-shrink:0;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:#000}
     .mg-cbrow{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:12px;color:#000;cursor:pointer}
-    .mg-desk{position:absolute;inset:0;background:#017e7e;display:flex;flex-direction:column}
+    .mg-desk{position:absolute;inset:0;background:var(--desk-bg,#017e7e);display:flex;flex-direction:column}
     .mg-deskicons{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:10px}
     .mg-icon{width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px dotted transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
     .mg-deskicons.mg-free{display:block;position:relative}
@@ -977,7 +977,7 @@
     .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:#808080 #fff #fff #808080; border-radius:0; background:#fff; color:#000; }
     .mgw-win .modal-body a{ color:#00006e; }
     /* The whole site is a Win95 program window sitting on the root PC desktop */
-    #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:#017e7e;isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
+    #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:var(--desk-bg,#017e7e);isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #pc-deskcontent{position:absolute;inset:0}
     #pc-startmenu{position:absolute;left:4px;bottom:40px;z-index:99999}
     #pc-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
@@ -1027,7 +1027,7 @@
     .os-widget.pinned:hover{opacity:.95}
     /* MyMagicDeck detachable wings (deck list / card panel) — faded mountable panels */
     .mmd-wing{width:286px}
-    .mmd-wing .ow-body{padding:0;max-height:none;height:64vh;overflow:hidden;display:flex;flex-direction:column}
+    .mmd-wing .ow-body{padding:0;max-height:none;height:46vh;overflow:hidden;display:flex;flex-direction:column}
     .mmd-wing .ow-body .panel{flex:1;min-height:0;border-right:none;background:var(--surface)}
     #app.mmd-clipped{grid-template-columns:1fr}
     #app.mmd-clipped #panel-search{border-right:none}
@@ -5123,8 +5123,8 @@ function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-car
   return mgwWin(key); }
 function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
 function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
-function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ // first open: spawn clipped + windowed (center only), not fullscreen
-    wmWins.site.state='normal'; wmWins.site.rect={x:24,y:18,w:Math.min(560,innerWidth-40),h:Math.min(640,innerHeight-90)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
+function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ // first open: windowed (not fullscreen), full app — wings attached by default
+    wmWins.site.state='normal'; wmWins.site.rect={x:24,y:18,w:Math.min(1100,innerWidth-50),h:Math.min(720,innerHeight-90)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
 function wmReleaseSite(){ if(typeof mmdAttach==='function'){ mmdAttach(); _mmdDetached=false; } const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
 function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
 function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
@@ -5155,7 +5155,7 @@ function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{
 function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } if(key==='site'&&typeof mmdApply==='function')mmdApply(); }
 // ===== MyMagicDeck "wings": in windowed mode the deck-list + card/stats panels detach into
 // faded mountable desktop panels; the window keeps just the center. Fullscreen re-grabs them. =====
-function mmdIsClipped(){ if(_mmdClipped==null){ let v=null; try{ v=window.DeckOS&&DeckOS.store.get('mmd_clipped'); }catch(e){} _mmdClipped=(v==null?true:!!v); } return _mmdClipped; }
+function mmdIsClipped(){ if(_mmdClipped==null){ let v=null; try{ v=window.DeckOS&&DeckOS.store.get('mmd_clipped'); }catch(e){} _mmdClipped=(v==null?false:!!v); } return _mmdClipped; }
 function mmdWindowed(){ return document.body.classList.contains('wm-on') && wmWins.site && wmWins.site.state!=='max'; }
 function mmdWingPos(){ try{ return (window.DeckOS&&DeckOS.store.get('mmd_wingpos'))||{}; }catch(e){ return {}; } }
 function mmdWingPosSet(key,patch){ const m=mmdWingPos(); m[key]=Object.assign({},m[key],patch); try{ DeckOS.store.set('mmd_wingpos',m); }catch(e){} }
@@ -5169,10 +5169,16 @@ function mmdDetach(){
       el.querySelector('[data-wpin]').addEventListener('click',ev=>{ ev.stopPropagation(); const on=!el.classList.contains('pinned'); el.classList.toggle('pinned',on); el.querySelector('[data-wpin]').textContent=on?'📍':'📌'; mmdWingPosSet(w.key,{pinned:on}); });
       mmdWingDrag(el,w);
     }
-    const p=pos[w.key]||{}; el.style.left=((p.x!=null)?p.x:(i===0?16:Math.max(16,innerWidth-310)))+'px'; el.style.top=((p.y!=null)?p.y:74)+'px';
+    // Default dock: stack both wings against the left edge; user-dragged positions win.
+    const BUF=12, WINGW=286, wingH=Math.round(innerHeight*0.46);
+    const p=pos[w.key]||{}; el.style.left=((p.x!=null)?p.x:BUF)+'px'; el.style.top=((p.y!=null)?p.y:(74+i*(wingH+26)))+'px';
     el.classList.toggle('pinned',!!p.pinned); el.querySelector('[data-wpin]').textContent=p.pinned?'📍':'📌';
     el.querySelector('.ow-body').appendChild(panel); el.style.display='block';
   });
+  // Left-justify the window just to the right of the wing column (+ buffer), unless the user
+  // has placed it further right already. Set geometry directly to avoid wmApply recursion.
+  const sw=document.getElementById('site-window'), W=wmWins.site;
+  if(sw&&W&&W.state==='normal'){ const minX=12+286+12; if(W.rect.x<minX){ W.rect.x=minX; sw.style.left=minX+'px'; wmSaveRect('site'); } }
 }
 function mmdAttach(){ const app=document.getElementById('app'); if(!app)return;
   const deck=document.getElementById('panel-deck'), detail=document.getElementById('panel-detail'), search=document.getElementById('panel-search');
@@ -5328,25 +5334,22 @@ async function desktopPullRender(){
 // ===== Desktop background (set from the HUD; persisted locally + per-account) =====
 const DESK_BGS=[['','Default (teal)','#017e7e'],['#000080','Navy','#000080'],['#2f4f6f','Slate','#2f4f6f'],['#3a3a3a','Graphite','#3a3a3a'],['#3b2a5a','Purple','#3b2a5a'],['#1f5132','Forest','#1f5132'],['#5a2a2a','Maroon','#5a2a2a'],['#101218','Midnight','#101218']];
 function deskBgGet(){ try{ return DeckOS.store.get('deskbg')||''; }catch(e){ return ''; } }
-function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(d)d.style.background=c||''; }
+function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(d)d.style.setProperty('--desk-bg', c||'#017e7e'); } // .mg-desk paints over #pc-desktop, so drive both via the var
 function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApply(c); desktopSyncSoon(); if(typeof renderHud==='function'&&document.getElementById('hud-body'))renderHud(); }
 // ===== TWENTYFOURTY — two-player life counter (taps work for fingers + mouse) =====
 let _lcState=null;
 function lcLoad(){ if(!_lcState){ try{ _lcState=DeckOS.store.get('twentyfourty'); }catch(e){} if(!_lcState||!Array.isArray(_lcState.players))_lcState={start:20,players:[{life:20},{life:20}]}; } return _lcState; }
 function lcSave(){ try{ DeckOS.store.set('twentyfourty', _lcState); }catch(e){} }
-function lcBody(){ return document.querySelector('#modal-prog-twentyfourty .modal-body'); }
-function lcAdj(i,d){ const s=lcLoad(); s.players[i].life+=d; lcSave(); lcRender(lcBody()); }
-function lcReset(){ const s=lcLoad(); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(lcBody()); }
-function lcSetStart(v){ const s=lcLoad(); s.start=v; s.players.forEach(p=>p.life=v); lcSave(); lcRender(lcBody()); }
 function lcRender(body){ if(!body)return; const s=lcLoad();
   body.innerHTML='<div class="lc-wrap"><div class="lc-bar"><span style="font-size:11px;color:#444">Start:</span>'+
       '<button class="btn small'+(s.start===20?' primary':'')+'" data-lcstart="20">20</button>'+
       '<button class="btn small'+(s.start===40?' primary':'')+'" data-lcstart="40">40</button>'+
       '<span style="flex:1"></span><button class="btn small" data-lcreset>↺ Reset</button></div>'+
     s.players.map((p,i)=>'<div class="lc-player"><button class="lc-step" data-lc="'+i+'" data-d="-5">−5</button><button class="lc-step" data-lc="'+i+'" data-d="-1">−</button><div class="lc-life'+(p.life<=0?' dead':'')+'">'+p.life+'</div><button class="lc-step" data-lc="'+i+'" data-d="1">+</button><button class="lc-step" data-lc="'+i+'" data-d="5">+5</button></div>').join('')+'</div>';
-  body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); lcAdj(+b.getAttribute('data-lc'), +b.getAttribute('data-d')); }));
-  body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>lcSetStart(+b.getAttribute('data-lcstart'))));
-  body.querySelector('[data-lcreset]').addEventListener('click',lcReset);
+  // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
+  body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));
+  body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>{ s.start=+b.getAttribute('data-lcstart'); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); }));
+  body.querySelector('[data-lcreset]').addEventListener('click',()=>{ s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); });
 }
 function notesRefreshApp(){ const b=document.querySelector('#modal-prog-notes .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
 function notesRenderApp(body){
