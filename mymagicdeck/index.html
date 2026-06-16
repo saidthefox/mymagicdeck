@@ -1004,6 +1004,11 @@
     #wm-clock{font-size:11px;color:#000;flex-shrink:0;padding:0 8px;border-left:1px solid #808080}
     #wm-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.wm-on .mg-taskbar{display:none} /* the persistent #wm-taskbar replaces the desktop's own taskbar */
+    /* Mountable desktop widgets (HUD hub): small faded panels anchored on the desktop, under the windows */
+    .os-widget{position:absolute;z-index:12;width:208px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.93;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 8px rgba(0,0,0,.4)}
+    .os-widget .ow-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
+    .os-widget .ow-bar button{background:#c0c0c0;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:10px;font-weight:bold;width:16px;height:14px;line-height:1;padding:0;cursor:pointer;color:#000}
+    .os-widget .ow-body{padding:6px 8px;max-height:300px;overflow:auto;line-height:1.45}
   </style>
 </head>
 <body>
@@ -1706,6 +1711,7 @@ function saveToStorage(){
     else localStorage.removeItem('mmd_user');
   }catch(e){}
   if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite(); // mirror decks to the connected folder
+  if(typeof widgetRefreshAll==='function')widgetRefreshAll(); // keep desktop widgets (deck list) live
 }
 
 // Push a single deck to the API with sync indicator feedback
@@ -4362,6 +4368,7 @@ function deckosToggle(){
   else if(typeof wmReleaseSite==='function')wmReleaseSite();
 }
 deckosShellInit();
+if(typeof widgetRenderAll==='function')widgetRenderAll(); // restore mounted desktop widgets
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
 if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
   DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
@@ -4888,8 +4895,19 @@ function renderHud(){
   const b=document.getElementById('hud-body');if(!b)return;
   if(!state.user){b.innerHTML='<p style="color:var(--text-dim)">Sign in to see your published pages.</p>';return;}
   const rows=hudData().map(c=>'<div style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--border)"><span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+(c.up?'#39d353':'#888')+'"></span><div style="flex:1;min-width:0"><div style="color:var(--text);font-weight:600">'+_mgEsc(c.sub)+'</div><div style="color:var(--text-dim);font-size:.78rem">'+(c.up?('Deck: '+_mgEsc(c.deck||'(set)')):'Not published')+'</div></div><button class="btn small" onclick="closeModal(\'modal-hud\');mgwLaunch(\'share\')">Change</button></div>').join('');
-  b.innerHTML=rows+'<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" id="hud-anchor">📌 '+(hudAnchored?'Un-anchor':'Anchor to desktop')+'</button></div>';
+  // Desktop-widget manager: mount/unmount little panels onto the desktop.
+  const mounted=widgetList();
+  const avail=Object.keys(WIDGET_TYPES).map(t=>'<button class="btn small" data-mountw="'+t+'">+ '+_mgEsc(WIDGET_TYPES[t].title||t)+'</button>').join(' ');
+  const mountedHtml=mounted.length?mounted.map(w=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px;font-size:.82rem;color:var(--text)"><span>'+ (WIDGET_TYPES[w.type]?WIDGET_TYPES[w.type].icon+' '+_mgEsc(WIDGET_TYPES[w.type].title):_mgEsc(w.type))+'</span><button class="btn small" data-unmountw="'+w.id+'">Remove</button></div>').join(''):'<div style="color:var(--text-dim);font-size:.8rem;padding:2px">Nothing mounted.</div>';
+  b.innerHTML=rows+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop widgets</div>'+
+    '<div style="color:var(--text-dim);font-size:.76rem;padding:2px 0 6px">Pin live panels to your desktop:</div>'+
+    '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:6px">'+avail+'</div>'+
+    mountedHtml+
+    '<div style="display:flex;justify-content:flex-end;margin-top:12px"><button class="btn" id="hud-anchor">📌 '+(hudAnchored?'Un-anchor':'Anchor this HUD')+'</button></div>';
   const an=document.getElementById('hud-anchor');if(an)an.addEventListener('click',()=>{hudAnchored=!hudAnchored;if(hudAnchored){mgwClose('hud');hudRenderAnchor();}else{hudRemoveAnchor();renderHud();}});
+  b.querySelectorAll('[data-mountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetMount(btn.getAttribute('data-mountw')); renderHud(); DeckOS.ui.toast('Widget mounted on the desktop'); }));
+  b.querySelectorAll('[data-unmountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetUnmount(btn.getAttribute('data-unmountw')); renderHud(); }));
 }
 function hudRenderAnchor(){
   const d=document.getElementById('pc-desktop');if(!d)return;
@@ -5047,6 +5065,47 @@ function wmWireDrag(key, el){
     document.addEventListener('mousemove',mm); document.addEventListener('mouseup',mu);
   });
 }
+// ===== Desktop widgets (the HUD hub): mountable, draggable panels anchored on the desktop. =====
+const WIDGET_TYPES = {};
+function widgetRegister(type, def){ WIDGET_TYPES[type]=def; }
+function widgetList(){ try{ return DeckOS.store.get('widgets')||[]; }catch(e){ return []; } }
+function widgetSave(list){ try{ DeckOS.store.set('widgets', list); }catch(e){} }
+function widgetMount(type){ const def=WIDGET_TYPES[type]; if(!def)return; const list=widgetList(); const inst={ type, id:'w'+Math.random().toString(36).slice(2,8), x:24, y:24+list.length*18 }; list.push(inst); widgetSave(list); widgetRender(inst); }
+function widgetUnmount(id){ widgetSave(widgetList().filter(w=>w.id!==id)); const el=document.getElementById('widget-'+id); if(el)el.remove(); if(typeof renderHud==='function'&&document.getElementById('hud-body'))renderHud(); }
+function widgetRender(inst){
+  const d=document.getElementById('pc-desktop'); if(!d)return; const def=WIDGET_TYPES[inst.type]; if(!def)return;
+  let el=document.getElementById('widget-'+inst.id);
+  if(!el){ el=document.createElement('div'); el.id='widget-'+inst.id; el.className='os-widget';
+    el.innerHTML='<div class="ow-bar"><span>'+(def.icon||'🔲')+' '+_mgEsc(def.title||inst.type)+'</span><button data-wclose title="unmount">✕</button></div><div class="ow-body"></div>';
+    d.appendChild(el);
+    el.querySelector('[data-wclose]').addEventListener('click',e=>{ e.stopPropagation(); widgetUnmount(inst.id); });
+    widgetWireDrag(el, inst);
+  }
+  el.style.left=(inst.x||20)+'px'; el.style.top=(inst.y||20)+'px';
+  try{ def.render(el.querySelector('.ow-body'), inst); }catch(e){ el.querySelector('.ow-body').textContent='widget error'; }
+}
+function widgetRenderAll(){ widgetList().forEach(widgetRender); }
+function widgetRefreshAll(){ widgetList().forEach(inst=>{ const el=document.getElementById('widget-'+inst.id), def=WIDGET_TYPES[inst.type]; if(el&&def){ try{ def.render(el.querySelector('.ow-body'), inst); }catch(e){} } }); }
+function widgetWireDrag(el, inst){
+  const bar=el.querySelector('.ow-bar');
+  bar.addEventListener('pointerdown', e=>{ if(e.target.closest('button'))return; const sx=e.clientX, sy=e.clientY, ox=inst.x||20, oy=inst.y||20; e.preventDefault();
+    const mm=ev=>{ inst.x=Math.max(0,ox+ev.clientX-sx); inst.y=Math.max(0,oy+ev.clientY-sy); el.style.left=inst.x+'px'; el.style.top=inst.y+'px'; };
+    const up=()=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); const list=widgetList(), w=list.find(x=>x.id===inst.id); if(w){ w.x=inst.x; w.y=inst.y; widgetSave(list); } };
+    document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up);
+  });
+}
+// Built-in widget types
+widgetRegister('decklist', { title:'Deck List', icon:'📋', render(b){
+  const d=DeckOS.decks.active(); if(!d){ b.innerHTML='<div style="color:#555">No active deck.</div>'; return; }
+  const rows=Object.values(d.cards||{}).map(e=>((e.qty||1)+'× '+((e.card&&e.card.name)||'?')));
+  b.innerHTML='<div style="font-weight:bold;margin-bottom:4px">'+_mgEsc(d.name||'Untitled')+'</div>'+(rows.length?rows.map(r=>'<div>'+_mgEsc(r)+'</div>').join(''):'<div style="color:#555">empty</div>');
+}});
+widgetRegister('pagestatus', { title:'Page Status', icon:'📡', render(b){
+  if(!state.user){ b.innerHTML='<div style="color:#555">Sign in to see your pages.</div>'; return; }
+  b.innerHTML=hudData().map(c=>'<div style="display:flex;align-items:center;gap:6px;padding:1px 0"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(c.up?'#2c8a4a':'#999')+'"></span>'+_mgEsc(c.short)+(c.up&&c.deck?' · '+_mgEsc(c.deck):'')+'</div>').join('');
+}});
+if(window.DeckOS){ DeckOS.widgets={ register:widgetRegister, mount:widgetMount, unmount:widgetUnmount, types:()=>Object.keys(WIDGET_TYPES) }; }
+
 function wmWireResize(key, h){
   h.addEventListener('mousedown', e=>{
     const w=wmWins[key]; if(!w || w.state==='max')return; const sx=e.clientX, sy=e.clientY, ow=w.rect.w, oh=w.rect.h; wmFocus(key); e.preventDefault(); e.stopPropagation();
