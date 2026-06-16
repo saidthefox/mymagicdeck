@@ -978,14 +978,14 @@
     #site-window.site-mini{position:fixed;z-index:40;box-shadow:3px 3px 14px rgba(0,0,0,.6);cursor:grab;touch-action:none;-webkit-touch-callout:none;overflow:hidden;background:var(--bg,#0b0d12)}
     #site-window.site-mini.dragging{cursor:grabbing;opacity:.95}
     #site-window.site-mini *{pointer-events:none}
-    @media (max-width:900px){
-      #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
-      #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-      #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
-      body.pc-deskmode #pc-desktop, body.site-windowed #pc-desktop{display:block}
-      body.pc-deskmode #site-window{display:none}
-      body.pc-deskmode #mobile-nav, body.site-windowed #mobile-nav{display:none}
-    }
+    /* Deck OS shell — active whenever body.deckos is set (mobile always; desktop via the toggle). */
+    body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
+    body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    body.deckos #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
+    body.deckos.pc-deskmode #pc-desktop, body.deckos.site-windowed #pc-desktop{display:block}
+    body.deckos.pc-deskmode #site-window{display:none}
+    body.deckos.pc-deskmode #mobile-nav, body.deckos.site-windowed #mobile-nav{display:none}
+    @media (max-width:900px){ #deckos-toggle{display:none} } /* mobile = shell always on, no toggle needed */
   </style>
 </head>
 <body>
@@ -1006,6 +1006,7 @@
     <button class="btn" id="share-btn" onclick="openShare()">🔗 Share</button>
   </div>
   <div class="header-right" style="position:relative;">
+    <button class="btn" id="deckos-toggle" onclick="deckosToggle()" title="Toggle the Windows-95 Deck OS shell">🖥️ Deck OS</button>
     <div id="user-btn-area">
       <button class="btn" id="signin-btn" onclick="openAuth()">👤 Sign In</button>
       <div class="user-avatar" id="user-avatar" style="display:none;" onclick="toggleUserMenu()"></div>
@@ -4319,6 +4320,21 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   const splashOnly=/^[a-z0-9_-]+\.mymagicdeck\.com$/i.test(host)&&!host.startsWith('www');
   if(!splashOnly)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 });}
+// Deck OS shell toggle — mobile = always on; desktop = opt-in (persisted). Same machinery either way.
+function deckosSyncToggle(){ const b=document.getElementById('deckos-toggle'); if(b)b.textContent=document.body.classList.contains('deckos')?'🖥️ Classic':'🖥️ Deck OS'; }
+function deckosShellInit(){
+  const mobile=window.matchMedia('(max-width:900px)').matches; let on=mobile;
+  try{ if(localStorage.getItem('deckos_desktop')==='1')on=true; }catch(e){}
+  document.body.classList.toggle('deckos', on); deckosSyncToggle();
+}
+function deckosToggle(){
+  const on=!document.body.classList.contains('deckos');
+  try{ localStorage.setItem('deckos_desktop', on?'1':'0'); }catch(e){}
+  document.body.classList.toggle('deckos', on);
+  if(!on && typeof siteRestore==='function')siteRestore(); // leaving the shell: drop any min/window state
+  deckosSyncToggle();
+}
+deckosShellInit();
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
 if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
   DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
