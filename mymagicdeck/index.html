@@ -1120,6 +1120,19 @@
     .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
     .web-url{flex:1;min-width:0;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .web-frame{flex:1;min-height:0;width:100%;border:0;background:#fff;display:block}
+    /* In Deck OS the desktop File toolbar owns file ops, so hide MMD's header buttons
+       (deck name + sync stay). Classic mode keeps them — it has no desktop toolbar. */
+    body.deckos .header-deck-controls .btn{display:none}
+    /* Finder-style file browser (Open): folder tree of the user's decks */
+    .fb-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#000;display:flex;flex-direction:column;height:100%;min-height:300px}
+    .fb-bar{display:flex;gap:6px;align-items:center;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
+    .fb-list{flex:1;min-height:0;overflow:auto;background:#fff;padding:4px 0}
+    .fb-row{display:flex;align-items:center;gap:4px;padding:3px 8px;cursor:pointer;white-space:nowrap}
+    .fb-row:hover{background:#e3eeff}
+    .fb-file.sel{background:#1577d4;color:#fff}
+    .fb-tw{width:12px;display:inline-block;text-align:center;color:#555;flex-shrink:0}
+    .fb-meta{color:#888;font-size:10px;margin-left:6px}
+    .fb-empty{color:#666;padding:16px}
     /* HUD desktop-background swatches */
     .hud-bg-sw{display:inline-block;width:26px;height:26px;border:2px solid #fff;outline:1px solid #888;border-radius:4px;cursor:pointer;margin:0 6px 6px 0;vertical-align:middle}
     .hud-bg-sw.on{outline:2px solid #1577d4;border-color:#1577d4}
@@ -4806,6 +4819,7 @@ const MGW_APPS={
   splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:false, open:()=>previewSplash(),  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   decks:  {overlay:'modal-decks',    win:'.modal', title:'My Decks',       icon:'📂',  open:()=>openDeckManager(),close:()=>decksClose()},
+  import: {overlay:'modal-import',   win:'.modal', title:'Import Deck',     icon:'⬇',   open:()=>openImport(),     close:()=>closeModal('modal-import')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
   storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
@@ -5359,6 +5373,31 @@ function webMount(body, app){
   body.querySelector('[data-wbreload]').onclick=()=>{ try{ fr.contentWindow.location.reload(); }catch(e){ fr.src=fr.src; } };
   body.querySelector('[data-wbtab]').onclick=()=>{ window.open(app.url,'_blank','noopener'); };
 }
+// ===== Open — a Finder/Explorer window over the user's folder tree (decks are loadable) =====
+let _fbExpanded=null;
+function fbClose(){ if(typeof wmWins!=='undefined'&&wmWins.files)wmClose('files'); else closeModal('modal-prog-files'); }
+function fbLoadDeck(id){ if(!state.decks[id])return; mgActiveDeckId=id; loadDeck(id); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); fbClose(); if(typeof wmWins!=='undefined'&&wmWins.site&&typeof wmRestore==='function')wmRestore('site'); }
+function fbRender(body){ if(!body)return;
+  const fs=(typeof mgFs!=='undefined'&&mgFs)?mgFs:{folders:[],deckFolder:{},bin:[]};
+  if(_fbExpanded==null){ _fbExpanded=new Set((fs.folders||[]).map(f=>f.id)); _fbExpanded.add('__root'); }
+  const binned=new Set(fs.bin||[]);
+  const byParent={}; (fs.folders||[]).forEach(f=>{ (byParent[f.parent||'__root']=byParent[f.parent||'__root']||[]).push(f); });
+  const exists=fid=>fid&&(fs.folders||[]).some(f=>f.id===fid);
+  const decksByFolder={}; Object.values(state.decks||{}).forEach(d=>{ if(binned.has(d.id))return; const fid=exists(fs.deckFolder[d.id])?fs.deckFolder[d.id]:'__root'; (decksByFolder[fid]=decksByFolder[fid]||[]).push(d); });
+  const cardCount=d=>Object.values(d.cards||{}).reduce((s,e)=>s+(e.qty||0),0);
+  function node(folderId, depth){ let h='';
+    (byParent[folderId]||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(f=>{ const open=_fbExpanded.has(f.id);
+      h+='<div class="fb-row fb-folder" data-fbfolder="'+f.id+'" style="padding-left:'+(depth*16+6)+'px"><span class="fb-tw">'+(open?'▾':'▸')+'</span>📁 '+_mgEsc(f.name||'Folder')+'</div>';
+      if(open)h+=node(f.id, depth+1); });
+    (decksByFolder[folderId]||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(d=>{ h+='<div class="fb-row fb-file'+(d.id===(mgActiveDeckId||state.currentDeckId)?' sel':'')+'" data-fbdeck="'+d.id+'" style="padding-left:'+(depth*16+22)+'px">🗃️ '+_mgEsc(d.name||'Untitled')+'<span class="fb-meta">'+cardCount(d)+' cards</span></div>'; });
+    return h; }
+  const rootOpen=_fbExpanded.has('__root');
+  const tree='<div class="fb-row fb-folder" data-fbfolder="__root" style="padding-left:6px"><span class="fb-tw">'+(rootOpen?'▾':'▸')+'</span>🖥️ Desktop</div>'+(rootOpen?node('__root',1):'');
+  body.style.padding='0';
+  body.innerHTML='<div class="fb-wrap"><div class="fb-bar"><span style="font-size:11px;color:#444">Double-click a deck to open it</span></div><div class="fb-list">'+tree+'</div></div>';
+  body.querySelectorAll('[data-fbfolder]').forEach(el=>el.addEventListener('click',()=>{ const id=el.getAttribute('data-fbfolder'); if(_fbExpanded.has(id))_fbExpanded.delete(id); else _fbExpanded.add(id); fbRender(body); }));
+  body.querySelectorAll('[data-fbdeck]').forEach(el=>{ el.addEventListener('dblclick',()=>fbLoadDeck(el.getAttribute('data-fbdeck'))); el.addEventListener('click',()=>{ body.querySelectorAll('.fb-file.sel').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }); });
+}
 // ===== TWENTYFOURTY — two-player life counter (taps work for fingers + mouse) =====
 let _lcState=null;
 function lcLoad(){ if(!_lcState){ try{ _lcState=DeckOS.store.get('twentyfourty'); }catch(e){} if(!_lcState||!Array.isArray(_lcState.players))_lcState={start:20,players:[{life:20},{life:20}]}; } return _lcState; }
@@ -5596,6 +5635,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
+  DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
   deskBgApply(deskBgGet()); // restore desktop background
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
   if(typeof notesRenderAll==='function')notesRenderAll(); // instant local restore of placed notes
@@ -5884,7 +5924,7 @@ function mgRenderDesktop(){
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button><button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New Deck</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg95 mg-bvl">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-seldeck">Selected Deck: '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</span><span class="mg-vsep"></span><span class="mg-path">'+path+'</span></div>'+
+      '<div class="mg-toolbar">'+(mgToolCollapsed?'<button id="mg-file" class="mg95 mg-bvl">🗄 File</button>':'<button id="mg-newdeck" class="mg95 mg-bvl">🗃️ New</button><button id="mg-open" class="mg95 mg-bvl">🗂️ Open</button><button id="mg-newfolder" class="mg95 mg-bvl">📁 New Folder</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg95 mg-bvl">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg95 mg-bvl">💾 Save</button><button id="mg-import" class="mg95 mg-bvl">⬇ Import</button><button id="mg-share" class="mg95 mg-bvl">🔗 Share</button><button id="mg-fold" class="mg95 mg-bvl" title="collapse">⋮</button>')+'<span class="mg-seldeck">Selected Deck: '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</span><span class="mg-vsep"></span><span class="mg-path">'+path+'</span></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin">🗃️ CGG</button>':''):'<button id="mg-incard-win" class="mg-barwin active">🗃️ CGG</button>')+(embedded?'<button class="mg-barwin" data-site="1">✦ MyMagicDeck</button>':'')+mgwTaskbarHtml()+'</div>'+
       ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
@@ -5906,6 +5946,8 @@ function mgRenderDesktop(){
   const nd=document.getElementById('mg-newdeck');if(nd)nd.addEventListener('click',e=>{e.stopPropagation();newDeck();mgActiveDeckId=state.currentDeckId;mgRenamingDeckId=state.currentDeckId;mgRenderDesktop();});
   const rf=document.getElementById('mg-renamefolder');if(rf)rf.addEventListener('click',e=>{e.stopPropagation();const f=mgFs.folders.find(x=>x.id===mgCurrentFolder);if(!f)return;const nm=prompt('Folder name:',f.name||'New Folder');if(nm!=null){f.name=(nm.trim()||f.name);mgFsSave();mgRenderDesktop();}});
   const sv=document.getElementById('mg-save');if(sv)sv.addEventListener('click',e=>{e.stopPropagation();const id=mgActiveDeckId||state.currentDeckId;if(typeof saveToStorage==='function')saveToStorage();if(id&&typeof syncDeckToApi==='function'&&window.DeckOS&&!DeckOS.isLocal())syncDeckToApi(id);if(window.DeckOS&&DeckOS.store.backend==='folder')DeckOS.folderWrite();toast('Saved','success');});
+  const op=document.getElementById('mg-open');if(op)op.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('files');});
+  const im=document.getElementById('mg-import');if(im)im.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('import');});
   const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
   const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
   const file=document.getElementById('mg-file');if(file)file.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=false;mgRenderDesktop();});
