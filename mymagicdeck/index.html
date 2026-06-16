@@ -1925,6 +1925,7 @@ async function doAuth(){
     if(typeof mgRenderDesktop==='function')mgRenderDesktop(); // decks just loaded — refresh the desktop now
     if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();
     if(typeof tRefreshFeed==='function')tRefreshFeed(); // pull the matched tournament feed for the calendar/widget
+    if(typeof desktopPullRender==='function')desktopPullRender(); // load this account's pinned widgets/notes
     if(typeof renderHud==='function' && typeof wmWins!=='undefined' && wmWins.hud)renderHud(); // refresh an open HUD now that we're signed in
   }catch(e){
     err.textContent=e.message||'Something went wrong.';
@@ -1959,6 +1960,10 @@ function logout(){
   localStorage.removeItem('mmd_decks');
   localStorage.removeItem('mmd_current');
   newDeck();            // fresh empty workspace; token is gone so this won't sync
+  // Clear this account's desktop layout from the device too (it's saved on the server and
+  // reloads on next login) — so it can't bleed into the next account on this browser.
+  try{ if(window.DeckOS){ DeckOS.store.remove('widgets'); DeckOS.store.remove('notes'); } }catch(e){}
+  if(typeof desktopClearDom==='function')desktopClearDom();
   updateUserUI();
   closeUserMenu();
   toast('Signed out.');
@@ -5139,7 +5144,7 @@ function wmWireDrag(key, el){
 const WIDGET_TYPES = {};
 function widgetRegister(type, def){ WIDGET_TYPES[type]=def; }
 function widgetList(){ try{ return DeckOS.store.get('widgets')||[]; }catch(e){ return []; } }
-function widgetSave(list){ try{ DeckOS.store.set('widgets', list); }catch(e){} }
+function widgetSave(list){ try{ DeckOS.store.set('widgets', list); }catch(e){} desktopSyncSoon(); }
 function widgetMount(type){ const def=WIDGET_TYPES[type]; if(!def)return; const list=widgetList(); const inst={ type, id:'w'+Math.random().toString(36).slice(2,8), x:24, y:24+list.length*18 }; list.push(inst); widgetSave(list); widgetRender(inst); }
 function widgetUnmount(id){ widgetSave(widgetList().filter(w=>w.id!==id)); const el=document.getElementById('widget-'+id); if(el)el.remove(); if(typeof renderHud==='function'&&document.getElementById('hud-body'))renderHud(); }
 function widgetSetPinned(id, pinned){ const list=widgetList(), w=list.find(x=>x.id===id); if(!w)return; w.pinned=pinned; widgetSave(list); const el=document.getElementById('widget-'+id); if(el){ el.classList.toggle('pinned', pinned); const pb=el.querySelector('[data-wpin]'); if(pb)pb.textContent=pinned?'📍':'📌'; } }
@@ -5184,7 +5189,7 @@ if(window.DeckOS){ DeckOS.widgets={ register:widgetRegister, mount:widgetMount, 
 // place, exactly like a pinned widget. Unpinned it's a normal draggable sticky; "put away"
 // (✕) keeps it as a saved file you can re-show from the Notes app. =====
 function notesList(){ try{ return DeckOS.store.get('notes')||[]; }catch(e){ return []; } }
-function notesSave(list){ try{ DeckOS.store.set('notes', list); }catch(e){} }
+function notesSave(list){ try{ DeckOS.store.set('notes', list); }catch(e){} desktopSyncSoon(); }
 function notesGet(id){ return notesList().find(n=>n.id===id); }
 function notesUpdate(id, patch){ const list=notesList(), n=list.find(x=>x.id===id); if(!n)return; Object.assign(n, patch); notesSave(list); return n; }
 function notesCreate(){ const list=notesList(); const n={ id:'n'+Math.random().toString(36).slice(2,8), title:'Note', body:'', pinned:false, placed:true, x:40+(list.length%6)*18, y:40+(list.length%6)*18 }; list.push(n); notesSave(list); noteRender(n); return n.id; }
@@ -5220,6 +5225,20 @@ function noteWireDrag(el, id){
   });
 }
 function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }); }
+// ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
+// Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
+let _deskSyncTimer=null;
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList()}})}).catch(()=>{}); }, 600); }
+function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
+async function desktopPullRender(){
+  if(state.user&&apiToken()){
+    try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); }
+      else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
+    }catch(e){}
+  }
+  desktopClearDom(); widgetRenderAll(); notesRenderAll();
+}
 function notesRefreshApp(){ const b=document.querySelector('#modal-prog-notes .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
 function notesRenderApp(body){
   body._notesMounted=true; const list=notesList();
@@ -5437,8 +5456,9 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
-  if(typeof widgetRenderAll==='function')widgetRenderAll(); // restore mounted desktop widgets (runs after DeckOS is defined)
-  if(typeof notesRenderAll==='function')notesRenderAll(); // restore notes placed on the desktop
+  if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
+  if(typeof notesRenderAll==='function')notesRenderAll(); // instant local restore of placed notes
+  if(state.user&&apiToken()&&typeof desktopPullRender==='function')desktopPullRender(); // then reconcile with this account's server-saved layout
 }
 // ===== Tournaments (Phase 3): post events, subscribe by parameters, matched feed =====
 // Posters create tournaments with match parameters; players subscribe with the params

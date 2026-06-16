@@ -122,6 +122,13 @@ db.exec(`CREATE TABLE IF NOT EXISTS user_fs (
   data       TEXT NOT NULL DEFAULT '{}',
   updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 );`);
+// Per-account desktop layout: mounted widgets + notes (so a pinned layout follows the
+// account across log-out / log-in / browsers, not just one device's localStorage).
+db.exec(`CREATE TABLE IF NOT EXISTS user_desktop (
+  user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  data       TEXT NOT NULL DEFAULT '{}',
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);`);
 
 // oracle_id → every set it's been printed in (for set-list formats like
 // Middle School / Alpha-to-Alliances-Ante that Scryfall doesn't track as legalities).
@@ -1894,6 +1901,22 @@ app.put('/api/fs', { preHandler: authenticate }, async (req, reply) => {
   const json = JSON.stringify(data);
   if (json.length > 200000) return reply.code(413).send({ error: 'filesystem too large' });
   db.prepare(`INSERT INTO user_fs (user_id, data, updated_at) VALUES (?, ?, unixepoch())
+    ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = unixepoch()`).run(req.user.sub, json);
+  return { ok: true };
+});
+
+// ── Desktop layout (mounted widgets + notes), synced per account ──────────────
+app.get('/api/desktop', { preHandler: authenticate }, async (req) => {
+  const row = db.prepare('SELECT data FROM user_desktop WHERE user_id = ?').get(req.user.sub);
+  let data = {}; try { data = JSON.parse(row && row.data || '{}'); } catch (_) {}
+  return { data };
+});
+app.put('/api/desktop', { preHandler: authenticate }, async (req, reply) => {
+  const data = (req.body || {}).data;
+  if (data == null || typeof data !== 'object') return reply.code(400).send({ error: 'data object required' });
+  const json = JSON.stringify(data);
+  if (json.length > 300000) return reply.code(413).send({ error: 'desktop layout too large' });
+  db.prepare(`INSERT INTO user_desktop (user_id, data, updated_at) VALUES (?, ?, unixepoch())
     ON CONFLICT(user_id) DO UPDATE SET data = excluded.data, updated_at = unixepoch()`).run(req.user.sub, json);
   return { ok: true };
 });
