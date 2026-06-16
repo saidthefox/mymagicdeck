@@ -54,6 +54,17 @@ try {
 
   const nf = await J('/battle/ZZZZZ');
   assert(nf.status === 404, 'GET unknown room → 404');
+
+  // --- error monitoring ---
+  const cl = await J('/clientlog', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ message: 'smoke-test-error', stack: 'x', url: 'test' }) });
+  assert(cl.status === 200 && cl.body && cl.body.ok, 'POST /clientlog accepts a client error');
+  const ak = process.env.ADMIN_API_KEY;
+  if (ak) {
+    const ae = await J('/admin/errors', { headers: { 'x-admin-key': ak } });
+    assert(ae.status === 200 && Array.isArray(ae.body.errors) && ae.body.errors.some(e => e.message === 'smoke-test-error'), 'GET /admin/errors lists logged errors');
+    const noauth = await J('/admin/errors');
+    assert(noauth.status === 503 || noauth.status === 403, 'GET /admin/errors without key is blocked');
+  } else { console.log('  (skipped admin/errors assert: no ADMIN_API_KEY)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
 }

@@ -1639,6 +1639,17 @@ async function apiFetch(path,opts={}){
   if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));const err=new Error(body.error||'Request failed');err.status=res.status;throw err}
   return res.json();
 }
+// Client error beacon → /api/clientlog (throttled, deduped, best-effort; never throws).
+(function(){
+  let last=0; const seen=new Set();
+  function report(message,stack){
+    const now=Date.now(); if(now-last<4000)return; const key=String(message||'').slice(0,80); if(seen.has(key))return;
+    last=now; seen.add(key); if(seen.size>40)seen.clear();
+    try{ fetch(API_BASE+'/clientlog',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:String(message||'').slice(0,1000),stack:String(stack||'').slice(0,4000),url:location.href})}).catch(()=>{}); }catch(e){}
+  }
+  window.addEventListener('error',e=>report(e.message,e.error&&e.error.stack));
+  window.addEventListener('unhandledrejection',e=>{const r=e&&e.reason;report((r&&r.message)||String(r),r&&r.stack);});
+})();
 
 // ── DB seeding status polling ────────────────────────────────────────────────
 let _dbStatusInterval=null;

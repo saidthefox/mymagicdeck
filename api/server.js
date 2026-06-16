@@ -205,6 +205,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS battles (
 // Reap rooms older than 6h.
 setInterval(() => { try { db.prepare('DELETE FROM battles WHERE updated_at < ?').run(Math.floor(Date.now()/1000) - 6*3600); } catch (_) {} }, 30*60*1000);
 
+// App-level error monitoring — a capped ring of recent server + client errors (admin-viewable).
+db.exec(`CREATE TABLE IF NOT EXISTS errors (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts INTEGER NOT NULL DEFAULT (unixepoch()),
+  kind TEXT NOT NULL,        -- 'server' | 'client'
+  where_ TEXT, message TEXT, stack TEXT, ua TEXT
+)`);
+function recordError(kind, f) {
+  try {
+    db.prepare('INSERT INTO errors (kind, where_, message, stack, ua) VALUES (?,?,?,?,?)').run(
+      kind, (f.where || '').slice(0, 300), (f.message || '').slice(0, 1000), (f.stack || '').slice(0, 4000), (f.ua || '').slice(0, 300));
+    db.prepare('DELETE FROM errors WHERE id NOT IN (SELECT id FROM errors ORDER BY id DESC LIMIT 500)').run();
+  } catch (_) {}
+}
+
 // ── Card refresh state ────────────────────────────────────────────────────────
 let _cardRefreshState = { status: 'idle', started: null, finished: null, count: 0, error: null };
 let _cardRefreshRunning = false;
@@ -1173,7 +1188,27 @@ function rateLimitReport(req, reply, done) {
 }
 setInterval(() => { const c = Date.now() - REPORT_WINDOW; for (const [k, b] of _reportBuckets) if (b.start < c) _reportBuckets.delete(k); }, 30 * 60 * 1000);
 
+// Global error handler — record 5xx (real bugs), keep normal 4xx quiet.
+app.setErrorHandler((err, req, reply) => {
+  const status = err.statusCode || 500;
+  if (status >= 500) {
+    app.log.error(err);
+    recordError('server', { where: (req.method || '') + ' ' + (req.url || ''), message: err.message, stack: err.stack, ua: req.headers['user-agent'] });
+  }
+  reply.code(status).send({ error: status >= 500 ? 'Something went wrong.' : (err.message || 'Request failed') });
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
+
+// Client error beacon (rate-limited, no auth) + admin view.
+app.post('/api/clientlog', { preHandler: rateLimitReport }, async (req) => {
+  const b = req.body || {};
+  recordError('client', { where: b.url, message: b.message, stack: b.stack, ua: req.headers['user-agent'] });
+  return { ok: true };
+});
+app.get('/api/admin/errors', { preHandler: adminOnly }, async () => {
+  return { errors: db.prepare('SELECT id, ts, kind, where_ AS loc, message, stack FROM errors ORDER BY id DESC LIMIT 100').all() };
+});
 
 // Health check
 app.get('/api/health', async () => ({ ok: true }));
