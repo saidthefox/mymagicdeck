@@ -42,6 +42,15 @@
       --green: #4caf7d; --colorless: #7a87a0; --gold: #d4a843;
       --card-w: 120px; --card-h: 167px; --stack-offset: 30px;
     }
+    /* Light mode (opt-in via System Settings / HUD). Flips the theme vars; the Win95
+       program windows keep their own grey skin (.mgw-win override). */
+    body.theme-light {
+      --bg: #f3f5f9; --surface: #ffffff; --surface2: #eef1f6; --surface3: #e2e7f0;
+      --border: #d4dae6; --border-strong: #b9c2d4; --accent: #2f6fe0; --accent-hover: #205fce;
+      --accent-dim: rgba(47,111,224,0.12);
+      --text: #222732; --text-dim: #5d6677; --text-bright: #10131a;
+      --shadow: 0 4px 24px rgba(40,60,100,0.18);
+    }
     ::-webkit-scrollbar { width: 5px; height: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 3px; }
@@ -1155,8 +1164,11 @@
     .mp-garg{width:clamp(42px,11vw,60px);height:auto;cursor:pointer;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));transition:transform .1s}
     .mp-garg:active{transform:translateY(2px) scale(.96)}
     .mp-garg .mp-mouth{transform-box:fill-box;transform-origin:center}
-    .mp-garg.mp-anim .mp-mouth{animation:mp-chomp .26s ease}
-    @keyframes mp-chomp{50%{transform:scaleY(1.55)}}
+    .mp-garg.mp-spit{animation:mp-lean .32s ease} .mp-garg.mp-slurp{animation:mp-rear .32s ease}
+    .mp-garg.mp-spit .mp-mouth,.mp-garg.mp-slurp .mp-mouth{animation:mp-chomp .28s ease}
+    @keyframes mp-chomp{50%{transform:scaleY(1.6)}}
+    @keyframes mp-lean{40%{transform:translateY(5px) rotate(2deg) scaleY(1.04)}}
+    @keyframes mp-rear{40%{transform:translateY(-5px) rotate(-2deg)}}
     .mp-count{font-family:'Courier New',monospace;font-weight:800;font-size:1.05rem;min-width:22px;text-align:center;color:#fff}
     .mp-pool{flex:1;min-height:0;position:relative}
     .mp-pool canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
@@ -5336,7 +5348,8 @@ function renderSysset(){
     '<div style="display:flex;gap:8px;padding:6px 2px"><input id="ss-modurl" placeholder="https://…/mod.js" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem"><button class="btn" id="ss-modadd">Install</button></div>'+
     '<label style="display:flex;align-items:center;gap:7px;padding:2px 2px 6px;color:var(--text-dim);font-size:.76rem"><input type="checkbox" id="ss-modsandbox" checked> Run sandboxed (recommended)</label>'+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Game</div>'+
-    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px"><span>Card Guesser game</span><input type="checkbox" id="ss-cgg" '+(mguessDisabled()?'':'checked')+'></label>';
+    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 2px"><span>Card Guesser game</span><input type="checkbox" id="ss-cgg" '+(mguessDisabled()?'':'checked')+'></label>'+
+    displaySettingsHtml();
   const lc=document.getElementById('ss-local');if(lc)lc.addEventListener('change',()=>{if(window.DeckOS){DeckOS.mode=lc.checked?'local':'hosted';DeckOS.applyMode();DeckOS.ui.toast(lc.checked?'Personal mode on':'Connected mode on');}});
   const ex=document.getElementById('ss-export');if(ex)ex.addEventListener('click',()=>DeckOS.exportDecks());
   const ib=document.getElementById('ss-import-btn'),inp=document.getElementById('ss-import');if(ib&&inp){ib.addEventListener('click',()=>inp.click());inp.addEventListener('change',()=>{if(inp.files&&inp.files[0])DeckOS.importDecks(inp.files[0]);});}
@@ -5347,6 +5360,7 @@ function renderSysset(){
   b.querySelectorAll('[data-rmsmod]').forEach(btn=>btn.addEventListener('click',()=>{DeckOS.removeSandboxMod(btn.getAttribute('data-rmsmod'));renderSysset();DeckOS.ui.toast('Mod removed (reload to unload it)');}));
   const ma=document.getElementById('ss-modadd');if(ma)ma.addEventListener('click',async()=>{const u=document.getElementById('ss-modurl').value;const sb=document.getElementById('ss-modsandbox');const ok=(sb&&sb.checked)?DeckOS.installSandboxMod(u):await DeckOS.installMod(u);if(ok)renderSysset();});
   const c=document.getElementById('ss-cgg');if(c)c.addEventListener('change',()=>{mguessSetDisabled(!c.checked);});
+  wireDisplaySettings(b);
 }
 // HUD: live status of your published subdomain page(s). (Pin the Page Status widget for a desktop version.)
 function hudData(){
@@ -5367,18 +5381,15 @@ function renderHud(){
   const mounted=widgetList();
   const avail=Object.keys(WIDGET_TYPES).map(t=>'<button class="btn small" data-mountw="'+t+'">+ '+_mgEsc(WIDGET_TYPES[t].title||t)+'</button>').join(' ');
   const mountedHtml=mounted.length?mounted.map(w=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px;font-size:.82rem;color:var(--text)"><span>'+ (WIDGET_TYPES[w.type]?WIDGET_TYPES[w.type].icon+' '+_mgEsc(WIDGET_TYPES[w.type].title):_mgEsc(w.type))+'</span><button class="btn small" data-unmountw="'+w.id+'">Remove</button></div>').join(''):'<div style="color:var(--text-dim);font-size:.8rem;padding:2px">Nothing mounted.</div>';
-  const curBg=(typeof deskBgGet==='function'?deskBgGet():'');
-  const swatches=DESK_BGS.map(([val,name,col])=>'<span class="hud-bg-sw'+(val===curBg?' on':'')+'" data-bg="'+val+'" title="'+name+'" style="background:'+col+'"></span>').join('');
   b.innerHTML=rows+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop widgets</div>'+
     '<div style="color:var(--text-dim);font-size:.76rem;padding:2px 0 6px">Pin live panels to your desktop:</div>'+
     '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:6px">'+avail+'</div>'+
     mountedHtml+
-    '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop background</div>'+
-    '<div style="padding:4px 0">'+swatches+'</div>';
+    displaySettingsHtml();
   b.querySelectorAll('[data-mountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetMount(btn.getAttribute('data-mountw')); renderHud(); DeckOS.ui.toast('Widget mounted on the desktop'); }));
   b.querySelectorAll('[data-unmountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetUnmount(btn.getAttribute('data-unmountw')); renderHud(); }));
-  b.querySelectorAll('[data-bg]').forEach(sw=>sw.addEventListener('click',()=>deskBgSet(sw.getAttribute('data-bg'))));
+  wireDisplaySettings(b);
 }
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
@@ -5688,9 +5699,26 @@ async function desktopPullRender(){
 }
 // ===== Desktop background (set from the HUD; persisted locally + per-account) =====
 const DESK_BGS=[['','Default (teal)','#017e7e'],['#000080','Navy','#000080'],['#2f4f6f','Slate','#2f4f6f'],['#3a3a3a','Graphite','#3a3a3a'],['#3b2a5a','Purple','#3b2a5a'],['#1f5132','Forest','#1f5132'],['#5a2a2a','Maroon','#5a2a2a'],['#101218','Midnight','#101218']];
+// ── Theme (light / dark) — persisted in DeckOS store + localStorage so it applies in classic too ──
+function themeGet(){ try{ const t=(window.DeckOS&&DeckOS.store.get('theme'))||localStorage.getItem('mmd_theme'); return t==='light'?'light':'dark'; }catch(e){ return 'dark'; } }
+function themeApply(t){ document.body.classList.toggle('theme-light', t==='light'); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content', t==='light'?'#f3f5f9':'#0f1117'); }
+function themeSet(t){ t=t==='light'?'light':'dark'; try{ if(window.DeckOS)DeckOS.store.set('theme',t); }catch(e){} try{ localStorage.setItem('mmd_theme',t); }catch(e){} themeApply(t); document.querySelectorAll('[data-theme]').forEach(c=>{c.checked=(t==='light');}); }
+// Shared Appearance block (light mode + desktop background) used by both HUD and System Settings.
+function displaySettingsHtml(){
+  const curBg=(typeof deskBgGet==='function'?deskBgGet():''); const light=themeGet()==='light';
+  const swatches=DESK_BGS.map(([val,name,col])=>'<span class="hud-bg-sw'+(val===curBg?' on':'')+'" data-bg="'+val+'" title="'+name+'" style="background:'+col+'"></span>').join('');
+  return '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Appearance</div>'+
+    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 2px"><span>Light mode</span><input type="checkbox" data-theme '+(light?'checked':'')+'></label>'+
+    '<div style="color:var(--text-dim);font-size:.74rem;padding:2px 2px 4px">Desktop background</div>'+
+    '<div style="padding:2px 0">'+swatches+'</div>';
+}
+function wireDisplaySettings(b){
+  b.querySelectorAll('[data-bg]').forEach(sw=>sw.addEventListener('click',()=>deskBgSet(sw.getAttribute('data-bg'))));
+  const th=b.querySelector('[data-theme]'); if(th)th.addEventListener('change',()=>themeSet(th.checked?'light':'dark'));
+}
 function deskBgGet(){ try{ return DeckOS.store.get('deskbg')||''; }catch(e){ return ''; } }
 function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(d)d.style.setProperty('--desk-bg', c||'#017e7e'); } // .mg-desk paints over #pc-desktop, so drive both via the var
-function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApply(c); desktopSyncSoon(); if(typeof renderHud==='function'&&document.getElementById('hud-body'))renderHud(); }
+function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApply(c); desktopSyncSoon(); document.querySelectorAll('[data-bg]').forEach(sw=>sw.classList.toggle('on', sw.getAttribute('data-bg')===c)); }
 // ===== Web shortcuts — load an external MTG site inside a Win95 program window.
 // Only works for sites that allow framing (e.g. mtgtop8); blocked sites (scryfall, edhrec…)
 // refuse to embed, so every window also offers "Open ↗" in a real tab as a fallback. =====
@@ -6159,6 +6187,13 @@ function mpGargSvg(hex,k,name){
 }
 function mpLoad(){ try{ const s=DeckOS.store.get('manapool'); if(s&&s.counts)return {counts:Object.assign({W:0,U:0,B:0,R:0,G:0,C:0},s.counts)}; }catch(e){} return {counts:{W:0,U:0,B:0,R:0,G:0,C:0}}; }
 function mpSave(st){ try{ DeckOS.store.set('manapool',{counts:st.counts}); }catch(e){} }
+let _mpAC=null;
+function mpAudio(){ if(_mpAC)return _mpAC; try{ _mpAC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ _mpAC=null; } return _mpAC; }
+function mpPlink(k,reverse){ const ac=mpAudio(); if(!ac)return; if(ac.state==='suspended'){try{ac.resume();}catch(e){}} const base={W:660,U:523,B:392,R:494,G:440,C:587}[k]||500; const t=ac.currentTime;
+  const o=ac.createOscillator(),g=ac.createGain(); o.type='triangle';
+  o.frequency.setValueAtTime(reverse?base*0.75:base*1.3,t); o.frequency.exponentialRampToValueAtTime(reverse?base*1.5:base*0.72,t+0.15);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.075,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.24); }
 function mpRender(body){
   if(!body)return; if(body._mpStop)body._mpStop();
   const st=mpLoad();
@@ -6171,16 +6206,16 @@ function mpRender(body){
     +'<div class="mp-pool"><span class="mp-poollbl">Mana Pool</span><button class="mp-clear">Empty</button><canvas></canvas></div></div>';
   const poolEl=body.querySelector('.mp-pool'), canvas=body.querySelector('canvas'), ctx=canvas.getContext('2d');
   const colOf={}; MP_COLORS.forEach(c=>colOf[c.k]=c.hex);
-  const orbs=[]; let W=1,H=1; const dpr=Math.min(window.devicePixelRatio||1,2);
+  const orbs=[],ripples=[]; let W=1,H=1; const dpr=Math.min(window.devicePixelRatio||1,2);
   function resize(){ const r=poolEl.getBoundingClientRect(); if(r.width<2)return; W=r.width;H=r.height; canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); }
   const mouthX=k=>{ const i=MP_COLORS.findIndex(c=>c.k===k); return (i+0.5)/MP_COLORS.length*W; };
   const orbR=()=>Math.max(9,Math.min(16,W/40));
-  function spawn(k){ const R=orbR(); orbs.push({k,x:mouthX(k)+(Math.random()*10-5),y:-R,vx:(Math.random()*2-1)*0.6,vy:2.2+Math.random()*1.2,r:R,slurp:false}); }
-  function seed(){ orbs.length=0; MP_COLORS.forEach(c=>{ const n=Math.min(st.counts[c.k]||0,60); for(let j=0;j<n;j++)orbs.push({k:c.k,x:Math.random()*W,y:H*0.35+Math.random()*H*0.6,vx:Math.random()*2-1,vy:0,r:orbR(),slurp:false}); }); }
+  function spawn(k){ const R=orbR(); orbs.push({k,x:mouthX(k)+(Math.random()*10-5),y:-R,vx:(Math.random()*2-1)*0.6,vy:2.2+Math.random()*1.2,r:R,slurp:false,landed:false}); }
+  function seed(){ orbs.length=0; MP_COLORS.forEach(c=>{ const n=Math.min(st.counts[c.k]||0,60); for(let j=0;j<n;j++)orbs.push({k:c.k,x:Math.random()*W,y:H*0.35+Math.random()*H*0.6,vx:Math.random()*2-1,vy:0,r:orbR(),slurp:false,landed:true}); }); }
   const setCount=k=>{ const el=body.querySelector('[data-count="'+k+'"]'); if(el)el.textContent=st.counts[k]||0; };
-  function chomp(k){ const g=body.querySelector('[data-slurp="'+k+'"]'); if(g){ g.classList.remove('mp-anim'); void g.offsetWidth; g.classList.add('mp-anim'); } }
-  function add(k){ st.counts[k]=(st.counts[k]||0)+1; mpSave(st); setCount(k); chomp(k); if(orbs.filter(o=>!o.slurp).length<140)spawn(k); }
-  function slurp(k){ if((st.counts[k]||0)<=0)return; st.counts[k]--; mpSave(st); setCount(k); chomp(k); const cand=orbs.filter(o=>o.k===k&&!o.slurp); if(cand.length){ const o=cand[(Math.random()*cand.length)|0]; o.slurp=true; o.tx=mouthX(k); o.ty=-o.r*2; } }
+  function chomp(k,dir){ const g=body.querySelector('[data-slurp="'+k+'"]'); if(g){ g.classList.remove('mp-spit','mp-slurp'); void g.offsetWidth; g.classList.add(dir==='slurp'?'mp-slurp':'mp-spit'); } }
+  function add(k){ const ac=mpAudio(); if(ac&&ac.state==='suspended'){try{ac.resume();}catch(e){}} st.counts[k]=(st.counts[k]||0)+1; mpSave(st); setCount(k); chomp(k,'spit'); if(orbs.filter(o=>!o.slurp).length<140)spawn(k); }
+  function slurp(k){ if((st.counts[k]||0)<=0)return; st.counts[k]--; mpSave(st); setCount(k); chomp(k,'slurp'); mpPlink(k,true); const cand=orbs.filter(o=>o.k===k&&!o.slurp); if(cand.length){ const o=cand[(Math.random()*cand.length)|0]; o.slurp=true; o.tx=mouthX(k); o.ty=-o.r*2; } }
   body.querySelectorAll('[data-add]').forEach(el=>el.addEventListener('click',()=>add(el.getAttribute('data-add'))));
   body.querySelectorAll('[data-slurp]').forEach(el=>el.addEventListener('click',()=>slurp(el.getAttribute('data-slurp'))));
   body.querySelector('.mp-clear').addEventListener('click',()=>{ MP_COLORS.forEach(c=>st.counts[c.k]=0); mpSave(st); MP_COLORS.forEach(c=>setCount(c.k)); orbs.length=0; });
@@ -6195,10 +6230,12 @@ function mpRender(body){
       if(o.slurp){ o.x+=(o.tx-o.x)*0.18; o.y+=(o.ty-o.y)*0.18; if(o.y<-o.r){orbs.splice(i,1);continue;} }
       else{ o.vy+=0.12; o.vx+=(Math.random()*2-1)*0.15; o.vx*=0.985; o.vy*=0.99; o.x+=o.vx; o.y+=o.vy;
         if(o.x<o.r){o.x=o.r;o.vx=Math.abs(o.vx)*0.6;} if(o.x>W-o.r){o.x=W-o.r;o.vx=-Math.abs(o.vx)*0.6;}
-        if(o.y>H-o.r){o.y=H-o.r;o.vy=-Math.abs(o.vy)*0.45;} }
+        if(o.y>H-o.r){o.y=H-o.r;o.vy=-Math.abs(o.vy)*0.45; if(!o.landed){o.landed=true; ripples.push({x:o.x,y:H-3,k:o.k,t:0}); mpPlink(o.k,false);} } }
     }
     for(let a=0;a<orbs.length;a++)for(let b=a+1;b<orbs.length;b++){ const o=orbs[a],p=orbs[b]; if(o.slurp||p.slurp)continue; let dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy),m=o.r+p.r-2; if(d>0&&d<m){ const f=(m-d)/d*0.5; dx*=f;dy*=f; o.x-=dx;o.y-=dy;p.x+=dx;p.y+=dy; } }
     for(const o of orbs){ const g=ctx.createRadialGradient(o.x-o.r*0.35,o.y-o.r*0.4,o.r*0.15,o.x,o.y,o.r); g.addColorStop(0,'#ffffffcc'); g.addColorStop(0.35,colOf[o.k]); g.addColorStop(1,'rgba(0,0,0,0.35)'); ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7); ctx.fillStyle=g; ctx.shadowColor=colOf[o.k]; ctx.shadowBlur=9; ctx.fill(); ctx.shadowBlur=0; }
+    // landing ripples: expanding colored ring + brief glow at the splash point
+    for(let i=ripples.length-1;i>=0;i--){ const rp=ripples[i]; rp.t++; const a=1-rp.t/28; if(a<=0){ripples.splice(i,1);continue;} const rad=4+rp.t*1.7; ctx.beginPath(); ctx.ellipse(rp.x,rp.y,rad,rad*0.42,0,0,7); ctx.strokeStyle=colOf[rp.k]; ctx.globalAlpha=a*0.8; ctx.lineWidth=2; ctx.stroke(); ctx.globalAlpha=1; }
     body._mpRAF=requestAnimationFrame(step);
   }
   body._mpStop=()=>{ if(body._mpRAF){cancelAnimationFrame(body._mpRAF);body._mpRAF=null;} if(ro){try{ro.disconnect();}catch(e){}} };
@@ -6219,6 +6256,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'mymagicbot', title:'MyMagicBot', icon:'🤖', width:'540px', mount(body){ mmbRender(body); } });
   if(state.user&&apiToken()&&typeof mailRefreshBadge==='function')mailRefreshBadge();
   deskBgApply(deskBgGet()); // restore desktop background
+  themeApply(themeGet());   // restore light/dark theme
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
   if(typeof notesRenderAll==='function')notesRenderAll(); // instant local restore of placed notes
   if(state.user&&apiToken()&&typeof desktopPullRender==='function')desktopPullRender(); // then reconcile with this account's server-saved layout
