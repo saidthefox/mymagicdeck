@@ -1993,9 +1993,12 @@ function openAuth(mode='login'){_authMode=mode;_updateAuthUI();document.getEleme
 // In Deck OS the bare auth modal (z1000) spawns under the focused MyMagicDeck window
 // (wm-layer, z1500). Route Sign In through the Account program so it opens as a proper
 // framed window on top; in classic mode just open the modal.
-function signInClick(){
-  if(document.body.classList.contains('wm-on') && typeof mgLaunchApp==='function' && MGW_APPS['account']){ mgLaunchApp('account'); }
-  else openAuth('login');
+function signInClick(mode){
+  mode=mode||'login';
+  if(document.body.classList.contains('wm-on') && typeof mgLaunchApp==='function' && MGW_APPS['account']){
+    mgLaunchApp('account');                                  // framed Account window in the WM layer
+    if(mode!=='login'){ _authMode=mode; if(typeof _updateAuthUI==='function')_updateAuthUI(); } // flip to signup in-place
+  } else openAuth(mode);
 }
 function toggleAuthMode(){_authMode=_authMode==='login'?'signup':'login';_updateAuthUI()}
 function _updateAuthUI(){
@@ -2164,7 +2167,7 @@ function openShare(){
   const deck=currentDeck();
   if(!deck){body.innerHTML='<p style="color:var(--text-dim)">No deck to share.</p>';openModal('modal-share');return;}
   if(!state.user){
-    body.innerHTML=`<div class="share-login-note">Sign in to get a shareable URL and set a splash deck.<br/><br/><a onclick="closeModal('modal-share');openAuth('login')">Sign in</a> &nbsp;·&nbsp; <a onclick="closeModal('modal-share');openAuth('signup')">Create account</a></div>
+    body.innerHTML=`<div class="share-login-note">Sign in to get a shareable URL and set a splash deck.<br/><br/><a onclick="closeModal('modal-share');signInClick('login')">Sign in</a> &nbsp;·&nbsp; <a onclick="closeModal('modal-share');signInClick('signup')">Create account</a></div>
       <div class="share-download" style="margin-top:16px;padding-top:0;border-top:none">
         <button class="btn" onclick="downloadDeckTxt()">⬇ Download .txt</button>
         <button class="btn" onclick="splashCopyListFromCurrent()">📋 Copy List</button>
