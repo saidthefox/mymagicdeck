@@ -1795,6 +1795,34 @@ app.post('/api/auth/reset', { preHandler: rateLimitAuth }, async (req, reply) =>
   return { ok: true };
 });
 
+// ── DELETE /api/account  (permanent account + data deletion) ──────────────────
+// Requires the current password (a stolen token alone can't nuke an account).
+// Removes everything tied to the user: decks/uploads/fs/desktop/reset tokens
+// cascade from the users row; tournaments/subs/rsvps/mail and on-disk upload
+// files are cleared explicitly (no FK cascade on those).
+app.delete('/api/account', { preHandler: [authenticate, rateLimitAuth] }, async (req, reply) => {
+  const uid = req.user.sub;
+  const password = (req.body || {}).password;
+  const rec = db.prepare('SELECT password FROM users WHERE id = ?').get(uid);
+  if (!rec) return reply.code(404).send({ error: 'Account not found.' });
+  if (typeof password !== 'string' || !(await bcrypt.compare(password, rec.password))) {
+    return reply.code(403).send({ error: 'Password is incorrect.' });
+  }
+  // Delete on-disk uploads first (DB rows cascade from the users row below).
+  try { fs.rmSync(path.join(UPLOAD_DIR, String(uid)), { recursive: true, force: true }); } catch (_) { /* none */ }
+  const purge = db.transaction(() => {
+    db.prepare('DELETE FROM mail WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM tournament_subs WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM tournament_rsvps WHERE user_id = ?').run(uid);
+    db.prepare('DELETE FROM tournaments WHERE host_id = ?').run(uid);
+    db.prepare('UPDATE upload_reports SET reporter = NULL WHERE reporter = ?').run(uid);
+    db.prepare('DELETE FROM users WHERE id = ?').run(uid); // cascades decks, uploads, user_fs, user_desktop, password_resets
+  });
+  purge();
+  app.log.warn('account deleted: user ' + uid);
+  return { ok: true };
+});
+
 // ── GET /api/decks  (all decks for authenticated user) ────────────────────────
 app.get('/api/decks', { preHandler: authenticate }, async (req) => {
   const rows = db.prepare(

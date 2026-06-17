@@ -1201,6 +1201,7 @@
       <div class="user-menu-item" onclick="toggleMguessGame()">🎴 Card-guess game: <span id="mguess-state">on</span></div>
       <div class="user-menu-sep"></div>
       <div class="user-menu-item danger" onclick="logout()">Sign Out</div>
+      <div class="user-menu-item danger" onclick="deleteAccount()">Delete Account…</div>
     </div>
   </div>
 </div>
@@ -2076,6 +2077,17 @@ function logout(){
   updateUserUI();
   closeUserMenu();
   toast('Signed out.');
+}
+async function deleteAccount(){
+  if(!state.user){closeUserMenu();return;}
+  closeUserMenu();
+  if(!confirm('Permanently delete your account and ALL your data — decks, uploads, splash pages, tournaments? This cannot be undone.'))return;
+  const pw=prompt('Confirm your password to permanently delete your account:');
+  if(!pw)return;
+  try{ await apiFetch('/account',{method:'DELETE',body:JSON.stringify({password:pw})}); }
+  catch(e){ toast(e.status===403?'Password is incorrect — account not deleted.':'Could not delete account.','error'); return; }
+  logout(); // clears token + this account's local data
+  toast('Your account and all its data were permanently deleted.','success');
 }
 function updateUserUI(){
   const u=state.user;
