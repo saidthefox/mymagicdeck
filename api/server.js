@@ -2602,34 +2602,35 @@ function buildOverlaySVGPositioned(W, H, overlays, meta, sp) {
     parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs)}" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="#7de0a0" stroke="#000000" stroke-width="3" paint-order="stroke">${E(meta.priceText)}</text>`);
   }
   if (overlays.cmcCurve && Array.isArray(meta.curve) && meta.curve.length && sp.curve) {
-    const p = sp.curve, x0 = Math.round(p.x), y0 = Math.round(p.y), cwid = Math.max(120, Math.round(p.w)), chgt = Math.max(60, Math.round(p.h));
-    const max = Math.max(1, ...meta.curve.map(c => c.count)), bw = cwid / meta.curve.length;
+    const p = sp.curve, s = p.s || 1, x0 = Math.round(p.x), y0 = Math.round(p.y), cwid = Math.max(120, Math.round(p.w)), chgt = Math.max(60, Math.round(p.h));
+    const max = Math.max(1, ...meta.curve.map(c => c.count)), bw = cwid / meta.curve.length, lf = Math.round(13 * s);
     parts.push(`<rect x="${x0 - 6}" y="${y0 - 6}" width="${cwid + 12}" height="${chgt + 24}" rx="8" fill="rgba(0,0,0,0.55)"/>`);
     meta.curve.forEach((c, i) => {
       const bh = Math.round((chgt - 14) * c.count / max), bx = x0 + i * bw;
       parts.push(`<rect x="${bx + 3}" y="${y0 + (chgt - 14) - bh}" width="${bw - 6}" height="${bh}" fill="#7de0a0"/>`);
-      parts.push(`<text x="${bx + bw / 2}" y="${y0 + chgt + 8}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#cfcfcf">${E(c.label)}</text>`);
+      parts.push(`<text x="${bx + bw / 2}" y="${y0 + chgt + 8}" text-anchor="middle" font-family="${FONT}" font-size="${lf}" fill="#cfcfcf">${E(c.label)}</text>`);
     });
   }
   if (overlays.list && Array.isArray(meta.list) && meta.list.length && sp.list) {
-    const p = sp.list, px = Math.round(p.x), py = Math.round(p.y);
-    const panelW = Math.max(160, Math.round(p.w)), panelH = Math.max(80, Math.round(p.h)), padX = 12, lineH = 18;
+    const p = sp.list, s = p.s || 1, px = Math.round(p.x), py = Math.round(p.y);
+    const panelW = Math.max(160, Math.round(p.w)), panelH = Math.max(80, Math.round(p.h)), padX = Math.round(12 * s);
+    const lineH = Math.round(18 * s), hf = Math.round(14 * s), lf = Math.round(12 * s);
     parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(0,0,0,0.6)"/>`);
-    parts.push(`<text x="${px + padX}" y="${py + 20}" font-family="${FONT}" font-size="14" font-weight="bold" fill="#fff">Deck list</text>`);
+    parts.push(`<text x="${px + padX}" y="${py + Math.round(20 * s)}" font-family="${FONT}" font-size="${hf}" font-weight="bold" fill="#fff">Deck list</text>`);
     meta.list.forEach((ln, i) => {
-      const ly = py + 40 + i * lineH;
-      if (ly < py + panelH - 4) parts.push(`<text x="${px + padX}" y="${ly}" font-family="${FONT}" font-size="12" fill="#e0e0e0">${E(ln)}</text>`);
+      const ly = py + Math.round(40 * s) + i * lineH;
+      if (ly < py + panelH - 4) parts.push(`<text x="${px + padX}" y="${ly}" font-family="${FONT}" font-size="${lf}" fill="#e0e0e0">${E(ln)}</text>`);
     });
   }
   if (overlays.typeBreakdown && Array.isArray(meta.typeSeg) && meta.typeSeg.length && sp.types) {
-    const p = sp.types, total = meta.typeSeg.reduce((s, t) => s + t.count, 0) || 1;
-    const x0 = Math.round(p.x), y = Math.round(p.y), barW = Math.max(120, Math.round(p.w)), barH = Math.max(20, Math.round(p.h));
+    const p = sp.types, s = p.s || 1, total = meta.typeSeg.reduce((s2, t) => s2 + t.count, 0) || 1;
+    const x0 = Math.round(p.x), y = Math.round(p.y), barW = Math.max(120, Math.round(p.w)), barH = Math.max(20, Math.round(p.h)), tf = Math.round(13 * s);
     let x = x0;
     parts.push(`<rect x="${x0}" y="${y}" width="${barW}" height="${barH}" rx="6" fill="rgba(0,0,0,0.4)"/>`);
     for (const t of meta.typeSeg) {
       const w = barW * t.count / total;
       parts.push(`<rect x="${x.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${barH}" fill="${/^#[0-9a-f]{3,8}$/i.test(t.color || '') ? t.color : '#555'}"/>`);
-      if (w > 30) parts.push(`<text x="${(x + w / 2).toFixed(1)}" y="${(y + barH * 0.68).toFixed(0)}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#fff">${E(t.count)}</text>`);
+      if (w > 30) parts.push(`<text x="${(x + w / 2).toFixed(1)}" y="${(y + barH * 0.68).toFixed(0)}" text-anchor="middle" font-family="${FONT}" font-size="${tf}" fill="#fff">${E(t.count)}</text>`);
       x += w;
     }
   }

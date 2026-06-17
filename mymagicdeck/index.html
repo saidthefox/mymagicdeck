@@ -486,6 +486,8 @@
     .splash-stat { position:absolute; background:rgba(10,12,18,0.82); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; padding:8px 10px; font-family:Tahoma,sans-serif; box-shadow:0 4px 16px rgba(0,0,0,0.55); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); max-width:300px; }
     .splash-overlay.editing .splash-stat { cursor:grab; outline:1px dashed rgba(255,255,255,0.28); }
     .splash-overlay.editing .splash-stat:active { cursor:grabbing; }
+    .splash-stat-rsz { position:absolute; right:-3px; bottom:-3px; width:16px; height:16px; cursor:nwse-resize; background:linear-gradient(135deg,transparent 45%,rgba(255,255,255,0.55) 45%,rgba(255,255,255,0.55) 60%,transparent 60%,transparent 72%,rgba(255,255,255,0.55) 72%,rgba(255,255,255,0.55) 87%,transparent 87%); border-radius:0 0 7px 0; touch-action:none; }
+    .splash-overlay:not(.editing) .splash-stat-rsz { display:none; }
     .splash-stat .ss-t { font-size:0.56rem; text-transform:uppercase; letter-spacing:0.1em; color:#9aa3b5; margin-bottom:5px; }
     .splash-stat .ss-name { font-weight:800; font-size:1.25rem; text-shadow:0 1px 3px rgba(0,0,0,0.7); }
     .splash-stat .ss-by { font-size:0.72rem; color:#9aa3b5; }
@@ -2754,7 +2756,7 @@ function _snapshotLayout(){
   cont.querySelectorAll('.splash-stat').forEach(el=>{
     const key=el.dataset.key; if(!key||key.indexOf('stat:')!==0)return;
     const r=el.getBoundingClientRect();
-    stats[key.slice(5)]={ x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height };
+    stats[key.slice(5)]={ x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height, s:parseFloat(el.dataset.s)||1 };
   });
   return { width:cr.width, height:cr.height, cards, stats };
 }
@@ -2784,7 +2786,7 @@ async function _genShareImage(){
   // If the deck is in User Layout, the stat panels carry positions — pass them so the
   // server places each overlay where the user dragged it instead of in fixed bands.
   let statPos=null;
-  if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x),y:sc(v.y),w:sc(v.w),h:sc(v.h)}; } }
+  if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x),y:sc(v.y),w:sc(v.w),h:sc(v.h),s:v.s||1}; } }
   try{
     const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),
       body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
@@ -2871,7 +2873,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   }
   for(const{id,p} of statPlaced){
     const handler=_splashEdit?`onpointerdown="freeStatDown(event,'stat:${id}')"`:'';
-    html+=`<div class="splash-stat stat-${id}" data-key="stat:${id}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||900}" ${handler}>`+_statWidgetInner(id,deck,_splashDeck.username)+`</div>`;
+    const sS=p.s||1;
+    const tf=sS!==1?`;transform:scale(${sS});transform-origin:top left`:'';
+    const grip=_splashEdit?`<div class="splash-stat-rsz" onpointerdown="freeStatResize(event,'stat:${id}')"></div>`:'';
+    html+=`<div class="splash-stat stat-${id}" data-key="stat:${id}" data-s="${sS}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||900}${tf}" ${handler}>`+_statWidgetInner(id,deck,_splashDeck.username)+grip+`</div>`;
   }
   html+=`</div></div>`;
   return html;
@@ -2922,7 +2927,23 @@ function freeStatDown(e,key){
   const sx=e.clientX,sy=e.clientY,bl=parseFloat(el.style.left)||0,bt=parseFloat(el.style.top)||0; let moved=false;
   const snap=v=>_snapOn?Math.round(v/SNAP_GRID)*SNAP_GRID:v;
   const move=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4)moved=true; if(moved){ el.style.left=Math.max(0,snap(bl+(ev.clientX-sx)/scale))+'px'; el.style.top=Math.max(0,snap(bt+(ev.clientY-sy)/scale))+'px'; } };
-  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; deck.layout.positions[key]={x,y,z:_freeZ}; if(moved){ saveToStorage(); syncDeckToApi(deck.id); } };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; const s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]={x,y,z:_freeZ,s}; if(moved){ saveToStorage(); syncDeckToApi(deck.id); } };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+// Resize a stat panel like a Win95 window — scales the whole widget (font + box grow
+// together) so the deck list text gets bigger and the box expands to fit. Persists `s`.
+function freeStatResize(e,key){
+  if(e.button!==undefined&&e.button!==0)return; e.preventDefault(); e.stopPropagation();
+  const el=e.currentTarget.parentElement; const deck=_splashDeck&&_splashDeck.deck; if(!deck||!el)return;
+  deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+  const zoom=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
+  const baseW=Math.max(60,el.offsetWidth); // layout (pre-scale) width
+  const startS=parseFloat(el.dataset.s)||1; const sx=e.clientX,sy=e.clientY; let moved=false;
+  const apply=ns=>{ el.dataset.s=ns; el.style.transform='scale('+ns+')'; el.style.transformOrigin='top left'; };
+  const move=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>3)moved=true; if(!moved)return; const dx=(ev.clientX-sx)/zoom; apply(Math.max(0.5,Math.min(4,startS+dx/baseW))); };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); if(!moved)return;
+    const cur=deck.layout.positions[key]||{x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||900};
+    cur.s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]=cur; saveToStorage(); syncDeckToApi(deck.id); };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
 function toggleStatsMenu(e){ if(e)e.stopPropagation(); const pop=document.getElementById('splash-stats-pop'); if(!pop)return;
@@ -2950,7 +2971,8 @@ function saveUserLayout(){
   const free=document.getElementById('splash-free'); if(!free){toast('Switch to User Layout first','info');return;}
   deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
   free.querySelectorAll('[data-key]').forEach(el=>{ const k=el.dataset.key; if(!k)return;
-    deck.layout.positions[k]={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; });
+    const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1};
+    const s=parseFloat(el.dataset.s); if(s&&s!==1)o.s=s; deck.layout.positions[k]=o; });
   saveToStorage(); syncDeckToApi(deck.id); toast('Layout saved 💾','success');
 }
 function setDefaultLayout(){
