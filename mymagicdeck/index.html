@@ -2474,7 +2474,7 @@ function openSplash(deckObj,username,opts){
       <label><input type="radio" name="splash-sort" value="type" ${initSort==='type'?'checked':''} onchange="splashReorder()"> By Type</label>
       <label><input type="radio" name="splash-sort" value="user" ${initSort==='user'?'checked':''} onchange="splashReorder()"> User Layout</label>
       ${_splashEdit?`<button class="btn small splash-user-ctl" id="splash-save-layout" onclick="saveUserLayout()" style="display:none">💾 Save layout</button>
-      <label class="btn small splash-user-ctl" id="splash-snap-ctl" style="display:none"><input type="checkbox" id="splash-snap" onchange="_snapToggle()" style="margin-right:4px"> Snap grid</label>
+      <label class="btn small splash-user-ctl" id="splash-snap-ctl" style="display:none"><input type="checkbox" id="splash-snap" onchange="_snapToggle()" style="margin-right:4px"> Snap grid<input type="number" id="splash-snap-size" value="30" min="5" max="200" step="5" title="grid size in px — smaller = finer" oninput="_snapGridSet(this.value)" onclick="event.stopPropagation()" style="width:46px;margin-left:6px"></label>
       <button class="btn small splash-user-ctl" id="splash-deckpic" onclick="deckPicLayout()" style="display:none" title="Auto-arrange into a tidy grid">🎴 Deck pic layout</button>
       <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
       <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
@@ -2829,10 +2829,14 @@ function splashReorder(){
   _splashRebuildColumns();
 }
 // ── User Layout (free-drag) ───────────────────────────────────────────────────
-let _freeZ=0, _snapOn=false; const SNAP_GRID=30;
+let _freeZ=0, _snapOn=false, _snapGrid=30;
 function _snapToggle(){
   const cb=document.getElementById('splash-snap'); _snapOn=!!(cb&&cb.checked);
-  const f=document.getElementById('splash-free'); if(f)f.classList.toggle('snap',_snapOn);
+  const f=document.getElementById('splash-free'); if(f){ f.classList.toggle('snap',_snapOn); f.style.backgroundSize=_snapGrid+'px '+_snapGrid+'px'; }
+}
+function _snapGridSet(v){
+  _snapGrid=Math.max(5,Math.min(200,parseInt(v)||30));
+  const f=document.getElementById('splash-free'); if(f)f.style.backgroundSize=_snapGrid+'px '+_snapGrid+'px';
 }
 function _buildSplashFree(allCards,sbCards,zoomPct){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
@@ -2843,15 +2847,18 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   collect(allCards,deck.cards,''); collect(sbCards,deck.sideboard,'sb_'); // zone-prefix so a card in both main+sideboard doesn't share a key (→ stacking)
   const positions=(deck.layout&&deck.layout.positions)||{};
   const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
-  let maxX=0,maxY=0,gi=0;
+  let maxX=0,maxY=0;
   const placed=[];
-  for(const e of ents){
+  // Seed unplaced cards by their STABLE index in the entry list (not a packed
+  // counter) — otherwise hand-placing some cards renumbers the rest, so a rebuild
+  // (e.g. after picking card art) snaps the unplaced ones back to the top-left.
+  ents.forEach((e,idx)=>{
     let p=positions[e.key];
-    if(!p){ const col=gi%perRow,row=Math.floor(gi/perRow); p={x:col*(CARD_W+GAP),y:row*(CARD_H+GAP),z:gi+1}; gi++; }
+    if(!p){ const col=idx%perRow,row=Math.floor(idx/perRow); p={x:col*(CARD_W+GAP),y:row*(CARD_H+GAP),z:idx+1}; }
     placed.push({e,p});
     maxX=Math.max(maxX,p.x+CARD_W); maxY=Math.max(maxY,p.y+CARD_H);
     if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z);
-  }
+  });
   // Stat widgets (deck name / mana curve / type breakdown / price / deck list) — drag like cards.
   const statsOn=(deck.layout&&deck.layout.statsOn)||{};
   const statPlaced=[]; let si=0;
@@ -2892,7 +2899,7 @@ function freeCardDown(e,key,cid,copyIdx){
   const startX=e.clientX,startY=e.clientY;
   const baseLeft=parseFloat(el.style.left)||0,baseTop=parseFloat(el.style.top)||0;
   let moved=false;
-  const snap=v=>_snapOn?Math.round(v/SNAP_GRID)*SNAP_GRID:v;
+  const snap=v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v;
   const move=(ev)=>{
     if(!moved&&Math.abs(ev.clientX-startX)+Math.abs(ev.clientY-startY)>4)moved=true;
     if(moved){ el.style.left=Math.max(0,snap(baseLeft+(ev.clientX-startX)/scale))+'px'; el.style.top=Math.max(0,snap(baseTop+(ev.clientY-startY)/scale))+'px'; }
@@ -2925,7 +2932,7 @@ function freeStatDown(e,key){
   const scale=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
   _freeZ++; el.style.zIndex=_freeZ;
   const sx=e.clientX,sy=e.clientY,bl=parseFloat(el.style.left)||0,bt=parseFloat(el.style.top)||0; let moved=false;
-  const snap=v=>_snapOn?Math.round(v/SNAP_GRID)*SNAP_GRID:v;
+  const snap=v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v;
   const move=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4)moved=true; if(moved){ el.style.left=Math.max(0,snap(bl+(ev.clientX-sx)/scale))+'px'; el.style.top=Math.max(0,snap(bt+(ev.clientY-sy)/scale))+'px'; } };
   const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; const s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]={x,y,z:_freeZ,s}; if(moved){ saveToStorage(); syncDeckToApi(deck.id); } };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
