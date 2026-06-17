@@ -2748,7 +2748,15 @@ function _snapshotLayout(){
     cards.push({ url:src, x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height, z:parseInt(getComputedStyle(el).zIndex)||0 });
   });
   cards.sort((a,b)=>a.z-b.z);
-  return { width:cr.width, height:cr.height, cards };
+  // Capture stat-widget positions (User Layout only) so the share image places
+  // deck name / price / list / curve / type where the user dragged them.
+  const stats={};
+  cont.querySelectorAll('.splash-stat').forEach(el=>{
+    const key=el.dataset.key; if(!key||key.indexOf('stat:')!==0)return;
+    const r=el.getBoundingClientRect();
+    stats[key.slice(5)]={ x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height };
+  });
+  return { width:cr.width, height:cr.height, cards, stats };
 }
 function _shareMeta(deck, author){
   const cards=Object.values(deck.cards||{});
@@ -2773,9 +2781,13 @@ async function _genShareImage(){
   const sc=v=>Math.round(v*s);
   const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x),y:sc(c.y),w:sc(c.w),h:sc(c.h)}));
   const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type') };
+  // If the deck is in User Layout, the stat panels carry positions — pass them so the
+  // server places each overlay where the user dragged it instead of in fixed bands.
+  let statPos=null;
+  if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x),y:sc(v.y),w:sc(v.w),h:sc(v.h)}; } }
   try{
     const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),
-      body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
+      body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
     if(!res.ok){ const j=await res.json().catch(()=>({})); st.className='si-status err'; st.textContent=j.error||'Render failed'; return; }
     _shareBlob=await res.blob();
     const url=URL.createObjectURL(_shareBlob);
@@ -2841,7 +2853,7 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   // Stat widgets (deck name / mana curve / type breakdown / price / deck list) — drag like cards.
   const statsOn=(deck.layout&&deck.layout.statsOn)||{};
   const statPlaced=[]; let si=0;
-  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; let p=positions['stat:'+sd.id]; if(!p)p={x:maxX+20,y:8+si*78,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
+  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; let p=positions['stat:'+sd.id]; if(!p)p={x:16,y:16+si*84,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
   const W=Math.max(maxX+40,420),H=Math.max(maxY+40,320);
   let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
   for(const{e,p}of placed){

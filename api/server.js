@@ -2584,12 +2584,67 @@ function buildOverlaySVG(geo, overlays, meta) {
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${parts.join('')}</svg>`);
 }
 
+// Positioned overlays: render each enabled stat where the user dragged its panel
+// in User Layout. `sp` maps stat id → {x,y,w,h} (already scaled to image space).
+// stat ids: name, price, curve, list, types.
+function buildOverlaySVGPositioned(W, H, overlays, meta, sp) {
+  overlays = overlays || {}; meta = meta || {}; sp = sp || {};
+  const FONT = 'DejaVu Sans, sans-serif';
+  const parts = [];
+  const E = _xmlEsc;
+  if (overlays.name && meta.deckName && sp.name) {
+    const p = sp.name, fs = Math.max(16, Math.min(Math.round(p.h * 0.5), 60));
+    parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs)}" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="#ffffff" stroke="#000000" stroke-width="${Math.max(2, Math.round(fs / 16))}" paint-order="stroke">${E(meta.deckName)}</text>`);
+    if (meta.author) parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs + Math.round(fs * 0.55))}" font-family="${FONT}" font-size="${Math.max(11, Math.round(fs * 0.38))}" fill="#c4ccda" stroke="#000000" stroke-width="2" paint-order="stroke">by ${E(meta.author)}</text>`);
+  }
+  if (overlays.price && meta.priceText && sp.price) {
+    const p = sp.price, fs = Math.max(16, Math.min(Math.round(p.h * 0.6), 52));
+    parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs)}" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="#7de0a0" stroke="#000000" stroke-width="3" paint-order="stroke">${E(meta.priceText)}</text>`);
+  }
+  if (overlays.cmcCurve && Array.isArray(meta.curve) && meta.curve.length && sp.curve) {
+    const p = sp.curve, x0 = Math.round(p.x), y0 = Math.round(p.y), cwid = Math.max(120, Math.round(p.w)), chgt = Math.max(60, Math.round(p.h));
+    const max = Math.max(1, ...meta.curve.map(c => c.count)), bw = cwid / meta.curve.length;
+    parts.push(`<rect x="${x0 - 6}" y="${y0 - 6}" width="${cwid + 12}" height="${chgt + 24}" rx="8" fill="rgba(0,0,0,0.55)"/>`);
+    meta.curve.forEach((c, i) => {
+      const bh = Math.round((chgt - 14) * c.count / max), bx = x0 + i * bw;
+      parts.push(`<rect x="${bx + 3}" y="${y0 + (chgt - 14) - bh}" width="${bw - 6}" height="${bh}" fill="#7de0a0"/>`);
+      parts.push(`<text x="${bx + bw / 2}" y="${y0 + chgt + 8}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#cfcfcf">${E(c.label)}</text>`);
+    });
+  }
+  if (overlays.list && Array.isArray(meta.list) && meta.list.length && sp.list) {
+    const p = sp.list, px = Math.round(p.x), py = Math.round(p.y);
+    const panelW = Math.max(160, Math.round(p.w)), panelH = Math.max(80, Math.round(p.h)), padX = 12, lineH = 18;
+    parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(0,0,0,0.6)"/>`);
+    parts.push(`<text x="${px + padX}" y="${py + 20}" font-family="${FONT}" font-size="14" font-weight="bold" fill="#fff">Deck list</text>`);
+    meta.list.forEach((ln, i) => {
+      const ly = py + 40 + i * lineH;
+      if (ly < py + panelH - 4) parts.push(`<text x="${px + padX}" y="${ly}" font-family="${FONT}" font-size="12" fill="#e0e0e0">${E(ln)}</text>`);
+    });
+  }
+  if (overlays.typeBreakdown && Array.isArray(meta.typeSeg) && meta.typeSeg.length && sp.types) {
+    const p = sp.types, total = meta.typeSeg.reduce((s, t) => s + t.count, 0) || 1;
+    const x0 = Math.round(p.x), y = Math.round(p.y), barW = Math.max(120, Math.round(p.w)), barH = Math.max(20, Math.round(p.h));
+    let x = x0;
+    parts.push(`<rect x="${x0}" y="${y}" width="${barW}" height="${barH}" rx="6" fill="rgba(0,0,0,0.4)"/>`);
+    for (const t of meta.typeSeg) {
+      const w = barW * t.count / total;
+      parts.push(`<rect x="${x.toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="${barH}" fill="${/^#[0-9a-f]{3,8}$/i.test(t.color || '') ? t.color : '#555'}"/>`);
+      if (w > 30) parts.push(`<text x="${(x + w / 2).toFixed(1)}" y="${(y + barH * 0.68).toFixed(0)}" text-anchor="middle" font-family="${FONT}" font-size="13" fill="#fff">${E(t.count)}</text>`);
+      x += w;
+    }
+  }
+  if (!parts.length) return null;
+  return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${parts.join('')}</svg>`);
+}
+
 // ── POST /api/splash/render  → composited PNG of the deck ─────────────────────
 app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload] }, async (req, reply) => {
   const b = req.body || {};
   const W = Math.min(4000, Math.max(200, parseInt(b.width) || 1000));
   const ch = Math.min(5400, Math.max(200, parseInt(b.height) || 1400)); // card-content height
-  const bandH = Math.round(ch / 18);                                     // header == footer; bands total 10% of the image
+  // User Layout supplies stat-panel positions → place overlays freely, no header/footer bands.
+  const statPos = (b.statPos && typeof b.statPos === 'object' && Object.keys(b.statPos).length) ? b.statPos : null;
+  const bandH = statPos ? 0 : Math.round(ch / 18);                       // header == footer; bands total 10% of the image
   const H = ch + bandH * 2;                                              // full canvas (content + header + footer)
   const cards = Array.isArray(b.cards) ? b.cards.slice(0, 400) : [];
 
@@ -2628,7 +2683,9 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
   }
   if (comps.length) img = await sharp(img).composite(comps).png().toBuffer();
 
-  const svg = buildOverlaySVG({ W, H, bandH, contentTop: bandH, contentH: ch }, b.overlays || {}, b.meta || {});
+  const svg = statPos
+    ? buildOverlaySVGPositioned(W, H, b.overlays || {}, b.meta || {}, statPos)
+    : buildOverlaySVG({ W, H, bandH, contentTop: bandH, contentH: ch }, b.overlays || {}, b.meta || {});
   if (svg) { try { img = await sharp(img).composite([{ input: svg, left: 0, top: 0 }]).png().toBuffer(); } catch (e) { app.log.warn('overlay render failed: ' + e.message); } }
 
   reply.header('Content-Type', 'image/png');
