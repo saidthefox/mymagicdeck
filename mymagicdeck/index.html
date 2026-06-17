@@ -924,7 +924,7 @@
     .mg-desk{position:absolute;inset:0;background:var(--desk-bg,#017e7e);display:flex;flex-direction:column}
     .mg-deskicons{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:10px}
     .mg-icon{width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px dotted transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
-    .mg-deskicons.mg-free{display:block;position:relative}
+    .mg-deskicons.mg-free{display:block;position:relative;overflow:hidden}
     .mg-deskicons.mg-free .mg-icon{position:absolute}
     .mg-deskicons.mg-free .mg-icon.mg-dragging{z-index:60;opacity:.85}
     .mg-icon .mg-ico{font-size:30px;line-height:1}
@@ -6095,13 +6095,20 @@ function presenceToggle(){ try{ DeckOS.store.set('presence', presenceGet()==='on
 function mgIconKey(el){ if(el.dataset.app)return 'app:'+el.dataset.app; if(el.dataset.cgg)return 'cgg'; if(el.id==='mg-bin')return 'bin'; if(el.id==='mg-backsearch')return 'backsearch'; if(el.dataset.deck)return 'deck:'+el.dataset.deck; if(el.dataset.folder)return 'folder:'+el.dataset.folder; return null; }
 function mgIconPosGet(){ try{ return (window.DeckOS&&DeckOS.store.get('iconpos'))||{}; }catch(e){ return {}; } }
 function mgIconPosSet(key,x,y){ if(!key)return; const m=mgIconPosGet(); m[key]={x:Math.round(x),y:Math.round(y)}; try{ DeckOS.store.set('iconpos',m); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
-function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8;
-  const cw=c.clientWidth||600, ch=c.clientHeight||400, rows=Math.max(1,Math.floor((ch-PAD)/ROWH));
+function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8, TASKBAR=46;
+  const cw=Math.max(120, c.clientWidth||window.innerWidth||600);
+  // Usable height excludes the fixed bottom taskbar; fall back to the viewport if the container
+  // isn't measured yet (so icons never land in a single tall column / under the taskbar / scrolling).
+  const rawH=(c.clientHeight && c.clientHeight>80) ? c.clientHeight : ((window.innerHeight||700)-130);
+  const usableH=Math.max(ROWH+PAD, rawH-TASKBAR), maxX=Math.max(0,cw-74), maxY=Math.max(0,usableH-ROWH+PAD);
+  const rows=Math.max(1,Math.floor((usableH-PAD)/ROWH));
   const placed=[]; const overlaps=(x,y)=>placed.some(p=>Math.abs(p.x-x)<COLW-6 && Math.abs(p.y-y)<ROWH-6);
   const els=Array.from(c.querySelectorAll('.mg-icon'));
   els.forEach(el=>{ const key=mgIconKey(el); if(key)el.dataset.ikey=key; const p=key&&pos[key];
-    if(p){ const x=Math.max(0,Math.min(p.x,Math.max(0,cw-74))), y=Math.max(0,p.y); el.style.left=x+'px'; el.style.top=y+'px'; el._placed=true; placed.push({x,y}); } else el._placed=false; });
-  let slot=0; els.forEach(el=>{ if(el._placed)return; let x,y,g=0; do{ const col=Math.floor(slot/rows), row=slot%rows; x=PAD+col*COLW; y=PAD+row*ROWH; slot++; g++; }while(overlaps(x,y)&&g<400); el.style.left=x+'px'; el.style.top=y+'px'; placed.push({x,y}); }); }
+    if(p){ const x=Math.max(0,Math.min(p.x,maxX)), y=Math.max(0,Math.min(p.y,maxY)); el.style.left=x+'px'; el.style.top=y+'px'; el._placed=true; placed.push({x,y}); } else el._placed=false; });
+  let slot=0; els.forEach(el=>{ if(el._placed)return; let x,y,g=0; do{ const col=Math.floor(slot/rows), row=slot%rows; x=PAD+col*COLW; y=PAD+row*ROWH; slot++; g++; }while(overlaps(x,y)&&g<400); el.style.left=x+'px'; el.style.top=Math.min(y,maxY)+'px'; placed.push({x,y:Math.min(y,maxY)}); }); }
+let _mgResizeT=null;
+window.addEventListener('resize',()=>{ clearTimeout(_mgResizeT); _mgResizeT=setTimeout(()=>{ const c=document.querySelector('.mg-deskicons.mg-free'); if(c)mgLayoutIcons(c); },200); });
 // Tap-vs-drag pointer handler for the simple icons (programs / CGG / Bin / MyMagicDeck).
 function mgWireIconDrag(el, onTap){
   el.addEventListener('pointerdown',e=>{ if(e.button>0)return; const c=el.parentElement; const sx=e.clientX, sy=e.clientY; const r=el.getBoundingClientRect(), pr=c.getBoundingClientRect(); const ox=r.left-pr.left, oy=r.top-pr.top; let dragging=false, nx=ox, ny=oy;
