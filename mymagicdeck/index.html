@@ -310,6 +310,8 @@
     .search-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; }
     .search-zoom-slider::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
     .mtgo-toolbar .deck-zoom-val { font-size:0.68rem; color:var(--text-dim); min-width:32px; }
+    .mtgo-column.mtgo-sb-col { border-left:2px dashed var(--border); margin-left:10px; padding-left:10px; }
+    .mtgo-column.mtgo-sb-col .mtgo-col-header { color:var(--accent); }
     .dv-prints-wrap { position:relative; margin-left:8px; }
     .dv-prints-pop { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:50; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; box-shadow:0 10px 34px rgba(0,0,0,0.5); width:248px; }
     .dv-prints-pop.open { display:block; }
@@ -1834,7 +1836,7 @@ function getColOrder(sort){
   if(sort==='color')return COLOR_ORDER;
   return[];
 }
-function getColLabel(key,sort){return sort==='cmc'?key:key}
+function getColLabel(key,sort){return key==='__sb__'?'Sideboard':key}
 
 // Build instances: each copy of a card = unique uid
 function buildLayout(deck){
@@ -1845,18 +1847,27 @@ function buildLayout(deck){
   for(const[cardId,entry]of Object.entries(deck.cards)){
     for(let i=0;i<entry.qty;i++){
       const uid=cardId+'_'+i;
-      insts[uid]={cardId,card:entry.card};
+      insts[uid]={cardId,card:entry.card,zone:'main'};
       const key=getColKey(entry.card,sort);
       if(!cols[key])cols[key]=[];
       cols[key].push(uid);
     }
   }
-  // Sort within columns by name
+  // Sort within mainboard columns by name
   for(const arr of Object.values(cols)){
     arr.sort((a,b)=>{
       const ca=insts[a]?.card,cb=insts[b]?.card;
       return ca&&cb?ca.name.localeCompare(cb.name):0;
     });
+  }
+  // Sideboard: one column at the end (uid prefixed 'sb_' so it can't collide with a
+  // mainboard copy of the same card). Sorted category → cmc → name.
+  const sbEntries=Object.entries(deck.sideboard||{});
+  if(sbEntries.length){
+    sbEntries.sort((a,b)=>{ const ca=a[1].card,cb=b[1].card;
+      return (CATEGORY_ORDER.indexOf(getCardCategory(ca))-CATEGORY_ORDER.indexOf(getCardCategory(cb)))||((ca.cmc||0)-(cb.cmc||0))||ca.name.localeCompare(cb.name); });
+    cols['__sb__']=[];
+    for(const[cardId,entry]of sbEntries){ for(let i=0;i<entry.qty;i++){ const uid='sb_'+cardId+'_'+i; insts[uid]={cardId,card:entry.card,zone:'sb'}; cols['__sb__'].push(uid); } }
   }
   deck._insts=insts;deck._cols=cols;deck._sort=sort;
 }
@@ -2976,9 +2987,9 @@ function addCard(card,qty=1){const d=currentDeck();if(!d)return;const id=getCard
 }
 function removeCard(cid,qty=1){const d=currentDeck();if(!d||!d.cards[cid])return;d.cards[cid].qty-=qty;if(d.cards[cid].qty<=0)delete d.cards[cid];d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function setCardQty(cid,qty){const d=currentDeck();if(!d)return;if(qty<=0)delete d.cards[cid];else if(d.cards[cid])d.cards[cid].qty=qty;d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
-function addSBCard(card,qty=1){const d=currentDeck();if(!d)return;if(!d.sideboard)d.sideboard={};const id=getCardId(card);if(d.sideboard[id])d.sideboard[id].qty+=qty;else d.sideboard[id]={card:sanitizeCard(card),qty};renderAll();saveToStorage();syncDeckToApi(d.id)}
-function removeSBCard(cid,qty=1){const d=currentDeck();if(!d||!d.sideboard||!d.sideboard[cid])return;d.sideboard[cid].qty-=qty;if(d.sideboard[cid].qty<=0)delete d.sideboard[cid];renderAll();saveToStorage();syncDeckToApi(d.id)}
-function setSBCardQty(cid,qty){const d=currentDeck();if(!d||!d.sideboard)return;if(qty<=0)delete d.sideboard[cid];else if(d.sideboard[cid])d.sideboard[cid].qty=qty;renderAll();saveToStorage();syncDeckToApi(d.id)}
+function addSBCard(card,qty=1){const d=currentDeck();if(!d)return;if(!d.sideboard)d.sideboard={};const id=getCardId(card);if(d.sideboard[id])d.sideboard[id].qty+=qty;else d.sideboard[id]={card:sanitizeCard(card),qty};d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
+function removeSBCard(cid,qty=1){const d=currentDeck();if(!d||!d.sideboard||!d.sideboard[cid])return;d.sideboard[cid].qty-=qty;if(d.sideboard[cid].qty<=0)delete d.sideboard[cid];d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
+function setSBCardQty(cid,qty){const d=currentDeck();if(!d||!d.sideboard)return;if(qty<=0)delete d.sideboard[cid];else if(d.sideboard[cid])d.sideboard[cid].qty=qty;d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function toggleSideboard(){state.sideboardOpen=!state.sideboardOpen;const t=document.getElementById('sideboard-toggle'),s=document.getElementById('sideboard-sections');if(t)t.classList.toggle('collapsed',!state.sideboardOpen);if(s)s.classList.toggle('hidden',!state.sideboardOpen)}
 function toggleMainboard(){state.mainboardOpen=(state.mainboardOpen===false);const t=document.getElementById('mainboard-toggle'),s=document.getElementById('deck-sections');if(t)t.classList.toggle('collapsed',!state.mainboardOpen);if(s)s.classList.toggle('hidden',!state.mainboardOpen)}
 
@@ -3140,7 +3151,8 @@ function renderDeckVisual(){
   const deck=currentDeck(),container=document.getElementById('mtgo-columns'),info=document.getElementById('mtgo-info');
   if(!deck||!Object.keys(deck.cards).length){container.innerHTML=`<div class="mtgo-empty"><div class="icon">🃏</div><strong>Deck is empty</strong><br/>Switch to Search and add cards!</div>`;info.textContent='';return}
   ensureLayout(deck);
-  const sort=deck._sort,colOrder=getColOrder(sort);
+  const sort=deck._sort,colOrder=getColOrder(sort).slice();
+  if(deck._cols&&deck._cols['__sb__']&&deck._cols['__sb__'].length)colOrder.push('__sb__'); // sideboard column at the end
   const total=totalCards();
   info.textContent=total+' cards · '+Object.keys(deck.cards).length+' unique';
 
@@ -3154,12 +3166,12 @@ function renderDeckVisual(){
     const uids=deck._cols[key]||[];
     const count=uids.length;
     const stackH=count>0?(count-1)*so+cardH:80;
-    h+=`<div class="mtgo-column" data-col="${key}" style="width:${cardW}px"><div class="mtgo-col-header">${getColLabel(key,sort)} <span class="cnt">${count}</span></div><div class="mtgo-col-stack" data-col="${key}" style="height:${stackH}px;width:${cardW}px"><div class="mtgo-drop-line" data-col="${key}"></div>`;
+    h+=`<div class="mtgo-column${key==='__sb__'?' mtgo-sb-col':''}" data-col="${key}" style="width:${cardW}px"><div class="mtgo-col-header">${getColLabel(key,sort)} <span class="cnt">${count}</span></div><div class="mtgo-col-stack" data-col="${key}" style="height:${stackH}px;width:${cardW}px"><div class="mtgo-drop-line" data-col="${key}"></div>`;
     for(let i=0;i<count;i++){
       const uid=uids[i],inst=deck._insts[uid];if(!inst)continue;
       const card=inst.card;
       // Per-copy art override (entry.arts[copyIdx]) wins over the base card image.
-      const _entry=deck.cards[inst.cardId];
+      const _entry=(inst.zone==='sb'?deck.sideboard:deck.cards)[inst.cardId];
       const _ci=(()=>{const m=String(uid).match(/_(\d+)$/);return m?parseInt(m[1],10):0;})();
       const _ov=_entry&&_entry.arts&&_entry.arts[_ci];
       const imgNormal=_ov?(_ov.normal||_ov.small):(getCardImage(card,'normal')||getCardImage(card,'small'));
