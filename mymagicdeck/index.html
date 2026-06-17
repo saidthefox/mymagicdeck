@@ -2675,7 +2675,7 @@ const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island
 const BG_SCENE_OPTS=[['desert','a desert'],['forest','a forest'],['random-biome','a random biome'],['ascii','ASCII art'],['tokyo','Tokyo'],['space','outer space'],['underwater','underwater'],['mountains','the mountains'],['city','a city'],['void','the void'],['dream','a dreamscape'],['swamp','a swamp'],['volcano','a volcano'],['library','a library'],['tavern','a tavern'],['meadow','a meadow'],['cosmos','the cosmos']];
 const BG_VIBE_OPTS=[['none','(any vibe)'],['cozy','cozy'],['epic','epic'],['eerie','eerie'],['cheerful','cheerful'],['mysterious','mysterious'],['chaotic','chaotic'],['serene','serene'],['retro','retro']];
 let _siBg='', _shareBlob=null;
-function openShareImage(){ _openShareImage(); }
+function openShareImage(){ if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
 function _openShareImage(){
   if(!_splashDeck){toast('Open your splash first','error');return;}
   document.getElementById('si-bgs').innerHTML=SHARE_BGS.map(b=>{
@@ -3619,7 +3619,8 @@ async function doDeckPhotoUpload(input){
 let _uploadsCache=[];
 const _uplResults={};
 function _uplEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-async function openUploads(){
+function openUploads(){ if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['storage'])mgLaunchApp('storage'); else _openUploads(); }
+async function _openUploads(){
   if(!state.user||!apiToken()){toast('Sign in to manage uploads','error');return;}
   openModal('modal-uploads');
   document.getElementById('uploads-status').textContent='';
@@ -5121,10 +5122,11 @@ function mgLaunchApp(app){
 const MGW_APPS={
   splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:true, open:()=>{ const d=currentDeck(); if(d)openSplash(d, state.user?.username||'You', {edit:!!state.user}); else previewSplash(); },  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
+  shareimg:{overlay:'modal-share-image', win:'.modal', title:'Share Image', icon:'🖼️', open:()=>_openShareImage(), close:()=>closeModal('modal-share-image')},
   decks:  {overlay:'modal-decks',    win:'.modal', title:'My Decks',       icon:'📂',  open:()=>openDeckManager(),close:()=>decksClose()},
   import: {overlay:'modal-import',   win:'.modal', title:'Import Deck',     icon:'⬇',   open:()=>openImport(),     close:()=>closeModal('modal-import')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
-  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>openUploads(),     close:()=>closeModal('modal-uploads')},
+  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>_openUploads(),    close:()=>closeModal('modal-uploads')},
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
   hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
