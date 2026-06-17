@@ -2761,8 +2761,8 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   const CARD_W=121,CARD_H=169,GAP=12;
   const scale=zoomPct/100;
   const ents=[];
-  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const entry=store&&store[cid]; const qty=entry?entry.qty:1; for(let k=0;k<qty;k++)ents.push({card,cid,entry,copyIdx:k,key:cid+'_'+k}); } };
-  collect(allCards,deck.cards); collect(sbCards,deck.sideboard);
+  const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const entry=store&&store[cid]; const qty=entry?entry.qty:1; for(let k=0;k<qty;k++)ents.push({card,cid,entry,copyIdx:k,key:zone+cid+'_'+k}); } };
+  collect(allCards,deck.cards,''); collect(sbCards,deck.sideboard,'sb_'); // zone-prefix so a card in both main+sideboard doesn't share a key (→ stacking)
   const positions=(deck.layout&&deck.layout.positions)||{};
   const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
   let maxX=0,maxY=0,gi=0;
@@ -2837,8 +2837,8 @@ function deckPicLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   const CARD_W=121,CARD_H=169,GAP=10;
   const items=[];
-  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:cid+'_'+k}); } };
-  collect(Object.values(deck.cards||{}),deck.cards); collect(Object.values(deck.sideboard||{}),deck.sideboard);
+  const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
+  collect(Object.values(deck.cards||{}),deck.cards,''); collect(Object.values(deck.sideboard||{}),deck.sideboard,'sb_');
   items.sort((a,b)=>{
     const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)), cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card));
     return ca-cb || (a.card.cmc||0)-(b.card.cmc||0) || a.card.name.localeCompare(b.card.name);
@@ -2859,8 +2859,8 @@ function fanLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   const CARD_W=121, CARD_H=169, VSTEP=34, DRIFT=7, GAP=18; // VSTEP(34) > ~card top strip (~26px)
   const items=[];
-  const collect=(list,store)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:cid+'_'+k}); } };
-  collect(Object.values(deck.cards||{}),deck.cards); collect(Object.values(deck.sideboard||{}),deck.sideboard);
+  const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
+  collect(Object.values(deck.cards||{}),deck.cards,''); collect(Object.values(deck.sideboard||{}),deck.sideboard,'sb_');
   items.sort((a,b)=>{ const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)),cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card)); return ca-cb||(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name); });
   const n=items.length;
   const perCol=Math.max(4,Math.ceil(Math.sqrt(n)));
