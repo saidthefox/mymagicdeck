@@ -628,6 +628,7 @@
     .sideboard-toggle.collapsed .toggle-arrow { transform: rotate(-90deg); }
     #sideboard-sections { border-top: 1px dashed var(--border); margin-top: 4px; padding-top: 4px; }
     #sideboard-sections.hidden { display: none; }
+    #deck-sections.hidden { display: none; }
     .sideboard-count-badge { background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
 
     /* 4-copy warning */
@@ -1208,7 +1209,13 @@
     <div class="panel-header"><input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" oninput="deckRename(this.value)" style="flex:0 1 70%;min-width:0" /><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
     <div class="panel-body" id="deck-panel-body">
       <div class="deck-empty" id="deck-empty"><div class="icon">🃏</div>Search for cards and click<br/>to add them to your deck.</div>
-      <div id="deck-sections"></div>
+      <div id="mainboard-area" style="display:none;">
+        <div class="sideboard-toggle" id="mainboard-toggle" onclick="toggleMainboard()">
+          <span>⊞ Mainboard <span id="mainboard-count-badge" class="sideboard-count-badge">0</span></span>
+          <span class="toggle-arrow">▾</span>
+        </div>
+        <div id="deck-sections"></div>
+      </div>
       <div id="sideboard-area" style="display:none;">
         <div class="sideboard-toggle" id="sideboard-toggle" onclick="toggleSideboard()">
           <span>⊞ Sideboard <span id="sideboard-count-badge" class="sideboard-count-badge">0</span></span>
@@ -2878,6 +2885,7 @@ function addSBCard(card,qty=1){const d=currentDeck();if(!d)return;if(!d.sideboar
 function removeSBCard(cid,qty=1){const d=currentDeck();if(!d||!d.sideboard||!d.sideboard[cid])return;d.sideboard[cid].qty-=qty;if(d.sideboard[cid].qty<=0)delete d.sideboard[cid];renderAll();saveToStorage();syncDeckToApi(d.id)}
 function setSBCardQty(cid,qty){const d=currentDeck();if(!d||!d.sideboard)return;if(qty<=0)delete d.sideboard[cid];else if(d.sideboard[cid])d.sideboard[cid].qty=qty;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function toggleSideboard(){state.sideboardOpen=!state.sideboardOpen;const t=document.getElementById('sideboard-toggle'),s=document.getElementById('sideboard-sections');if(t)t.classList.toggle('collapsed',!state.sideboardOpen);if(s)s.classList.toggle('hidden',!state.sideboardOpen)}
+function toggleMainboard(){state.mainboardOpen=(state.mainboardOpen===false);const t=document.getElementById('mainboard-toggle'),s=document.getElementById('deck-sections');if(t)t.classList.toggle('collapsed',!state.mainboardOpen);if(s)s.classList.toggle('hidden',!state.mainboardOpen)}
 
 const CAT_ICONS={Creatures:'🐾',Planeswalkers:'⭐',Instants:'⚡',Sorceries:'🔮',Enchantments:'✨',Artifacts:'⚙️',Lands:'🏔️',Other:'📦',Sideboard:'⊞'};
 
@@ -2919,9 +2927,17 @@ function renderDeck(){
   const badge=document.getElementById('deck-count-badge');
   badge.textContent=total+' cards';badge.className='deck-count-badge'+(total>100?' over':'');
   const empty=document.getElementById('deck-empty'),sections=document.getElementById('deck-sections');
-  if(!cards.length&&!sbCards.length){empty.style.display='block';sections.innerHTML='';document.getElementById('sideboard-area').style.display='none';return}
+  const mbArea=document.getElementById('mainboard-area');
+  if(!cards.length&&!sbCards.length){empty.style.display='block';sections.innerHTML='';mbArea.style.display='none';document.getElementById('sideboard-area').style.display='none';return}
   empty.style.display='none';
+  // Mainboard header (mirrors the sideboard section).
+  mbArea.style.display=cards.length?'block':'none';
+  document.getElementById('mainboard-count-badge').textContent=total;
   sections.innerHTML=renderDeckSection(cards,'main');
+  // Honor collapse state (defaults open).
+  const mbOpen=state.mainboardOpen!==false;
+  document.getElementById('mainboard-toggle').classList.toggle('collapsed',!mbOpen);
+  sections.classList.toggle('hidden',!mbOpen);
   // Sideboard
   const sbArea=document.getElementById('sideboard-area'),sbSections=document.getElementById('sideboard-sections'),sbBadge=document.getElementById('sideboard-count-badge');
   sbBadge.textContent=sbTotal;
