@@ -2415,6 +2415,16 @@ function openSplash(deckObj,username,opts){
   const dn=document.getElementById('splash-deck-name');
   if(dn)dn.textContent=deckObj.name||'Untitled Deck';
   const ov=document.getElementById('splash-overlay');
+  // In classic (non-Deck-OS) mode, make sure the overlay isn't still parented inside
+  // the WM layer (hidden when wm-off) from a prior Deck OS session — otherwise it
+  // opens invisibly. Re-home to <body> and strip any window-manager styling.
+  if(!document.body.classList.contains('wm-on') && ov.parentElement!==document.body){
+    document.body.appendChild(ov);
+    ov.classList.remove('wm-win','wm-max','mgw-win');
+    ['position','left','top','width','height','zIndex'].forEach(p=>ov.style[p]='');
+    const bar=ov.querySelector(':scope > .mgw-bar'); if(bar)bar.remove(); ov._mgwBar=0;
+  }
+  ov.style.display=''; // clear any inline display:none left by the WM (wmClose/wmMin)
   ov.classList.toggle('editing',_splashEdit);
   ov.classList.add('open');
   const showUC=(_splashEdit&&initSort==='user')?'':'none';
@@ -4934,7 +4944,7 @@ function mgLaunchApp(app){
 // adds chrome + state. Register a new program (e.g. a 2-player guessing battle) by
 // adding one entry here with {overlay, win, title, icon, open, close}.
 const MGW_APPS={
-  splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:false, open:()=>previewSplash(),  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
+  splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:true, open:()=>{ const d=currentDeck(); if(d)openSplash(d, state.user?.username||'You', {edit:!!state.user}); else previewSplash(); },  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   decks:  {overlay:'modal-decks',    win:'.modal', title:'My Decks',       icon:'📂',  open:()=>openDeckManager(),close:()=>decksClose()},
   import: {overlay:'modal-import',   win:'.modal', title:'Import Deck',     icon:'⬇',   open:()=>openImport(),     close:()=>closeModal('modal-import')},
