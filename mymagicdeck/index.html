@@ -1117,22 +1117,21 @@
     .tpg-rb{flex:1;min-width:96px;background:#eee;border:2px solid;border-color:#fff #999 #999 #fff;padding:8px 6px;font-family:inherit;font-size:12px;cursor:pointer;color:#222;border-radius:3px}
     .tpg-rb b{display:block;font-size:15px;margin-top:2px}
     .tpg-rb.on{background:#1577d4;color:#fff;border-color:#0a4f93}
-    /* TWENTYFOURTY life counter — two-seat layout (opponent across the table = top, flipped) */
+    /* TWENTYFOURTY life counter — two-seat layout (opponent across the table = top, flipped).
+       Each half is a column: player control (toward center line) · big life · step buttons (outer edge). */
     .lc-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;height:100%}
-    .lc-fs{display:flex;width:100%;height:100%;min-height:540px;background:#0c0c0c;color:#fff}
-    .lc-rail{flex:0 0 auto;width:clamp(48px,13vw,74px);display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:8px;padding:10px 6px;background:#0c0c0c;border-right:2px solid #333}
-    .lc-rail button{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:9px 2px;font-size:15px;touch-action:manipulation;user-select:none}
-    .lc-rail button:active{border-color:#808080 #fff #fff #808080}
-    .lc-rail .lc-startgrp{display:flex;flex-direction:column;gap:6px}
-    .lc-rail .lc-on{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
-    .lc-halves{flex:1;min-width:0;display:flex;flex-direction:column}
-    .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 45%,#242424,#0e0e0e)}
+    .lc-fs{display:flex;flex-direction:column;width:100%;height:100%;min-height:540px;background:#0c0c0c;color:#fff}
+    .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
-    .lc-life{font-size:48cqmin;font-weight:800;line-height:1;font-family:'Courier New',monospace;color:#fff;letter-spacing:-.03em}
+    .lc-ctl{display:flex;gap:8px;align-items:center;justify-content:center;flex:0 0 auto}
+    .lc-ctl button{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:6px 14px;font-size:14px;touch-action:manipulation;user-select:none}
+    .lc-ctl button:active{border-color:#808080 #fff #fff #808080}
+    .lc-ctl .lc-on{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
+    .lc-life{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;font-size:62cqmin;font-weight:800;line-height:1;font-family:'Courier New',monospace;color:#fff;letter-spacing:-.03em}
     .lc-life.dead{color:#e24b4a}
-    .lc-ovbtns{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:clamp(8px,5vw,30px);pointer-events:none}
-    .lc-ovbtns button{pointer-events:auto;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.32);color:#fff;font-weight:bold;font-size:6.5cqmin;min-width:17cqmin;height:15cqmin;border-radius:12px;cursor:pointer;-webkit-backdrop-filter:blur(1px);backdrop-filter:blur(1px);touch-action:manipulation;user-select:none}
+    .lc-ovbtns{display:flex;align-items:center;justify-content:center;gap:clamp(8px,5vw,30px);flex:0 0 auto}
+    .lc-ovbtns button{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.32);color:#fff;font-weight:bold;font-size:6cqmin;min-width:15cqmin;height:12cqmin;border-radius:12px;cursor:pointer;touch-action:manipulation;user-select:none}
     .lc-ovbtns button:active{background:rgba(255,255,255,.30)}
     /* The Land Game */
     .lg-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#111}
@@ -5711,24 +5710,23 @@ function lcLoad(){ if(!_lcState){ try{ _lcState=DeckOS.store.get('twentyfourty')
 function lcSave(){ try{ DeckOS.store.set('twentyfourty', _lcState); }catch(e){} }
 function lcRender(body){ if(!body)return; const s=lcLoad();
   // Two seats: player 0 is the OPPONENT across the table (top, rotated 180°), player 1 is ME (bottom).
-  // Big life number fills each half; +/- step buttons sit over it, semi-transparent.
-  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+
+  // Each half: player control nearest the center line · big life number · step buttons at the outer edge.
+  const steps=i=>'<div class="lc-ovbtns">'+
+      '<button data-lc="'+i+'" data-d="-5">−5</button>'+
+      '<button data-lc="'+i+'" data-d="-1">−</button>'+
+      '<button data-lc="'+i+'" data-d="1">+</button>'+
+      '<button data-lc="'+i+'" data-d="5">+5</button></div>';
+  const resetCtl='<div class="lc-ctl"><button data-lcreset title="Reset">↺ Reset</button></div>';
+  const startCtl='<div class="lc-ctl">'+
+      '<button class="'+(s.start===20?'lc-on':'')+'" data-lcstart="20">20</button>'+
+      '<button class="'+(s.start===40?'lc-on':'')+'" data-lcstart="40">40</button></div>';
+  // DOM order is [control, life, steps]; the flipped half reverses it visually so steps land at the
+  // screen edge (under the opponent's number from their seat) and the control sits at the center line.
+  const half=(i,flip,ctl)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+ctl+
       '<div class="lc-life'+(s.players[i].life<=0?' dead':'')+'">'+s.players[i].life+'</div>'+
-      '<div class="lc-ovbtns">'+
-        '<button data-lc="'+i+'" data-d="-5">−5</button>'+
-        '<button data-lc="'+i+'" data-d="-1">−</button>'+
-        '<button data-lc="'+i+'" data-d="1">+</button>'+
-        '<button data-lc="'+i+'" data-d="5">+5</button>'+
-      '</div></div>';
+      steps(i)+'</div>';
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs">'+
-      '<div class="lc-rail">'+                                  // left rail: reset (top, near opponent), start (bottom, near me)
-        '<button data-lcreset title="Reset">↺</button>'+
-        '<div class="lc-startgrp">'+
-          '<button class="'+(s.start===20?'lc-on':'')+'" data-lcstart="20">20</button>'+
-          '<button class="'+(s.start===40?'lc-on':'')+'" data-lcstart="40">40</button>'+
-        '</div>'+
-      '</div>'+
-      '<div class="lc-halves">'+half(0,true)+half(1,false)+'</div>'+
+      half(0,true,resetCtl)+half(1,false,startCtl)+
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
   body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));

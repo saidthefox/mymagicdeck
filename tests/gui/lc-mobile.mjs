@@ -16,16 +16,16 @@ await p.waitForTimeout(700);
 const m = await p.evaluate(() => {
   const modal = document.querySelector('#modal-prog-twentyfourty .modal');
   const halves = document.querySelectorAll('#modal-prog-twentyfourty .lc-half');
-  const top = halves[0], life = top && top.querySelector('.lc-life');
-  const rail = document.querySelector('#modal-prog-twentyfourty .lc-rail');
-  const railBtns = rail ? [...rail.querySelectorAll('button')].map(x => x.textContent.trim()) : [];
+  const top = halves[0], bot = halves[1], life = top && top.querySelector('.lc-life');
   return {
     modalW: modal ? Math.round(modal.getBoundingClientRect().width) : null,
     modalH: modal ? Math.round(modal.getBoundingClientRect().height) : null,
     halves: halves.length,
     topFlipped: top ? getComputedStyle(top).transform : null,
     lifeFontPx: life ? Math.round(parseFloat(getComputedStyle(life).fontSize)) : null,
-    railOrder: railBtns,
+    topCtl: top ? top.querySelector('.lc-ctl button')?.textContent.trim() : null,
+    botCtl: bot ? [...bot.querySelectorAll('.lc-ctl button')].map(x => x.textContent.trim()).join(',') : null,
+    topStepsAtEdge: top ? (top.querySelector('.lc-ovbtns').getBoundingClientRect().top < top.querySelector('.lc-life').getBoundingClientRect().top) : null,
     ovBtns: top ? top.querySelectorAll('.lc-ovbtns button').length : 0,
   };
 });
