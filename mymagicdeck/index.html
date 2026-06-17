@@ -482,6 +482,24 @@
     .splash-card.free { position: absolute; transition: none; }
     .splash-overlay.editing .splash-card.free { cursor: grab; box-shadow: 0 3px 12px rgba(0,0,0,0.65); }
     .splash-overlay.editing .splash-card.free:active { cursor: grabbing; }
+    /* Draggable splash stat panels (deck list / curve / types / price / name) */
+    .splash-stat { position:absolute; background:rgba(10,12,18,0.82); border:1px solid rgba(255,255,255,0.2); border-radius:8px; color:#fff; padding:8px 10px; font-family:Tahoma,sans-serif; box-shadow:0 4px 16px rgba(0,0,0,0.55); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); max-width:300px; }
+    .splash-overlay.editing .splash-stat { cursor:grab; outline:1px dashed rgba(255,255,255,0.28); }
+    .splash-overlay.editing .splash-stat:active { cursor:grabbing; }
+    .splash-stat .ss-t { font-size:0.56rem; text-transform:uppercase; letter-spacing:0.1em; color:#9aa3b5; margin-bottom:5px; }
+    .splash-stat .ss-name { font-weight:800; font-size:1.25rem; text-shadow:0 1px 3px rgba(0,0,0,0.7); }
+    .splash-stat .ss-by { font-size:0.72rem; color:#9aa3b5; }
+    .splash-stat .ss-price { font-weight:800; font-size:1.2rem; color:#7de0a0; }
+    .splash-stat .ss-curve { display:flex; align-items:flex-end; gap:3px; height:64px; }
+    .splash-stat .ss-bar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; width:18px; }
+    .splash-stat .ss-barfill { width:14px; background:#7de0a0; border-radius:2px 2px 0 0; min-height:2px; }
+    .splash-stat .ss-bar span { font-size:0.55rem; color:#9aa3b5; margin-top:2px; }
+    .splash-stat .ss-types { display:flex; width:200px; height:24px; border-radius:5px; overflow:hidden; }
+    .splash-stat .ss-tseg { display:flex; align-items:center; justify-content:center; min-width:0; }
+    .splash-stat .ss-tseg span { font-size:0.62rem; color:#fff; }
+    .splash-stat .ss-list { max-height:300px; overflow:auto; font-size:0.72rem; line-height:1.45; min-width:150px; }
+    .splash-stat .ss-lcat { color:#9aa3b5; font-weight:700; margin-top:4px; text-transform:uppercase; font-size:0.56rem; letter-spacing:0.06em; }
+    .splash-stat .ss-li { color:#e0e4ee; }
     .splash-free.snap { background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 30px 30px; }
     /* Share-image composer */
     #modal-share-image, #modal-uploads { z-index: 4600; } /* opened from inside the splash overlay (z 2000) */
@@ -2458,6 +2476,10 @@ function openSplash(deckObj,username,opts){
       <button class="btn small splash-user-ctl" id="splash-deckpic" onclick="deckPicLayout()" style="display:none" title="Auto-arrange into a tidy grid">🎴 Deck pic layout</button>
       <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
       <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
+      <span class="splash-user-ctl" id="splash-stats-wrap" style="display:none;position:relative">
+        <button class="btn small" onclick="toggleStatsMenu(event)" title="Add draggable stat panels onto the splash">📊 Stats ▾</button>
+        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each panel where you want it, then 💾 Save layout.</div></div>
+      </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
       <button class="btn small" onclick="openUploads()">🗂 My Uploads</button>
       <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
@@ -2816,6 +2838,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
     maxX=Math.max(maxX,p.x+CARD_W); maxY=Math.max(maxY,p.y+CARD_H);
     if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z);
   }
+  // Stat widgets (deck name / mana curve / type breakdown / price / deck list) — drag like cards.
+  const statsOn=(deck.layout&&deck.layout.statsOn)||{};
+  const statPlaced=[]; let si=0;
+  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; let p=positions['stat:'+sd.id]; if(!p)p={x:maxX+20,y:8+si*78,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
   const W=Math.max(maxX+40,420),H=Math.max(maxY+40,320);
   let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
   for(const{e,p}of placed){
@@ -2830,6 +2856,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
     html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${e.card.name}" draggable="false"/>`:`<div class="no-img-ph">${e.card.name}</div>`;
     if(_splashEdit)html+=`<div class="splash-edit-badge">✎</div>`;
     html+=`</div>`;
+  }
+  for(const{id,p} of statPlaced){
+    const handler=_splashEdit?`onpointerdown="freeStatDown(event,'stat:${id}')"`:'';
+    html+=`<div class="splash-stat stat-${id}" data-key="stat:${id}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||900}" ${handler}>`+_statWidgetInner(id,deck,_splashDeck.username)+`</div>`;
   }
   html+=`</div></div>`;
   return html;
@@ -2859,6 +2889,39 @@ function freeCardDown(e,key,cid,copyIdx){
   };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
+// ── Splash stat widgets (deck list / curve / types / price / name) ────────────
+const STAT_DEFS=[{id:'name',label:'Deck name'},{id:'curve',label:'Mana curve'},{id:'types',label:'Type breakdown'},{id:'price',label:'Price'},{id:'list',label:'Deck list'}];
+const _STAT_TCOL={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
+function _statWidgetInner(id,deck,username){
+  const cards=Object.values(deck.cards||{}), sb=Object.values(deck.sideboard||{});
+  if(id==='name'){ return '<div class="ss-name">'+_mgEsc(deck.name||'Untitled')+'</div>'+(username?'<div class="ss-by">by '+_mgEsc(username)+'</div>':''); }
+  if(id==='price'){ let tp=0; for(const{card,qty}of cards)tp+=parseFloat(card.prices&&card.prices.usd||0)*qty; for(const{card,qty}of sb)tp+=parseFloat(card.prices&&card.prices.usd||0)*qty; return '<div class="ss-t">Price</div><div class="ss-price">$'+tp.toFixed(2)+'</div>'; }
+  if(id==='curve'){ const bk=[0,0,0,0,0,0,0,0]; for(const{card,qty}of cards){ if(/\bLand\b/i.test(card.type_line||''))continue; bk[Math.min(7,Math.floor(card.cmc||0))]+=qty; } const mx=Math.max(1,...bk); let bars=''; bk.forEach((c,i)=>{ bars+='<div class="ss-bar" title="'+(i===7?'7+':i)+': '+c+'"><div class="ss-barfill" style="height:'+Math.round(c/mx*52)+'px"></div><span>'+(i===7?'7+':i)+'</span></div>'; }); return '<div class="ss-t">Mana curve</div><div class="ss-curve">'+bars+'</div>'; }
+  if(id==='types'){ const tc={}; for(const{card,qty}of cards){ const c=getCardCategory(card); tc[c]=(tc[c]||0)+qty; } let seg=''; for(const cat of CATEGORY_ORDER){ if(!tc[cat])continue; seg+='<div class="ss-tseg" style="flex:'+tc[cat]+';background:'+(_STAT_TCOL[cat]||'#333')+'" title="'+cat+': '+tc[cat]+'"><span>'+tc[cat]+'</span></div>'; } return '<div class="ss-t">Types</div><div class="ss-types">'+seg+'</div>'; }
+  if(id==='list'){ const g={}; for(const{card,qty}of cards){ const c=getCardCategory(card); (g[c]=g[c]||[]).push(qty+' '+card.name); } let txt=''; for(const cat of CATEGORY_ORDER){ if(!g[cat])continue; txt+='<div class="ss-lcat">'+cat+'</div>'; g[cat].forEach(l=>txt+='<div class="ss-li">'+_mgEsc(l)+'</div>'); } return '<div class="ss-t">Deck list</div><div class="ss-list">'+txt+'</div>'; }
+  return '';
+}
+function freeStatDown(e,key){
+  if(e.button!==undefined&&e.button!==0)return; e.preventDefault();
+  const el=e.currentTarget; const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+  const scale=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
+  _freeZ++; el.style.zIndex=_freeZ;
+  const sx=e.clientX,sy=e.clientY,bl=parseFloat(el.style.left)||0,bt=parseFloat(el.style.top)||0; let moved=false;
+  const snap=v=>_snapOn?Math.round(v/SNAP_GRID)*SNAP_GRID:v;
+  const move=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4)moved=true; if(moved){ el.style.left=Math.max(0,snap(bl+(ev.clientX-sx)/scale))+'px'; el.style.top=Math.max(0,snap(bt+(ev.clientY-sy)/scale))+'px'; } };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; deck.layout.positions[key]={x,y,z:_freeZ}; if(moved){ saveToStorage(); syncDeckToApi(deck.id); } };
+  window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
+}
+function toggleStatsMenu(e){ if(e)e.stopPropagation(); const pop=document.getElementById('splash-stats-pop'); if(!pop)return;
+  if(pop.classList.toggle('open')){ setTimeout(()=>document.addEventListener('click',_statsOutside,true),0); } else document.removeEventListener('click',_statsOutside,true); }
+function _statsOutside(ev){ const w=document.getElementById('splash-stats-wrap'); if(w&&!w.contains(ev.target)){ document.getElementById('splash-stats-pop')?.classList.remove('open'); document.removeEventListener('click',_statsOutside,true); } }
+function statsSet(id,on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; deck.layout.statsOn[id]=on;
+  saveToStorage(); syncDeckToApi(deck.id);
+  if((document.querySelector('input[name="splash-sort"]:checked')?.value)==='user')_splashRebuildColumns();
+  else { const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true; splashReorder(); }
+}
 // Session-scoped layout undo: snapshot deck.layout before a destructive rearrange.
 let _splashUndo=[];
 function _splashSnapshot(deck){ try{ _splashUndo.push(deck.layout?JSON.parse(JSON.stringify(deck.layout)):null); if(_splashUndo.length>20)_splashUndo.shift(); }catch(e){} _splashUndoSync(); }
@@ -2874,7 +2937,7 @@ function saveUserLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   const free=document.getElementById('splash-free'); if(!free){toast('Switch to User Layout first','info');return;}
   deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
-  free.querySelectorAll('.splash-card').forEach(el=>{ const k=el.dataset.key; if(!k)return;
+  free.querySelectorAll('[data-key]').forEach(el=>{ const k=el.dataset.key; if(!k)return;
     deck.layout.positions[k]={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; });
   saveToStorage(); syncDeckToApi(deck.id); toast('Layout saved 💾','success');
 }
