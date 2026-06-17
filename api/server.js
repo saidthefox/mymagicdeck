@@ -1627,7 +1627,7 @@ app.post('/api/auth/register', {
       type: 'object',
       required: ['username', 'email', 'password'],
       properties: {
-        username: { type: 'string', minLength: 2, maxLength: 32 },
+        username: { type: 'string', minLength: 2, maxLength: 32, pattern: '^[A-Za-z0-9_.-]+$' },
         email:    { type: 'string', format: 'email' },
         password: { type: 'string', minLength: 8, maxLength: 128 },
       },

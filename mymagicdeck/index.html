@@ -2190,7 +2190,9 @@ function toggleDeckSiteSplash(site,checked){
     toast('Removed splash for '+site+'.com','info');
   }
   saveToStorage();syncDeckToApi(d.id);
-  openDeckManager();
+  // Only refresh the deck manager if it's already open — calling openDeckManager()
+  // unconditionally pops the legacy deck-selection modal behind the share window.
+  if(document.getElementById('modal-decks')?.classList.contains('open'))openDeckManager();
 }
 function previewSplash(){closeModal('modal-share');const d=currentDeck();if(d)openSplash(d,state.user?.username||'You');}
 function _buildCommanderPickerHtml(deck){
@@ -2302,7 +2304,7 @@ function openSplash(deckObj,username,opts){
   for(const{card,qty}of sbCards)tp+=parseFloat(card.prices?.usd||0)*qty;
 
   // Meta bar: deck name + by on one line, counts+price, then sort+zoom
-  const byStr=username?`by <strong style="color:var(--accent)">${username}</strong>`:'shared deck';
+  const byStr=username?`by <strong style="color:var(--accent)">${_mgEsc(username)}</strong>`:'shared deck';
   const initSort=['cmc','type','user'].includes(deckObj.defaultLayout)?deckObj.defaultLayout:'cmc';
   const statsHtml=`<div class="splash-meta-bar">
     <div style="display:flex;flex-direction:column;gap:3px">
@@ -4478,7 +4480,7 @@ function openDeckManager(){
     const pipHtml=[...clrSet].map(c=>`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${{W:'#f9f0db',U:'#5b8def',B:'#2d1f3d',R:'#c03030',G:'#2d6040'}[c]||'#3a4050'};border:1px solid rgba(255,255,255,0.2);vertical-align:middle"></span>`).join('');
     h+=`<div class="deck-list-item${cur?' current':''}" onclick="loadDeck('${d.id}');decksClose()">
       <div style="flex:1;min-width:0">
-        <div class="deck-item-name">${d.name} ${splashLabel?`<span class="splash-deck-manager-badge">${splashLabel}</span>`:''}</div>
+        <div class="deck-item-name">${_mgEsc(d.name)} ${splashLabel?`<span class="splash-deck-manager-badge">${splashLabel}</span>`:''}</div>
         <div class="deck-item-meta">${cc} cards${sbc>0?' · SB: '+sbc:''} ${pipHtml}</div>
       </div>
       <div class="deck-item-actions">
