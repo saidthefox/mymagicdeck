@@ -1146,6 +1146,23 @@
     .lc-ovbtns{display:flex;align-items:center;justify-content:center;gap:clamp(8px,5vw,30px);flex:0 0 auto}
     .lc-ovbtns button{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.32);color:#fff;font-weight:bold;font-size:6cqmin;min-width:15cqmin;height:12cqmin;border-radius:12px;cursor:pointer;touch-action:manipulation;user-select:none}
     .lc-ovbtns button:active{background:rgba(255,255,255,.30)}
+    /* Mana Pool tracker */
+    .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:440px;background:radial-gradient(120% 80% at 50% 0%,#171122,#0b0810);color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
+    .mp-bar{display:flex;justify-content:space-around;align-items:flex-start;gap:2px;padding:12px 6px 8px;flex:0 0 auto;z-index:2}
+    .mp-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:96px}
+    .mp-dot{width:clamp(30px,8vw,42px);height:clamp(30px,8vw,42px);border-radius:50%;border:2px solid rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;cursor:pointer;user-select:none;box-shadow:0 2px 9px rgba(0,0,0,.55), inset 0 2px 4px rgba(255,255,255,.45);transition:transform .08s}
+    .mp-dot:hover{filter:brightness(1.08)} .mp-dot:active{transform:scale(.86)}
+    .mp-garg{width:clamp(42px,11vw,60px);height:auto;cursor:pointer;filter:drop-shadow(0 3px 4px rgba(0,0,0,.6));transition:transform .1s}
+    .mp-garg:active{transform:translateY(2px) scale(.96)}
+    .mp-garg .mp-mouth{transform-box:fill-box;transform-origin:center}
+    .mp-garg.mp-anim .mp-mouth{animation:mp-chomp .26s ease}
+    @keyframes mp-chomp{50%{transform:scaleY(1.55)}}
+    .mp-count{font-family:'Courier New',monospace;font-weight:800;font-size:1.05rem;min-width:22px;text-align:center;color:#fff}
+    .mp-pool{flex:1;min-height:0;position:relative}
+    .mp-pool canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+    .mp-poollbl{position:absolute;left:10px;top:6px;font-size:.6rem;letter-spacing:.14em;color:rgba(255,255,255,.22);text-transform:uppercase;z-index:1;pointer-events:none}
+    .mp-clear{position:absolute;right:8px;top:6px;z-index:3;font-size:.66rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#ccc;border-radius:5px;padding:3px 9px;cursor:pointer}
+    .mp-clear:hover{background:rgba(255,255,255,.18)}
     /* The Land Game */
     .lg-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#111}
     .lg-side{border:1px solid #b5b5b5;background:#f4f4f4;padding:6px;border-radius:4px}
@@ -6119,12 +6136,81 @@ widgetRegister('calendar', { title:'Calendar', icon:'📅', render(b){
   const up=calAllEvents().filter(e=>e.date>=today).sort((a,b)=>a.date<b.date?-1:1).slice(0,6);
   b.innerHTML=up.length?up.map(e=>'<div style="display:flex;gap:6px;padding:1px 0"><b style="color:#00006e;min-width:54px">'+_mgEsc(e.date.slice(5))+'</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(e.kind==='tournament'?'🏆 ':'')+_mgEsc(e.title)+'</span></div>').join(''):'<div style="color:#555">No upcoming events.</div>';
 }});
+// ===== Mana Pool tracker — tap a color to have a gargoyle spit mana into a moving pool;
+//        tap the gargoyle to slurp one back. Counts persist per color. =====
+const MP_COLORS=[
+  {k:'W',name:'White',hex:'#f3ecc8',ink:'#3a3000',pip:'W'},
+  {k:'U',name:'Blue', hex:'#2f7dd1',ink:'#ffffff',pip:'U'},
+  {k:'B',name:'Black',hex:'#5a5066',ink:'#ffffff',pip:'B'},
+  {k:'R',name:'Red',  hex:'#d2402f',ink:'#ffffff',pip:'R'},
+  {k:'G',name:'Green',hex:'#3a9e57',ink:'#ffffff',pip:'G'},
+  {k:'C',name:'Colorless',hex:'#c3c9d0',ink:'#23262b',pip:'◇'},
+];
+function mpGargSvg(hex,k,name){
+  return '<svg class="mp-garg" data-slurp="'+k+'" title="Slurp back '+name+'" viewBox="0 0 64 64" aria-hidden="true">'
+    +'<path d="M14 16 L7 1 L23 12 Z" fill="#6c6c75"/><path d="M50 16 L57 1 L41 12 Z" fill="#6c6c75"/>'
+    +'<path d="M32 9 C50 9 57 23 55 39 C53 54 43 62 32 62 C21 62 11 54 9 39 C7 23 14 9 32 9 Z" fill="#7c7c85" stroke="#474750" stroke-width="2"/>'
+    +'<path d="M13 27 Q23 21 30 27 M34 27 Q41 21 51 27" stroke="#474750" stroke-width="3" fill="none" stroke-linecap="round"/>'
+    +'<circle cx="23" cy="31" r="4.2" fill="'+hex+'"/><circle cx="41" cy="31" r="4.2" fill="'+hex+'"/>'
+    +'<path d="M32 33 L28 43 L36 43 Z" fill="#5b5b63"/>'
+    +'<g class="mp-mouth"><path d="M17 46 Q32 43 47 46 Q45 60 32 60 Q19 60 17 46 Z" fill="#130a08"/>'
+    +'<path d="M17 46 Q32 43 47 46 Q45 60 32 60 Q19 60 17 46 Z" fill="'+hex+'" opacity="0.32"/>'
+    +'<path d="M22 46 L24 53 L26 46 Z" fill="#ece6d4"/><path d="M38 46 L40 53 L42 46 Z" fill="#ece6d4"/></g></svg>';
+}
+function mpLoad(){ try{ const s=DeckOS.store.get('manapool'); if(s&&s.counts)return {counts:Object.assign({W:0,U:0,B:0,R:0,G:0,C:0},s.counts)}; }catch(e){} return {counts:{W:0,U:0,B:0,R:0,G:0,C:0}}; }
+function mpSave(st){ try{ DeckOS.store.set('manapool',{counts:st.counts}); }catch(e){} }
+function mpRender(body){
+  if(!body)return; if(body._mpStop)body._mpStop();
+  const st=mpLoad();
+  let bar='';
+  MP_COLORS.forEach(c=>{ bar+='<div class="mp-col">'
+    +'<div class="mp-dot" data-add="'+c.k+'" title="Add '+c.name+' mana" style="background:radial-gradient(circle at 38% 32%, #ffffffcc, '+c.hex+' 62%);color:'+c.ink+'">'+c.pip+'</div>'
+    +mpGargSvg(c.hex,c.k,c.name)
+    +'<div class="mp-count" data-count="'+c.k+'">'+(st.counts[c.k]||0)+'</div></div>'; });
+  body.innerHTML='<div class="mp-wrap"><div class="mp-bar">'+bar+'</div>'
+    +'<div class="mp-pool"><span class="mp-poollbl">Mana Pool</span><button class="mp-clear">Empty</button><canvas></canvas></div></div>';
+  const poolEl=body.querySelector('.mp-pool'), canvas=body.querySelector('canvas'), ctx=canvas.getContext('2d');
+  const colOf={}; MP_COLORS.forEach(c=>colOf[c.k]=c.hex);
+  const orbs=[]; let W=1,H=1; const dpr=Math.min(window.devicePixelRatio||1,2);
+  function resize(){ const r=poolEl.getBoundingClientRect(); if(r.width<2)return; W=r.width;H=r.height; canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr); ctx.setTransform(dpr,0,0,dpr,0,0); }
+  const mouthX=k=>{ const i=MP_COLORS.findIndex(c=>c.k===k); return (i+0.5)/MP_COLORS.length*W; };
+  const orbR=()=>Math.max(9,Math.min(16,W/40));
+  function spawn(k){ const R=orbR(); orbs.push({k,x:mouthX(k)+(Math.random()*10-5),y:-R,vx:(Math.random()*2-1)*0.6,vy:2.2+Math.random()*1.2,r:R,slurp:false}); }
+  function seed(){ orbs.length=0; MP_COLORS.forEach(c=>{ const n=Math.min(st.counts[c.k]||0,60); for(let j=0;j<n;j++)orbs.push({k:c.k,x:Math.random()*W,y:H*0.35+Math.random()*H*0.6,vx:Math.random()*2-1,vy:0,r:orbR(),slurp:false}); }); }
+  const setCount=k=>{ const el=body.querySelector('[data-count="'+k+'"]'); if(el)el.textContent=st.counts[k]||0; };
+  function chomp(k){ const g=body.querySelector('[data-slurp="'+k+'"]'); if(g){ g.classList.remove('mp-anim'); void g.offsetWidth; g.classList.add('mp-anim'); } }
+  function add(k){ st.counts[k]=(st.counts[k]||0)+1; mpSave(st); setCount(k); chomp(k); if(orbs.filter(o=>!o.slurp).length<140)spawn(k); }
+  function slurp(k){ if((st.counts[k]||0)<=0)return; st.counts[k]--; mpSave(st); setCount(k); chomp(k); const cand=orbs.filter(o=>o.k===k&&!o.slurp); if(cand.length){ const o=cand[(Math.random()*cand.length)|0]; o.slurp=true; o.tx=mouthX(k); o.ty=-o.r*2; } }
+  body.querySelectorAll('[data-add]').forEach(el=>el.addEventListener('click',()=>add(el.getAttribute('data-add'))));
+  body.querySelectorAll('[data-slurp]').forEach(el=>el.addEventListener('click',()=>slurp(el.getAttribute('data-slurp'))));
+  body.querySelector('.mp-clear').addEventListener('click',()=>{ MP_COLORS.forEach(c=>st.counts[c.k]=0); mpSave(st); MP_COLORS.forEach(c=>setCount(c.k)); orbs.length=0; });
+  resize(); seed();
+  let ro=null; try{ ro=new ResizeObserver(()=>resize()); ro.observe(poolEl); }catch(e){}
+  function step(){
+    if(!canvas.isConnected){ body._mpRAF=null; return; }                                  // removed from DOM → stop
+    if(canvas.offsetParent===null){ body._mpRAF=requestAnimationFrame(step); return; }      // hidden/minimized → idle, resume on show
+    if(canvas.width<2)resize();
+    ctx.clearRect(0,0,W,H);
+    for(let i=orbs.length-1;i>=0;i--){ const o=orbs[i];
+      if(o.slurp){ o.x+=(o.tx-o.x)*0.18; o.y+=(o.ty-o.y)*0.18; if(o.y<-o.r){orbs.splice(i,1);continue;} }
+      else{ o.vy+=0.12; o.vx+=(Math.random()*2-1)*0.15; o.vx*=0.985; o.vy*=0.99; o.x+=o.vx; o.y+=o.vy;
+        if(o.x<o.r){o.x=o.r;o.vx=Math.abs(o.vx)*0.6;} if(o.x>W-o.r){o.x=W-o.r;o.vx=-Math.abs(o.vx)*0.6;}
+        if(o.y>H-o.r){o.y=H-o.r;o.vy=-Math.abs(o.vy)*0.45;} }
+    }
+    for(let a=0;a<orbs.length;a++)for(let b=a+1;b<orbs.length;b++){ const o=orbs[a],p=orbs[b]; if(o.slurp||p.slurp)continue; let dx=p.x-o.x,dy=p.y-o.y,d=Math.hypot(dx,dy),m=o.r+p.r-2; if(d>0&&d<m){ const f=(m-d)/d*0.5; dx*=f;dy*=f; o.x-=dx;o.y-=dy;p.x+=dx;p.y+=dy; } }
+    for(const o of orbs){ const g=ctx.createRadialGradient(o.x-o.r*0.35,o.y-o.r*0.4,o.r*0.15,o.x,o.y,o.r); g.addColorStop(0,'#ffffffcc'); g.addColorStop(0.35,colOf[o.k]); g.addColorStop(1,'rgba(0,0,0,0.35)'); ctx.beginPath();ctx.arc(o.x,o.y,o.r,0,7); ctx.fillStyle=g; ctx.shadowColor=colOf[o.k]; ctx.shadowBlur=9; ctx.fill(); ctx.shadowBlur=0; }
+    body._mpRAF=requestAnimationFrame(step);
+  }
+  body._mpStop=()=>{ if(body._mpRAF){cancelAnimationFrame(body._mpRAF);body._mpRAF=null;} if(ro){try{ro.disconnect();}catch(e){}} };
+  body._mpRAF=requestAnimationFrame(step);
+}
 if(window.DeckOS){
   DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
+  DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:'🔮', width:'620px', desktop:true, mount(body){ mpRender(body); } });
   DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', mount(body){ lgRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
