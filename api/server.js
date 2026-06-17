@@ -562,8 +562,22 @@ const _rateBuckets = new Map();
 const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
 const RATE_MAX_AUTH = 20;            // max auth attempts per window
 
+// Real client IP for rate-limit keys + abuse logs. The chain is
+// client → Cloudflare → nginx → app. Cloudflare sets CF-Connecting-IP
+// (authoritative; clients can't forge it through CF). nginx appends the real
+// peer to the RIGHT of X-Forwarded-For, so the rightmost XFF entry is the
+// trustworthy one — the *leftmost* is attacker-supplied and must never be used
+// as a key (it let anyone get a fresh bucket per request and bypass every limit).
+function clientIp(req) {
+  const cf = req.headers['cf-connecting-ip'];
+  if (cf) return String(cf).trim();
+  const xff = req.headers['x-forwarded-for'];
+  if (xff) { const p = String(xff).split(',').map(s => s.trim()).filter(Boolean); if (p.length) return p[p.length - 1]; }
+  return req.ip || 'unknown';
+}
+
 function rateLimitAuth(req, reply, done) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const ip = clientIp(req);
   const now = Date.now();
   let bucket = _rateBuckets.get(ip);
   if (!bucket || now - bucket.start > RATE_WINDOW) {
@@ -612,9 +626,7 @@ const UPLOAD_WINDOW = 15 * 60 * 1000;
 const UPLOAD_MAX = 60; // uploads per window
 
 function rateLimitUpload(req, reply, done) {
-  const key = req.user?.sub
-    || req.headers['x-forwarded-for']?.split(',')[0]?.trim()
-    || req.ip || 'unknown';
+  const key = req.user?.sub || clientIp(req);
   const now = Date.now();
   let bucket = _uploadBuckets.get(key);
   if (!bucket || now - bucket.start > UPLOAD_WINDOW) {
@@ -644,7 +656,7 @@ const BG_MAX = parseInt(process.env.BG_MAX || '6', 10);          // per user / 1
 const BG_CONCURRENCY = parseInt(process.env.BG_CONCURRENCY || '1', 10); // global in-flight
 let _bgInFlight = 0;
 function rateLimitBgGen(req, reply, done) {
-  const key = req.user?.sub || req.ip || 'unknown';
+  const key = req.user?.sub || clientIp(req);
   const now = Date.now();
   let bucket = _bgBuckets.get(key);
   if (!bucket || now - bucket.start > BG_WINDOW) { bucket = { start: now, count: 0 }; _bgBuckets.set(key, bucket); }
@@ -1264,7 +1276,7 @@ const _reportBuckets = new Map();
 const REPORT_WINDOW = 15 * 60 * 1000;
 const REPORT_MAX = 20;
 function rateLimitReport(req, reply, done) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const ip = clientIp(req);
   const now = Date.now();
   let b = _reportBuckets.get(ip);
   if (!b || now - b.start > REPORT_WINDOW) { b = { start: now, count: 0 }; _reportBuckets.set(ip, b); }
@@ -1585,7 +1597,7 @@ function _fetchHeadPinned(urlObj, ip, family) {
 // Dedicated limiter so framecheck can't drain (or be drained by) the report budget.
 const _fcBuckets = new Map(); const FC_WINDOW = 10 * 60 * 1000; const FC_MAX = 40;
 function rateLimitFrameCheck(req, reply, done) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const ip = clientIp(req);
   const now = Date.now(); let b = _fcBuckets.get(ip);
   if (!b || now - b.start > FC_WINDOW) { b = { start: now, count: 0 }; _fcBuckets.set(ip, b); }
   if (++b.count > FC_MAX) { reply.code(429).send({ ok: false, reason: 'Too many checks — try again shortly.' }); return; }
@@ -2309,7 +2321,7 @@ app.post('/api/uploads/:id/report', { preHandler: [softAuthenticate, rateLimitRe
   const row = db.prepare('SELECT id FROM uploads WHERE id = ?').get(id);
   if (!row) return reply.code(404).send({ error: 'Not found.' });
   const reason = (((req.body || {}).reason || '') + '').slice(0, 500);
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || null;
+  const ip = clientIp(req);
   db.prepare('INSERT INTO upload_reports (upload_id, reporter, reason, ip) VALUES (?, ?, ?, ?)')
     .run(id, req.user?.sub || null, reason || null, ip);
   return { ok: true };
@@ -2324,7 +2336,7 @@ app.post('/api/uploads/report', { preHandler: [softAuthenticate, rateLimitReport
   const key = m[1].split('__')[0];
   const up = db.prepare('SELECT id FROM uploads WHERE key = ?').get(key);
   if (up) {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || null;
+    const ip = clientIp(req);
     db.prepare('INSERT INTO upload_reports (upload_id, reporter, reason, ip) VALUES (?, ?, ?, ?)')
       .run(up.id, req.user?.sub || null, reason || null, ip);
   }
@@ -2553,7 +2565,7 @@ app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitBgGen]
 // ── Card Duel (online) ──────────────────────────────────────────────────────
 const _battleBuckets = new Map();
 function rateLimitBattle(req, reply, done) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.ip || 'unknown';
+  const ip = clientIp(req);
   const now = Date.now(); let b = _battleBuckets.get(ip);
   if (!b || now - b.start > 60000) { b = { start: now, count: 0 }; _battleBuckets.set(ip, b); }
   if (++b.count > 20) { reply.code(429).send({ error: 'Slow down.' }); return; }
