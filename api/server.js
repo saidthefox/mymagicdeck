@@ -667,14 +667,18 @@ const BG_WINDOW = 15 * 60 * 1000;
 const BG_MAX = parseInt(process.env.BG_MAX || '6', 10);          // per user / 15 min
 const BG_CONCURRENCY = parseInt(process.env.BG_CONCURRENCY || '1', 10); // global in-flight
 let _bgInFlight = 0;
+const _bgGuestBuckets = new Map();           // guests keyed by IP, stricter window
+const GUEST_BG_MAX = 2, GUEST_BG_WINDOW = 60 * 60 * 1000; // 2 AI scenes / hour for signed-out users
 function rateLimitBgGen(req, reply, done) {
+  const guest = !req.user;
+  const map = guest ? _bgGuestBuckets : _bgBuckets, max = guest ? GUEST_BG_MAX : BG_MAX, win = guest ? GUEST_BG_WINDOW : BG_WINDOW;
   const key = req.user?.sub || clientIp(req);
   const now = Date.now();
-  let bucket = _bgBuckets.get(key);
-  if (!bucket || now - bucket.start > BG_WINDOW) { bucket = { start: now, count: 0 }; _bgBuckets.set(key, bucket); }
+  let bucket = map.get(key);
+  if (!bucket || now - bucket.start > win) { bucket = { start: now, count: 0 }; map.set(key, bucket); }
   bucket.count++;
-  if (bucket.count > BG_MAX) {
-    reply.code(429).send({ error: 'You’ve generated a lot of backgrounds — please wait a few minutes.' });
+  if (bucket.count > max) {
+    reply.code(429).send({ error: guest ? 'Guests can make 2 AI scenes per hour — sign in for more.' : 'You’ve generated a lot of backgrounds — please wait a few minutes.' });
     return;
   }
   done();
@@ -682,7 +686,13 @@ function rateLimitBgGen(req, reply, done) {
 setInterval(() => {
   const cutoff = Date.now() - BG_WINDOW;
   for (const [k, b] of _bgBuckets) if (b.start < cutoff) _bgBuckets.delete(k);
+  for (const [k, b] of _bgGuestBuckets) if (b.start < Date.now() - GUEST_BG_WINDOW) _bgGuestBuckets.delete(k);
 }, 30 * 60 * 1000);
+// Reap shared guest AI backgrounds older than 24h (they're ephemeral — no account owns them).
+setInterval(() => {
+  const dir = path.join(UPLOAD_DIR, '_guest'); const cut = Date.now() - 24 * 3600 * 1000;
+  try { for (const f of fs.readdirSync(dir)) { const fp = path.join(dir, f); try { if (fs.statSync(fp).mtimeMs < cut) fs.rmSync(fp, { force: true }); } catch (_) {} } } catch (_) {}
+}, 60 * 60 * 1000);
 
 // ── Vision: is this a Magic card, and where is it? ─────────────────────────────
 // Pull a JSON object out of a possibly-fenced / chatty / <think>-wrapped reply.
@@ -2575,7 +2585,7 @@ function buildOverlaySVG(geo, overlays, meta) {
 }
 
 // ── POST /api/splash/render  → composited PNG of the deck ─────────────────────
-app.post('/api/splash/render', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload] }, async (req, reply) => {
   const b = req.body || {};
   const W = Math.min(4000, Math.max(200, parseInt(b.width) || 1000));
   const ch = Math.min(5400, Math.max(200, parseInt(b.height) || 1400)); // card-content height
@@ -2585,11 +2595,12 @@ app.post('/api/splash/render', { preHandler: [authenticate, rateLimitUpload] }, 
 
   let base;
   const bg = b.background;
-  // A user-generated background (AI scene) lives under the caller's own upload dir.
+  // AI-scene background: the caller's own (/u/<sub>/…, signed-in) or the shared guest area (/u/_guest/…).
   if (typeof bg === 'string' && bg.startsWith('/u/')) {
-    const userRoot = path.resolve(path.join(UPLOAD_DIR, String(req.user.sub))) + path.sep;
-    const resolved = path.resolve(path.join(UPLOAD_DIR, bg.replace(/^\/u\//, '')));
-    if (resolved.startsWith(userRoot) && fs.existsSync(resolved)) base = sharp(resolved).resize(W, H, { fit: 'cover' });
+    let root = null;
+    if (bg.startsWith('/u/_guest/')) root = path.resolve(path.join(UPLOAD_DIR, '_guest')) + path.sep;
+    else if (req.user) root = path.resolve(path.join(UPLOAD_DIR, String(req.user.sub))) + path.sep;
+    if (root) { const resolved = path.resolve(path.join(UPLOAD_DIR, bg.replace(/^\/u\//, ''))); if ((resolved + path.sep).startsWith(root) && fs.existsSync(resolved)) base = sharp(resolved).resize(W, H, { fit: 'cover' }); }
   }
   if (!base && bg && /^[a-z0-9_-]+$/i.test(bg)) {
     const bp = path.join(BG_DIR, bg + '.png');
@@ -2655,7 +2666,7 @@ function buildBgPrompt(slots) {
   return `A background scene of ${scene}${vibe ? `, ${vibe}` : ''}. ${whimsy}. ` +
     `An empty backdrop with no playing cards and no text, leaving room to place cards on top.`;
 }
-app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitBgGen] }, async (req, reply) => {
+app.post('/api/splash/bg-generate', { preHandler: [softAuthenticate, rateLimitBgGen] }, async (req, reply) => {
   const prompt = buildBgPrompt((req.body || {}).slots);
   if (!prompt) return reply.code(400).send({ error: 'Pick a scene from the list.' });
   if (!IMG_GEN_URL) return reply.code(503).send({ error: 'AI backgrounds aren’t enabled yet — coming soon.', enabled: false });
@@ -2675,10 +2686,11 @@ app.post('/api/splash/bg-generate', { preHandler: [authenticate, rateLimitBgGen]
     const ct = r.headers.get('content-type') || '';
     if (ct.startsWith('image/')) buf = Buffer.from(await r.arrayBuffer());
     else { const j = await r.json(); const b64 = j.image || j.b64_json || j.base64 || j.data?.[0]?.b64_json || j.data?.[0]?.base64; if (!b64) throw new Error('no image in response'); buf = Buffer.from(b64, 'base64'); }
-    const dir = path.join(UPLOAD_DIR, String(req.user.sub)); fs.mkdirSync(dir, { recursive: true });
+    const slot = req.user ? String(req.user.sub) : '_guest'; // guests share an ephemeral, reaped folder
+    const dir = path.join(UPLOAD_DIR, slot); fs.mkdirSync(dir, { recursive: true });
     const fname = 'bg_' + crypto.randomBytes(8).toString('hex') + '.png';
     await sharp(buf).png().toFile(path.join(dir, fname));
-    return { url: '/u/' + req.user.sub + '/' + fname };
+    return { url: '/u/' + slot + '/' + fname };
   } catch (e) {
     app.log.warn('bg-generate failed: ' + e.message);
     return reply.code(502).send({ error: 'Scene generation failed. Try again.' });

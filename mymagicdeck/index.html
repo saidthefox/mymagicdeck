@@ -2528,7 +2528,7 @@ function openSplash(deckObj,username,opts){
   } else if(_splashEdit){
     photoHtml=`<div class="splash-deckphoto empty" onclick="triggerDeckPhoto()"><span>＋ Add a full-deck photo</span></div>`;
   }
-  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload art / a deck photo or make a share image.`)+`</div>`:'';
+  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload your own art or a deck photo.`)+`</div>`:'';
   document.getElementById('splash-body').innerHTML=editHint+photoHtml+statsHtml+barHtml+colsHtml;
   _attachCardHover(document.getElementById('splash-body'));
   const dn=document.getElementById('splash-deck-name');
@@ -2699,7 +2699,7 @@ const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island
 const BG_SCENE_OPTS=[['desert','a desert'],['forest','a forest'],['random-biome','a random biome'],['ascii','ASCII art'],['tokyo','Tokyo'],['space','outer space'],['underwater','underwater'],['mountains','the mountains'],['city','a city'],['void','the void'],['dream','a dreamscape'],['swamp','a swamp'],['volcano','a volcano'],['library','a library'],['tavern','a tavern'],['meadow','a meadow'],['cosmos','the cosmos']];
 const BG_VIBE_OPTS=[['none','(any vibe)'],['cozy','cozy'],['epic','epic'],['eerie','eerie'],['cheerful','cheerful'],['mysterious','mysterious'],['chaotic','chaotic'],['serene','serene'],['retro','retro']];
 let _siBg='', _shareBlob=null;
-function openShareImage(){ if(!state.user||!apiToken()){toast('Sign in to generate a shareable image','info');return;} if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
+function openShareImage(){ if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
 function _openShareImage(){
   if(!_splashDeck){toast('Open your splash first','error');return;}
   document.getElementById('si-bgs').innerHTML=SHARE_BGS.map(b=>{
@@ -2729,7 +2729,7 @@ async function _genBg(){
   const scene=document.getElementById('si-ai-scene').value, vibe=document.getElementById('si-ai-vibe').value;
   const st=document.getElementById('si-ai-status'); st.className='si-ai-status loading'; st.textContent='Generating scene…';
   try{
-    const res=await fetch(API_BASE+'/splash/bg-generate',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken()},body:JSON.stringify({slots:{scene,vibe}})});
+    const res=await fetch(API_BASE+'/splash/bg-generate',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),body:JSON.stringify({slots:{scene,vibe}})});
     const j=await res.json().catch(()=>({}));
     if(!res.ok){ st.className='si-ai-status err'; st.textContent=j.error||'Generation failed'; return; }
     _siBg=j.url; st.className='si-ai-status'; st.textContent='Scene ready ✓ — selected as your background. Hit Generate image below.';
@@ -2774,7 +2774,7 @@ async function _genShareImage(){
   const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x),y:sc(c.y),w:sc(c.w),h:sc(c.h)}));
   const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type') };
   try{
-    const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken()},
+    const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),
       body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
     if(!res.ok){ const j=await res.json().catch(()=>({})); st.className='si-status err'; st.textContent=j.error||'Render failed'; return; }
     _shareBlob=await res.blob();
