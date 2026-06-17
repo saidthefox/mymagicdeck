@@ -5446,6 +5446,24 @@ function fbRender(body){ if(!body)return;
   body.querySelectorAll('[data-fbfolder]').forEach(el=>el.addEventListener('click',()=>{ const id=el.getAttribute('data-fbfolder'); if(_fbExpanded.has(id))_fbExpanded.delete(id); else _fbExpanded.add(id); fbRender(body); }));
   body.querySelectorAll('[data-fbdeck]').forEach(el=>{ el.addEventListener('dblclick',()=>fbLoadDeck(el.getAttribute('data-fbdeck'))); el.addEventListener('click',()=>{ body.querySelectorAll('.fb-file.sel').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }); });
 }
+// ===== MyMagicBot — front door + Deck OS integration status for the MTG tournament Discord bot =====
+async function mmbRender(body){ if(!body)return;
+  body.innerHTML='<div class="t-wrap">'+
+    '<div style="font-weight:bold;font-size:14px;margin-bottom:4px">🤖 MyMagicBot</div>'+
+    '<div style="color:#444;font-size:12px;margin-bottom:10px">Your MTG tournament Discord bot. It runs events in Discord and pipes them straight into Deck OS.</div>'+
+    '<div class="t-section"><div class="t-sh">What it does</div><div style="font-size:12px;line-height:1.6">'+
+      '• Runs Swiss tournaments &amp; pairings in your Discord server<br>'+
+      '• Gives each player a private channel for their matches<br>'+
+      '• Announces tournaments that land in everyone’s Deck OS <b>Calendar</b> + <b>feed</b> — anyone subscribed to matching parameters gets <b>Mail</b> automatically</div></div>'+
+    '<div class="t-section"><div class="t-sh">Commands (run in Discord)</div><div style="font-size:12px;line-height:1.7;font-family:\'Courier New\',monospace">/tournament_announcement<br>/pairings<br>/standings</div><div style="color:#888;font-size:10px;margin-top:3px">Your bot’s exact commands may differ.</div></div>'+
+    '<div class="t-section"><div class="t-sh">Deck OS integration</div><div id="mmb-status" style="font-size:12px;color:#444">Checking…</div></div>'+
+  '</div>';
+  try{ const s=await apiFetch('/integrations/status'); const el=body.querySelector('#mmb-status');
+    if(el)el.innerHTML = s.tournamentIngest
+      ? '<span style="color:#2c8a4a">● Connected</span> — tournaments the bot announces appear here and notify subscribers.'
+      : '<span style="color:#b23">● Not configured</span> — set BOT_API_KEY on the server to enable.';
+  }catch(e){ const el=body.querySelector('#mmb-status'); if(el)el.textContent='Status unavailable.'; }
+}
 // ===== Mail — async inbox: subscription/system mail + admin messages (no user→user yet) =====
 let _mailUnread=0;
 function mailOpenLink(link){ if(!link)return; if(link.indexOf('tournament:')===0){ if(typeof tOpenPage==='function')tOpenPage(link.slice(11)); } else if(/^https?:/i.test(link))window.open(link,'_blank','noopener'); }
@@ -5721,6 +5739,7 @@ if(window.DeckOS){
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
   DeckOS.registerProgram({ id:'mail', title:'Mail', icon:'📬', width:'480px', mount(body){ mailRender(body); } });
+  DeckOS.registerProgram({ id:'mymagicbot', title:'MyMagicBot', icon:'🤖', width:'460px', mount(body){ mmbRender(body); } });
   if(state.user&&apiToken()&&typeof mailRefreshBadge==='function')mailRefreshBadge();
   deskBgApply(deskBgGet()); // restore desktop background
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
@@ -5999,6 +6018,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mail"><div class="mg-ico">📬'+(_mailUnread>0?'<span style="background:#e24b4a;color:#fff;border-radius:8px;font-size:9px;padding:0 4px;margin-left:-6px;vertical-align:super">'+_mailUnread+'</span>':'')+'</div><div class="mg-ilbl">Mail</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mymagicbot"><div class="mg-ico">🤖</div><div class="mg-ilbl">MyMagicBot</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';

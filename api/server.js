@@ -18,6 +18,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 // endpoints are disabled over HTTP entirely (the daily auto-refresh still runs
 // internally via scheduleCardRefresh, so this only locks down the manual triggers).
 const ADMIN_API_KEY = process.env.ADMIN_API_KEY || '';
+const BOT_API_KEY = process.env.BOT_API_KEY || ''; // service key for the Discord bot integration (in /srv/docker/.env)
 // Password-reset email (Resend). Dormant until RESEND_API_KEY is set: the forgot
 // endpoint still 200s (no account-existence leak) but no mail goes out.
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
@@ -264,7 +265,7 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_tsubs_user ON tournament_subs(user_id)')
 // Geo columns (added later): tournaments get a geocoded venue; subs get free-typed
 // regions + an optional radius-around-a-point. Geocoding happens client-side (Photon);
 // we just store the structured result and match on it.
-for (const [col, type] of [['lat','REAL'],['lon','REAL'],['address','TEXT'],['country','TEXT'],['state','TEXT'],['proxies','INTEGER DEFAULT 0']]) {
+for (const [col, type] of [['lat','REAL'],['lon','REAL'],['address','TEXT'],['country','TEXT'],['state','TEXT'],['proxies','INTEGER DEFAULT 0'],['source',"TEXT DEFAULT ''"]]) {
   try { db.exec(`ALTER TABLE tournaments ADD COLUMN ${col} ${type}`); } catch (_) { /* exists */ }
 }
 for (const [col, type] of [['regions','TEXT'],['center_lat','REAL'],['center_lon','REAL'],['center_label','TEXT'],['radius','REAL'],['radius_unit','TEXT'],['proxies',"TEXT DEFAULT 'any'"]]) {
@@ -1568,6 +1569,49 @@ app.get('/api/web/framecheck', { preHandler: rateLimitFrameCheck }, async (req) 
     return { ok: true, finalUrl: g.url.href };
   }
   return { ok: false, reason: 'Too many redirects.' };
+});
+
+// ── Discord bot integration ───────────────────────────────────────────────────
+// Whether the integration is configured (no secret leaked) — for the MyMagicBot page.
+app.get('/api/integrations/status', async () => ({ tournamentIngest: !!BOT_API_KEY }));
+// The bot posts a tournament here; it creates the event + fans out subscription mail.
+// Auth: a service key in the x-bot-key header (BOT_API_KEY env). Disabled if unset.
+async function botOnly(req, reply) {
+  if (!BOT_API_KEY) return reply.code(503).send({ error: 'Bot integration is not configured.' });
+  if (req.headers['x-bot-key'] !== BOT_API_KEY) return reply.code(403).send({ error: 'Forbidden' });
+}
+app.post('/api/integrations/tournament', { preHandler: [botOnly, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const title = _str(b.title, 120).trim();
+  if (!title) return reply.code(400).send({ error: 'A title is required.' });
+  if (!_isYmd(b.date)) return reply.code(400).send({ error: 'A valid date (YYYY-MM-DD) is required.' });
+  const format = T_FORMATS.includes(b.format) ? b.format : 'Other';
+  const mode = T_MODES.includes(b.mode) ? b.mode : 'in-person';
+  const level = T_LEVELS.includes(b.level) ? b.level : 'casual';
+  const url = _str(b.url, 300).trim();
+  if (url && !/^https?:\/\//i.test(url)) return reply.code(400).send({ error: 'URL must start with http:// or https://' });
+  const entry = Math.max(0, Math.min(100000, Number(b.entry_fee) || 0));
+  const lat = _coord(b.lat, 90), lon = _coord(b.lon, 180);
+  const source = ('discord' + (b.source ? (':' + _str(b.source, 60)) : '')).slice(0, 80);
+  const info = db.prepare(
+    `INSERT INTO tournaments (host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies, source)
+     VALUES (0,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+  ).run(title, format, mode, _str(b.region, 120).trim(), b.date, _str(b.time, 40).trim(), level, entry, url, _str(b.notes, 2000),
+        lat, lon, _str(b.address, 200).trim(), _str(b.country, 80).trim(), _str(b.state, 80).trim(), b.proxies ? 1 : 0, source);
+  const id = info.lastInsertRowid;
+  try {
+    const t = { id, title, format, mode, region: _str(b.region, 120).trim(), date: b.date, level, entry_fee: entry, proxies: b.proxies ? 1 : 0,
+      lat, lon, address: _str(b.address, 200).trim(), country: _str(b.country, 80).trim(), state: _str(b.state, 80).trim() };
+    const notified = new Set();
+    for (const s of db.prepare('SELECT * FROM tournament_subs').all()) {
+      if (notified.has(s.user_id)) continue;
+      if (tournamentMatches(t, s)) { notified.add(s.user_id);
+        mailSend(s.user_id, { from_kind: 'system', from_label: 'Tournaments (Discord)', subject: 'New ' + format + ' tournament: ' + title,
+          body: [t.date + (t.region ? (' · ' + t.region) : ''), level + (entry > 0 ? (' · $' + entry) : '')].join('\n'), link: 'tournament:' + id });
+      }
+    }
+    return { id, notified: notified.size };
+  } catch (e) { app.log.error(e); return { id }; }
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
