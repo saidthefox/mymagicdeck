@@ -1866,7 +1866,7 @@ app.get('/api/decks', { preHandler: authenticate }, async (req) => {
 // ── PUT /api/decks/:id  (create or update a single deck) ─────────────────────
 app.put('/api/decks/:id', { preHandler: authenticate }, async (req, reply) => {
   const { id } = req.params;
-  const { name, cards, sideboard, public: isPublic, splashOwner, splashSite, commander, deckPhoto, layout, defaultLayout } = req.body;
+  const { name, cards, sideboard, public: isPublic, splashOwner, splashSite, commander, deckPhoto, layout, defaultLayout, printPref } = req.body;
 
   if (!name || typeof cards !== 'object') {
     return reply.code(400).send({ error: 'name and cards are required.' });
@@ -1878,6 +1878,7 @@ app.put('/api/decks/:id', { preHandler: authenticate }, async (req, reply) => {
   if (typeof deckPhoto === 'string') dataObj.deckPhoto = deckPhoto; // '' clears it
   if (layout && typeof layout === 'object') dataObj.layout = layout;            // free-drag positions
   if (typeof defaultLayout === 'string') dataObj.defaultLayout = defaultLayout; // 'cmc'|'type'|'user'
+  if (printPref && typeof printPref === 'object') dataObj.printPref = printPref; // bulk printing preference
   const data = JSON.stringify(dataObj);
   const isSplash = splashOwner ? 1 : 0;
   // Allowed splash sites
@@ -2096,6 +2097,43 @@ function buildKeywordList() {
   return _keywordList;
 }
 app.get('/api/cards/keywords', async () => ({ keywords: _keywordList || buildKeywordList() }));
+
+// ── GET /api/cards/prints?oracle=<id>  (all paper printings, cached) ──────────
+// Powers the bulk "Printings" control: returns each printing's art + the metadata
+// the client needs to pick a preference (earliest/latest/cheapest/retro/special).
+const _printsCache = new Map(); // oracle_id -> { at, prints:[] }
+const PRINTS_TTL = 24 * 3600 * 1000;
+function _trimPrint(c) {
+  const iu = c.image_uris || (Array.isArray(c.card_faces) && c.card_faces[0] && c.card_faces[0].image_uris) || null;
+  if (!iu) return null;
+  return {
+    id: c.id, set: c.set, set_name: c.set_name, released_at: c.released_at || '',
+    usd: (c.prices && c.prices.usd) || null,
+    frame: c.frame || '', frame_effects: c.frame_effects || [], set_type: c.set_type || '',
+    border_color: c.border_color || '', promo_types: c.promo_types || [],
+    image_uris: { small: iu.small || null, normal: iu.normal || iu.large || null, large: iu.large || iu.normal || null, art_crop: iu.art_crop || null },
+  };
+}
+app.get('/api/cards/prints', async (req, reply) => {
+  const oracle = String((req.query || {}).oracle || '').trim().toLowerCase();
+  if (!/^[0-9a-f-]{8,40}$/.test(oracle)) return reply.code(400).send({ error: 'oracle id required' });
+  const hit = _printsCache.get(oracle);
+  if (hit && Date.now() - hit.at < PRINTS_TTL) return { prints: hit.prints };
+  try {
+    let prints = [], next = `https://api.scryfall.com/cards/search?q=${encodeURIComponent('oracleid:' + oracle + ' lang:en -is:digital')}&unique=prints&order=released&dir=asc`, guard = 0;
+    while (next && guard++ < 8) {
+      const r = await httpsGet(next);
+      if (r.status === 404) break;                 // no paper prints
+      if (r.status !== 200) throw new Error('scryfall HTTP ' + r.status);
+      const j = JSON.parse(r.body);
+      for (const c of (j.data || [])) { const t = _trimPrint(c); if (t) prints.push(t); }
+      next = j.has_more ? j.next_page : null;
+      if (next) await new Promise(s => setTimeout(s, 90)); // Scryfall etiquette
+    }
+    _printsCache.set(oracle, { at: Date.now(), prints });
+    return { prints };
+  } catch (e) { app.log.warn('prints fetch failed: ' + e.message); return reply.code(502).send({ error: 'Could not fetch printings.' }); }
+});
 
 app.get('/api/cards/named', async (req, reply) => {
   const name = (req.query.name || req.query.fuzzy || '').trim();

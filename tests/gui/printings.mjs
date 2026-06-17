@@ -1,0 +1,36 @@
+import { chromium } from 'playwright';
+const SHOTS = '/work/tests/gui/shots';
+const b = await chromium.launch();
+const ctx = await b.newContext({ viewport: { width: 1366, height: 850 } });
+const p = await ctx.newPage();
+const errs = [];
+p.on('console', m => { if (m.type() === 'error') errs.push(m.text().slice(0, 160)); });
+p.on('pageerror', e => errs.push('PE:' + (e.message || e).toString().slice(0, 160)));
+await p.goto('http://mymagicdeck.com/', { waitUntil: 'domcontentloaded', timeout: 30000 });
+await p.waitForTimeout(2000);
+const r = await p.evaluate(async () => {
+  const lb = await (await fetch('/api/cards/named?name=Lightning Bolt')).json();
+  const isl = await (await fetch('/api/cards/named?name=Island')).json();
+  newDeck(); addCard(lb, 4); addCard(isl, 4);
+  const d = currentDeck(); const bid = getCardId(lb), iid = getCardId(isl);
+  const snap = () => ({ bolt: d.cards[bid].card.set_name, island: d.cards[iid].card.set_name });
+  const before = snap();
+  await applyPrintPref(d, { edition: 'earliest', scope: 'all', uploads: 'keep' });
+  const earliest = snap();
+  await applyPrintPref(d, { edition: 'latest', scope: 'nonland', uploads: 'keep' });
+  const latestNonland = snap();
+  await applyPrintPref(d, { edition: 'cheapest', scope: 'all', uploads: 'keep' });
+  const cheapest = { bolt: d.cards[bid].card.set_name, img: d.cards[bid].card.image_uris.normal.slice(0, 38) };
+  return { before, earliest, latestNonland, cheapest };
+});
+console.log(JSON.stringify(r, null, 1));
+// UI: switch to Deck view, open the Printings popover, screenshot.
+await p.evaluate(() => { switchCenterView('deck'); });
+await p.waitForTimeout(500);
+await p.click('#dv-prints-btn', { timeout: 5000 });
+await p.waitForTimeout(300);
+const popOpen = await p.evaluate(() => document.getElementById('dv-prints-pop').classList.contains('open'));
+console.log('popover opens:', popOpen);
+await p.screenshot({ path: SHOTS + '/printings.png' });
+console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0, 5));
+await b.close();

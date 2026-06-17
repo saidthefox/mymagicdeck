@@ -310,6 +310,15 @@
     .search-zoom-slider::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; }
     .search-zoom-slider::-moz-range-thumb { width:13px; height:13px; border-radius:50%; background:var(--accent); cursor:pointer; border:none; }
     .mtgo-toolbar .deck-zoom-val { font-size:0.68rem; color:var(--text-dim); min-width:32px; }
+    .dv-prints-wrap { position:relative; margin-left:8px; }
+    .dv-prints-pop { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:50; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px; box-shadow:0 10px 34px rgba(0,0,0,0.5); width:248px; }
+    .dv-prints-pop.open { display:block; }
+    .dv-pp-row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:7px; }
+    .dv-pp-row span { font-size:0.72rem; color:var(--text-dim); }
+    .dv-pp-row select { flex:0 0 auto; max-width:150px; background:var(--bg); border:1px solid var(--border); border-radius:5px; color:var(--text); padding:3px 5px; font-size:0.74rem; }
+    .dv-pp-note { font-size:0.64rem; color:var(--text-dim); line-height:1.4; margin:2px 0 8px; }
+    .dv-pp-actions { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .dv-pp-actions #pp-status { font-size:0.68rem; color:var(--text-dim); }
     .mtgo-info { margin-left: auto; font-size: 0.7rem; color: var(--text-dim); }
     .mtgo-columns-wrap { flex: 1; overflow: auto; padding: 8px; }
     .mtgo-columns { display: flex; gap: 6px; align-items: flex-start; min-height: 100%; }
@@ -1510,6 +1519,28 @@
           <label style="margin-left:8px">🔍</label>
           <input type="range" class="deck-zoom-slider" id="deck-zoom-slider" min="50" max="150" value="100" step="5" oninput="deckZoomChange()">
           <span class="deck-zoom-val" id="deck-zoom-val">100%</span>
+        </div>
+        <div class="dv-prints-wrap">
+          <button class="btn small" id="dv-prints-btn" onclick="togglePrintPref(event)">🖼 Printings ▾</button>
+          <div id="dv-prints-pop" class="dv-prints-pop">
+            <div class="dv-pp-row"><span>Edition</span><select id="pp-edition">
+              <option value="earliest">Earliest printing</option>
+              <option value="latest">Latest printing</option>
+              <option value="cheapest">Cheapest printing</option>
+              <option value="retro">Retro frame</option>
+              <option value="masterpiece">Masterpiece (Invocations…)</option>
+              <option value="showcase">Showcase</option>
+              <option value="borderless">Borderless</option>
+            </select></div>
+            <div class="dv-pp-row"><span>Apply to</span><select id="pp-scope">
+              <option value="all">All cards</option><option value="nonland">Nonlands only</option><option value="land">Lands only</option>
+            </select></div>
+            <div class="dv-pp-row"><span>Uploaded art</span><select id="pp-uploads">
+              <option value="keep">Keep my uploads</option><option value="replace">Replace uploads too</option>
+            </select></div>
+            <div class="dv-pp-note">Special editions keep a card's current art when it has no such printing.</div>
+            <div class="dv-pp-actions"><span id="pp-status"></span><button class="btn small primary" id="pp-apply" onclick="applyPrintPrefFromUI()">Apply</button></div>
+          </div>
         </div>
         <div class="mtgo-info" id="mtgo-info"></div>
       </div>
@@ -2939,7 +2970,10 @@ function checkUrlHash(){
   }
 }
 
-function addCard(card,qty=1){const d=currentDeck();if(!d)return;const id=getCardId(card);if(d.cards[id])d.cards[id].qty+=qty;else d.cards[id]={card:sanitizeCard(card),qty};d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
+function addCard(card,qty=1){const d=currentDeck();if(!d)return;const id=getCardId(card);const isNew=!d.cards[id];if(d.cards[id])d.cards[id].qty+=qty;else d.cards[id]={card:sanitizeCard(card),qty};d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id);
+  // Sticky printing pref: bring a newly-added card in line with the deck's chosen edition.
+  if(isNew&&d.printPref&&typeof applyPrintPref==='function'){ applyPrintPref(d,d.printPref,{entry:d.cards[id],silent:true}).then(n=>{ if(n){d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id);} }).catch(()=>{}); }
+}
 function removeCard(cid,qty=1){const d=currentDeck();if(!d||!d.cards[cid])return;d.cards[cid].qty-=qty;if(d.cards[cid].qty<=0)delete d.cards[cid];d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function setCardQty(cid,qty){const d=currentDeck();if(!d)return;if(qty<=0)delete d.cards[cid];else if(d.cards[cid])d.cards[cid].qty=qty;d._insts=null;renderAll();saveToStorage();syncDeckToApi(d.id)}
 function addSBCard(card,qty=1){const d=currentDeck();if(!d)return;if(!d.sideboard)d.sideboard={};const id=getCardId(card);if(d.sideboard[id])d.sideboard[id].qty+=qty;else d.sideboard[id]={card:sanitizeCard(card),qty};renderAll();saveToStorage();syncDeckToApi(d.id)}
@@ -3392,6 +3426,75 @@ function selectPrinting(newCard){
     Object.assign(c,newCard);
     _finishArt('Printing updated to '+newCard.set_name);
   }
+}
+
+// ===== Bulk printing preference (Deck view "Printings" control) =====
+const _ppCache={}; // oracle_id -> prints[]
+function _ppIsUpload(card){ const u=card&&card.image_uris&&card.image_uris.normal; return !!(card&&card.customArt&&typeof u==='string'&&u.indexOf('/u/')===0); }
+function _ppIsLand(card){ return /(^|\s)Land(\s|$|—)/i.test((card&&card.type_line)||''); }
+async function _ppGetPrints(oracle){
+  if(_ppCache[oracle])return _ppCache[oracle];
+  try{ const r=await apiFetch('/cards/prints?oracle='+encodeURIComponent(oracle)); _ppCache[oracle]=r.prints||[]; }
+  catch(e){ _ppCache[oracle]=[]; }
+  return _ppCache[oracle];
+}
+function _ppPick(prints, edition){
+  if(!prints||!prints.length)return null;
+  if(edition==='earliest')return prints[0];                 // server returns released-asc
+  if(edition==='latest')return prints[prints.length-1];
+  if(edition==='cheapest'){ const priced=prints.filter(p=>p.usd!=null&&!isNaN(parseFloat(p.usd))); if(!priced.length)return prints[0]; return priced.reduce((a,b)=>parseFloat(b.usd)<parseFloat(a.usd)?b:a); }
+  if(edition==='retro'){ const m=prints.filter(p=>p.frame==='1993'||p.frame==='1997'); return m.length?m[0]:null; }
+  if(edition==='masterpiece'){ const m=prints.filter(p=>p.set_type==='masterpiece'||(p.promo_types||[]).includes('masterpiece')); return m.length?m[0]:null; }
+  if(edition==='showcase'){ const m=prints.filter(p=>(p.frame_effects||[]).includes('showcase')); return m.length?m[0]:null; }
+  if(edition==='borderless'){ const m=prints.filter(p=>p.border_color==='borderless'); return m.length?m[0]:null; }
+  return null;
+}
+// Apply a printing preference across the deck (or one entry via opts.entry). Returns # cards changed.
+async function applyPrintPref(deck, pref, opts){
+  opts=opts||{}; if(!deck||!pref)return 0;
+  const all=[]; const collect=obj=>{ for(const k in (obj||{})){ const e=obj[k]; if(e&&e.card)all.push(e); } };
+  if(opts.entry)all.push(opts.entry); else { collect(deck.cards); collect(deck.sideboard); }
+  const targets=all.filter(e=>e.card&&e.card.oracle_id&&(pref.scope==='all'||(pref.scope==='land'?_ppIsLand(e.card):!_ppIsLand(e.card))));
+  const oracles=[...new Set(targets.map(e=>e.card.oracle_id))];
+  const setStatus=opts.silent?function(){}:(t=>{ const s=document.getElementById('pp-status'); if(s)s.textContent=t; });
+  let changed=0, done=0;
+  for(const oid of oracles){
+    setStatus('Updating… '+(++done)+'/'+oracles.length);
+    const pick=_ppPick(await _ppGetPrints(oid), pref.edition);
+    if(!pick)continue;                                       // no matching edition → keep current art
+    for(const e of targets){ if(e.card.oracle_id!==oid)continue;
+      if(pref.uploads==='keep'&&_ppIsUpload(e.card))continue; // preserve uploaded art
+      const c=e.card;
+      if(e.arts)delete e.arts;                               // a bulk set clears per-copy overrides
+      if(!c._origImg&&c.image_uris)c._origImg=c.image_uris;
+      c.image_uris=pick.image_uris; c.set=pick.set; c.set_name=pick.set_name; c.id=pick.id; delete c.customArt;
+      changed++;
+    }
+  }
+  return changed;
+}
+function togglePrintPref(e){ if(e)e.stopPropagation();
+  const pop=document.getElementById('dv-prints-pop'); if(!pop)return;
+  if(pop.classList.toggle('open')){
+    const d=currentDeck(), pref=(d&&d.printPref)||{edition:'earliest',scope:'all',uploads:'keep'};
+    ['edition','scope','uploads'].forEach(k=>{ const el=document.getElementById('pp-'+k); if(el)el.value=pref[k]; });
+    const st=document.getElementById('pp-status'); if(st)st.textContent='';
+    setTimeout(()=>document.addEventListener('click',_ppOutside,true),0);
+  } else document.removeEventListener('click',_ppOutside,true);
+}
+function _ppOutside(e){ const w=document.querySelector('.dv-prints-wrap'); if(w&&!w.contains(e.target)){ document.getElementById('dv-prints-pop')?.classList.remove('open'); document.removeEventListener('click',_ppOutside,true); } }
+async function applyPrintPrefFromUI(){
+  const d=currentDeck(); if(!d){toast('No deck loaded','error');return;}
+  const pref={ edition:document.getElementById('pp-edition').value, scope:document.getElementById('pp-scope').value, uploads:document.getElementById('pp-uploads').value };
+  d.printPref=pref;                                          // sticky: remembered on the deck + applied to new cards
+  const btn=document.getElementById('pp-apply'); if(btn)btn.disabled=true;
+  try{ const n=await applyPrintPref(d,pref);
+    if(typeof renderDeckVisual==='function')renderDeckVisual();
+    saveToStorage(); if(typeof syncDeckToApi==='function')syncDeckToApi(d.id);
+    const s=document.getElementById('pp-status'); if(s)s.textContent='Updated '+n+' card'+(n===1?'':'s')+'.';
+    toast('Printings updated — '+n+' card'+(n===1?'':'s')+' 🖼','success');
+  }catch(e){ toast('Could not update printings','error'); }
+  finally{ if(btn)btn.disabled=false; }
 }
 function doCardUpload(input){
   const f=input.files&&input.files[0]; if(!f)return; input.value='';
