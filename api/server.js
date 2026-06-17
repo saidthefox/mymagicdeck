@@ -1532,20 +1532,55 @@ app.post('/api/tournaments/:id/rsvp', { preHandler: authenticate }, async (req, 
 const { lookup: _dnsLookup } = require('dns').promises;
 function _isPrivateIp(ip) {
   if (!ip) return true;
-  if (ip.includes(':')) { const l = ip.toLowerCase(); return l === '::1' || l.startsWith('fc') || l.startsWith('fd') || l.startsWith('fe80') || l === '::'; }
-  const o = ip.split('.').map(Number); if (o.length !== 4 || o.some(isNaN)) return true;
-  return o[0] === 10 || o[0] === 127 || o[0] === 0 || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31) || (o[0] === 169 && o[1] === 254) || o[0] >= 224;
+  let s = String(ip).toLowerCase();
+  // IPv4-mapped / -compatible IPv6 (e.g. ::ffff:127.0.0.1 or ::ffff:7f00:1) → check the embedded IPv4.
+  let m = s.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/);
+  if (m) s = m[1];
+  else if ((m = s.match(/^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/))) {
+    const hi = parseInt(m[1], 16), lo = parseInt(m[2], 16);
+    s = [(hi >> 8) & 255, hi & 255, (lo >> 8) & 255, lo & 255].join('.');
+  }
+  if (s.includes(':')) {
+    // Any non-global IPv6: loopback, unspecified, unique-local (fc00::/7), link-local (fe80::/10).
+    return s === '::1' || s === '::' || s.startsWith('fc') || s.startsWith('fd')
+      || s.startsWith('fe8') || s.startsWith('fe9') || s.startsWith('fea') || s.startsWith('feb');
+  }
+  const o = s.split('.').map(Number);
+  if (o.length !== 4 || o.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
+  return o[0] === 10 || o[0] === 127 || o[0] === 0
+    || (o[0] === 192 && o[1] === 168) || (o[0] === 172 && o[1] >= 16 && o[1] <= 31)
+    || (o[0] === 169 && o[1] === 254) || (o[0] === 100 && o[1] >= 64 && o[1] <= 127) // CGNAT
+    || o[0] >= 224; // multicast / reserved
 }
-// Validate a single URL: http(s) only, standard ports, public host (DNS-resolved, not private).
+// Validate a single URL: http(s) only, standard ports, public host. Resolves ALL
+// addresses and rejects if ANY is private; returns the pinned IP so the caller can
+// connect to exactly that address (defeats DNS-rebinding between check and fetch).
 async function _guardWebUrl(raw) {
   let url; try { url = new URL(raw); } catch (_) { return { ok: false, reason: 'Not a valid URL.' }; }
   if (!/^https?:$/.test(url.protocol)) return { ok: false, reason: 'Only http(s) sites.' };
   if (url.port && !['', '80', '443'].includes(url.port)) return { ok: false, reason: 'That port is not allowed.' };
   const host = url.hostname.toLowerCase();
   if (host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal')) return { ok: false, reason: 'That host is not allowed.' };
-  try { const { address } = await _dnsLookup(host); if (_isPrivateIp(address)) return { ok: false, reason: 'That host is not allowed.' }; }
-  catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
-  return { ok: true, url };
+  let addrs;
+  try { addrs = await _dnsLookup(host, { all: true }); } catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
+  if (!addrs.length || addrs.some(a => _isPrivateIp(a.address))) return { ok: false, reason: 'That host is not allowed.' };
+  return { ok: true, url, ip: addrs[0].address, family: addrs[0].family };
+}
+// Header-only fetch that connects to a PINNED ip (no second DNS resolution), so the
+// connection can't be rebound to a private host after _guardWebUrl validated it.
+function _fetchHeadPinned(urlObj, ip, family) {
+  return new Promise((resolve, reject) => {
+    const mod = urlObj.protocol === 'https:' ? https : require('http');
+    const req = mod.request(urlObj, {
+      method: 'GET',
+      headers: { 'User-Agent': 'Mozilla/5.0 (MyMagicDeck framecheck)', 'Accept': '*/*' },
+      servername: urlObj.hostname,                 // TLS SNI stays the real hostname
+      lookup: (h, o, cb) => cb(null, ip, family),  // pin the connection to the validated IP
+    }, res => { res.resume(); resolve({ status: res.statusCode, headers: res.headers }); req.destroy(); });
+    req.setTimeout(8000, () => req.destroy(new Error('timeout')));
+    req.on('error', reject);
+    req.end();
+  });
 }
 // Dedicated limiter so framecheck can't drain (or be drained by) the report budget.
 const _fcBuckets = new Map(); const FC_WINDOW = 10 * 60 * 1000; const FC_MAX = 40;
@@ -1562,12 +1597,12 @@ app.get('/api/web/framecheck', { preHandler: rateLimitFrameCheck }, async (req) 
   let next = String((req.query || {}).url || '').trim();
   for (let hop = 0; hop < 4; hop++) {
     const g = await _guardWebUrl(next); if (!g.ok) return g;             // re-validate the URL AND every redirect target
-    let r; try { r = await fetch(g.url.href, { redirect: 'manual', headers: { 'User-Agent': 'Mozilla/5.0 (MyMagicDeck framecheck)' }, signal: AbortSignal.timeout(8000) }); }
+    let r; try { r = await _fetchHeadPinned(g.url, g.ip, g.family); }    // connect only to the validated IP
     catch (_) { return { ok: false, reason: 'Could not reach that site.' }; }
-    const loc = r.headers.get('location');
+    const loc = r.headers['location'];
     if (r.status >= 300 && r.status < 400 && loc) { try { next = new URL(loc, g.url).href; } catch (_) { return { ok: false, reason: 'Bad redirect.' }; } continue; }
-    const xfo = (r.headers.get('x-frame-options') || '').toLowerCase();
-    const csp = (r.headers.get('content-security-policy') || '').toLowerCase();
+    const xfo = (r.headers['x-frame-options'] || '').toLowerCase();
+    const csp = (r.headers['content-security-policy'] || '').toLowerCase();
     const fa = (csp.match(/frame-ancestors([^;]*)/) || [, ''])[1].trim();
     const blocked = xfo.includes('deny') || xfo.includes('sameorigin') || (fa && !fa.includes('*'));
     if (blocked) return { ok: false, reason: 'frames-blocked' };
@@ -2331,7 +2366,7 @@ async function _loadShareCardBuf(url, cache) {
   try {
     if (typeof url === 'string' && url.startsWith('/u/')) {
       const resolved = path.resolve(path.join(UPLOAD_DIR, url.replace(/^\/u\//, '')));
-      if (resolved.startsWith(path.resolve(UPLOAD_DIR)) && fs.existsSync(resolved)) buf = fs.readFileSync(resolved);
+      if ((resolved + path.sep).startsWith(path.resolve(UPLOAD_DIR) + path.sep) && fs.existsSync(resolved)) buf = fs.readFileSync(resolved);
     } else if (typeof url === 'string') {
       const u = new URL(url);
       if (u.protocol === 'https:' && u.hostname === 'cards.scryfall.io') {
