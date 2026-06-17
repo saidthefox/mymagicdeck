@@ -300,10 +300,11 @@ db.exec(`CREATE TABLE IF NOT EXISTS mail (
 db.exec('CREATE INDEX IF NOT EXISTS idx_mail_user ON mail(user_id, is_read)');
 try { db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (_) { /* exists */ }
 try { db.prepare('UPDATE users SET is_admin = 1 WHERE username = ?').run(process.env.ADMIN_USERNAME || 'jake'); } catch (_) {}
+try { db.exec('ALTER TABLE mail ADD COLUMN from_user INTEGER'); } catch (_) { /* exists */ } // sender id → enables replies
 function isAdminUser(id) { try { const r = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(id); return !!(r && r.is_admin); } catch (_) { return false; } }
-function mailSend(userId, { from_kind = 'system', from_label = '', subject, body = '', link = '' }) {
-  try { db.prepare('INSERT INTO mail (user_id, from_kind, from_label, subject, body, link) VALUES (?,?,?,?,?,?)')
-    .run(userId, from_kind, String(from_label).slice(0, 60), String(subject).slice(0, 160), String(body).slice(0, 4000), String(link).slice(0, 200)); } catch (_) {}
+function mailSend(userId, { from_kind = 'system', from_label = '', subject, body = '', link = '', from_user = null }) {
+  try { db.prepare('INSERT INTO mail (user_id, from_kind, from_label, subject, body, link, from_user) VALUES (?,?,?,?,?,?,?)')
+    .run(userId, from_kind, String(from_label).slice(0, 60), String(subject).slice(0, 160), String(body).slice(0, 4000), String(link).slice(0, 200), from_user || null); } catch (_) {}
 }
 
 // ── Card refresh state ────────────────────────────────────────────────────────
@@ -1497,7 +1498,7 @@ app.get('/api/tournaments/feed', { preHandler: authenticate }, async (req) => {
 
 // ── Mail ──────────────────────────────────────────────────────────────────────
 app.get('/api/mail', { preHandler: authenticate }, async (req) => ({
-  mail: db.prepare('SELECT id, from_kind, from_label, subject, body, link, is_read, created_at FROM mail WHERE user_id = ? ORDER BY id DESC LIMIT 200').all(req.user.sub),
+  mail: db.prepare('SELECT id, from_kind, from_label, subject, body, link, is_read, created_at, from_user FROM mail WHERE user_id = ? ORDER BY id DESC LIMIT 200').all(req.user.sub),
   unread: db.prepare('SELECT COUNT(*) n FROM mail WHERE user_id = ? AND is_read = 0').get(req.user.sub).n,
   is_admin: isAdminUser(req.user.sub),
 }));
@@ -1536,8 +1537,22 @@ app.post('/api/mail/feedback', { preHandler: [authenticate, rateLimitReport] }, 
   const subject = (_str(b.subject, 140).trim()) || 'Feedback / feature request';
   const from = req.user.username ? String(req.user.username) : ('user #' + req.user.sub);
   const admins = db.prepare('SELECT id FROM users WHERE is_admin = 1').all().map(r => r.id);
-  for (const uid of admins) mailSend(uid, { from_kind: 'system', from_label: 'Feedback · ' + from, subject, body });
+  for (const uid of admins) mailSend(uid, { from_kind: 'system', from_label: 'Feedback · ' + from, subject, body, from_user: req.user.sub });
   return { ok: true, sent: admins.length };
+});
+
+// Reply to a message you received → delivered to the original sender (two-way mail).
+app.post('/api/mail/:id/reply', { preHandler: [authenticate, rateLimitReport] }, async (req, reply) => {
+  const m = db.prepare('SELECT id, from_user, subject FROM mail WHERE id = ? AND user_id = ?').get(req.params.id, req.user.sub);
+  if (!m) return reply.code(404).send({ error: 'Not found.' });
+  if (!m.from_user) return reply.code(400).send({ error: "This message can't be replied to." });
+  const body = _str((req.body || {}).body, 4000).trim();
+  if (!body) return reply.code(400).send({ error: 'Please write a reply.' });
+  const from = req.user.username ? String(req.user.username) : ('user #' + req.user.sub);
+  const admin = isAdminUser(req.user.sub);
+  const subj = /^re:/i.test(m.subject || '') ? m.subject : ('Re: ' + (m.subject || '(no subject)'));
+  mailSend(m.from_user, { from_kind: admin ? 'admin' : 'user', from_label: (admin ? 'Admin · ' : '') + from, subject: subj, body, from_user: req.user.sub });
+  return { ok: true };
 });
 
 // Single tournament detail (for the mini "tournament page") + RSVP tallies + my RSVP.
