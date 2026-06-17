@@ -2888,8 +2888,7 @@ function setDefaultLayout(){
 // One-click tidy arrangement for users who don't want to hand-place every card.
 function deckPicLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
-  if(!confirm('Re-arrange ALL cards into a tidy grid? This replaces your current layout.\n\nYou can press ↶ Undo afterward.'))return;
-  _splashSnapshot(deck);
+  _splashSnapshot(deck); // captured for ↶ Undo
   const CARD_W=121,CARD_H=169,GAP=10;
   const items=[];
   const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
@@ -2912,22 +2911,27 @@ function deckPicLayout(){
 // horizontal drift gives the fan; z ascends so lower cards sit in front of upper bodies.
 function fanLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
-  if(!confirm('Fan ALL cards into staggered columns? This replaces your current layout.\n\nYou can press ↶ Undo afterward.'))return;
-  _splashSnapshot(deck);
+  _splashSnapshot(deck); // captured for ↶ Undo
   const CARD_W=121, CARD_H=169, VSTEP=34, DRIFT=7, GAP=18; // VSTEP(34) > ~card top strip (~26px)
-  const items=[];
-  const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
-  collect(Object.values(deck.cards||{}),deck.cards,''); collect(Object.values(deck.sideboard||{}),deck.sideboard,'sb_');
-  items.sort((a,b)=>{ const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)),cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card)); return ca-cb||(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name); });
-  const n=items.length;
-  const perCol=Math.max(4,Math.ceil(Math.sqrt(n)));
+  const sortCat=(a,b)=>{ const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)),cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card)); return ca-cb||(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name); };
+  const mk=(list,store,zone)=>{ const out=[]; for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)out.push({card,key:zone+cid+'_'+k}); } return out.sort(sortCat); };
+  const main=mk(Object.values(deck.cards||{}),deck.cards,'');
+  const sb=mk(Object.values(deck.sideboard||{}),deck.sideboard,'sb_');
+  const positions={}; let z=1, mainBottom=0;
+  // Mainboard: staggered vertical columns (every card's name/mana strip stays exposed).
+  const perCol=Math.max(4,Math.ceil(Math.sqrt(Math.max(1,main.length))));
   const colSpacing=CARD_W + (perCol-1)*DRIFT + GAP;
-  const positions={};
-  items.forEach((it,i)=>{ const col=Math.floor(i/perCol), row=i%perCol; positions[it.key]={ x:col*colSpacing + row*DRIFT, y:row*VSTEP, z:i+1 }; });
+  main.forEach((it,i)=>{ const col=Math.floor(i/perCol), row=i%perCol; const x=col*colSpacing+row*DRIFT, y=row*VSTEP; positions[it.key]={x,y,z:z++}; mainBottom=Math.max(mainBottom,y+CARD_H); });
+  // Sideboard: a separate horizontal fan along the bottom (cards cascade left→right,
+  // each overlapping the previous so every left strip + name stays visible).
+  if(sb.length){
+    const HSTEP=46, sy=mainBottom + GAP*2;
+    sb.forEach((it,i)=>{ positions[it.key]={ x:i*HSTEP, y:sy, z:z++ }; });
+  }
   deck.layout=deck.layout||{}; deck.layout.positions=positions;
   const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true;
   splashReorder(); saveToStorage(); syncDeckToApi(deck.id);
-  toast('Fanned so every card’s name & mana show 🃏','success');
+  toast(sb.length?'Fanned — sideboard along the bottom 🃏':'Fanned so every card’s name & mana show 🃏','success');
 }
 function closeSplash(){
   document.getElementById('splash-overlay').classList.remove('open');
