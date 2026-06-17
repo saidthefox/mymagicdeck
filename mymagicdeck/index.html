@@ -4648,7 +4648,14 @@ function deckosShellInit(){
   document.body.classList.toggle('deckos', on);
   document.body.classList.toggle('wm-on', on && window.matchMedia('(min-width:901px)').matches); // floating windows on desktop only
   deckosSyncToggle();
-  if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }
+  if(document.body.classList.contains('wm-on')){
+    // Defer the window-manager boot to a macrotask: this runs during initial parse, but
+    // wmWins / MGW_APPS / etc. are declared LATER in the script. Calling wmOpenSite() now
+    // would hit their temporal dead zone (ReferenceError) and abort the rest of the script
+    // — which is what broke a reload while Deck OS was active. By the time the timeout
+    // fires, the whole script (and DeckOS) has finished initializing.
+    setTimeout(()=>{ try{ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }catch(e){ console.error('Deck OS boot failed:', e); } }, 0);
+  }
 }
 function deckosToggle(){
   const on=!document.body.classList.contains('deckos');
