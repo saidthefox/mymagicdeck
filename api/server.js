@@ -1299,9 +1299,14 @@ app.setErrorHandler((err, req, reply) => {
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // Client error beacon (rate-limited, no auth) + admin view.
+// Redact sensitive query params (reset token, etc.) before persisting — never store
+// a usable secret in the errors log, regardless of what the client sends.
+function _scrubUrl(u) {
+  return String(u == null ? '' : u).replace(/([?&](?:reset|token|pw|password)=)[^&#\s]*/gi, '$1[redacted]');
+}
 app.post('/api/clientlog', { preHandler: rateLimitReport }, async (req) => {
   const b = req.body || {};
-  recordError('client', { where: b.url, message: b.message, stack: b.stack, ua: req.headers['user-agent'] });
+  recordError('client', { where: _scrubUrl(b.url), message: b.message, stack: b.stack, ua: req.headers['user-agent'] });
   return { ok: true };
 });
 app.get('/api/admin/errors', { preHandler: adminOnly }, async () => {
