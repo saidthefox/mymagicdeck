@@ -1528,6 +1528,18 @@ app.post('/api/mail/admin/send', { preHandler: [authenticate, rateLimitReport] }
   return { ok: true, sent: recipients.length };
 });
 
+// User feedback / feature request → delivered to the admin(s) via the in-system mail.
+app.post('/api/mail/feedback', { preHandler: [authenticate, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const body = _str(b.body, 4000).trim();
+  if (body.length < 3) return reply.code(400).send({ error: 'Please enter your feedback.' });
+  const subject = (_str(b.subject, 140).trim()) || 'Feedback / feature request';
+  const from = req.user.username ? String(req.user.username) : ('user #' + req.user.sub);
+  const admins = db.prepare('SELECT id FROM users WHERE is_admin = 1').all().map(r => r.id);
+  for (const uid of admins) mailSend(uid, { from_kind: 'system', from_label: 'Feedback · ' + from, subject, body });
+  return { ok: true, sent: admins.length };
+});
+
 // Single tournament detail (for the mini "tournament page") + RSVP tallies + my RSVP.
 app.get('/api/tournaments/:id', { preHandler: softAuthenticate }, async (req, reply) => {
   const t = db.prepare('SELECT id, host_id, title, format, mode, region, date, time, level, entry_fee, url, notes, lat, lon, address, country, state, proxies FROM tournaments WHERE id = ?').get(req.params.id);
