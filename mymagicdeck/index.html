@@ -1022,6 +1022,8 @@
     #wm-taskbar{position:fixed;left:0;right:0;bottom:0;height:34px;z-index:4000;display:none;align-items:center;gap:6px;padding:3px 6px;background:#c0c0c0;border-top:2px solid #fff;font-family:Tahoma,'MS Sans Serif',sans-serif}
     body.wm-on #wm-taskbar{display:flex}
     #wm-taskbar .wm-start{font-weight:bold;font-size:12px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 12px;flex-shrink:0;cursor:pointer}
+    #wm-taskbar .wm-showdesk{font-size:13px;line-height:1;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:2px 7px;flex-shrink:0;cursor:pointer;margin:0 6px}
+    #wm-taskbar .wm-showdesk:active{border-color:#808080 #fff #fff #808080}
     #wm-taskbar .wm-tasks{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden}
     .wm-task{font-size:11px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:5px}
     .wm-task.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
@@ -5289,7 +5291,7 @@ function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-car
 function wmTitle(key){ if(key==='cgg')return 'Card Guesser'; if(key==='splash')return 'Splash Builder'; if(key==='site')return 'MyMagicDeck'; return (MGW_APPS[key]&&MGW_APPS[key].title)||key; }
 function wmIcon(key){ if(key==='cgg')return '🗃️'; if(key==='splash')return '🖼️'; if(key==='site')return '✦'; return (MGW_APPS[key]&&MGW_APPS[key].icon)||'🪟'; }
 function wmOpenSite(){ if(!wmDesktop())return; wmEnsureTaskbar(); const fresh=!wmWins.site; wmOpen('site'); if(fresh && !(function(){try{return DeckOS.store.get('wm:rect:site');}catch(e){return null;}})()){ // first open: windowed (not fullscreen), full app — wings attached by default
-    wmWins.site.state='normal'; wmWins.site.rect={x:18,y:16,w:Math.min(1340,innerWidth-30),h:Math.min(740,innerHeight-80)}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
+    wmWins.site.state='normal'; const _w=Math.min(1340,innerWidth-30),_h=Math.min(740,innerHeight-80); wmWins.site.rect={x:Math.max(8,Math.round((innerWidth-_w)/2)),y:Math.max(8,Math.round((innerHeight-34-_h)/2)),w:_w,h:_h}; wmApply('site'); } wmRenderTaskbar(); if(typeof mmdApply==='function')mmdApply(); }
 function wmReleaseSite(){ if(typeof mmdAttach==='function'){ mmdAttach(); _mmdDetached=false; } const el=document.getElementById('site-window'); if(!el)return; el.classList.remove('wm-win','wm-max'); ['position','left','top','width','height','zIndex','display'].forEach(p=>el.style[p]=''); const h=el.querySelector(':scope > .wm-resize'); if(h)h.remove(); delete wmWins.site; delete wmEls.site; const anchor=document.getElementById('modal-import'); if(el.parentElement!==document.body){ if(anchor)document.body.insertBefore(el,anchor); else document.body.appendChild(el); } }
 function wmBackdropId(key){ if(key==='cgg')return 'mguess-overlay'; if(MGW_APPS[key]&&MGW_APPS[key].win==='.modal')return MGW_APPS[key].overlay; return null; }
 function wmEligible(key){ return wmDesktop() && ((MGW_APPS[key]&&MGW_APPS[key].win==='.modal') || WM_SPECIAL.includes(key)); }
@@ -5297,12 +5299,20 @@ function wmLayer(){ let l=document.getElementById('wm-layer'); if(!l){ l=documen
 function wmEnsureTaskbar(){
   let t=document.getElementById('wm-taskbar'); if(t) return t;
   t=document.createElement('div'); t.id='wm-taskbar';
-  t.innerHTML='<button class="wm-start">Start</button><div class="wm-tasks"></div><span id="wm-clock"></span>';
+  t.innerHTML='<button class="wm-start">Start</button><div class="wm-tasks"></div><button class="wm-showdesk" title="Show desktop (minimize all)">🖥️</button><span id="wm-clock"></span>';
   document.body.appendChild(t);
   t.querySelector('.wm-start').addEventListener('click', e=>{ e.stopPropagation(); wmStartMenu(); });
+  t.querySelector('.wm-showdesk').addEventListener('click', e=>{ e.stopPropagation(); wmShowDesktop(); });
   const tick=()=>{ const c=document.getElementById('wm-clock'); if(c)c.textContent=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); };
   tick(); setInterval(tick, 30000);
   return t;
+}
+let _wmDeskMinned=null;
+// Show Desktop: minimize every open window; click again to restore what we minimized.
+function wmShowDesktop(){
+  const visible=Object.keys(wmWins).filter(k=>wmWins[k] && wmWins[k].state!=='min');
+  if(visible.length){ _wmDeskMinned=visible.slice(); visible.forEach(k=>wmMin(k)); }
+  else if(_wmDeskMinned){ _wmDeskMinned.forEach(k=>{ if(wmWins[k])wmRestore(k); }); _wmDeskMinned=null; }
 }
 function wmStartMenu(){
   let m=document.getElementById('wm-startmenu'); if(m){ m.remove(); return; }
