@@ -5405,8 +5405,14 @@ function widgetWireDrag(el, inst){
 // Built-in widget types
 widgetRegister('decklist', { title:'Deck List', icon:'📋', render(b){
   const d=DeckOS.decks.active(); if(!d){ b.innerHTML='<div style="color:#555">No active deck.</div>'; return; }
-  const rows=Object.values(d.cards||{}).map(e=>((e.qty||1)+'× '+((e.card&&e.card.name)||'?')));
-  b.innerHTML='<div style="font-weight:bold;margin-bottom:4px">'+_mgEsc(d.name||'Untitled')+'</div>'+(rows.length?rows.map(r=>'<div>'+_mgEsc(r)+'</div>').join(''):'<div style="color:#555">empty</div>');
+  const sect=(obj,label)=>{
+    const items=Object.values(obj||{}); if(!items.length)return '';
+    const n=items.reduce((s,e)=>s+(e.qty||1),0);
+    return '<div style="font-weight:bold;margin-top:6px;color:#888;font-size:.9em">'+label+' ('+n+')</div>'+
+      items.map(e=>'<div>'+_mgEsc((e.qty||1)+'× '+((e.card&&e.card.name)||'?'))+'</div>').join('');
+  };
+  const main=sect(d.cards,'Mainboard'), side=sect(d.sideboard,'Sideboard');
+  b.innerHTML='<div style="font-weight:bold;margin-bottom:4px">'+_mgEsc(d.name||'Untitled')+'</div>'+((main||side)?(main+side):'<div style="color:#555">empty</div>');
 }});
 widgetRegister('pagestatus', { title:'Page Status', icon:'📡', render(b){
   if(!state.user){ b.innerHTML='<div style="color:#555">Sign in to see your pages.</div>'; return; }
