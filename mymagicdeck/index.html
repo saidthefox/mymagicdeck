@@ -5447,20 +5447,40 @@ function fbRender(body){ if(!body)return;
   body.querySelectorAll('[data-fbdeck]').forEach(el=>{ el.addEventListener('dblclick',()=>fbLoadDeck(el.getAttribute('data-fbdeck'))); el.addEventListener('click',()=>{ body.querySelectorAll('.fb-file.sel').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }); });
 }
 // ===== MyMagicBot — front door + Deck OS integration status for the MTG tournament Discord bot =====
+const MMB_REPO=''; // public source URL (set when published); blank → "available on request"
 async function mmbRender(body){ if(!body)return;
-  body.innerHTML='<div class="t-wrap">'+
-    '<div style="font-weight:bold;font-size:14px;margin-bottom:4px">🤖 MyMagicBot</div>'+
-    '<div style="color:#444;font-size:12px;margin-bottom:10px">Your MTG tournament Discord bot. It runs events in Discord and pipes them straight into Deck OS.</div>'+
-    '<div class="t-section"><div class="t-sh">What it does</div><div style="font-size:12px;line-height:1.6">'+
-      '• Runs Swiss tournaments &amp; pairings in your Discord server<br>'+
-      '• Gives each player a private channel for their matches<br>'+
-      '• Announces tournaments that land in everyone’s Deck OS <b>Calendar</b> + <b>feed</b> — anyone subscribed to matching parameters gets <b>Mail</b> automatically</div></div>'+
-    '<div class="t-section"><div class="t-sh">Commands (run in Discord)</div><div style="font-size:12px;line-height:1.7;font-family:\'Courier New\',monospace">/tournament_announcement<br>/pairings<br>/standings</div><div style="color:#888;font-size:10px;margin-top:3px">Your bot’s exact commands may differ.</div></div>'+
-    '<div class="t-section"><div class="t-sh">Deck OS integration</div><div id="mmb-status" style="font-size:12px;color:#444">Checking…</div></div>'+
+  const code=s=>'<code style="background:#eee;padding:0 4px;border-radius:3px;font-size:11px">'+s+'</code>';
+  body.innerHTML='<div class="t-wrap" style="font-size:12px;line-height:1.55;color:#222">'+
+    '<div style="text-align:center;background:linear-gradient(135deg,#00006e,#1577d4);color:#fff;padding:16px;margin:-2px -2px 10px;border-radius:4px">'+
+      '<div style="font-size:34px;line-height:1">🤖</div><div style="font-size:18px;font-weight:800;margin-top:4px">MyMagicBot</div>'+
+      '<div style="opacity:.9;font-size:12px;margin-top:3px">Run real Swiss tournaments right inside your Discord server.</div></div>'+
+    '<div style="margin-bottom:10px">A Discord bot that runs <b>sanctioned-style Swiss tournaments</b> end to end — pairings, per-player private match channels, optional decklists, top cuts, standings, and persistent stats — and feeds your events into MyMagicDeck.</div>'+
+    '<div class="t-section"><div class="t-sh">Highlights</div><div>'+
+      '• <b>Swiss pairings</b> — win 3 / draw 1 / loss 0, no rematches, byes to the lowest player; ties broken by OMW% → GW% → OGW%<br>'+
+      '• <b>Private match channels</b> — each player reports results in their own channel (react 2️⃣/3️⃣/0️⃣; opponent confirms)<br>'+
+      '• <b>Decklist events</b> — optionally require a pasted list to join<br>'+
+      '• <b>Top cut</b> — Top 4 / Top 8 single-elim bracket after Swiss<br>'+
+      '• <b>Stats &amp; history</b> — auto-updating stats channel; <b>/stats</b>, <b>/history</b>, <b>/leaderboard</b><br>'+
+      '• <b>MyMagicDeck link</b> — <b>/announce-tournament</b> posts upcoming events here and mails matching subscribers</div></div>'+
+    '<div class="t-section"><div class="t-sh">Run a tournament</div><div>'+
+      '1. '+code('/start-tournament')+' (or '+code('/start-tournament-decklists')+') — pings the channel’s opt-in role<br>'+
+      '2. Players react 👍 in their private channel to join<br>'+
+      '3. '+code('/roster')+' → confirm headcount, then '+code('/pair')+' each round<br>'+
+      '4. Winners report (2️⃣ 2-0 · 3️⃣ 2-1 · 0️⃣ draw); loser confirms<br>'+
+      '5. '+code('/cut')+' for the Top 4/8 bracket, or '+code('/end')+' to finish on Swiss<br>'+
+      '<span style="color:#666">Anytime: '+code('/standings')+' '+code('/re-pair')+' '+code('/drop')+' '+code('/resubmit')+'</span></div></div>'+
+    '<div class="t-section"><div class="t-sh">Install it on your own server</div><div>'+
+      '<b>1.</b> Create a Discord application &amp; bot at '+code('discord.com/developers')+' — copy the <b>token</b>, <b>application (client) id</b>, and your <b>server (guild) id</b>; enable the <b>Message Content</b> intent.<br>'+
+      '<b>2.</b> Invite the bot with scopes '+code('bot')+' + '+code('applications.commands')+' and permissions: <b>Manage Channels, Manage Roles, Send Messages, Read Message History, Add Reactions</b>. Drag the bot’s role <i>above</i> the roles it creates.<br>'+
+      '<b>3.</b> Get the code, set '+code('.env')+' ('+code('DISCORD_TOKEN')+', '+code('CLIENT_ID')+', '+code('GUILD_ID')+'; optional '+code('APP_API_URL')+' + '+code('MYMAGICDECK_BOT_KEY')+' for the MyMagicDeck link).<br>'+
+      '<b>4.</b> '+code('npm install')+' → '+code('npm run deploy')+' (registers the slash commands) → '+code('npm start')+'  (or build the included Dockerfile).<br>'+
+      '<b>5.</b> In Discord, as an admin: '+code('/tc-set-to-role')+', '+code('/tc-register')+' (per channel), '+code('/tc-readme')+', '+code('/tc-stats-channel')+'. Run '+code('/tc-admin-guide')+' and '+code('/tc-to-guide')+' anytime for the full in-server reference.</div></div>'+
+    '<div class="t-section"><div class="t-sh">Get the code</div><div id="mmb-get">'+(MMB_REPO?('<a href="'+MMB_REPO+'" target="_blank" rel="noopener">'+MMB_REPO+'</a>'):'Source is available on request — runs on Node 20 or Docker.')+'</div></div>'+
+    '<div class="t-section"><div class="t-sh">MyMagicDeck integration</div><div id="mmb-status" style="color:#444">Checking…</div></div>'+
   '</div>';
   try{ const s=await apiFetch('/integrations/status'); const el=body.querySelector('#mmb-status');
     if(el)el.innerHTML = s.tournamentIngest
-      ? '<span style="color:#2c8a4a">● Connected</span> — tournaments the bot announces appear here and notify subscribers.'
+      ? '<span style="color:#2c8a4a">● Connected</span> — tournaments the bot announces appear in everyone’s Calendar + feed and mail matching subscribers.'
       : '<span style="color:#b23">● Not configured</span> — set BOT_API_KEY on the server to enable.';
   }catch(e){ const el=body.querySelector('#mmb-status'); if(el)el.textContent='Status unavailable.'; }
 }
@@ -5739,7 +5759,7 @@ if(window.DeckOS){
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
   DeckOS.registerProgram({ id:'mail', title:'Mail', icon:'📬', width:'480px', mount(body){ mailRender(body); } });
-  DeckOS.registerProgram({ id:'mymagicbot', title:'MyMagicBot', icon:'🤖', width:'460px', mount(body){ mmbRender(body); } });
+  DeckOS.registerProgram({ id:'mymagicbot', title:'MyMagicBot', icon:'🤖', width:'540px', mount(body){ mmbRender(body); } });
   if(state.user&&apiToken()&&typeof mailRefreshBadge==='function')mailRefreshBadge();
   deskBgApply(deskBgGet()); // restore desktop background
   if(typeof widgetRenderAll==='function')widgetRenderAll(); // instant local restore of mounted widgets
