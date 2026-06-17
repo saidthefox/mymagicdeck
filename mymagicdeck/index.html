@@ -850,7 +850,7 @@
     .splash-type-seg.Lands        { background:#3a2a10; }
     .splash-type-seg.Other        { background:#2a2a2a; }
     .splash-type-seg.Sideboard    { background:#1a4a3a; }
-    .splash-sort-wrap { display:flex; align-items:center; gap:10px; margin-right:4px; }
+    .splash-sort-wrap { display:flex; align-items:center; flex-wrap:wrap; gap:8px; row-gap:6px; margin-right:4px; }
     .splash-sort-label { font-size:0.72rem; color:var(--text-dim); white-space:nowrap; }
     .splash-sort-wrap label { display:flex; align-items:center; gap:4px; font-size:0.72rem; color:var(--text-dim); cursor:pointer; white-space:nowrap; }
     .splash-sort-wrap label:hover { color:var(--text-bright); }
@@ -2424,6 +2424,7 @@ let _splashEdit=false;
 function openSplash(deckObj,username,opts){
   _splashDeck={deck:deckObj,username};
   _splashEdit=!!(opts&&opts.edit)&&!!state.user;
+  _splashUndo=[];  // layout-undo history is per splash session
 
   const allCards=Object.values(deckObj.cards||{});
   const sbCards=Object.values(deckObj.sideboard||{});
@@ -2456,6 +2457,7 @@ function openSplash(deckObj,username,opts){
       <label class="btn small splash-user-ctl" id="splash-snap-ctl" style="display:none"><input type="checkbox" id="splash-snap" onchange="_snapToggle()" style="margin-right:4px"> Snap grid</label>
       <button class="btn small splash-user-ctl" id="splash-deckpic" onclick="deckPicLayout()" style="display:none" title="Auto-arrange into a tidy grid">🎴 Deck pic layout</button>
       <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
+      <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
       <button class="btn small" onclick="openUploads()">🗂 My Uploads</button>
       <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
@@ -2857,6 +2859,17 @@ function freeCardDown(e,key,cid,copyIdx){
   };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
+// Session-scoped layout undo: snapshot deck.layout before a destructive rearrange.
+let _splashUndo=[];
+function _splashSnapshot(deck){ try{ _splashUndo.push(deck.layout?JSON.parse(JSON.stringify(deck.layout)):null); if(_splashUndo.length>20)_splashUndo.shift(); }catch(e){} _splashUndoSync(); }
+function _splashUndoSync(){ const u=document.getElementById('splash-undo'); if(u)u.disabled=_splashUndo.length===0; }
+function splashUndoLayout(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck||!_splashUndo.length)return;
+  const prev=_splashUndo.pop(); if(prev)deck.layout=prev; else delete deck.layout;
+  saveToStorage(); syncDeckToApi(deck.id);
+  const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true;
+  splashReorder(); _splashUndoSync(); toast('Layout reverted ↶','success');
+}
 function saveUserLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   const free=document.getElementById('splash-free'); if(!free){toast('Switch to User Layout first','info');return;}
@@ -2875,6 +2888,8 @@ function setDefaultLayout(){
 // One-click tidy arrangement for users who don't want to hand-place every card.
 function deckPicLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  if(!confirm('Re-arrange ALL cards into a tidy grid? This replaces your current layout.\n\nYou can press ↶ Undo afterward.'))return;
+  _splashSnapshot(deck);
   const CARD_W=121,CARD_H=169,GAP=10;
   const items=[];
   const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
@@ -2897,6 +2912,8 @@ function deckPicLayout(){
 // horizontal drift gives the fan; z ascends so lower cards sit in front of upper bodies.
 function fanLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  if(!confirm('Fan ALL cards into staggered columns? This replaces your current layout.\n\nYou can press ↶ Undo afterward.'))return;
+  _splashSnapshot(deck);
   const CARD_W=121, CARD_H=169, VSTEP=34, DRIFT=7, GAP=18; // VSTEP(34) > ~card top strip (~26px)
   const items=[];
   const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
