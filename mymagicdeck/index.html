@@ -2441,7 +2441,7 @@ function getCommanderCard(deckObj){
 let _splashEdit=false;
 function openSplash(deckObj,username,opts){
   _splashDeck={deck:deckObj,username};
-  _splashEdit=!!(opts&&opts.edit)&&!!state.user;
+  _splashEdit=!!(opts&&opts.edit); // arrange/stats/printings work for guests (local); uploads still prompt sign-in
   _splashUndo=[];  // layout-undo history is per splash session
 
   const allCards=Object.values(deckObj.cards||{});
@@ -2528,7 +2528,7 @@ function openSplash(deckObj,username,opts){
   } else if(_splashEdit){
     photoHtml=`<div class="splash-deckphoto empty" onclick="triggerDeckPhoto()"><span>＋ Add a full-deck photo</span></div>`;
   }
-  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — click any card to change its art or upload your own.</div>`:'';
+  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload art / a deck photo or make a share image.`)+`</div>`:'';
   document.getElementById('splash-body').innerHTML=editHint+photoHtml+statsHtml+barHtml+colsHtml;
   _attachCardHover(document.getElementById('splash-body'));
   const dn=document.getElementById('splash-deck-name');
@@ -2699,7 +2699,7 @@ const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island
 const BG_SCENE_OPTS=[['desert','a desert'],['forest','a forest'],['random-biome','a random biome'],['ascii','ASCII art'],['tokyo','Tokyo'],['space','outer space'],['underwater','underwater'],['mountains','the mountains'],['city','a city'],['void','the void'],['dream','a dreamscape'],['swamp','a swamp'],['volcano','a volcano'],['library','a library'],['tavern','a tavern'],['meadow','a meadow'],['cosmos','the cosmos']];
 const BG_VIBE_OPTS=[['none','(any vibe)'],['cozy','cozy'],['epic','epic'],['eerie','eerie'],['cheerful','cheerful'],['mysterious','mysterious'],['chaotic','chaotic'],['serene','serene'],['retro','retro']];
 let _siBg='', _shareBlob=null;
-function openShareImage(){ if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
+function openShareImage(){ if(!state.user||!apiToken()){toast('Sign in to generate a shareable image','info');return;} if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
 function _openShareImage(){
   if(!_splashDeck){toast('Open your splash first','error');return;}
   document.getElementById('si-bgs').innerHTML=SHARE_BGS.map(b=>{
@@ -5204,7 +5204,7 @@ function mgLaunchApp(app){
 // adds chrome + state. Register a new program (e.g. a 2-player guessing battle) by
 // adding one entry here with {overlay, win, title, icon, open, close}.
 const MGW_APPS={
-  splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:true, open:()=>{ const d=currentDeck(); if(d)openSplash(d, state.user?.username||'You', {edit:!!state.user}); else previewSplash(); },  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
+  splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:true, open:()=>{ const d=currentDeck(); if(d)openSplash(d, state.user?.username||'You', {edit:true}); else previewSplash(); },  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
   shareimg:{overlay:'modal-share-image', win:'.modal', title:'Share Image', icon:'🖼️', open:()=>_openShareImage(), close:()=>closeModal('modal-share-image')},
   decks:  {overlay:'modal-decks',    win:'.modal', title:'My Decks',       icon:'📂',  open:()=>openDeckManager(),close:()=>decksClose()},
