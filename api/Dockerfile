@@ -6,8 +6,8 @@ RUN apk add --no-cache python3 make g++ imagemagick py3-opencv py3-numpy ttf-dej
 
 WORKDIR /app
 
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
 COPY server.js ./
 COPY detect_corners.py ./
