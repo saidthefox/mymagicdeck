@@ -168,7 +168,7 @@
     .fw.fw-anchored:hover { outline: 1px dashed rgba(255,255,255,0.15); }
     .fw.fw-anchored:hover .fw-title { opacity: 0.55; pointer-events: auto; }
     .fw-title { font-size: 0.58rem; font-weight: 400; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-dim); font-family: 'Courier New', Courier, monospace; padding: 4px 6px 1px; user-select: none; flex-shrink: 0; text-align: center; }
-    .fw-body { flex: 1; padding: 3px 6px 5px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; }
+    .fw-body { flex: 1; padding: 3px 6px 5px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; justify-content: safe center; }
     .fw-resize { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; opacity: 0.35; }
     .fw-resize:hover { opacity: 1; }
     .fw-resize::before { content: ''; display: block; width: 0; height: 0; border-style: solid; border-width: 0 0 10px 10px; border-color: transparent transparent var(--text-dim) transparent; position: absolute; right: 1px; bottom: 1px; }
@@ -6453,7 +6453,7 @@ init();
 
 // ── Filter Widget Drag/Resize System ──────────────────────────────────────────
 
-const FW_STORAGE_KEY = 'mmd_fw_layout_v3';
+const FW_STORAGE_KEY = 'mmd_fw_layout_v4';
 
 // Default layout: card widget centered in panel, other columns snapped to its sides
 function fwComputeDefaults(){
@@ -6463,9 +6463,9 @@ function fwComputeDefaults(){
   const CARD={ id:'fw-card', w:262, h:350 };
   const col1=[
     { id:'fw-colors',   w:179, h:68  },
-    { id:'fw-cmc',      w:260, h:67  },
+    { id:'fw-cmc',      w:232, h:67  },
     { id:'fw-types',    w:248, h:75  },
-    { id:'fw-pt',       w:108, h:80  },
+    { id:'fw-pt',       w:108, h:96  },
   ];
   const col3=[
     { id:'fw-format',   w:200, h:100 },
