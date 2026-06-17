@@ -5447,7 +5447,7 @@ function fbRender(body){ if(!body)return;
   body.querySelectorAll('[data-fbdeck]').forEach(el=>{ el.addEventListener('dblclick',()=>fbLoadDeck(el.getAttribute('data-fbdeck'))); el.addEventListener('click',()=>{ body.querySelectorAll('.fb-file.sel').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }); });
 }
 // ===== MyMagicBot — front door + Deck OS integration status for the MTG tournament Discord bot =====
-const MMB_REPO=''; // public source URL (set when published); blank → "available on request"
+const MMB_REPO='https://github.com/saidthefox/mymagicbot'; // public source
 async function mmbRender(body){ if(!body)return;
   const code=s=>'<code style="background:#eee;padding:0 4px;border-radius:3px;font-size:11px">'+s+'</code>';
   body.innerHTML='<div class="t-wrap" style="font-size:12px;line-height:1.55;color:#222">'+
