@@ -1205,7 +1205,7 @@
   <div class="header-right" style="position:relative;">
     <button class="btn" id="deckos-toggle" onclick="deckosToggle()" title="Toggle the Windows-95 Deck OS shell">🖥️ Deck OS</button>
     <div id="user-btn-area">
-      <button class="btn" id="signin-btn" onclick="openAuth()">👤 Sign In</button>
+      <button class="btn" id="signin-btn" onclick="signInClick()">👤 Sign In</button>
       <div class="user-avatar" id="user-avatar" style="display:none;" onclick="toggleUserMenu()"></div>
     </div>
     <div class="user-menu" id="user-menu" style="display:none;">
@@ -1990,6 +1990,13 @@ function renderAll(){renderDeck();renderStats();renderSearchResults();renderDeck
 let _authMode='login';
 let _resetToken=null;
 function openAuth(mode='login'){_authMode=mode;_updateAuthUI();document.getElementById('auth-username').value='';document.getElementById('auth-email').value='';document.getElementById('auth-password').value='';document.getElementById('auth-err').textContent='';openModal('modal-auth')}
+// In Deck OS the bare auth modal (z1000) spawns under the focused MyMagicDeck window
+// (wm-layer, z1500). Route Sign In through the Account program so it opens as a proper
+// framed window on top; in classic mode just open the modal.
+function signInClick(){
+  if(document.body.classList.contains('wm-on') && typeof mgLaunchApp==='function' && MGW_APPS['account']){ mgLaunchApp('account'); }
+  else openAuth('login');
+}
 function toggleAuthMode(){_authMode=_authMode==='login'?'signup':'login';_updateAuthUI()}
 function _updateAuthUI(){
   const isSignup=_authMode==='signup', isForgot=_authMode==='forgot';
