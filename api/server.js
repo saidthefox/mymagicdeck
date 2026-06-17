@@ -14,6 +14,11 @@ const sharp    = require('sharp');
 // ── Config ────────────────────────────────────────────────────────────────────
 const PORT     = parseInt(process.env.PORT || '3002', 10);
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
+// Fail closed: a default/weak JWT secret lets anyone forge a session for any account.
+if (JWT_SECRET === 'change-me-in-production' || JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET is unset, default, or too weak (<32 chars). Set a strong MYMAGICDECK_JWT_SECRET. Refusing to start.');
+  process.exit(1);
+}
 // Admin key for maintenance endpoints (card/hash refresh). If unset, those
 // endpoints are disabled over HTTP entirely (the daily auto-refresh still runs
 // internally via scheduleCardRefresh, so this only locks down the manual triggers).
