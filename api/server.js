@@ -401,6 +401,7 @@ async function refreshCards() {
     const count = runUpserts(cards);
     // Reclaim the WAL after the big rebuild transaction so it doesn't grow unbounded.
     try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (_) { /* best effort */ }
+    _keywordList = null; // rebuild the filter keyword list on next request
     _cardRefreshState = { status: 'done', started: _cardRefreshState.started, finished: Date.now(), count, error: null };
     app.log.info(`Card refresh complete: ${count} cards`);
   } catch (err) {
@@ -500,11 +501,21 @@ function parseScryfallQuery(q) {
       continue;
     }
 
-    // Rarity: r:rare
+    // Rarity: r:rare (incl. special, bonus)
     const rarityM = lower.match(/^(?:r|rarity):(\w+)$/);
     if (rarityM) {
       where.push(`rarity = ?`);
       params.push(rarityM[1].toLowerCase());
+      continue;
+    }
+
+    // Keyword ability: kw:flying / keyword:flying — matches the card's keywords
+    // array (e.g. ["Flying"]) rather than oracle text. Quoted to avoid substring
+    // collisions (LIKE is ASCII-case-insensitive in SQLite).
+    const kwM = lower.match(/^(?:kw|keyword):(.+)$/);
+    if (kwM) {
+      where.push(`lower(keywords) LIKE ?`);
+      params.push(`%"${kwM[1].replace(/"/g, '')}"%`);
       continue;
     }
 
@@ -2060,6 +2071,20 @@ app.get('/api/cards/search', async (req, reply) => {
 });
 
 // ── GET /api/cards/named?name=...&fuzzy=1 ────────────────────────────────────
+// ── GET /api/cards/keywords  (distinct keyword list for the filter typeahead) ─
+let _keywordList = null;
+function buildKeywordList() {
+  const counts = new Map();
+  for (const r of db.prepare("SELECT keywords FROM cards WHERE keywords IS NOT NULL AND keywords != '[]'").all()) {
+    let arr; try { arr = JSON.parse(r.keywords); } catch { continue; }
+    if (Array.isArray(arr)) for (const k of arr) if (typeof k === 'string' && k) counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  // Most-common first, then alphabetical — handy for a typeahead.
+  _keywordList = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(e => e[0]);
+  return _keywordList;
+}
+app.get('/api/cards/keywords', async () => ({ keywords: _keywordList || buildKeywordList() }));
+
 app.get('/api/cards/named', async (req, reply) => {
   const name = (req.query.name || req.query.fuzzy || '').trim();
   if (!name) return reply.code(400).send({ error: 'name is required' });

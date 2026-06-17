@@ -1299,7 +1299,10 @@
               <span class="cfp-chip" data-type="artifact">Artifact</span>
               <span class="cfp-chip" data-type="planeswalker">Planeswalker</span>
               <span class="cfp-chip" data-type="land">Land</span>
+              <span class="cfp-chip" data-type="battle">Battle</span>
+              <span class="cfp-chip" data-type="kindred">Kindred</span>
               <span class="cfp-chip" data-type="tribal">Tribal</span>
+              <span class="cfp-chip" data-type="snow">Snow</span>
               <span class="cfp-chip" data-type="legendary">Legendary</span>
             </div>
           </div>
@@ -1418,6 +1421,10 @@
               <span class="cfp-chip" data-format="pauper">Pauper</span>
               <span class="cfp-chip" data-format="pioneer">Pioneer</span>
               <span class="cfp-chip" data-format="premodern">Premodern</span>
+              <span class="cfp-chip" data-format="oldschool">Old School</span>
+              <span class="cfp-chip" data-format="predh">Pre-EDH</span>
+              <span class="cfp-chip" data-format="duel">Duel Cmdr</span>
+              <span class="cfp-chip" data-format="paupercommander">Pauper EDH</span>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -1432,6 +1439,8 @@
               <span class="cfp-chip" data-rarity="uncommon">Uncommon</span>
               <span class="cfp-chip" data-rarity="rare">Rare</span>
               <span class="cfp-chip" data-rarity="mythic">Mythic</span>
+              <span class="cfp-chip" data-rarity="special">Special</span>
+              <span class="cfp-chip" data-rarity="bonus">Bonus</span>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -1451,6 +1460,9 @@
               <span class="cfp-chip" data-keyword="vigilance">Vigilance</span>
               <span class="cfp-chip" data-keyword="menace">Menace</span>
             </div>
+            <div class="cfp-chips" id="kw-extra-chips"></div>
+            <input type="text" class="cfp-oracle-input" id="kw-typeahead" list="kw-datalist" placeholder="Search any keyword…" autocomplete="off" style="margin-top:6px;width:100%" onchange="kwTypeaheadAdd()" onfocus="kwLoadList()" />
+            <datalist id="kw-datalist"></datalist>
           </div>
           <div class="fw-resize"></div>
         </div>
@@ -3820,7 +3832,7 @@ function syncFilters(){
   _fs.types.forEach(t=>parts.push('t:'+t));
   _fs.formats.forEach(f=>parts.push('f:'+f));
   _fs.rarities.forEach(r=>parts.push('r:'+r));
-  _fs.keywords.forEach(k=>parts.push('o:'+k));
+  _fs.keywords.forEach(k=>parts.push('kw:'+k));
   const op=_cmcOpStr();
   if(op&&_fs.cmcNum!==null) parts.push('cmc'+op+_fs.cmcNum);
   if(_fs.powOp&&_fs.powVal) parts.push(_fs.powOp+_fs.powVal);
@@ -3838,9 +3850,9 @@ function syncFilters(){
 function parseSearchToFilters(){
   const q=document.getElementById('search-input').value;
   const validColors=new Set(['w','u','b','r','g','c']);
-  const validTypes=new Set(['creature','instant','sorcery','enchantment','artifact','planeswalker','land','tribal','legendary']);
-  const validFormats=new Set(['standard','commander','modern','pioneer','legacy','vintage','pauper','brawl']);
-  const validRarities=new Set(['common','uncommon','rare','mythic']);
+  const validTypes=new Set(['creature','instant','sorcery','enchantment','artifact','planeswalker','land','battle','kindred','tribal','snow','legendary']);
+  const validFormats=new Set(['standard','commander','modern','pioneer','legacy','vintage','pauper','brawl','premodern','oldschool','predh','duel','paupercommander']);
+  const validRarities=new Set(['common','uncommon','rare','mythic','special','bonus']);
   const validKeywords=new Set(['flying','trample','deathtouch','lifelink','haste','flash','vigilance','menace']);
 
   // Reset all filter state
@@ -3852,7 +3864,7 @@ function parseSearchToFilters(){
   const tokens=q.match(/(?:[^\s"]+|"[^"]*")/g)||[];
   const nameWords=[];
   for(const tok of tokens){
-    const m=tok.match(/^(c|color|ci|identity|t|type|f|format|o|oracle|r|rarity|cmc|mv|pow|tou|name):(.+)$/i);
+    const m=tok.match(/^(c|color|ci|identity|t|type|f|format|o|oracle|r|rarity|kw|keyword|cmc|mv|pow|tou|name):(.+)$/i);
     if(!m){
       // Check for cmc operators: cmc>3, cmc<=2, etc
       const cmcM=tok.match(/^(?:cmc|mv)([><=]{1,2})(\d+)$/i);
@@ -3890,6 +3902,8 @@ function parseSearchToFilters(){
       if(validFormats.has(val))_fs.formats.add(val);
     } else if(key==='r'||key==='rarity'){
       if(validRarities.has(val))_fs.rarities.add(val);
+    } else if(key==='kw'||key==='keyword'){
+      const kw=val.replace(/^"|"$/g,''); if(kw)_fs.keywords.add(kw);
     } else if(key==='o'||key==='oracle'){
       const unquoted=val.replace(/^"|"$/g,'');
       if(validKeywords.has(unquoted))_fs.keywords.add(unquoted);
@@ -3916,6 +3930,7 @@ function parseSearchToFilters(){
   _fs.formats.forEach(f=>{document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.add('active')});
   _fs.rarities.forEach(r=>{document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.add('active')});
   _fs.keywords.forEach(k=>{document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.add('active')});
+  if(typeof renderKeywordExtraChips==='function')renderKeywordExtraChips();
   _fs.cmcOps.forEach(op=>{document.querySelector(`.cfp-op[data-op="${op}"]`)?.classList.add('active')});
   if(_fs.cmcNum!==null)document.querySelector(`.cfp-num[data-cmc="${_fs.cmcNum}"]`)?.classList.add('active');
 
@@ -3957,7 +3972,7 @@ function updateActiveFilterPills(){
   _fs.types.forEach(t=>pills.push({label:t[0].toUpperCase()+t.slice(1),clear:()=>{_fs.types.delete(t);document.querySelector(`.cfp-chip[data-type="${t}"]`)?.classList.remove('active');syncFilters()}}));
   _fs.formats.forEach(f=>pills.push({label:f[0].toUpperCase()+f.slice(1),clear:()=>{_fs.formats.delete(f);document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.remove('active');syncFilters()}}));
   _fs.rarities.forEach(r=>pills.push({label:r[0].toUpperCase()+r.slice(1),clear:()=>{_fs.rarities.delete(r);document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.remove('active');syncFilters()}}));
-  _fs.keywords.forEach(k=>pills.push({label:k[0].toUpperCase()+k.slice(1),clear:()=>{_fs.keywords.delete(k);document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.remove('active');syncFilters()}}));
+  _fs.keywords.forEach(k=>pills.push({label:k[0].toUpperCase()+k.slice(1),clear:()=>{_fs.keywords.delete(k);if(typeof _syncKwChips==='function')_syncKwChips();else document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.remove('active');syncFilters()}}));
   if(_fs.cmcNum!==null){const op=_cmcOpStr();pills.push({label:'CMC'+op+_fs.cmcNum,clear:()=>{_fs.cmcOps.clear();_fs.cmcNum=null;document.querySelectorAll('.cfp-op,.cfp-num').forEach(x=>x.classList.remove('active'));syncFilters()}})}
   if(_fs.oracleText)pills.push({label:'o:"'+_fs.oracleText+'"',clear:()=>{_fs.oracleText='';const el=document.getElementById('oracle-text-input');if(el)el.value='';syncFilters()}});
   if(_fs.name.trim())pills.push({label:'"'+_fs.name.trim()+'"',clear:()=>{_fs.name='';document.getElementById('cm-name-input').value='';syncFilters()}});
@@ -4190,6 +4205,7 @@ function clearAllFilters(){
   ['pt-power-op','pt-tough-op'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   ptSyncFromState();
   document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
+  if(typeof renderKeywordExtraChips==='function')renderKeywordExtraChips(); // drop typeahead-added chips
   document.getElementById('search-input').value='';
   updateCardMockup();
   updateActiveFilterPills();
@@ -4245,11 +4261,37 @@ document.querySelectorAll('.cfp-chip[data-rarity]').forEach(el=>el.addEventListe
   _fs.rarities.has(r)?(_fs.rarities.delete(r),this.classList.remove('active')):(_fs.rarities.add(r),this.classList.add('active'));
   syncFilters();
 }));
-document.querySelectorAll('.cfp-chip[data-keyword]').forEach(el=>el.addEventListener('click',function(){
-  const k=this.dataset.keyword;
-  _fs.keywords.has(k)?(_fs.keywords.delete(k),this.classList.remove('active')):(_fs.keywords.add(k),this.classList.add('active'));
-  syncFilters();
-}));
+// Keyword chips (curated + typeahead-added) via delegation, so dynamically-added
+// chips work too. Curated set is the static HTML chips; everything else is "extra".
+const CURATED_KW=new Set(['flying','trample','deathtouch','lifelink','haste','flash','vigilance','menace']);
+function renderKeywordExtraChips(){
+  const box=document.getElementById('kw-extra-chips'); if(!box)return;
+  const extras=[..._fs.keywords].filter(k=>!CURATED_KW.has(k));
+  box.innerHTML=extras.map(k=>`<span class="cfp-chip active" data-keyword="${_mgEsc(k)}">${_mgEsc(k)} ✕</span>`).join('');
+}
+function _syncKwChips(){
+  document.querySelectorAll('#fw-keywords .cfp-chips .cfp-chip[data-keyword]').forEach(c=>c.classList.toggle('active',_fs.keywords.has(c.dataset.keyword)));
+  renderKeywordExtraChips();
+}
+document.getElementById('fw-keywords')?.addEventListener('click',function(e){
+  const chip=e.target.closest('.cfp-chip[data-keyword]'); if(!chip)return;
+  const k=chip.dataset.keyword;
+  _fs.keywords.has(k)?_fs.keywords.delete(k):_fs.keywords.add(k);
+  _syncKwChips(); syncFilters();
+});
+let _kwListLoaded=false;
+async function kwLoadList(){
+  if(_kwListLoaded)return; _kwListLoaded=true;
+  try{ const r=await apiFetch('/cards/keywords'); const dl=document.getElementById('kw-datalist');
+    if(dl&&Array.isArray(r.keywords))dl.innerHTML=r.keywords.map(k=>`<option value="${_mgEsc(k)}"></option>`).join('');
+  }catch(e){ _kwListLoaded=false; }
+}
+function kwTypeaheadAdd(){
+  const inp=document.getElementById('kw-typeahead'); if(!inp)return;
+  const v=inp.value.trim().toLowerCase(); inp.value='';
+  if(!v)return;
+  _fs.keywords.add(v); _syncKwChips(); syncFilters();
+}
 
 // Legacy aliases so any existing code that references old vars still works
 let _cmcOps=_fs.cmcOps, _cmcNum=null;
