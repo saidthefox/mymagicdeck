@@ -6853,6 +6853,7 @@ function mgRenderDesktop(){
       _appMeta={}; deskc.querySelectorAll('.mg-icon[data-app]').forEach(el=>{ const ico=el.querySelector('.mg-ico'), lbl=el.querySelector('.mg-ilbl'); const k=el.dataset.app;
         const emoji=(ico&&(ico.textContent||'').trim()) || (typeof MGW_APPS!=='undefined'&&MGW_APPS[k]&&MGW_APPS[k].icon) || '🧩'; // icons like TWENTYFOURTY use styled text, not an emoji → fall back to the program's registered icon
         _appMeta[k]={ emoji, label: lbl?(lbl.textContent||'').trim():k }; });
+      const _cgg=deskc.querySelector('.mg-icon[data-cgg]'); if(_cgg){ const cl=_cgg.querySelector('.mg-ilbl'); _appMeta['cgg']={ emoji:'🗃️', label: cl?(cl.textContent||'').trim():'CGG' }; } // CGG icon is styled text, not data-app
       mgRenderAppFolders(deskc);
       mgLayoutIcons(deskc); } }
 }
@@ -6894,7 +6895,7 @@ function mgRenderAppFolders(container){
   if(!container)return; const folders=mgAppFolders(); if(!folders.length)return;
   folders.forEach(fld=>{
     const minis=[];
-    fld.apps.forEach(appKey=>{ const m=_appMeta[appKey]; if(m)minis.push(m.emoji||'🧩'); const el=container.querySelector('.mg-icon[data-app="'+appKey+'"]'); if(el)el.remove(); });
+    fld.apps.forEach(appKey=>{ const m=_appMeta[appKey]; if(m)minis.push(m.emoji||'🧩'); const sel=appKey==='cgg'?'.mg-icon[data-cgg]':'.mg-icon[data-app="'+appKey+'"]'; const el=container.querySelector(sel); if(el)el.remove(); });
     if(!minis.length)return;
     const bub=document.createElement('div'); bub.className='mg-icon mg-appfolder'; bub.dataset.appfolder=fld.id; bub.dataset.ikey='appfolder:'+fld.id;
     bub.innerHTML='<div class="mg-folderbubble">'+minis.slice(0,4).map(m=>'<span class="mg-fbm">'+m+'</span>').join('')+'</div><div class="mg-ilbl">'+_mgEsc(fld.name||'Folder')+'</div>';
@@ -6958,16 +6959,16 @@ window.addEventListener('resize',()=>{ clearTimeout(_mgResizeT); _mgResizeT=setT
 function mgWireIconDrag(el, onTap){
   el.addEventListener('pointerdown',e=>{ if(e.button>0)return; const c=el.parentElement; const sx=e.clientX, sy=e.clientY; const r=el.getBoundingClientRect(), pr=c.getBoundingClientRect(); const ox=r.left-pr.left, oy=r.top-pr.top; let dragging=false, nx=ox, ny=oy;
     // App icons can be dropped onto another app icon / folder bubble to group them.
-    const canFold=!!el.dataset.app; let dropT=null;
+    const myKey=el.dataset.app||(el.dataset.cgg?'cgg':null); const canFold=!!myKey; let dropT=null;
     const setDropT=t=>{ if(dropT===t)return; if(dropT)dropT.classList.remove('mg-droptarget'); dropT=(t&&t!==el)?t:null; if(dropT)dropT.classList.add('mg-droptarget'); };
-    const targetAt=(x,y)=>{ el.style.visibility='hidden'; const u=document.elementFromPoint(x,y); el.style.visibility=''; return u&&u.closest&&u.closest('.mg-icon[data-app],.mg-icon[data-appfolder]'); };
+    const targetAt=(x,y)=>{ el.style.visibility='hidden'; const u=document.elementFromPoint(x,y); el.style.visibility=''; return u&&u.closest&&u.closest('.mg-icon[data-app],.mg-icon[data-cgg],.mg-icon[data-appfolder]'); };
     const mm=ev=>{ if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)<8)return; dragging=true; el.classList.add('mg-dragging'); } ev.preventDefault();
       nx=Math.max(0,Math.min(ox+(ev.clientX-sx), c.clientWidth-el.offsetWidth)); ny=Math.max(0,Math.min(oy+(ev.clientY-sy), c.clientHeight-el.offsetHeight)); el.style.left=nx+'px'; el.style.top=ny+'px';
       if(canFold)setDropT(targetAt(ev.clientX,ev.clientY)); };
     const up=ev=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up);
       if(dragging){ el.classList.remove('mg-dragging'); setDropT(null);
         if(canFold && ev && ev.type==='pointerup'){ const t=targetAt(ev.clientX,ev.clientY);
-          if(t && t!==el){ if(t.dataset.appfolder){ mgAppFolderAdd(t.dataset.appfolder, el.dataset.app); mgRenderDesktop(); return; } if(t.dataset.app){ mgAppFolderCreate([t.dataset.app, el.dataset.app]); mgRenderDesktop(); return; } } }
+          if(t && t!==el){ if(t.dataset.appfolder){ mgAppFolderAdd(t.dataset.appfolder, myKey); mgRenderDesktop(); return; } const tKey=t.dataset.app||(t.dataset.cgg?'cgg':null); if(tKey){ mgAppFolderCreate([tKey, myKey]); mgRenderDesktop(); return; } } }
         mgIconPosSet(mgIconKey(el), nx, ny);
       } else if(onTap){ onTap(); } };
     document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',up); });
