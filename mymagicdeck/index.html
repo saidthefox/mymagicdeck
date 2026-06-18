@@ -1006,13 +1006,14 @@
     .mg-smitem:active{background:#000080;color:#fff}
     .mg-smsep{border-top:1px solid #808080;border-bottom:1px solid #fff;margin:3px 2px}
     /* Collapsible Start-menu folders (Games / Utilities) — click to expand like Windows */
-    .mg-smcat{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap;font-weight:bold}
-    .mg-smcat:active{background:#000080;color:#fff}
-    .mg-smchev{display:inline-block;width:9px;font-size:9px;transition:transform .12s}
-    .mg-smcat.open .mg-smchev{transform:rotate(90deg)}
-    .mg-smsub{display:none}
-    .mg-smcat.open + .mg-smsub{display:block}
-    .mg-smsub .mg-smitem{padding-left:24px}
+    .mg-smcat{position:relative;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap;font-weight:bold}
+    .mg-smcat:hover,.mg-smcat.open{background:#000080;color:#fff}
+    .mg-smlbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+    .mg-smchev{flex:0 0 auto;font-size:10px}
+    /* flyout box to the right of the Start menu, Windows-style */
+    .mg-smsub{position:absolute;left:100%;top:-3px;min-width:172px;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 8px rgba(0,0,0,.5);z-index:40;display:none;padding:3px}
+    .mg-smcat.open>.mg-smsub{display:block}
+    .mg-smsub .mg-smitem{color:#000}
     #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:#c0c0c0;z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
     /* MGW: generic Win95 program windows (Splash / Share / Account / future apps) */
     .mgw-win{border:3px solid !important;border-color:#dfdfdf #404040 #404040 #dfdfdf !important;border-radius:0 !important;background:#c0c0c0 !important;padding:0 !important;overflow:hidden}
@@ -1104,6 +1105,16 @@
     .os-note .on-body{border:0;background:transparent;resize:none;width:100%;min-height:96px;max-height:300px;font-family:inherit;font-size:12px;color:#222;padding:5px 6px;line-height:1.4;box-sizing:border-box}
     .os-note .on-body:focus{outline:none}
     .os-note.pinned{opacity:.5;transition:opacity .15s}
+    .os-note.collapsed .on-body{display:none}
+    /* Documents (notes) file list */
+    .doc-list{display:flex;flex-direction:column;gap:2px}
+    .doc-row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;cursor:pointer}
+    .doc-row:hover{background:var(--surface2,rgba(255,255,255,.07))}
+    .doc-ic{font-size:1rem;flex:0 0 auto}
+    .doc-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .doc-tag{font-size:.62rem;color:var(--accent,#7de0a0);text-transform:uppercase;letter-spacing:.05em;flex:0 0 auto}
+    .doc-del{flex:0 0 auto}
+    .doc-rename-inp{flex:1;min-width:0;font:inherit;background:var(--bg,#111);border:1px solid var(--accent,#7de0a0);border-radius:4px;color:var(--text,#fff);padding:2px 6px}
     .os-note.pinned .on-bar{cursor:default}
     .os-note.pinned:hover{opacity:.97}
     /* Calendar program */
@@ -1194,7 +1205,7 @@
       .lc-ovbtns button{font-size:min(6cqmin,32px);min-width:min(15cqmin,104px);height:min(12cqmin,88px)}
     }
     /* Mana Pool tracker */
-    .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:484px;background:radial-gradient(120% 80% at 50% 0%,#171122,#0b0810);color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
+    .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:484px;background-color:#23262a;background-image:radial-gradient(130% 90% at 50% -10%, rgba(255,255,255,.10), rgba(0,0,0,.5) 72%), url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='84'><rect width='128' height='84' fill='%23272a2e'/><g stroke='%23202225' stroke-width='1'><rect x='2' y='2' width='60' height='38' rx='5' fill='%234f535b'/><rect x='66' y='2' width='60' height='38' rx='5' fill='%23565a63'/><rect x='-30' y='44' width='60' height='38' rx='5' fill='%23545860'/><rect x='34' y='44' width='60' height='38' rx='5' fill='%234c505a'/><rect x='98' y='44' width='60' height='38' rx='5' fill='%235a5e68'/></g></svg>");background-size:100% 100%,150px 98px;background-repeat:no-repeat,repeat;color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
     .mp-bar{display:flex;justify-content:space-around;align-items:flex-start;gap:2px;padding:12px 6px 8px;flex:0 0 auto;z-index:2}
     .mp-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:96px}
     .mp-dot{width:clamp(30px,8vw,42px);height:clamp(30px,8vw,42px);border-radius:50%;border:2px solid rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;cursor:pointer;user-select:none;box-shadow:0 2px 9px rgba(0,0,0,.55), inset 0 2px 4px rgba(255,255,255,.45);transition:transform .08s}
@@ -5283,6 +5294,8 @@ function mgCogToggle(){
 function mgLaunchApp(app){
   mgStartOpen=false;
   if(app==='cgg'){mgLaunch();return;}
+  // "Notes" isn't a window — it just drops a fresh sticky note on the desktop (saved to Documents).
+  if(app==='notes'){ if(typeof notesCreate==='function')notesCreate(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); return; }
   if(MGW_APPS[app])mgwLaunch(app);
 }
 // ===== MGW: the shared program registry + the MOBILE window shell =====
@@ -5836,9 +5849,10 @@ function noteRender(n){
   const d=document.getElementById('pc-desktop'); if(!d||!n.placed)return;
   let el=document.getElementById('note-'+n.id);
   if(!el){ el=document.createElement('div'); el.id='note-'+n.id; el.className='os-note';
-    el.innerHTML='<div class="on-bar"><input class="on-title" maxlength="60"><span class="on-btns"><button data-npin title="pin in place + fade">📌</button><button data-nclose title="put away (kept as a file)">✕</button></span></div><textarea class="on-body" placeholder="Type your note…"></textarea>';
+    el.innerHTML='<div class="on-bar"><input class="on-title" maxlength="60"><span class="on-btns"><button data-npin title="pin in place + fade">📌</button><button data-nmin title="minimize">–</button><button data-nclose title="put away (kept in Documents)">✕</button></span></div><textarea class="on-body" placeholder="Type your note…"></textarea>';
     d.appendChild(el);
     el.querySelector('[data-nclose]').addEventListener('click',e=>{ e.stopPropagation(); notesSetPlaced(n.id, false); });
+    el.querySelector('[data-nmin]').addEventListener('click',e=>{ e.stopPropagation(); const c=!el.classList.contains('collapsed'); el.classList.toggle('collapsed',c); notesUpdate(n.id,{min:c}); });
     el.querySelector('[data-npin]').addEventListener('click',e=>{ e.stopPropagation(); notesSetPinned(n.id, !el.classList.contains('pinned')); });
     const ti=el.querySelector('.on-title'), bo=el.querySelector('.on-body');
     const save=()=>{ clearTimeout(_noteSaveTimers[n.id]); _noteSaveTimers[n.id]=setTimeout(()=>{ notesUpdate(n.id,{title:ti.value, body:bo.value}); notesRefreshApp(); },400); };
@@ -5846,6 +5860,7 @@ function noteRender(n){
     noteWireDrag(el, n.id);
   }
   el.classList.toggle('pinned', !!n.pinned); const pb=el.querySelector('[data-npin]'); if(pb)pb.textContent=n.pinned?'📍':'📌';
+  el.classList.toggle('collapsed', !!n.min);
   el.style.left=(n.x||40)+'px'; el.style.top=(n.y||40)+'px';
   const ti=el.querySelector('.on-title'), bo=el.querySelector('.on-body');
   if(document.activeElement!==ti)ti.value=n.title||''; if(document.activeElement!==bo)bo.value=n.body||'';
@@ -5954,11 +5969,20 @@ function fbRender(body){ if(!body)return;
     (decksByFolder[folderId]||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).forEach(d=>{ h+='<div class="fb-row fb-file'+(d.id===(mgActiveDeckId||state.currentDeckId)?' sel':'')+'" data-fbdeck="'+d.id+'" style="padding-left:'+(depth*16+22)+'px">🗃️ '+_mgEsc(d.name||'Untitled')+'<span class="fb-meta">'+cardCount(d)+' cards</span></div>'; });
     return h; }
   const rootOpen=_fbExpanded.has('__root');
-  const tree='<div class="fb-row fb-folder" data-fbfolder="__root" style="padding-left:6px"><span class="fb-tw">'+(rootOpen?'▾':'▸')+'</span>🖥️ Desktop</div>'+(rootOpen?node('__root',1):'');
+  let tree='<div class="fb-row fb-folder" data-fbfolder="__root" style="padding-left:6px"><span class="fb-tw">'+(rootOpen?'▾':'▸')+'</span>🖥️ Desktop</div>'+(rootOpen?node('__root',1):'');
+  // Documents — the permanent notes folder (special, not a deck folder).
+  const docsOpen=_fbExpanded.has('__docs');
+  const notes=(typeof notesList==='function'?notesList():[]);
+  tree+='<div class="fb-row fb-folder" data-fbfolder="__docs" style="padding-left:6px"><span class="fb-tw">'+(docsOpen?'▾':'▸')+'</span>📁 Documents</div>';
+  if(docsOpen) tree+= notes.length ? notes.map(n=>'<div class="fb-row fb-file" data-fbnote="'+n.id+'" style="padding-left:28px">📝 '+_mgEsc(n.title||'Note')+'</div>').join('') : '<div class="fb-row" style="padding-left:28px;color:#888;cursor:default">No notes yet</div>';
+  // Gallery — the image library (opens the Gallery program).
+  tree+='<div class="fb-row fb-folder" data-fbgallery="1" style="padding-left:6px"><span class="fb-tw"></span>🖼️ Gallery</div>';
   body.style.padding='0';
-  body.innerHTML='<div class="fb-wrap"><div class="fb-bar"><span style="font-size:11px;color:#444">Double-click a deck to open it</span></div><div class="fb-list">'+tree+'</div></div>';
+  body.innerHTML='<div class="fb-wrap"><div class="fb-bar"><span style="font-size:11px;color:#444">Double-click a deck to open it · click a note to open it</span></div><div class="fb-list">'+tree+'</div></div>';
   body.querySelectorAll('[data-fbfolder]').forEach(el=>el.addEventListener('click',()=>{ const id=el.getAttribute('data-fbfolder'); if(_fbExpanded.has(id))_fbExpanded.delete(id); else _fbExpanded.add(id); fbRender(body); }));
   body.querySelectorAll('[data-fbdeck]').forEach(el=>{ el.addEventListener('dblclick',()=>fbLoadDeck(el.getAttribute('data-fbdeck'))); el.addEventListener('click',()=>{ body.querySelectorAll('.fb-file.sel').forEach(x=>x.classList.remove('sel')); el.classList.add('sel'); }); });
+  body.querySelectorAll('[data-fbnote]').forEach(el=>el.addEventListener('click',()=>{ const id=el.getAttribute('data-fbnote'); if(typeof notesSetPlaced==='function')notesSetPlaced(id,true); if(typeof notesUpdate==='function')notesUpdate(id,{min:false}); const w=document.getElementById('note-'+id); if(w)w.classList.remove('collapsed'); fbClose(); }));
+  const gal=body.querySelector('[data-fbgallery]'); if(gal)gal.addEventListener('click',()=>{ fbClose(); if(typeof openUploads==='function')openUploads(); });
 }
 // ===== MyMagicBot — front door + Deck OS integration status for the MTG tournament Discord bot =====
 const MMB_REPO='https://github.com/saidthefox/mymagicbot'; // public source
@@ -6130,22 +6154,46 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>{ s.start=+b.getAttribute('data-lcstart'); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); }));
   body.querySelector('[data-lcreset]').addEventListener('click',()=>{ s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); });
 }
-function notesRefreshApp(){ const b=document.querySelector('#modal-prog-notes .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
+function notesRefreshApp(){ const b=document.querySelector('#modal-prog-documents .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
+// The Documents folder: a file list of saved notes. Click a note to reopen it on the
+// desktop; "Rename" mode turns a click into an inline rename. Notes also rename + pin/
+// minimize/close from the sticky itself.
 function notesRenderApp(body){
   body._notesMounted=true; const list=notesList();
-  body.innerHTML='<div class="t-wrap"><div style="margin-bottom:8px"><button class="btn small" id="notes-new">＋ New note</button></div>'+
-    (list.length?list.map(n=>'<div class="t-card"><div class="t-h"><span>'+_mgEsc(n.title||'Note')+(n.pinned?' 📍':'')+'</span><span style="display:flex;gap:4px">'+
-      '<button class="btn small" data-nrename="'+n.id+'">✎</button>'+
-      '<button class="btn small" data-nshow="'+n.id+'">'+(n.placed?'Hide':'Show')+'</button>'+
-      '<button class="btn small" data-npintog="'+n.id+'">'+(n.pinned?'Unpin':'Pin')+'</button>'+
-      '<button class="btn small" data-ndel="'+n.id+'">🗑️</button></span></div>'+
-      (n.body?'<div class="t-meta" style="white-space:pre-wrap;max-height:38px;overflow:hidden">'+_mgEsc(n.body.slice(0,140))+'</div>':'')+
-    '</div>').join(''):'<div class="t-empty">No notes yet. Create one and it lands on your desktop.</div>')+'</div>';
-  body.querySelector('#notes-new').addEventListener('click',()=>{ notesCreate(); notesRenderApp(body); });
-  body.querySelectorAll('[data-nrename]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-nrename'), n=notesGet(id); const nm=prompt('Note name:', (n&&n.title)||'Note'); if(nm!=null){ notesUpdate(id,{title:nm.trim()||'Note'}); const el=document.getElementById('note-'+id); if(el){ const ti=el.querySelector('.on-title'); if(ti)ti.value=(nm.trim()||'Note'); } notesRenderApp(body); } }));
-  body.querySelectorAll('[data-nshow]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-nshow'), n=notesGet(id); notesSetPlaced(id, !(n&&n.placed)); }));
-  body.querySelectorAll('[data-npintog]').forEach(b2=>b2.addEventListener('click',()=>{ const id=b2.getAttribute('data-npintog'), n=notesGet(id); notesSetPinned(id, !(n&&n.pinned)); }));
-  body.querySelectorAll('[data-ndel]').forEach(b2=>b2.addEventListener('click',()=>{ if(confirm('Delete this note?'))notesDelete(b2.getAttribute('data-ndel')); }));
+  const renaming=!!body._renaming;
+  body.innerHTML='<div class="t-wrap">'+
+    '<div style="margin-bottom:8px;display:flex;gap:6px">'+
+      '<button class="btn small" id="notes-new">＋ New note</button>'+
+      '<button class="btn small'+(renaming?' primary':'')+'" id="notes-rename">✎ Rename</button>'+
+    '</div>'+
+    (renaming?'<div class="t-meta" style="margin-bottom:6px">Click a note to rename it.</div>':'')+
+    (list.length?'<div class="doc-list">'+list.map(n=>
+      '<div class="doc-row'+(n.placed?' open':'')+'" data-docid="'+n.id+'" title="'+(renaming?'Click to rename':'Click to open')+'">'+
+        '<span class="doc-ic">📝</span>'+
+        '<span class="doc-name">'+_mgEsc(n.title||'Note')+'</span>'+
+        (n.placed?'<span class="doc-tag">open</span>':'')+
+        '<button class="btn small doc-del" data-ndel="'+n.id+'" title="Delete">🗑️</button>'+
+      '</div>').join('')+'</div>'
+      :'<div class="t-empty">No notes yet. Open <b>Notes</b> from the desktop or Start menu to drop one — it saves here.</div>')+
+  '</div>';
+  body.querySelector('#notes-new').addEventListener('click',()=>{ notesCreate(); body._renaming=false; notesRenderApp(body); });
+  body.querySelector('#notes-rename').addEventListener('click',()=>{ body._renaming=!body._renaming; notesRenderApp(body); });
+  body.querySelectorAll('.doc-del').forEach(b2=>b2.addEventListener('click',e=>{ e.stopPropagation(); if(confirm('Delete this note?'))notesDelete(b2.getAttribute('data-ndel')); }));
+  body.querySelectorAll('.doc-row').forEach(row=>row.addEventListener('click',()=>{ const id=row.getAttribute('data-docid');
+    if(body._renaming){ _docRenameInline(row,id,body); return; }
+    notesSetPlaced(id,true); notesUpdate(id,{min:false}); const el=document.getElementById('note-'+id); if(el)el.classList.remove('collapsed'); notesRenderApp(body);
+  }));
+}
+function _docRenameInline(row,id,body){
+  const n=notesGet(id); if(!n)return;
+  const nameEl=row.querySelector('.doc-name'); if(!nameEl||row.querySelector('.doc-rename-inp'))return;
+  const inp=document.createElement('input'); inp.className='doc-rename-inp'; inp.value=n.title||'Note'; inp.maxLength=60;
+  nameEl.replaceWith(inp); inp.focus(); inp.select();
+  let done=false;
+  const commit=()=>{ if(done)return; done=true; const v=(inp.value||'').trim()||'Note'; notesUpdate(id,{title:v}); const el=document.getElementById('note-'+id); if(el){ const ti=el.querySelector('.on-title'); if(ti&&document.activeElement!==ti)ti.value=v; } body._renaming=false; notesRenderApp(body); };
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();commit();} else if(e.key==='Escape'){ done=true; body._renaming=false; notesRenderApp(body); } });
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('click',e=>e.stopPropagation());
 }
 
 function wmWireResize(key, h){
@@ -6427,13 +6475,14 @@ if(window.DeckOS){
   DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
-  DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
+  DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', mount(body){ notesRenderApp(body); } }); // launch is intercepted in mgLaunchApp → spawns a new note
+  DeckOS.registerProgram({ id:'documents', title:'Documents', icon:'📁', width:'460px', desktop:true, mount(body){ notesRenderApp(body); } }); // permanent folder of saved notes
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:'🔮', width:'620px', desktop:true, mount(body){ mpRender(body); } });
   DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
-  DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
+  DeckOS.registerProgram({ id:'files', title:'Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
   DeckOS.registerProgram({ id:'mail', title:'Mail', icon:'📬', width:'480px', mount(body){ mailRender(body); } });
   DeckOS.registerProgram({ id:'mymagicbot', title:'MyMagicBot', icon:'🤖', width:'540px', mount(body){ mmbRender(body); } });
   if(state.user&&apiToken()&&typeof mailRefreshBadge==='function')mailRefreshBadge();
@@ -6713,6 +6762,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Gallery</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="documents"><div class="mg-ico">📁</div><div class="mg-ilbl">Documents</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mail"><div class="mg-ico">📬'+(_mailUnread>0?'<span style="background:#e24b4a;color:#fff;border-radius:8px;font-size:9px;padding:0 4px;margin-left:-6px;vertical-align:super">'+_mailUnread+'</span>':'')+'</div><div class="mg-ilbl">Mail</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mymagicbot"><div class="mg-ico">🤖</div><div class="mg-ilbl">MyMagicBot</div></div>';
@@ -6891,7 +6941,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   const progs=window.DeckOS?(c=>DeckOS.programsMenuHtml(c)):(()=>'' );
   // A collapsible folder; omitted entirely if it would be empty.
   const folder=(key,label,icon,inner)=> inner ?
-    ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smchev">▸</span>'+icon+' '+label+'</div><div class="mg-smsub">'+inner+'</div>') : '';
+    ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smlbl">'+icon+' '+label+'</span><span class="mg-smchev">▸</span><div class="mg-smsub">'+inner+'</div></div>') : '';
   const games=item('cgg','🗃️ Card Guesser Game')+'<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+progs('games');
   const utils=item('storage','🖼️ Gallery')+item('hud','📡 HUD')+progs('utilities');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1.0 Beta</span></div><div class="mg-smbody">'+
@@ -6910,7 +6960,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '</div></div>';
 }
 function mgWireStartMenu(a){
-  a.querySelectorAll('.mg-smcat[data-cat]').forEach(c=>c.addEventListener('click',e=>{e.stopPropagation();const k=c.getAttribute('data-cat');_smCats[k]=!_smCats[k];c.classList.toggle('open',_smCats[k]);}));
+  a.querySelectorAll('.mg-smcat[data-cat]').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.mg-smsub'))return; e.stopPropagation();const k=c.getAttribute('data-cat');_smCats[k]=!_smCats[k];c.classList.toggle('open',_smCats[k]);}));
   a.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();const app=r.getAttribute('data-app');mgLaunchApp(app);if(app!=='cgg')mgRenderDesktop();}));
   const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
   const lo=a.querySelector('.mg-smitem[data-logout]');if(lo)lo.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;if(typeof logout==='function')logout();mgRenderDesktop();});
