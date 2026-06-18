@@ -201,6 +201,8 @@ multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > 
 | GET | `/api/uploads` | JWT | the user's library + card quota |
 | PATCH | `/api/uploads/:id` | JWT | set/confirm which card an upload depicts |
 | DELETE | `/api/uploads/:id` | JWT | delete files + row, then auto-revert any decks that used it |
+| POST | `/api/uploads/:id/save` | JWT | keep a deck photo in the Gallery (kind `deck`→`deck_saved`); counts toward the limit |
+| POST | `/api/uploads/:id/unsave` | JWT | release a saved deck photo (`deck_saved`→`deck`); frees a quota slot |
 | POST | `/api/uploads/:id/report` · `/api/uploads/report` | soft | moderation report (by id or by image URL) |
 | GET | `/api/admin/reports` | admin | reported uploads, most-reported first |
 | POST | `/api/admin/uploads/:id/takedown` | admin | purge an upload (any owner) + revert decks |

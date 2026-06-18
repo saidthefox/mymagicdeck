@@ -2274,7 +2274,7 @@ app.put('/api/desktop', { preHandler: authenticate }, async (req, reply) => {
 app.post('/api/uploads/card-art', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
   const userId = req.user.sub;
   // Quota: count only card-art uploads.
-  const cardCount = db.prepare("SELECT COUNT(*) n FROM uploads WHERE user_id = ? AND kind = 'card'").get(userId).n;
+  const cardCount = db.prepare("SELECT COUNT(*) n FROM uploads WHERE user_id = ? AND kind IN ('card','deck_saved')").get(userId).n;
   if (cardCount >= UPLOAD_LIMIT) {
     return reply.code(409).send({ error: `Upload limit reached (${UPLOAD_LIMIT}). Delete some from My Uploads first.` });
   }
@@ -2415,7 +2415,7 @@ app.get('/api/uploads', { preHandler: authenticate }, async (req) => {
     FROM uploads WHERE user_id = ? ORDER BY created_at DESC, id DESC`).all(req.user.sub);
   return {
     uploads: rows.map(r => ({ ...r, confirmed: !!r.confirmed })),
-    cardCount: rows.filter(r => r.kind === 'card').length,
+    cardCount: rows.filter(r => r.kind === 'card' || r.kind === 'deck_saved').length,
     limit: UPLOAD_LIMIT,
   };
 });
@@ -2446,6 +2446,28 @@ app.delete('/api/uploads/:id', { preHandler: authenticate }, async (req, reply) 
   if (!row) return reply.code(404).send({ error: 'Not found.' });
   const revertedDecks = purgeUpload(row);
   return { ok: true, revertedDecks };
+});
+
+// ── POST /api/uploads/:id/save  (keep a deck photo in the Gallery; counts toward the limit) ──
+app.post('/api/uploads/:id/save', { preHandler: authenticate }, async (req, reply) => {
+  const userId = req.user.sub, id = parseInt(req.params.id, 10);
+  const row = db.prepare('SELECT id, kind FROM uploads WHERE id = ? AND user_id = ?').get(id, userId);
+  if (!row) return reply.code(404).send({ error: 'Not found.' });
+  if (row.kind === 'deck_saved') return { ok: true, saved: true };
+  if (row.kind !== 'deck') return reply.code(400).send({ error: 'Only deck photos can be saved to the Gallery.' });
+  const used = db.prepare("SELECT COUNT(*) n FROM uploads WHERE user_id = ? AND kind IN ('card','deck_saved')").get(userId).n;
+  if (used >= UPLOAD_LIMIT) return reply.code(409).send({ error: `Gallery is full (${UPLOAD_LIMIT}). Delete something first.` });
+  db.prepare("UPDATE uploads SET kind = 'deck_saved' WHERE id = ? AND user_id = ?").run(id, userId);
+  return { ok: true, saved: true };
+});
+
+// ── POST /api/uploads/:id/unsave  (release a saved deck photo; frees a quota slot) ──
+app.post('/api/uploads/:id/unsave', { preHandler: authenticate }, async (req, reply) => {
+  const userId = req.user.sub, id = parseInt(req.params.id, 10);
+  const row = db.prepare('SELECT id, kind FROM uploads WHERE id = ? AND user_id = ?').get(id, userId);
+  if (!row) return reply.code(404).send({ error: 'Not found.' });
+  if (row.kind === 'deck_saved') db.prepare("UPDATE uploads SET kind = 'deck' WHERE id = ? AND user_id = ?").run(id, userId);
+  return { ok: true, saved: false };
 });
 
 // ── Moderation: report an uploaded image (anyone; rate-limited per IP) ─────────

@@ -434,6 +434,7 @@
     .uplj-spin { width: 20px; height: 20px; border: 3px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: uqspin 0.8s linear infinite; }
     .uploads-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; max-height: 62vh; overflow-y: auto; padding: 2px; align-items: start; }
     .uploads-empty { color: var(--text-dim); font-size: 0.85rem; text-align: center; padding: 30px; grid-column: 1 / -1; }
+    .upl-sechdr { grid-column: 1 / -1; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); font-weight: 700; padding: 6px 2px 0; }
     .upl-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
     .upl-thumb { width: 100%; aspect-ratio: 488/680; object-fit: cover; background: var(--surface); display: block; }
     .upl-body { padding: 7px 8px; display: flex; flex-direction: column; gap: 6px; }
@@ -3778,35 +3779,59 @@ async function refreshUploads(){
   try{
     const d=await apiFetch('/uploads');
     _uploadsCache=d.uploads||[];
-    document.getElementById('uploads-count').textContent=`${d.cardCount} / ${d.limit} cards`;
+    document.getElementById('uploads-count').textContent=`${d.cardCount} / ${d.limit} saved`;
     renderUploads();
   }catch(e){ document.getElementById('uploads-grid').innerHTML='<div class="uploads-empty">Failed to load uploads.</div>'; }
 }
 function renderUploads(){
   const grid=document.getElementById('uploads-grid');
   const items=_uploadsCache.filter(u=>u.kind==='card');
-  if(!items.length){grid.innerHTML='<div class="uploads-empty">No uploads yet. Click “＋ Upload a card” to add one.</div>';return;}
+  const photos=_uploadsCache.filter(u=>u.kind==='deck'||u.kind==='deck_saved');
+  if(!items.length&&!photos.length){grid.innerHTML='<div class="uploads-empty">Nothing here yet. Click “＋ Upload a card”, or set a deck photo in the Splash Builder.</div>';return;}
   let h='';
-  for(const u of items){
-    const thumb=u.normal||u.small||u.large;
-    h+=`<div class="upl-card" data-id="${u.id}">`;
-    h+=`<img class="upl-thumb" src="${thumb}" alt="${_uplEsc(u.card_name)||'upload'}" loading="lazy"/>`;
-    h+=`<div class="upl-body">`;
-    if(u.confirmed){
-      h+=`<div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)||'—'} <span class="upl-badge">✓</span></div>`;
-      h+=`<div class="upl-actions"><button class="btn" onclick="startChangeUpload(${u.id})">Change card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
-    } else if(u.card_name){
-      h+=`<div class="upl-detected">Detected:</div><div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)}</div>`;
-      h+=`<div class="upl-actions"><button class="btn primary" onclick="confirmUpload(${u.id})">✓ Confirm</button><button class="btn" onclick="startChangeUpload(${u.id})">✎ Change</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
-    } else {
-      h+=`<div class="upl-detected">Unrecognized card</div>`;
-      h+=`<div class="upl-actions"><button class="btn primary" onclick="startChangeUpload(${u.id})">Set card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+  if(items.length){
+    h+=`<div class="upl-sechdr">Card art</div>`;
+    for(const u of items){
+      const thumb=u.normal||u.small||u.large;
+      h+=`<div class="upl-card" data-id="${u.id}">`;
+      h+=`<img class="upl-thumb" src="${thumb}" alt="${_uplEsc(u.card_name)||'upload'}" loading="lazy"/>`;
+      h+=`<div class="upl-body">`;
+      if(u.confirmed){
+        h+=`<div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)||'—'} <span class="upl-badge">✓</span></div>`;
+        h+=`<div class="upl-actions"><button class="btn" onclick="startChangeUpload(${u.id})">Change card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+      } else if(u.card_name){
+        h+=`<div class="upl-detected">Detected:</div><div class="upl-name" title="${_uplEsc(u.card_name)}">${_uplEsc(u.card_name)}</div>`;
+        h+=`<div class="upl-actions"><button class="btn primary" onclick="confirmUpload(${u.id})">✓ Confirm</button><button class="btn" onclick="startChangeUpload(${u.id})">✎ Change</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+      } else {
+        h+=`<div class="upl-detected">Unrecognized card</div>`;
+        h+=`<div class="upl-actions"><button class="btn primary" onclick="startChangeUpload(${u.id})">Set card</button><button class="btn" onclick="deleteUpload(${u.id})">Delete</button></div>`;
+      }
+      h+=`<div id="upl-change-${u.id}" style="display:none"></div>`;
+      h+=`</div></div>`;
     }
-    h+=`<div id="upl-change-${u.id}" style="display:none"></div>`;
-    h+=`</div></div>`;
+  }
+  if(photos.length){
+    h+=`<div class="upl-sechdr">Deck photos</div>`;
+    for(const u of photos){
+      const thumb=u.normal||u.small||u.large, url=u.normal||u.large||u.small, saved=u.kind==='deck_saved';
+      const onDeck=Object.values(state.decks||{}).find(d=>d.deckPhoto&&d.deckPhoto===url);
+      h+=`<div class="upl-card" data-id="${u.id}">`;
+      h+=`<img class="upl-thumb" src="${thumb}" alt="deck photo" loading="lazy"/>`;
+      h+=`<div class="upl-body">`;
+      h+=`<div class="upl-name">${saved?'Saved <span class="upl-badge">✓</span>':(onDeck?('On: '+_uplEsc(onDeck.name)):'Deck photo')}</div>`;
+      h+=`<div class="upl-actions">`;
+      h+=`<button class="btn" onclick="useDeckPhoto(${u.id})">Use on deck</button>`;
+      h+= saved?`<button class="btn" onclick="unsaveDeckPhoto(${u.id})">Unsave</button>`:`<button class="btn primary" onclick="saveDeckPhoto(${u.id})">Save</button>`;
+      h+=`<button class="btn" onclick="deleteUpload(${u.id})">Delete</button>`;
+      h+=`</div></div></div>`;
+    }
   }
   grid.innerHTML=h;
 }
+// Promote a deck photo into the kept Gallery (counts toward the 100); unsave frees the slot.
+async function saveDeckPhoto(id){ try{ await apiFetch('/uploads/'+id+'/save',{method:'POST'}); toast('Saved to Gallery','success'); await refreshUploads(); }catch(e){ toast(e.status===409?(e.message||'Gallery is full'):'Could not save','error'); } }
+async function unsaveDeckPhoto(id){ try{ await apiFetch('/uploads/'+id+'/unsave',{method:'POST'}); await refreshUploads(); }catch(e){ toast('Could not update','error'); } }
+function useDeckPhoto(id){ const u=_uploadsCache.find(x=>x.id===id); if(!u)return; const d=currentDeck(); if(!d){toast('Load a deck first','info');return;} d.deckPhoto=u.normal||u.large||u.small; saveToStorage(); syncDeckToApi(d.id); toast('Set as “'+(d.name||'deck')+'” photo','success'); refreshUploads(); }
 async function confirmUpload(id){
   const u=_uploadsCache.find(x=>x.id===id);
   try{ await apiFetch('/uploads/'+id,{method:'PATCH',body:JSON.stringify({cardName:u?.card_name||null,oracleId:u?.oracle_id||null})}); await refreshUploads(); }
