@@ -5903,6 +5903,7 @@ function wmRect(key){
   if(key==='account'){ const w=Math.min(380, innerWidth-24), h=Math.min(440, innerHeight-60); // Account opens centered
     return { x:Math.max(8,Math.round((innerWidth-w)/2)), y:Math.max(8,Math.round((innerHeight-h)/2)-16), w, h }; }
   if(key==='manapool'){ return { x, y, w:Math.min(620, innerWidth-40), h:Math.min(600, innerHeight-60) }; } // tall enough to show the whole pool
+  if(key==='dicebag'){ return { x, y, w:Math.min(440, innerWidth-40), h:Math.min(560, innerHeight-60) }; } // show the whole dice tray on open
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
 }
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
