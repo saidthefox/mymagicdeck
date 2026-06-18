@@ -1245,6 +1245,27 @@
       .lc-ovbtns button{font-size:min(6cqmin,32px);min-width:min(15cqmin,104px);height:min(12cqmin,88px)}
     }
     /* Mana Pool tracker */
+    /* Dice Bag */
+    .db-wrap{display:flex;flex-direction:column;height:100%;min-height:460px;background:radial-gradient(120% 90% at 50% 0%,#1c2230,#0c0f16);color:#eee;font-family:Tahoma,sans-serif;overflow:hidden;padding:10px;box-sizing:border-box}
+    .db-stage{flex:1;min-height:150px;display:flex;flex-wrap:wrap;align-content:center;justify-content:center;gap:10px;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:rgba(0,0,0,.25)}
+    .db-hint{color:#8b93a6;font-size:.9rem}
+    .db-die{min-width:54px;height:54px;padding:0 8px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(145deg,#eef1f7,#c4cbd8);color:#1a2030;border-radius:11px;box-shadow:0 3px 8px rgba(0,0,0,.5),inset 0 2px 3px rgba(255,255,255,.7);font-weight:800}
+    .db-die.coin{background:linear-gradient(145deg,#ffe9a8,#d4a83c);color:#5a3b00}
+    .db-die.rolling{animation:db-tumble .5s ease}
+    @keyframes db-tumble{0%{transform:rotate(-18deg) scale(.7)}60%{transform:rotate(14deg) scale(1.12)}100%{transform:none}}
+    .db-die .db-face{font-size:1.5rem;line-height:1}
+    .db-die .db-kind{font-size:.56rem;letter-spacing:.05em;color:#5a6276;text-transform:uppercase}
+    .db-die.coin .db-kind{color:#7a5510}
+    .db-total{width:100%;text-align:center;color:#cbd3e0;font-size:.82rem;margin-top:4px}
+    .db-total b{color:#fff;font-size:1.05rem}
+    .db-count{display:flex;align-items:center;justify-content:center;gap:8px;font-size:.78rem;color:#9aa3b5;margin:10px 0 6px}
+    .db-count input{width:54px;background:#0d1017;border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#fff;padding:3px 6px;font:inherit}
+    .db-tray{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+    .db-btn{background:#2a3344;border:1px solid rgba(255,255,255,.22);color:#dfe5f0;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:.9rem;min-width:46px}
+    .db-btn:hover{background:#36415a;border-color:var(--accent,#7de0a0)} .db-btn:active{transform:translateY(1px)}
+    .db-btn.coin{background:#4a3a12;border-color:#caa23e;color:#ffe9a8}
+    .db-log{max-height:84px;overflow:auto;margin-top:10px;font-size:.74rem;color:#8b93a6;line-height:1.5}
+    .db-log .db-le b{color:#cbd3e0}
     .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:540px;background-color:#23262a;background-image:radial-gradient(130% 90% at 50% -10%, rgba(255,255,255,.10), rgba(0,0,0,.5) 72%), url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='84'><rect width='128' height='84' fill='%23272a2e'/><g stroke='%23202225' stroke-width='1'><rect x='2' y='2' width='60' height='38' rx='5' fill='%234f535b'/><rect x='66' y='2' width='60' height='38' rx='5' fill='%23565a63'/><rect x='-30' y='44' width='60' height='38' rx='5' fill='%23545860'/><rect x='34' y='44' width='60' height='38' rx='5' fill='%234c505a'/><rect x='98' y='44' width='60' height='38' rx='5' fill='%235a5e68'/></g></svg>");background-size:100% 100%,150px 98px;background-repeat:no-repeat,repeat;color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
     .mp-bar{display:flex;justify-content:space-around;align-items:flex-start;gap:2px;padding:12px 6px 8px;flex:0 0 auto;z-index:2}
     .mp-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:96px}
@@ -6602,6 +6623,30 @@ function mpPlink(k,reverse){ const ac=mpAudio(); if(!ac)return; if(ac.state==='s
   o.frequency.setValueAtTime(reverse?base*0.75:base*1.3,t); o.frequency.exponentialRampToValueAtTime(reverse?base*1.5:base*0.72,t+0.15);
   g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.075,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);
   o.connect(g).connect(ac.destination); o.start(t); o.stop(t+0.24); }
+// ===== Dice Bag — fair rolls + a coin, via crypto.getRandomValues (rejection-sampled,
+// so no modulo bias; genuinely uniform, unlike Math.random). =====
+function _diceRand(n){ const max=Math.floor(0x100000000/n)*n; const a=new Uint32Array(1); let x; do{ (self.crypto||window.crypto).getRandomValues(a); x=a[0]; }while(x>=max); return x%n; }
+let _diceLog=[];
+function dbRender(body){ if(!body)return;
+  const dice=[4,6,8,10,12,20,100];
+  body.innerHTML='<div class="db-wrap">'+
+    '<div class="db-stage" id="db-stage"><span class="db-hint">Pick dice below — every roll is crypto-random &amp; fair.</span></div>'+
+    '<div class="db-count">Roll <input type="number" id="db-count" min="1" max="30" value="1"> at a time</div>'+
+    '<div class="db-tray">'+dice.map(d=>'<button class="db-btn" data-d="'+d+'">d'+d+'</button>').join('')+
+      '<button class="db-btn coin" data-coin="1">🪙 Coin</button></div>'+
+    '<div class="db-log" id="db-log"></div></div>';
+  const stage=body.querySelector('#db-stage'), logEl=body.querySelector('#db-log'), countEl=body.querySelector('#db-count');
+  const cnt=()=>Math.max(1,Math.min(30,parseInt(countEl.value)||1));
+  const renderLog=()=>{ logEl.innerHTML=_diceLog.slice(0,16).map(e=>'<div class="db-le">'+e+'</div>').join(''); };
+  const die=(face,kind,coin)=>'<div class="db-die'+(coin?' coin':'')+' rolling"><span class="db-face">'+face+'</span><span class="db-kind">'+kind+'</span></div>';
+  function rollDice(sides){ const n=cnt(), vals=[]; for(let i=0;i<n;i++)vals.push(_diceRand(sides)+1); const total=vals.reduce((a,b)=>a+b,0);
+    stage.innerHTML=vals.map(v=>die(v,'d'+sides,false)).join('')+(n>1?'<div class="db-total">Total <b>'+total+'</b></div>':'');
+    _diceLog.unshift(n+'×d'+sides+' → <b>'+vals.join(', ')+'</b>'+(n>1?' (sum '+total+')':'')); _diceLog=_diceLog.slice(0,30); renderLog(); }
+  function flipCoin(){ const n=cnt(), f=[]; for(let i=0;i<n;i++)f.push(_diceRand(2)?'Heads':'Tails');
+    stage.innerHTML=f.map(x=>die(x==='Heads'?'H':'T',x,true)).join(''); _diceLog.unshift((n>1?n+'× ':'')+'Coin → <b>'+f.join(', ')+'</b>'); _diceLog=_diceLog.slice(0,30); renderLog(); }
+  body.querySelectorAll('[data-d]').forEach(b=>b.addEventListener('click',()=>rollDice(parseInt(b.dataset.d))));
+  body.querySelector('[data-coin]').addEventListener('click',flipCoin);
+}
 function mpRender(body){
   if(!body)return; if(body._mpStop)body._mpStop();
   const st=mpLoad();
@@ -6659,6 +6704,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:'🔮', width:'620px', desktop:true, mount(body){ mpRender(body); } });
   DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
+  DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
@@ -6953,6 +6999,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">The Land Game</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="manapool"><div class="mg-ico">🔮</div><div class="mg-ilbl">Mana Pool</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="dicebag"><div class="mg-ico">🎲</div><div class="mg-ilbl">Dice Bag</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-stonesmtg"><div class="mg-ico">🪨</div><div class="mg-ilbl">Stones MTG</div></div>';
   if(mgCurrentFolder===null&&embedded&&typeof webUserShortcuts==='function')webUserShortcuts().forEach(a=>{ icons+='<div class="mg-icon" data-app="web-'+a.id+'"><div class="mg-ico">'+(a.icon||'🌐')+'</div><div class="mg-ilbl">'+_mgEsc(a.title)+'</div></div>'; });
