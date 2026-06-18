@@ -2702,7 +2702,11 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
     if (left + w > W) w = W - left;
     if (top + h > H) h = H - top;
     if (w < 1 || h < 1) continue;
-    try { comps.push({ input: await sharp(buf).resize(w, h, { fit: 'fill' }).png().toBuffer(), left, top }); } catch (_) { }
+    // Round the corners to the Magic card radius (~4.5% of width) so Scryfall's square
+    // white corner tips get masked off.
+    const rad = Math.max(3, Math.round(Math.min(w, h) * 0.045));
+    const mask = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><rect width="${w}" height="${h}" rx="${rad}" ry="${rad}"/></svg>`);
+    try { comps.push({ input: await sharp(buf).resize(w, h, { fit: 'fill' }).composite([{ input: mask, blend: 'dest-in' }]).png().toBuffer(), left, top }); } catch (_) { }
   }
   if (comps.length) img = await sharp(img).composite(comps).png().toBuffer();
 
