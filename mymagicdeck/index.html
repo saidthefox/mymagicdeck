@@ -1205,7 +1205,7 @@
       .lc-ovbtns button{font-size:min(6cqmin,32px);min-width:min(15cqmin,104px);height:min(12cqmin,88px)}
     }
     /* Mana Pool tracker */
-    .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:484px;background-color:#23262a;background-image:radial-gradient(130% 90% at 50% -10%, rgba(255,255,255,.10), rgba(0,0,0,.5) 72%), url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='84'><rect width='128' height='84' fill='%23272a2e'/><g stroke='%23202225' stroke-width='1'><rect x='2' y='2' width='60' height='38' rx='5' fill='%234f535b'/><rect x='66' y='2' width='60' height='38' rx='5' fill='%23565a63'/><rect x='-30' y='44' width='60' height='38' rx='5' fill='%23545860'/><rect x='34' y='44' width='60' height='38' rx='5' fill='%234c505a'/><rect x='98' y='44' width='60' height='38' rx='5' fill='%235a5e68'/></g></svg>");background-size:100% 100%,150px 98px;background-repeat:no-repeat,repeat;color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
+    .mp-wrap{display:flex;flex-direction:column;height:100%;min-height:540px;background-color:#23262a;background-image:radial-gradient(130% 90% at 50% -10%, rgba(255,255,255,.10), rgba(0,0,0,.5) 72%), url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='128' height='84'><rect width='128' height='84' fill='%23272a2e'/><g stroke='%23202225' stroke-width='1'><rect x='2' y='2' width='60' height='38' rx='5' fill='%234f535b'/><rect x='66' y='2' width='60' height='38' rx='5' fill='%23565a63'/><rect x='-30' y='44' width='60' height='38' rx='5' fill='%23545860'/><rect x='34' y='44' width='60' height='38' rx='5' fill='%234c505a'/><rect x='98' y='44' width='60' height='38' rx='5' fill='%235a5e68'/></g></svg>");background-size:100% 100%,150px 98px;background-repeat:no-repeat,repeat;color:#eee;font-family:Tahoma,sans-serif;overflow:hidden}
     .mp-bar{display:flex;justify-content:space-around;align-items:flex-start;gap:2px;padding:12px 6px 8px;flex:0 0 auto;z-index:2}
     .mp-col{display:flex;flex-direction:column;align-items:center;gap:5px;flex:1;max-width:96px}
     .mp-dot{width:clamp(30px,8vw,42px);height:clamp(30px,8vw,42px);border-radius:50%;border:2px solid rgba(255,255,255,.55);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1rem;cursor:pointer;user-select:none;box-shadow:0 2px 9px rgba(0,0,0,.55), inset 0 2px 4px rgba(255,255,255,.45);transition:transform .08s}
@@ -5695,6 +5695,7 @@ function wmShowDesktop(){
 function wmStartMenu(){
   let m=document.getElementById('wm-startmenu'); if(m){ m.remove(); return; }
   m=document.createElement('div'); m.id='wm-startmenu'; m.style.cssText='position:fixed;left:6px;bottom:38px;z-index:4100';
+  _smCats={}; // flyouts start closed each time the menu opens
   m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); mgWireStartMenu(m);
   setTimeout(()=>{ const close=e=>{ const mm=document.getElementById('wm-startmenu'); if(mm && !mm.contains(e.target) && !e.target.closest('.wm-start')){ mm.remove(); document.removeEventListener('click', close, true); } }; document.addEventListener('click', close, true); }, 0);
 }
@@ -5704,6 +5705,7 @@ function wmRect(key){
   if(key==='cgg'){ const h=Math.min(560, innerHeight-120); return { x, y, w:Math.round(h*0.7), h }; } // CGG opens at a Magic-card ratio
   if(key==='account'){ const w=Math.min(380, innerWidth-24), h=Math.min(440, innerHeight-60); // Account opens centered
     return { x:Math.max(8,Math.round((innerWidth-w)/2)), y:Math.max(8,Math.round((innerHeight-h)/2)-16), w, h }; }
+  if(key==='manapool'){ return { x, y, w:Math.min(620, innerWidth-40), h:Math.min(600, innerHeight-60) }; } // tall enough to show the whole pool
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
 }
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
@@ -6811,7 +6813,7 @@ function mgRenderDesktop(){
   const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
   const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
   const file=document.getElementById('mg-file');if(file)file.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=false;mgRenderDesktop();});
-  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;mgRenderDesktop();});
+  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;if(mgStartOpen)_smCats={};mgRenderDesktop();});
   const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
   const ec=document.getElementById('mg-embed-close');if(ec)ec.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   const cr=document.getElementById('mg-cgg-restore');if(cr)cr.addEventListener('click',e=>{e.stopPropagation();mgRestore();});
@@ -6960,7 +6962,15 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '</div></div>';
 }
 function mgWireStartMenu(a){
-  a.querySelectorAll('.mg-smcat[data-cat]').forEach(c=>c.addEventListener('click',e=>{ if(e.target.closest('.mg-smsub'))return; e.stopPropagation();const k=c.getAttribute('data-cat');_smCats[k]=!_smCats[k];c.classList.toggle('open',_smCats[k]);}));
+  const cats=[...a.querySelectorAll('.mg-smcat[data-cat]')];
+  const setOpen=only=>cats.forEach(c=>{ const on=(c===only); _smCats[c.getAttribute('data-cat')]=on; c.classList.toggle('open',on); });
+  cats.forEach(c=>{
+    // Click opens (works on touch); clicking again or another folder collapses it.
+    c.addEventListener('click',e=>{ if(e.target.closest('.mg-smsub'))return; e.stopPropagation(); setOpen(c.classList.contains('open')?null:c); });
+    // Desktop: hovering opens the flyout, moving the mouse away closes it (Windows-style).
+    c.addEventListener('mouseenter',()=>setOpen(c));
+    c.addEventListener('mouseleave',()=>{ _smCats[c.getAttribute('data-cat')]=false; c.classList.remove('open'); });
+  });
   a.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();const app=r.getAttribute('data-app');mgLaunchApp(app);if(app!=='cgg')mgRenderDesktop();}));
   const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
   const lo=a.querySelector('.mg-smitem[data-logout]');if(lo)lo.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;if(typeof logout==='function')logout();mgRenderDesktop();});
