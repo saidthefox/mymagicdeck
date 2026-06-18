@@ -993,6 +993,9 @@
     .mg-deskicons.mg-free{display:block;position:relative;overflow:hidden}
     .mg-deskicons.mg-free .mg-icon{position:absolute}
     .mg-deskicons.mg-free .mg-icon.mg-dragging{z-index:60;opacity:.85}
+    /* Marquee (rubber-band) multi-select — Splash free layout + desktop */
+    .os-marquee{position:absolute;border:1px solid rgba(125,224,160,.9);background:rgba(125,224,160,.16);border-radius:2px;z-index:99998;pointer-events:none}
+    .os-sel{box-shadow:0 0 0 2px #7de0a0, 0 0 10px rgba(125,224,160,.55) !important;border-radius:4px}
     .mg-icon.mg-droptarget .mg-ico,.mg-icon.mg-droptarget .mg-folderbubble{outline:2px solid #ffe066;outline-offset:2px;border-radius:12px}
     /* iOS/Android-style app-folder bubble */
     .mg-folderbubble{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2px;width:48px;height:48px;margin:0 auto 2px;padding:4px;box-sizing:border-box;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:13px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -2779,6 +2782,13 @@ function _splashRebuildColumns(){
   if(existing)existing.replaceWith(newNode);
   else body.appendChild(newNode);
   if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
+  if(sortMode==='user'&&_splashEdit){ const f=document.getElementById('splash-free'); if(f){ const deck=_splashDeck&&_splashDeck.deck;
+    attachSelectable(f,{ itemSelector:'.splash-card.free,.splash-stat',
+      scale:()=>(parseInt(document.getElementById('splash-zoom')?.value||100))/100,
+      snap:v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v,
+      commit:el=>{ const k=el.dataset.key; if(!k||!deck)return; deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+        const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; const sv=parseFloat(el.dataset.s); if(sv&&sv!==1)o.s=sv; deck.layout.positions[k]=o; },
+      save:()=>{ if(deck){ saveToStorage(); syncDeckToApi(deck.id); } } }); } }
 }
 // ── Share-image composer ──────────────────────────────────────────────────────
 const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island',label:'Island'},{key:'mountain',label:'Mountain'},{key:'forest',label:'Forest'},{key:'plains',label:'Plains'},{key:'wastes',label:'Wastes'},{key:'__ai__',label:'✨ AI scene'}];
@@ -2936,6 +2946,47 @@ function _snapToggle(){
 function _snapGridSet(v){
   _snapGrid=Math.max(5,Math.min(200,parseInt(v)||30));
   const f=document.getElementById('splash-free'); if(f)f.style.backgroundSize=_snapGrid+'px '+_snapGrid+'px';
+}
+// Rubber-band multi-select + group move. Capture-phase so a drag on a SELECTED item
+// pre-empts that item's own drag handler (moves the whole selection); empty-space drag
+// draws a marquee (mouse only, so touch scrolling isn't hijacked); other clicks pass
+// through and clear the selection. opts: {itemSelector, scale(), snap(v), commit(el), save()}.
+function attachSelectable(container, opts){
+  if(!container || container._selWired) return; container._selWired=true;
+  const items=()=>[...container.querySelectorAll(opts.itemSelector)];
+  const sel=()=>[...container.querySelectorAll('.os-sel')];
+  const clearSel=()=>container.querySelectorAll('.os-sel').forEach(e=>e.classList.remove('os-sel'));
+  const snap=opts.snap||(v=>v);
+  container.addEventListener('pointerdown', e=>{
+    if(e.button)return;
+    const item=e.target.closest(opts.itemSelector);
+    const scale=(opts.scale&&opts.scale())||1;
+    if(item && item.classList.contains('os-sel') && sel().length>1){
+      // group move — drive the whole selection, blocking the item's own handler
+      e.preventDefault(); e.stopPropagation();
+      const sx=e.clientX, sy=e.clientY, grp=sel().map(el=>({el, bl:parseFloat(el.style.left)||0, bt:parseFloat(el.style.top)||0}));
+      let moved=false;
+      const mv=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4)moved=true; if(!moved)return;
+        const dx=(ev.clientX-sx)/scale, dy=(ev.clientY-sy)/scale;
+        for(const g of grp){ g.el.style.left=Math.max(0,snap(g.bl+dx))+'px'; g.el.style.top=Math.max(0,snap(g.bt+dy))+'px'; } };
+      const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); if(moved){ for(const g of grp)opts.commit(g.el); if(opts.save)opts.save(); } };
+      window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up); return;
+    }
+    if(item){ clearSel(); return; } // single item → its own handler runs; drop any selection
+    if(e.pointerType && e.pointerType!=='mouse') return; // marquee is a mouse gesture (keep touch scroll)
+    e.preventDefault(); clearSel();
+    const cr=container.getBoundingClientRect(), ox=(e.clientX-cr.left)/scale, oy=(e.clientY-cr.top)/scale;
+    const box=document.createElement('div'); box.className='os-marquee'; container.appendChild(box);
+    let dragged=false;
+    const mv=ev=>{ const cx=(ev.clientX-cr.left)/scale, cy=(ev.clientY-cr.top)/scale;
+      const x=Math.min(ox,cx),y=Math.min(oy,cy),w=Math.abs(cx-ox),h=Math.abs(cy-oy); if(w+h>4)dragged=true;
+      box.style.left=x+'px';box.style.top=y+'px';box.style.width=w+'px';box.style.height=h+'px';
+      const r2=x+w,b2=y+h;
+      items().forEach(el=>{ const il=parseFloat(el.style.left)||0, it=parseFloat(el.style.top)||0, iw=el.offsetWidth, ih=el.offsetHeight;
+        el.classList.toggle('os-sel', !(il>r2||il+iw<x||it>b2||it+ih<y)); }); };
+    const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); box.remove(); if(!dragged)clearSel(); };
+    window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
+  }, true);
 }
 function _buildSplashFree(allCards,sbCards,zoomPct){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
@@ -6940,7 +6991,9 @@ function mgRenderDesktop(){
         _appMeta[k]={ emoji, label: lbl?(lbl.textContent||'').trim():k }; });
       const _cgg=deskc.querySelector('.mg-icon[data-cgg]'); if(_cgg){ const cl=_cgg.querySelector('.mg-ilbl'); _appMeta['cgg']={ emoji:'🗃️', label: cl?(cl.textContent||'').trim():'CGG' }; } // CGG icon is styled text, not data-app
       mgRenderAppFolders(deskc);
-      mgLayoutIcons(deskc); } }
+      mgLayoutIcons(deskc);
+      if(typeof attachSelectable==='function')attachSelectable(deskc,{ itemSelector:'.mg-icon', scale:()=>1, snap:v=>v,
+        commit:el=>{ const k=mgIconKey(el); if(k)mgIconPosSet(k, parseFloat(el.style.left)||0, parseFloat(el.style.top)||0); }, save:()=>{} }); } }
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ CGG — '+mgDeckName(mgActiveDeckId);}
 // Account presence in the top toolbar — aesthetic for now (a future friends/chat layer can wire it up).
