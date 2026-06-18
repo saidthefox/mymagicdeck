@@ -973,6 +973,20 @@
     .mg-deskicons.mg-free{display:block;position:relative;overflow:hidden}
     .mg-deskicons.mg-free .mg-icon{position:absolute}
     .mg-deskicons.mg-free .mg-icon.mg-dragging{z-index:60;opacity:.85}
+    .mg-icon.mg-droptarget .mg-ico,.mg-icon.mg-droptarget .mg-folderbubble{outline:2px solid #ffe066;outline-offset:2px;border-radius:12px}
+    /* iOS/Android-style app-folder bubble */
+    .mg-folderbubble{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2px;width:48px;height:48px;margin:0 auto 2px;padding:4px;box-sizing:border-box;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:13px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+    .mg-fbm{display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;overflow:hidden}
+    .mg-fbpop{position:fixed;z-index:5200;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 12px rgba(0,0,0,.55);border-radius:7px;padding:8px;width:248px;max-width:92vw;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .mg-fbpop-bar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+    .mg-fbpop-name{flex:1;min-width:0;font-weight:bold;font-size:12px;color:#000;background:transparent;border:0;padding:2px}
+    .mg-fbpop-name:focus{outline:1px solid #1577d4;background:#fff}
+    .mg-fbpop-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+    .mg-fbapp{position:relative;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:6px;cursor:pointer;color:#000;font-size:10px;text-align:center}
+    .mg-fbapp:hover{background:#1577d4;color:#fff}
+    .mg-fbapp .mg-fbapp-ic{font-size:22px;line-height:1}
+    .mg-fbapp-lbl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mg-fbapp-x{position:absolute;top:-3px;right:0;width:15px;height:15px;border:none;border-radius:50%;background:#a33;color:#fff;font-size:9px;line-height:1;cursor:pointer;padding:0}
     .mg-icon .mg-ico{font-size:30px;line-height:1}
     .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:72px}
     .mg-icon.sel{border:1px dotted #fff}
@@ -2247,7 +2261,7 @@ function logout(){
   newDeck();            // fresh empty workspace; token is gone so this won't sync
   // Clear this account's desktop layout from the device too (it's saved on the server and
   // reloads on next login) — so it can't bleed into the next account on this browser.
-  try{ if(window.DeckOS){ DeckOS.store.remove('widgets'); DeckOS.store.remove('notes'); DeckOS.store.remove('iconpos'); } }catch(e){}
+  try{ if(window.DeckOS){ DeckOS.store.remove('widgets'); DeckOS.store.remove('notes'); DeckOS.store.remove('iconpos'); DeckOS.store.remove('appfolders'); } }catch(e){}
   if(typeof desktopClearDom==='function')desktopClearDom();
   mgFs={folders:[],deckFolder:{},bin:[]}; mgCurrentFolder=null; // drop this account's folder tree from the device
   if(typeof mgRenderDesktop==='function')mgRenderDesktop();
@@ -5880,12 +5894,12 @@ function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }
 // ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
 // Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
 let _deskSyncTimer=null;
-function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[])}})}).catch(()=>{}); }, 600); }
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[]), appfolders:(typeof mgAppFolders==='function'?mgAppFolders():[])}})}).catch(()=>{}); }, 600); }
 function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
       else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
     }catch(e){}
   }
@@ -6835,7 +6849,10 @@ function mgRenderDesktop(){
   if(mgStartOpen)mgWireStartMenu(embedded?document.getElementById('pc-startmenu'):a);
   const deskc=a.querySelector('.mg-deskicons');
   if(deskc){ deskc.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskc){mgStartOpen=false;mgRenderDesktop();}});
-    if(embedded){ deskc.classList.add('mg-free'); mgLayoutIcons(deskc); } }
+    if(embedded){ deskc.classList.add('mg-free');
+      _appMeta={}; deskc.querySelectorAll('.mg-icon[data-app]').forEach(el=>{ const ico=el.querySelector('.mg-ico'), lbl=el.querySelector('.mg-ilbl'); _appMeta[el.dataset.app]={ emoji: ico?(ico.textContent||'').trim():'🧩', label: lbl?(lbl.textContent||'').trim():el.dataset.app }; });
+      mgRenderAppFolders(deskc);
+      mgLayoutIcons(deskc); } }
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ CGG — '+mgDeckName(mgActiveDeckId);}
 // Account presence in the top toolbar — aesthetic for now (a future friends/chat layer can wire it up).
@@ -6843,7 +6860,66 @@ function presenceGet(){ try{ return (window.DeckOS&&DeckOS.store.get('presence')
 function presenceToggle(){ try{ DeckOS.store.set('presence', presenceGet()==='online'?'offline':'online'); }catch(e){} }
 // ── Free-positioned desktop icons: drag any program/deck/folder anywhere; positions
 // persist (per account, via the desktop-layout sync) keyed by a stable icon key. ──
-function mgIconKey(el){ if(el.dataset.app)return 'app:'+el.dataset.app; if(el.dataset.cgg)return 'cgg'; if(el.id==='mg-bin')return 'bin'; if(el.id==='mg-backsearch')return 'backsearch'; if(el.dataset.deck)return 'deck:'+el.dataset.deck; if(el.dataset.folder)return 'folder:'+el.dataset.folder; return null; }
+function mgIconKey(el){ if(el.dataset.appfolder)return 'appfolder:'+el.dataset.appfolder; if(el.dataset.app)return 'app:'+el.dataset.app; if(el.dataset.cgg)return 'cgg'; if(el.id==='mg-bin')return 'bin'; if(el.id==='mg-backsearch')return 'backsearch'; if(el.dataset.deck)return 'deck:'+el.dataset.deck; if(el.dataset.folder)return 'folder:'+el.dataset.folder; return null; }
+// ── App-folder bubbles: drag one program icon onto another to group them into an
+// iOS/Android-style folder; tap the bubble to open a popover and launch an app. ──
+let _appMeta={}; // appKey → {emoji,label}, captured from the rendered icons each desktop render
+function mgAppFolders(){ try{ return (window.DeckOS&&DeckOS.store.get('appfolders'))||[]; }catch(e){ return []; } }
+function mgAppFoldersSave(list){ try{ DeckOS.store.set('appfolders', list); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
+function mgAppFolderOf(appKey){ return mgAppFolders().find(f=>f.apps.indexOf(appKey)>=0)||null; }
+function mgAppFolderCreate(apps){ // apps: [appKey, appKey]
+  apps=[...new Set(apps.filter(Boolean))]; if(apps.length<2)return;
+  const list=mgAppFolders();
+  // pull these apps out of any existing folder first
+  list.forEach(f=>{ f.apps=f.apps.filter(a=>apps.indexOf(a)<0); });
+  list.push({ id:mgGenId(), name:'Folder', apps });
+  mgAppFoldersSave(list.filter(f=>f.apps.length));
+}
+function mgAppFolderAdd(folderId, appKey){
+  const list=mgAppFolders();
+  list.forEach(f=>{ if(f.id!==folderId)f.apps=f.apps.filter(a=>a!==appKey); }); // remove from others
+  const f=list.find(x=>x.id===folderId); if(!f)return; if(f.apps.indexOf(appKey)<0)f.apps.push(appKey);
+  mgAppFoldersSave(list.filter(f=>f.apps.length));
+}
+function mgAppFolderRemove(folderId, appKey){
+  let list=mgAppFolders(); const f=list.find(x=>x.id===folderId); if(!f)return;
+  f.apps=f.apps.filter(a=>a!==appKey);
+  if(f.apps.length<=1)list=list.filter(x=>x.id!==folderId); // ≤1 app → dissolve; the leftover returns to the desktop
+  mgAppFoldersSave(list);
+}
+// Remove foldered app icons from the desktop and drop a bubble in their place.
+function mgRenderAppFolders(container){
+  if(!container)return; const folders=mgAppFolders(); if(!folders.length)return;
+  folders.forEach(fld=>{
+    const minis=[];
+    fld.apps.forEach(appKey=>{ const m=_appMeta[appKey]; if(m)minis.push(m.emoji||'🧩'); const el=container.querySelector('.mg-icon[data-app="'+appKey+'"]'); if(el)el.remove(); });
+    if(!minis.length)return;
+    const bub=document.createElement('div'); bub.className='mg-icon mg-appfolder'; bub.dataset.appfolder=fld.id; bub.dataset.ikey='appfolder:'+fld.id;
+    bub.innerHTML='<div class="mg-folderbubble">'+minis.slice(0,4).map(m=>'<span class="mg-fbm">'+m+'</span>').join('')+'</div><div class="mg-ilbl">'+_mgEsc(fld.name||'Folder')+'</div>';
+    container.appendChild(bub);
+    mgWireIconDrag(bub, ()=>mgAppFolderOpen(fld.id, bub));
+  });
+}
+function mgAppFolderClosePop(){ const p=document.getElementById('mg-fbpop'); if(p)p.remove(); document.removeEventListener('click', _fbPopOutside, true); }
+function _fbPopOutside(e){ const p=document.getElementById('mg-fbpop'); if(p && !p.contains(e.target) && !e.target.closest('.mg-appfolder'))mgAppFolderClosePop(); }
+function mgAppFolderOpen(folderId, bub){
+  mgAppFolderClosePop();
+  const f=mgAppFolders().find(x=>x.id===folderId); if(!f)return;
+  const pop=document.createElement('div'); pop.id='mg-fbpop'; pop.className='mg-fbpop';
+  pop.innerHTML='<div class="mg-fbpop-bar"><input class="mg-fbpop-name" maxlength="40" value="'+_mgEsc(f.name||'Folder')+'"></div>'+
+    '<div class="mg-fbpop-grid">'+f.apps.map(k=>{ const m=_appMeta[k]||{emoji:'🧩',label:k};
+      return '<div class="mg-fbapp" data-fbapp="'+k+'"><button class="mg-fbapp-x" data-fbx="'+k+'" title="Remove from folder">✕</button><span class="mg-fbapp-ic">'+(m.emoji||'🧩')+'</span><span class="mg-fbapp-lbl">'+_mgEsc(m.label||k)+'</span></div>'; }).join('')+'</div>';
+  document.body.appendChild(pop);
+  // position near the bubble, clamped to viewport
+  const r=bub.getBoundingClientRect(); const pw=pop.offsetWidth, ph=pop.offsetHeight;
+  let x=Math.min(r.left, window.innerWidth-pw-8), y=r.top-ph-8; if(y<8)y=Math.min(r.bottom+8, window.innerHeight-ph-8);
+  pop.style.left=Math.max(8,x)+'px'; pop.style.top=Math.max(8,y)+'px';
+  pop.querySelector('.mg-fbpop-name').addEventListener('change',e=>{ const list=mgAppFolders(); const ff=list.find(x=>x.id===folderId); if(ff){ ff.name=(e.target.value||'').trim()||'Folder'; mgAppFoldersSave(list); mgRenderDesktop(); } });
+  pop.querySelectorAll('[data-fbx]').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); mgAppFolderRemove(folderId, b.getAttribute('data-fbx')); mgAppFolderClosePop(); mgRenderDesktop(); }));
+  pop.querySelectorAll('.mg-fbapp').forEach(el=>el.addEventListener('click',e=>{ if(e.target.closest('[data-fbx]'))return; mgAppFolderClosePop(); mgLaunchApp(el.getAttribute('data-fbapp')); }));
+  pop.addEventListener('click',e=>e.stopPropagation());
+  setTimeout(()=>document.addEventListener('click', _fbPopOutside, true), 0);
+}
 function mgIconPosGet(){ try{ return (window.DeckOS&&DeckOS.store.get('iconpos'))||{}; }catch(e){ return {}; } }
 function mgIconPosSet(key,x,y){ if(!key)return; const m=mgIconPosGet(); m[key]={x:Math.round(x),y:Math.round(y)}; try{ DeckOS.store.set('iconpos',m); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
 function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8, TASKBAR=46;
@@ -6863,10 +6939,19 @@ window.addEventListener('resize',()=>{ clearTimeout(_mgResizeT); _mgResizeT=setT
 // Tap-vs-drag pointer handler for the simple icons (programs / CGG / Bin / MyMagicDeck).
 function mgWireIconDrag(el, onTap){
   el.addEventListener('pointerdown',e=>{ if(e.button>0)return; const c=el.parentElement; const sx=e.clientX, sy=e.clientY; const r=el.getBoundingClientRect(), pr=c.getBoundingClientRect(); const ox=r.left-pr.left, oy=r.top-pr.top; let dragging=false, nx=ox, ny=oy;
+    // App icons can be dropped onto another app icon / folder bubble to group them.
+    const canFold=!!el.dataset.app; let dropT=null;
+    const setDropT=t=>{ if(dropT===t)return; if(dropT)dropT.classList.remove('mg-droptarget'); dropT=(t&&t!==el)?t:null; if(dropT)dropT.classList.add('mg-droptarget'); };
+    const targetAt=(x,y)=>{ el.style.visibility='hidden'; const u=document.elementFromPoint(x,y); el.style.visibility=''; return u&&u.closest&&u.closest('.mg-icon[data-app],.mg-icon[data-appfolder]'); };
     const mm=ev=>{ if(!dragging){ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)<8)return; dragging=true; el.classList.add('mg-dragging'); } ev.preventDefault();
-      nx=Math.max(0,Math.min(ox+(ev.clientX-sx), c.clientWidth-el.offsetWidth)); ny=Math.max(0,Math.min(oy+(ev.clientY-sy), c.clientHeight-el.offsetHeight)); el.style.left=nx+'px'; el.style.top=ny+'px'; };
-    const up=()=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up);
-      if(dragging){ el.classList.remove('mg-dragging'); mgIconPosSet(mgIconKey(el), nx, ny); } else if(onTap){ onTap(); } };
+      nx=Math.max(0,Math.min(ox+(ev.clientX-sx), c.clientWidth-el.offsetWidth)); ny=Math.max(0,Math.min(oy+(ev.clientY-sy), c.clientHeight-el.offsetHeight)); el.style.left=nx+'px'; el.style.top=ny+'px';
+      if(canFold)setDropT(targetAt(ev.clientX,ev.clientY)); };
+    const up=ev=>{ document.removeEventListener('pointermove',mm); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up);
+      if(dragging){ el.classList.remove('mg-dragging'); setDropT(null);
+        if(canFold && ev && ev.type==='pointerup'){ const t=targetAt(ev.clientX,ev.clientY);
+          if(t && t!==el){ if(t.dataset.appfolder){ mgAppFolderAdd(t.dataset.appfolder, el.dataset.app); mgRenderDesktop(); return; } if(t.dataset.app){ mgAppFolderCreate([t.dataset.app, el.dataset.app]); mgRenderDesktop(); return; } } }
+        mgIconPosSet(mgIconKey(el), nx, ny);
+      } else if(onTap){ onTap(); } };
     document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',up); });
 }
 // Touch drag-and-drop for deck icons: long-press to pick up, drop on a folder
