@@ -996,6 +996,9 @@
     /* Marquee (rubber-band) multi-select — Splash free layout + desktop */
     .os-marquee{position:absolute;border:1px solid rgba(125,224,160,.9);background:rgba(125,224,160,.16);border-radius:2px;z-index:99998;pointer-events:none}
     .os-sel{box-shadow:0 0 0 2px #7de0a0, 0 0 10px rgba(125,224,160,.55) !important;border-radius:4px}
+    .os-selmenu{position:fixed;z-index:100000;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 10px rgba(0,0,0,.5);padding:3px;min-width:170px;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .os-selmenu .os-mi{padding:6px 10px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap}
+    .os-selmenu .os-mi:hover{background:#000080;color:#fff}
     .mg-icon.mg-droptarget .mg-ico,.mg-icon.mg-droptarget .mg-cggart,.mg-icon.mg-droptarget .mg-folderbubble{outline:2px solid #ffe066;outline-offset:2px;border-radius:12px}
     /* iOS/Android-style app-folder bubble */
     .mg-folderbubble{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2px;width:48px;height:48px;margin:0 auto 2px;padding:4px;box-sizing:border-box;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:13px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
@@ -2621,6 +2624,7 @@ function openSplash(deckObj,username,opts){
   const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload your own art or a deck photo.`)+`</div>`:'';
   document.getElementById('splash-body').innerHTML=editHint+photoHtml+statsHtml+barHtml+colsHtml;
   _attachCardHover(document.getElementById('splash-body'));
+  if(sortMode==='user'&&_splashEdit&&typeof _splashAttachSelect==='function')_splashAttachSelect();
   const dn=document.getElementById('splash-deck-name');
   if(dn)dn.textContent=deckObj.name||'Untitled Deck';
   const ov=document.getElementById('splash-overlay');
@@ -2782,13 +2786,21 @@ function _splashRebuildColumns(){
   if(existing)existing.replaceWith(newNode);
   else body.appendChild(newNode);
   if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
-  if(sortMode==='user'&&_splashEdit){ const f=document.getElementById('splash-free'); if(f){ const deck=_splashDeck&&_splashDeck.deck;
-    attachSelectable(f,{ itemSelector:'.splash-card.free,.splash-stat',
-      scale:()=>(parseInt(document.getElementById('splash-zoom')?.value||100))/100,
-      snap:v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v,
-      commit:el=>{ const k=el.dataset.key; if(!k||!deck)return; deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
-        const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; const sv=parseFloat(el.dataset.s); if(sv&&sv!==1)o.s=sv; deck.layout.positions[k]=o; },
-      save:()=>{ if(deck){ saveToStorage(); syncDeckToApi(deck.id); } } }); } }
+  if(sortMode==='user'&&_splashEdit)_splashAttachSelect();
+}
+// Marquee multi-select wiring for the splash free layout (shared by openSplash + rebuild).
+function _splashAttachSelect(){
+  const f=document.getElementById('splash-free'); if(!f)return; const deck=_splashDeck&&_splashDeck.deck;
+  attachSelectable(f,{ itemSelector:'.splash-card.free,.splash-stat',
+    scale:()=>(parseInt(document.getElementById('splash-zoom')?.value||100))/100,
+    snap:v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v,
+    commit:el=>{ const k=el.dataset.key; if(!k||!deck)return; deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
+      const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; const sv=parseFloat(el.dataset.s); if(sv&&sv!==1)o.s=sv; deck.layout.positions[k]=o; },
+    save:()=>{ if(deck){ saveToStorage(); syncDeckToApi(deck.id); } },
+    onDelete:els=>{ if(!deck)return; deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; let n=0,cards=0;
+      els.forEach(el=>{ const k=el.dataset.key; if(k&&k.indexOf('stat:')===0){ deck.layout.statsOn[k.slice(5)]=false; n++; } else cards++; });
+      if(n){ saveToStorage(); syncDeckToApi(deck.id); _splashRebuildColumns(); }
+      toast(n?('Removed '+n+' widget'+(n>1?'s':'')+(cards?' · '+cards+' cards kept':'')):'Cards can’t be removed from a deck pic','info'); } });
 }
 // ── Share-image composer ──────────────────────────────────────────────────────
 const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island',label:'Island'},{key:'mountain',label:'Mountain'},{key:'forest',label:'Forest'},{key:'plains',label:'Plains'},{key:'wastes',label:'Wastes'},{key:'__ai__',label:'✨ AI scene'}];
@@ -2960,6 +2972,7 @@ function attachSelectable(container, opts){
   container.addEventListener('pointerdown', e=>{
     if(e.button)return;
     const item=e.target.closest(opts.itemSelector);
+    if(item && e.shiftKey){ e.preventDefault(); e.stopPropagation(); item.classList.toggle('os-sel'); return; } // shift-click adds/removes one
     const scale=(opts.scale&&opts.scale())||1;
     if(item && item.classList.contains('os-sel') && sel().length>1){
       // group move — drive the whole selection, blocking the item's own handler
@@ -2987,6 +3000,20 @@ function attachSelectable(container, opts){
     const up=()=>{ window.removeEventListener('pointermove',mv); window.removeEventListener('pointerup',up); box.remove(); if(!dragged)clearSel(); };
     window.addEventListener('pointermove',mv); window.addEventListener('pointerup',up);
   }, true);
+  // Right-click a selection → actions menu (Delete / Clear).
+  container.addEventListener('contextmenu', e=>{ const s=sel(); if(!s.length)return; e.preventDefault(); _selContextMenu(e.clientX, e.clientY, s, opts, clearSel); });
+  // Escape clears any selection (bind once, globally).
+  if(!window._osSelEsc){ window._osSelEsc=true; document.addEventListener('keydown', e=>{ if(e.key==='Escape')document.querySelectorAll('.os-sel').forEach(x=>x.classList.remove('os-sel')); }); }
+}
+function _selContextMenu(x,y,selected,opts,clearSel){
+  document.getElementById('os-selmenu')?.remove();
+  const m=document.createElement('div'); m.id='os-selmenu'; m.className='os-selmenu';
+  m.innerHTML=(opts.onDelete?'<div class="os-mi" data-act="del">🗑 Delete ('+selected.length+')</div>':'')+'<div class="os-mi" data-act="clear">✕ Clear selection</div>';
+  document.body.appendChild(m); m.style.left=Math.min(x,window.innerWidth-190)+'px'; m.style.top=Math.min(y,window.innerHeight-90)+'px';
+  const close=ev=>{ if(ev&&m.contains(ev.target))return; m.remove(); document.removeEventListener('pointerdown',close,true); };
+  m.querySelector('[data-act="del"]')?.addEventListener('click',()=>{ try{ opts.onDelete(selected); }catch(e){} close(); });
+  m.querySelector('[data-act="clear"]')?.addEventListener('click',()=>{ clearSel(); close(); });
+  setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
 }
 function _buildSplashFree(allCards,sbCards,zoomPct){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
@@ -6993,7 +7020,14 @@ function mgRenderDesktop(){
       mgRenderAppFolders(deskc);
       mgLayoutIcons(deskc);
       if(typeof attachSelectable==='function')attachSelectable(deskc,{ itemSelector:'.mg-icon', scale:()=>1, snap:v=>v,
-        commit:el=>{ const k=mgIconKey(el); if(k)mgIconPosSet(k, parseFloat(el.style.left)||0, parseFloat(el.style.top)||0); }, save:()=>{} }); } }
+        commit:el=>{ const k=mgIconKey(el); if(k)mgIconPosSet(k, parseFloat(el.style.left)||0, parseFloat(el.style.top)||0); }, save:()=>{},
+        onDelete:els=>{ let n=0, kept=0;
+          els.forEach(el=>{ if(el.dataset.deck){ mgFs.bin=mgFs.bin||[]; if(mgFs.bin.indexOf(el.dataset.deck)<0)mgFs.bin.push(el.dataset.deck); if(mgActiveDeckId===el.dataset.deck)mgActiveDeckId=null; n++; }
+            else if(el.dataset.folder){ mgDeleteFolder(el.dataset.folder); n++; }
+            else if(el.dataset.appfolder){ mgAppFoldersSave(mgAppFolders().filter(f=>f.id!==el.dataset.appfolder)); n++; }
+            else kept++; });
+          if(n){ mgFsSave(); mgRenderDesktop(); }
+          toast(n?('Removed '+n+' item'+(n>1?'s':'')+(kept?' · '+kept+' kept (apps can’t be deleted)':'')+(els.some(e=>e.dataset.deck)?' — decks went to the Recycle Bin':'')):'Nothing removable selected (apps can’t be deleted)','info'); } }); } }
 }
 function mgUpdateWinTitle(){const el=document.getElementById('mg-wintitle');if(el)el.textContent='🗃️ CGG — '+mgDeckName(mgActiveDeckId);}
 // Account presence in the top toolbar — aesthetic for now (a future friends/chat layer can wire it up).
