@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="apple-mobile-web-app-title" content="Deck OS" />
+  <meta name="apple-mobile-web-app-title" content="WalkerOS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
   <style>
@@ -1073,7 +1073,7 @@
     #site-window.site-mini{position:fixed;z-index:40;box-shadow:3px 3px 14px rgba(0,0,0,.6);cursor:grab;touch-action:none;-webkit-touch-callout:none;overflow:hidden;background:var(--bg,#0b0d12)}
     #site-window.site-mini.dragging{cursor:grabbing;opacity:.95}
     #site-window.site-mini *{pointer-events:none}
-    /* Deck OS shell — active whenever body.deckos is set (mobile always; desktop via the toggle). */
+    /* WalkerOS shell — active whenever body.deckos is set (mobile always; desktop via the toggle). */
     body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
     body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
     body.deckos #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
@@ -1269,7 +1269,7 @@
     .web-sep{flex-shrink:0;width:0;height:18px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 4px}
     .web-newurl{flex:1 1 38%;min-width:90px;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .web-frame{flex:1;min-height:0;width:100%;border:0;background:#fff;display:block}
-    /* In Deck OS the desktop File toolbar owns file ops, so hide MMD's header buttons
+    /* In WalkerOS the desktop File toolbar owns file ops, so hide MMD's header buttons
        (deck name + sync stay). Classic mode keeps them — it has no desktop toolbar. */
     body.deckos .header-deck-controls .btn{display:none}
     /* Finder-style file browser (Open): folder tree of the user's decks */
@@ -1313,7 +1313,7 @@
     <button class="btn" id="share-btn" onclick="openShare()">🔗 Share</button>
   </div>
   <div class="header-right" style="position:relative;">
-    <button class="btn" id="deckos-toggle" onclick="deckosToggle()" title="Toggle the Windows-95 Deck OS shell">🖥️ Deck OS</button>
+    <button class="btn" id="deckos-toggle" onclick="deckosToggle()" title="Toggle the Windows-95 WalkerOS shell">🖥️ WalkerOS</button>
     <div id="user-btn-area">
       <button class="btn" id="signin-btn" onclick="signInClick()">👤 Sign In</button>
       <div class="user-avatar" id="user-avatar" style="display:none;" onclick="toggleUserMenu()"></div>
@@ -2139,7 +2139,7 @@ function renderAll(){renderDeck();renderStats();renderSearchResults();renderDeck
 let _authMode='login';
 let _resetToken=null;
 function openAuth(mode='login'){_authMode=mode;_updateAuthUI();document.getElementById('auth-username').value='';document.getElementById('auth-email').value='';document.getElementById('auth-password').value='';document.getElementById('auth-err').textContent='';openModal('modal-auth')}
-// In Deck OS the bare auth modal (z1000) spawns under the focused MyMagicDeck window
+// In WalkerOS the bare auth modal (z1000) spawns under the focused MyMagicDeck window
 // (wm-layer, z1500). Route Sign In through the Account program so it opens as a proper
 // framed window on top; in classic mode just open the modal.
 function signInClick(mode){
@@ -2608,7 +2608,7 @@ function openSplash(deckObj,username,opts){
   if(dn)dn.textContent=deckObj.name||'Untitled Deck';
   const ov=document.getElementById('splash-overlay');
   // In classic (non-Deck-OS) mode, make sure the overlay isn't still parented inside
-  // the WM layer (hidden when wm-off) from a prior Deck OS session — otherwise it
+  // the WM layer (hidden when wm-off) from a prior WalkerOS session — otherwise it
   // opens invisibly. Re-home to <body> and strip any window-manager styling.
   if(!document.body.classList.contains('wm-on') && ov.parentElement!==document.body){
     document.body.appendChild(ov);
@@ -2836,8 +2836,13 @@ function _shareMeta(deck, author){
   const sb=Object.values(deck.sideboard||{});
   let price=0; for(const{card,qty}of cards)price+=parseFloat(card.prices?.usd||0)*qty;
   for(const{card,qty}of sb)price+=parseFloat(card.prices?.usd||0)*qty;
-  const list=cards.slice().sort((a,b)=>a.card.name.localeCompare(b.card.name)).map(({card,qty})=>qty+' '+card.name);
-  if(sb.length){ list.push('— Sideboard —'); for(const{card,qty}of sb.slice().sort((a,b)=>a.card.name.localeCompare(b.card.name)))list.push(qty+' '+card.name); }
+  // Hearthstone-style list rows: {h:category} headers + {c:[mana codes], n:name, q:count}.
+  const manaCodes=mc=>{ const o=[]; if(mc)mc.replace(/\{([^}]+)\}/g,(_,s)=>{o.push(s.toUpperCase());return'';}); return o; };
+  const grp={}; for(const{card,qty}of cards){ const c=getCardCategory(card); (grp[c]=grp[c]||[]).push({card,qty}); }
+  const list=[];
+  for(const cat of CATEGORY_ORDER){ if(!grp[cat])continue; list.push({h:cat});
+    grp[cat].sort((a,b)=>(a.card.cmc||0)-(b.card.cmc||0)||a.card.name.localeCompare(b.card.name)).forEach(({card,qty})=>list.push({c:manaCodes(card.mana_cost||''),n:card.name,q:qty})); }
+  if(sb.length){ list.push({h:'Sideboard'}); sb.slice().sort((a,b)=>a.card.name.localeCompare(b.card.name)).forEach(({card,qty})=>list.push({c:manaCodes(card.mana_cost||''),n:card.name,q:qty})); }
   const buckets={}; for(const{card,qty}of cards){ if((card.type_line||'').toLowerCase().includes('land'))continue; const m=Math.min(card.cmc||0,7); buckets[m]=(buckets[m]||0)+qty; }
   const curve=[]; for(let i=0;i<=7;i++)curve.push({label:i===7?'7+':String(i),count:buckets[i]||0});
   const typeColors={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
@@ -2849,18 +2854,27 @@ async function _genShareImage(){
   const snap=_snapshotLayout();
   if(!snap||!snap.cards.length){ toast('Nothing to render — open the splash with cards','error'); return; }
   const st=document.getElementById('si-status'); st.className='si-status loading'; st.textContent='Rendering…';
+  // Center the layout in the pic with a uniform buffer: bound the content (cards + stat
+  // panels), then frame it in a slightly larger canvas so the deck sits centered, not flush.
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const acc=(x,y,w,h)=>{ minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x+w); maxY=Math.max(maxY,y+h); };
+  snap.cards.forEach(c=>acc(c.x,c.y,c.w,c.h));
+  if(snap.stats)for(const k in snap.stats){ const v=snap.stats[k]; acc(v.x,v.y,v.w,v.h); }
+  const contentW=Math.max(1,maxX-minX), contentH=Math.max(1,maxY-minY);
+  const margin=Math.round(Math.max(contentW,contentH)*0.06); // ~6% breathing room all around
+  const ox=margin-minX, oy=margin-minY, cw=contentW+margin*2, chh=contentH+margin*2;
   // Upscale for a crisp image (cards' source art is higher-res than the on-screen size).
-  const maxDim=Math.max(snap.width,snap.height)||1; const s=Math.min(2.5, 3500/maxDim);
+  const maxDim=Math.max(cw,chh)||1; const s=Math.min(2.5, 3500/maxDim);
   const sc=v=>Math.round(v*s);
-  const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x),y:sc(c.y),w:sc(c.w),h:sc(c.h)}));
+  const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x+ox),y:sc(c.y+oy),w:sc(c.w),h:sc(c.h)}));
   const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type') };
   // If the deck is in User Layout, the stat panels carry positions — pass them so the
   // server places each overlay where the user dragged it instead of in fixed bands.
   let statPos=null;
-  if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x),y:sc(v.y),w:sc(v.w),h:sc(v.h),s:v.s||1}; } }
+  if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x+ox),y:sc(v.y+oy),w:sc(v.w),h:sc(v.h),s:v.s||1}; } }
   try{
     const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),
-      body:JSON.stringify({ width:sc(snap.width), height:sc(snap.height), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
+      body:JSON.stringify({ width:sc(cw), height:sc(chh), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
     if(!res.ok){ const j=await res.json().catch(()=>({})); st.className='si-status err'; st.textContent=j.error||'Render failed'; return; }
     _shareBlob=await res.blob();
     const url=URL.createObjectURL(_shareBlob);
@@ -5002,8 +5016,8 @@ if('serviceWorker' in navigator){window.addEventListener('load',()=>{
   const splashOnly=/^[a-z0-9_-]+\.mymagicdeck\.com$/i.test(host)&&!host.startsWith('www');
   if(!splashOnly)navigator.serviceWorker.register('/sw.js').catch(()=>{});
 });}
-// Deck OS shell toggle — mobile = always on; desktop = opt-in (persisted). Same machinery either way.
-function deckosSyncToggle(){ const b=document.getElementById('deckos-toggle'); if(b)b.textContent=document.body.classList.contains('deckos')?'🖥️ Classic':'🖥️ Deck OS'; }
+// WalkerOS shell toggle — mobile = always on; desktop = opt-in (persisted). Same machinery either way.
+function deckosSyncToggle(){ const b=document.getElementById('deckos-toggle'); if(b)b.textContent=document.body.classList.contains('deckos')?'🖥️ Classic':'🖥️ WalkerOS'; }
 function deckosShellInit(){
   const mobile=window.matchMedia('(max-width:900px)').matches; let on=mobile;
   try{ if(localStorage.getItem('deckos_desktop')==='1')on=true; }catch(e){}
@@ -5014,9 +5028,9 @@ function deckosShellInit(){
     // Defer the window-manager boot to a macrotask: this runs during initial parse, but
     // wmWins / MGW_APPS / etc. are declared LATER in the script. Calling wmOpenSite() now
     // would hit their temporal dead zone (ReferenceError) and abort the rest of the script
-    // — which is what broke a reload while Deck OS was active. By the time the timeout
+    // — which is what broke a reload while WalkerOS was active. By the time the timeout
     // fires, the whole script (and DeckOS) has finished initializing.
-    setTimeout(()=>{ try{ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }catch(e){ console.error('Deck OS boot failed:', e); } }, 0);
+    setTimeout(()=>{ try{ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }catch(e){ console.error('WalkerOS boot failed:', e); } }, 0);
   }
 }
 function deckosToggle(){
@@ -5034,7 +5048,7 @@ const MMD_WINGS=[{key:'deck',panel:'panel-deck',title:'Deck list',icon:'🗃️'
 let _mmdClipped=null, _mmdDetached=false;
 deckosShellInit();
 // (desktop widgets are restored after the DeckOS object is defined — see widgetRenderAll() there)
-// Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
+// WalkerOS: apply personal/hosted mode + load any installed mods + restore the storage backend.
 if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
   DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
   if(DeckOS.store.backend==='folder'&&DeckOS.fsSupported())window.addEventListener('load',()=>{DeckOS.folderLoad();});
@@ -5360,7 +5374,7 @@ function renderAbout(){
   b.innerHTML='<div style="text-align:center;padding:12px 6px">'+
     '<div style="font-size:1.5rem;font-weight:800;letter-spacing:2px;color:var(--text-bright)">DECK OS</div>'+
     '<div style="color:var(--accent);font-weight:700;margin:3px 0 16px">v1.0 Beta · 2026</div>'+
-    '<div style="color:var(--text);line-height:1.55">'+owner+'MyMagicDeck — a Magic: The Gathering deckbuilder reimagined as a tiny Windows&nbsp;95 PC. Decks are files, cards can be guessed, and you publish your own splash pages from your own machine.</div>'+
+    '<div style="color:var(--text);line-height:1.55">'+owner+'MyMagicDeck is your deckbuilder — and the front door to <b>WalkerOS</b>, a tiny Windows&nbsp;95 desktop for the Magic player. Decks are files, cards can be guessed, you publish your own splash pages, and the rest of a walker’s tools live as apps on the desktop.</div>'+
     '<div style="margin-top:16px;font-size:.8rem;line-height:1.7">'+
       '<div style="color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em;font-size:.68rem;margin-bottom:4px">Open source</div>'+
       '<a href="https://github.com/saidthefox/mymagicdeck" target="_blank" rel="noopener" style="color:var(--accent)">🃏 MyMagicDeck on GitHub</a><br>'+
@@ -6021,7 +6035,7 @@ function fbRender(body){ if(!body)return;
   body.querySelectorAll('[data-fbnote]').forEach(el=>el.addEventListener('click',()=>{ const id=el.getAttribute('data-fbnote'); if(typeof notesSetPlaced==='function')notesSetPlaced(id,true); if(typeof notesUpdate==='function')notesUpdate(id,{min:false}); const w=document.getElementById('note-'+id); if(w)w.classList.remove('collapsed'); fbClose(); }));
   const gal=body.querySelector('[data-fbgallery]'); if(gal)gal.addEventListener('click',()=>{ fbClose(); if(typeof openUploads==='function')openUploads(); });
 }
-// ===== MyMagicBot — front door + Deck OS integration status for the MTG tournament Discord bot =====
+// ===== MyMagicBot — front door + WalkerOS integration status for the MTG tournament Discord bot =====
 const MMB_REPO='https://github.com/saidthefox/mymagicbot'; // public source
 async function mmbRender(body){ if(!body)return;
   const code=s=>'<code style="background:#eee;padding:0 4px;border-radius:3px;font-size:11px">'+s+'</code>';
@@ -6242,10 +6256,10 @@ function wmWireResize(key, h){
   });
 }
 
-// ===== DeckOS: the public, versioned API for the Deck OS shell =====
+// ===== DeckOS: the public, versioned API for the WalkerOS shell =====
 // Stable surface for programs/mods + a swappable storage layer + the local/hosted mode.
 // Anyone can add a program with DeckOS.registerProgram({id,title,icon,mount(bodyEl){...}}).
-// See README → "Writing a Deck OS program".
+// See README → "Writing a WalkerOS program".
 window.DeckOS = {
   version: '1.0',
   // --- mode: 'hosted' (accounts + subdomains) or 'local' (personal, account-less) ---
@@ -6509,6 +6523,7 @@ function mpRender(body){
   body._mpRAF=requestAnimationFrame(step);
 }
 if(window.DeckOS){
+  try{ window.WalkerOS = window.DeckOS; }catch(e){} // public name is WalkerOS; DeckOS kept as the internal/mod-API alias
   DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
@@ -7071,7 +7086,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smlbl">'+icon+' '+label+'</span><span class="mg-smchev">▸</span><div class="mg-smsub">'+inner+'</div></div>') : '';
   const games=item('cgg','🗃️ Card Guesser Game')+'<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+progs('games');
   const utils=item('storage','🖼️ Gallery')+item('hud','📡 HUD')+progs('utilities');
-  return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1.0 Beta</span></div><div class="mg-smbody">'+
+  return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">WalkerOS 1.0 Beta</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
     item('splash','🖼️ Splash Builder')+
     '<div class="mg-smitem" data-backsearch="1">✦ MyMagicDeck</div>'+

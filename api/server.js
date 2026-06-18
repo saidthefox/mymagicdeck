@@ -2546,6 +2546,35 @@ async function _loadShareCardBuf(url, cache) {
   cache.set(url, buf); return buf;
 }
 
+// One MTG mana pip (circle + symbol), matching the on-screen colors.
+const _PIP_COL = { W:['#f9f0db','#3d3520'], U:['#5b8def','#ffffff'], B:['#39393f','#d6d6d6'], R:['#e2533f','#ffffff'], G:['#4caf7d','#ffffff'], C:['#c9c2b6','#2a2a2a'] };
+function _manaPip(code, cx, cy, r, FONT) {
+  code = String(code || '').toUpperCase();
+  const isNum = /^([0-9]+|X)$/.test(code);
+  const col = _PIP_COL[code] || (isNum ? ['#c9c2b6', '#2a2a2a'] : ['#9a93a6', '#16161a']);
+  const fs = Math.max(7, Math.round(r * 1.25));
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${col[0]}"/><text x="${cx}" y="${cy + fs * 0.35}" text-anchor="middle" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="${col[1]}">${_xmlEsc(code)}</text>`;
+}
+// Hearthstone-style deck list rows: {h:category} headers, {c:[codes],n:name,q:count}.
+// Renders into [x, y] within width `panelW`, stopping before `maxY`. Returns the SVG string.
+function _deckListSVG(rows, x, y, panelW, lineH, fontPx, maxY, FONT) {
+  const parts = []; const r = Math.max(5, Math.round(fontPx * 0.52)); let cy = y;
+  for (const row of rows) {
+    if (cy + lineH > maxY) break;
+    if (row && row.h) {
+      parts.push(`<text x="${x}" y="${Math.round(cy + lineH * 0.78)}" font-family="${FONT}" font-size="${Math.round(fontPx * 0.78)}" font-weight="bold" fill="#9aa3b5" letter-spacing="0.5">${_xmlEsc(String(row.h).toUpperCase())}</text>`);
+      cy += lineH; continue;
+    }
+    let px = x; const codes = Array.isArray(row.c) ? row.c.slice(0, 6) : [];
+    for (const code of codes) { parts.push(_manaPip(code, px + r, cy + lineH * 0.5, r, FONT)); px += r * 2 + 2; }
+    const nameX = px + (codes.length ? 5 : 0);
+    parts.push(`<text x="${nameX}" y="${Math.round(cy + lineH * 0.72)}" font-family="${FONT}" font-size="${fontPx}" fill="#e8ebf2">${_xmlEsc(row.n || '')}</text>`);
+    parts.push(`<text x="${x + panelW}" y="${Math.round(cy + lineH * 0.72)}" text-anchor="end" font-family="${FONT}" font-size="${fontPx}" font-weight="bold" fill="#ffffff">${_xmlEsc(String(row.q == null ? '' : row.q))}</text>`);
+    cy += lineH;
+  }
+  return parts.join('');
+}
+
 // Build an SVG overlay for the enabled text/stat elements (composited on top).
 function buildOverlaySVG(geo, overlays, meta) {
   overlays = overlays || {}; meta = meta || {};
@@ -2576,17 +2605,12 @@ function buildOverlaySVG(geo, overlays, meta) {
   }
   // Deck list — top-right of the content area.
   if (overlays.list && Array.isArray(meta.list) && meta.list.length) {
-    const colCount = meta.list.length > 30 ? 2 : 1, perCol = Math.ceil(meta.list.length / colCount);
-    const lineH = 22, padX = 14, colW = 240, panelW = colW * colCount + padX, py = contentTop + 14;
-    const panelH = Math.min(perCol * lineH + 36, contentH - 28);
+    const lineH = 22, padX = 14, panelW = 250, py = contentTop + 14;
+    const panelH = Math.min(meta.list.length * lineH + 44, contentH - 28);
     const px = W - panelW - 18;
-    parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(0,0,0,0.55)"/>`);
+    parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(0,0,0,0.6)"/>`);
     parts.push(`<text x="${px + padX}" y="${py + 24}" font-family="${FONT}" font-size="16" font-weight="bold" fill="#fff">Deck list</text>`);
-    meta.list.forEach((ln, i) => {
-      const col = Math.floor(i / perCol), row = i % perCol;
-      const lx = px + padX + col * colW, ly = py + 46 + row * lineH;
-      if (ly < py + panelH - 6) parts.push(`<text x="${lx}" y="${ly}" font-family="${FONT}" font-size="14" fill="#e0e0e0">${_xmlEsc(ln)}</text>`);
-    });
+    parts.push(_deckListSVG(meta.list, px + padX, py + 36, panelW - padX * 2, lineH, 14, py + panelH - 6, FONT));
   }
   // Type breakdown — in the footer band.
   if (overlays.typeBreakdown && Array.isArray(meta.typeSeg) && meta.typeSeg.length) {
@@ -2636,13 +2660,10 @@ function buildOverlaySVGPositioned(W, H, overlays, meta, sp) {
   if (overlays.list && Array.isArray(meta.list) && meta.list.length && sp.list) {
     const p = sp.list, s = p.s || 1, px = Math.round(p.x), py = Math.round(p.y);
     const panelW = Math.max(160, Math.round(p.w)), panelH = Math.max(80, Math.round(p.h)), padX = Math.round(12 * s);
-    const lineH = Math.round(18 * s), hf = Math.round(14 * s), lf = Math.round(12 * s);
+    const lineH = Math.round(20 * s), hf = Math.round(14 * s), lf = Math.round(13 * s);
     parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(0,0,0,0.6)"/>`);
     parts.push(`<text x="${px + padX}" y="${py + Math.round(20 * s)}" font-family="${FONT}" font-size="${hf}" font-weight="bold" fill="#fff">Deck list</text>`);
-    meta.list.forEach((ln, i) => {
-      const ly = py + Math.round(40 * s) + i * lineH;
-      if (ly < py + panelH - 4) parts.push(`<text x="${px + padX}" y="${ly}" font-family="${FONT}" font-size="${lf}" fill="#e0e0e0">${E(ln)}</text>`);
-    });
+    parts.push(_deckListSVG(meta.list, px + padX, py + Math.round(30 * s), panelW - padX * 2, lineH, lf, py + panelH - 4, FONT));
   }
   if (overlays.typeBreakdown && Array.isArray(meta.typeSeg) && meta.typeSeg.length && sp.types) {
     const p = sp.types, s = p.s || 1, total = meta.typeSeg.reduce((s2, t) => s2 + t.count, 0) || 1;
