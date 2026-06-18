@@ -1004,6 +1004,14 @@
     .mg-smitem{display:flex;align-items:center;gap:7px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap}
     .mg-smitem:active{background:#000080;color:#fff}
     .mg-smsep{border-top:1px solid #808080;border-bottom:1px solid #fff;margin:3px 2px}
+    /* Collapsible Start-menu folders (Games / Utilities) — click to expand like Windows */
+    .mg-smcat{display:flex;align-items:center;gap:6px;padding:6px 8px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap;font-weight:bold}
+    .mg-smcat:active{background:#000080;color:#fff}
+    .mg-smchev{display:inline-block;width:9px;font-size:9px;transition:transform .12s}
+    .mg-smcat.open .mg-smchev{transform:rotate(90deg)}
+    .mg-smsub{display:none}
+    .mg-smcat.open + .mg-smsub{display:block}
+    .mg-smsub .mg-smitem{padding-left:24px}
     #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:#c0c0c0;z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
     /* MGW: generic Win95 program windows (Splash / Share / Account / future apps) */
     .mgw-win{border:3px solid !important;border-color:#dfdfdf #404040 #404040 #dfdfdf !important;border-radius:0 !important;background:#c0c0c0 !important;padding:0 !important;overflow:hidden}
@@ -6149,11 +6157,12 @@ window.DeckOS = {
     MGW_APPS[spec.id]={ overlay:overlayId, win:'.modal', title:spec.title||spec.id, icon:spec.icon||'🧩',
       open:()=>{ const b=bodyEl||(document.getElementById(overlayId)&&document.getElementById(overlayId).querySelector('.modal-body')); if(typeof spec.mount==='function'&&b)spec.mount(b); if(typeof spec.open==='function')spec.open(); openModal(overlayId); },
       close:spec.close||(()=>closeModal(overlayId)) };
-    this._programs.push({id:spec.id,title:spec.title||spec.id,icon:spec.icon||'🧩',desktop:!!spec.desktop});
+    this._programs.push({id:spec.id,title:spec.title||spec.id,icon:spec.icon||'🧩',desktop:!!spec.desktop,category:spec.category||'utilities'});
     if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar();
     return true;
   },
-  programsMenuHtml(){ return this._programs.map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+p.icon+' '+_mgEsc(p.title)+'</div>').join(''); },
+  // Start-menu items for registered programs; pass a category ('games'|'utilities') to filter.
+  programsMenuHtml(cat){ return this._programs.filter(p=>!cat||(p.category||'utilities')===cat).map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+p.icon+' '+_mgEsc(p.title)+'</div>').join(''); },
   // --- mods (third-party programs). LOCAL-TRUST model: a mod is JS that calls DeckOS.registerProgram.
   // It runs with full access to your session (like a userscript) — only install mods you trust.
   // (The sandboxed-iframe capability model for untrusted/hosted mods is on the roadmap.)
@@ -6373,7 +6382,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'notes', title:'Notes', icon:'🗒️', width:'420px', desktop:true, mount(body){ notesRenderApp(body); } });
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:'🔮', width:'620px', desktop:true, mount(body){ mpRender(body); } });
-  DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', mount(body){ lgRender(body); } });
+  DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Open — Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
@@ -6824,19 +6833,24 @@ function mgWireFolderIcon(el){
     document.addEventListener('pointermove',mm); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',pc);
   });
 }
+// Remembers which Start-menu folders are expanded (survives the menu's re-renders).
+let _smCats={games:false,utilities:false};
 function mgStartMenuHtml(showLaunch,showDesktop){
   const owner=(state.user&&state.user.username)?(_mgEsc(state.user.username)+"'s MyMagicDeck"):'MyMagicDeck';
   const local=!!(window.DeckOS&&DeckOS.isLocal());
   const item=(id,label)=>(local&&DeckOS.HOSTED_ONLY.indexOf(id)>=0)?'':'<div class="mg-smitem" data-app="'+id+'">'+label+'</div>';
+  const progs=window.DeckOS?(c=>DeckOS.programsMenuHtml(c)):(()=>'' );
+  // A collapsible folder; omitted entirely if it would be empty.
+  const folder=(key,label,icon,inner)=> inner ?
+    ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smchev">▸</span>'+icon+' '+label+'</div><div class="mg-smsub">'+inner+'</div>') : '';
+  const games=item('cgg','🗃️ Card Guesser Game')+'<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+progs('games');
+  const utils=item('storage','💾 Storage')+item('hud','📡 HUD')+progs('utilities');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1.0 Beta</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
-    item('cgg','🗃️ Card Guesser Game')+
-    '<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+
     item('splash','🖼️ Splash Builder')+
-    item('storage','💾 Storage')+
-    item('hud','📡 HUD')+
-    (window.DeckOS?DeckOS.programsMenuHtml():'')+
     '<div class="mg-smitem" data-backsearch="1">✦ MyMagicDeck</div>'+
+    folder('games','Games','🎮',games)+
+    folder('utilities','Utilities','🧰',utils)+
     '<div class="mg-smsep"></div>'+
     item('account','👤 Account')+
     (state.user?'<div class="mg-smitem" data-logout="1">🚪 Sign out</div>':'')+
@@ -6847,6 +6861,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     '</div></div>';
 }
 function mgWireStartMenu(a){
+  a.querySelectorAll('.mg-smcat[data-cat]').forEach(c=>c.addEventListener('click',e=>{e.stopPropagation();const k=c.getAttribute('data-cat');_smCats[k]=!_smCats[k];c.classList.toggle('open',_smCats[k]);}));
   a.querySelectorAll('.mg-smitem[data-app]').forEach(r=>r.addEventListener('click',e=>{e.stopPropagation();const app=r.getAttribute('data-app');mgLaunchApp(app);if(app!=='cgg')mgRenderDesktop();}));
   const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
   const lo=a.querySelector('.mg-smitem[data-logout]');if(lo)lo.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;if(typeof logout==='function')logout();mgRenderDesktop();});
