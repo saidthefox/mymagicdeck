@@ -3684,23 +3684,6 @@ function doCardUpload(input){
     onDone: (j)=>_applyArtToEntry(ctx, scope, j.image_uris),
   });
 }
-function applyCustomArt(image_uris){
-  const ctx=_printingsCtx; if(!ctx||!ctx.entry||!image_uris){toast('Could not apply art','error');return;}
-  const e=ctx.entry;
-  if(_artScope()==='copy'){
-    if(!e.arts)e.arts={};
-    e.arts[ctx.copyIdx]=image_uris;
-    _finishArt('Custom art applied to copy #'+(ctx.copyIdx+1)+' ✨');
-  } else {
-    if(e.arts)delete e.arts;
-    const c=e.card;
-    if(!c._origImg&&c.image_uris)c._origImg=c.image_uris; // remember original for revert
-    if(!c.scryfallId&&c.id)c.scryfallId=c.id;
-    c.image_uris=image_uris;
-    c.customArt=true;
-    _finishArt('Custom art applied to all copies ✨');
-  }
-}
 function revertArt(){
   const ctx=_printingsCtx; if(!ctx||!ctx.entry)return;
   const e=ctx.entry;
