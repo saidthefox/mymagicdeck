@@ -1,302 +1,397 @@
 # MyMagicDeck — Technical Documentation
 
+The technical reference for MyMagicDeck ("Deck OS"): architecture, database schema, the full
+API surface, the data pipelines, and deployment. For the product tour read [`README.md`](README.md);
+for the maintenance loop read [`AGENTS.md`](AGENTS.md); for the security posture and its rationale
+read [`SECURITY.md`](SECURITY.md); for the window-manager design read [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md).
+
+> Keep this file matching the code. When you add a route, column, or env var, update the relevant
+> table here in the same commit. (This doc is deliberately written without line-count figures so it
+> doesn't drift the moment the files grow.)
+
 ## Overview
 
-MyMagicDeck is a Magic: The Gathering deck builder web application. Users can search for cards, build decks, view deck statistics, share decks via URL or splash pages, and manage multiple decks with cloud sync.
+MyMagicDeck is a Magic: The Gathering deck builder. Users search cards, build decks, view stats,
+share decks by URL or public **splash page**, and (on phones) drive the whole thing as a tiny
+Windows-95 desktop where every feature is a launchable program and decks are files. Accounts sync
+decks, uploads, the folder tree, and the desktop layout across devices.
 
 **Live domains:**
-- `mymagicdeck.com` — Main deck builder + user splash pages via `username.mymagicdeck.com`
-- `myvintagedeck.com` — Splash page for a featured Vintage deck
-- `mycommanderdeck.com` — Splash page for a featured Commander deck
+- `mymagicdeck.com` — the deck builder + per-user splash pages at `username.mymagicdeck.com`
+- `myvintagedeck.com` — splash page for a featured Vintage deck
+- `mycommanderdeck.com` — splash page for a featured Commander deck
 
 ---
 
 ## Architecture
 
-```
-mymagicdeck/
-├── mymagicdeck/
-│   └── index.html          # Entire frontend: HTML + CSS + JS (~2,400 lines)
-├── api/
-│   ├── server.js            # Backend API: Fastify + SQLite (~630 lines)
-│   ├── package.json         # Node.js dependencies
-│   ├── Dockerfile           # Docker build for API container
-│   └── DEPLOY.md            # Deployment instructions for homelab
-└── .gitignore
-```
-
-### Frontend (Single-Page Application)
-
-- **No build step** — one self-contained `index.html` file
-- **No frameworks** — vanilla HTML/CSS/JavaScript
-- **Storage** — localStorage for offline/guest use, syncs to API when logged in
-- **Card data** — fetched from Scryfall API (search) or local API (search + named lookup)
+### Frontend (single-page application)
+- **One self-contained file**, [`mymagicdeck/index.html`](mymagicdeck/index.html) — HTML + CSS + JS, **no build step, no frameworks**.
+- nginx serves it read-only with `Cache-Control: no-cache`, so edits go live on reload.
+- Decks live in `localStorage` for guest/offline use and sync to the API when signed in.
+- Card data comes from the local API (search + named lookup), with a Scryfall fallback on a local outage.
+- A service worker ([`mymagicdeck/sw.js`](mymagicdeck/sw.js)) + [`manifest.webmanifest`](mymagicdeck/manifest.webmanifest) make it an installable PWA.
 
 ### Backend (REST API)
+- **Runtime:** Node.js 20 (Alpine Docker image).
+- **Framework:** Fastify 5.x (`@fastify/jwt`, `@fastify/cors`, `@fastify/multipart`).
+- **Database:** SQLite via `better-sqlite3` (WAL mode, foreign keys on). Synchronous — see the
+  event-loop note in [`SECURITY.md`](SECURITY.md).
+- **Auth:** JWT (30-day) bearer tokens via `@fastify/jwt`; bcrypt (12 rounds) password hashing.
+- **Card data:** bulk-imported from Scryfall `oracle_cards` into SQLite with an FTS5 index.
+- **Image work:** `sharp` (resize/encode/composite), ImageMagick (`magick`, perspective deskew),
+  OpenCV via `python3`/`detect_corners.py` (card corner detection), `heic-convert` (iPhone HEIC).
+- **CORS:** `origin: true` (reflected) — deliberate; auth is bearer-token, not cookies. See [`SECURITY.md`](SECURITY.md).
 
-- **Runtime**: Node.js 20 (Alpine Docker image)
-- **Framework**: Fastify 4.x
-- **Database**: SQLite via `better-sqlite3` (WAL mode, foreign keys)
-- **Auth**: JWT tokens (30-day expiry) via `@fastify/jwt`, bcrypt password hashing
-- **Card data**: Bulk-imported from Scryfall oracle_cards, stored in SQLite with FTS5 full-text search
-- **CORS**: Open (`origin: true`) — all origins allowed
+### Repository layout
+
+```
+mymagicdeck/
+├── api/                    Fastify + better-sqlite3 backend (Dockerized)
+│   ├── server.js           all routes, migrations, pipelines (one file)
+│   ├── detect_corners.py   OpenCV document-scanner corner detection
+│   ├── Dockerfile          node:20-alpine + imagemagick + py3-opencv + dejavu fonts
+│   ├── DEPLOY.md           homelab deployment notes
+│   └── package.json
+├── mymagicdeck/            the static frontend (served by nginx)
+│   ├── index.html          the entire app (Deck OS) — one file
+│   ├── sw.js               service worker (PWA offline shell)
+│   ├── manifest.webmanifest
+│   ├── mods/               example mods + the mod template
+│   ├── terms.html / privacy.html
+├── agent/                  ops scripts + maintenance-agent tooling
+│   ├── verify.sh / rebuild-api.sh / health.sh / preflight.sh
+│   ├── playbooks/          step-by-step procedures
+│   ├── runtime/            agent runtime (agent.mjs)
+│   └── mcp/                optional MCP server exposing the ops as tools
+├── tests/
+│   ├── run.sh              the regression loop (frontend static + API smoke)
+│   ├── frontend-check.mjs  static checks on index.html (node --check, ids, balance)
+│   ├── api-smoke.mjs       API smoke tests (run inside the container)
+│   └── gui/                Puppeteer GUI tests (per feature) + shots/
+├── README.md  AGENTS.md  SECURITY.md  DOCUMENTATION.md  WINDOW-MANAGER.md  CLAUDE.md
+```
 
 ---
 
-## Database Schema
+## Database schema
+
+SQLite (WAL). All tables are created idempotently on boot in `server.js`; migrations are
+idempotent `ALTER TABLE … / CREATE … IF NOT EXISTS` (never hand-edit the DB file).
 
 ### `users`
-| Column     | Type    | Notes                                   |
-|------------|---------|------------------------------------------|
-| id         | INTEGER | PK, autoincrement                        |
-| username   | TEXT    | Unique, case-insensitive (COLLATE NOCASE)|
-| email      | TEXT    | Unique, case-insensitive                 |
-| password   | TEXT    | bcrypt hash (12 rounds)                  |
-| created_at | INTEGER | Unix epoch                               |
+| Column | Type | Notes |
+|--------|------|-------|
+| id | INTEGER | PK, autoincrement |
+| username | TEXT | unique, case-insensitive (COLLATE NOCASE) |
+| email | TEXT | unique, case-insensitive |
+| password | TEXT | bcrypt hash (12 rounds) |
+| is_admin | INTEGER | 0/1 — set for `ADMIN_USERNAME` (default `jake`) on boot |
+| created_at | INTEGER | unix epoch |
 
 ### `decks`
-| Column      | Type    | Notes                                       |
-|-------------|---------|----------------------------------------------|
-| id          | TEXT    | Client-generated ID (timestamp + random)     |
-| user_id     | INTEGER | FK → users(id) ON DELETE CASCADE             |
-| name        | TEXT    | Default: 'Untitled Deck'                     |
-| data        | TEXT    | JSON blob: `{cards, sideboard, commander}`   |
-| is_public   | INTEGER | 0/1 — controls share link visibility         |
-| is_splash   | INTEGER | 0/1 — marks deck as a splash page deck       |
-| splash_site | TEXT    | 'mymagicdeck', 'myvintagedeck', or 'mycommanderdeck' |
-| updated_at  | INTEGER | Unix epoch                                   |
+| Column | Type | Notes |
+|--------|------|-------|
+| id | TEXT | client-generated id |
+| user_id | INTEGER | FK → users(id) ON DELETE CASCADE |
+| name | TEXT | default `'Untitled Deck'` |
+| data | TEXT | JSON blob (see below) |
+| is_public | INTEGER | 0/1 — controls share-link visibility |
+| is_splash | INTEGER | 0/1 — marks a splash-page deck |
+| splash_site | TEXT | `mymagicdeck` \| `myvintagedeck` \| `mycommanderdeck` |
+| updated_at | INTEGER | unix epoch |
 
-**Primary key**: `(id, user_id)` — same deck ID can't belong to two users.
+**Primary key:** `(id, user_id)`. The `data` blob holds `{cards, sideboard, commander?, deckPhoto?,
+arts (per-copy art), layout (free-drag positions), defaultLayout, printPref}` — these ride inside
+the JSON with no schema change (see the pipelines below).
 
 ### `cards`
-| Column         | Type | Notes                                 |
-|----------------|------|----------------------------------------|
-| oracle_id      | TEXT | PK — Scryfall oracle ID               |
-| name           | TEXT | Card name                             |
-| mana_cost      | TEXT | e.g. `{2}{U}{U}`                      |
-| cmc            | REAL | Converted mana cost                   |
-| type_line      | TEXT | e.g. `Creature — Human Wizard`        |
-| oracle_text    | TEXT | Rules text                            |
-| colors         | TEXT | JSON array: `["U"]`                   |
-| color_identity | TEXT | JSON array: `["U","W"]`               |
-| keywords       | TEXT | JSON array: `["Flying","Lifelink"]`   |
-| legalities     | TEXT | JSON object: `{standard:"legal",...}` |
-| set_id         | TEXT | Set code                              |
-| set_name       | TEXT | Set name                              |
-| rarity         | TEXT | common/uncommon/rare/mythic           |
-| image_uris     | TEXT | JSON: `{small, normal, large}`        |
-| card_faces     | TEXT | JSON array (for double-faced cards)   |
-| prices         | TEXT | JSON: `{usd, usd_foil}`              |
-| updated_at     | INTEGER | Unix epoch                         |
+| Column | Type | Notes |
+|--------|------|-------|
+| oracle_id | TEXT | PK — Scryfall oracle id |
+| name | TEXT | card name |
+| mana_cost | TEXT | e.g. `{2}{U}{U}` |
+| cmc | REAL | converted mana cost / mana value |
+| type_line | TEXT | e.g. `Creature — Human Wizard` |
+| oracle_text | TEXT | rules text |
+| colors / color_identity / keywords | TEXT | JSON arrays |
+| legalities | TEXT | JSON object |
+| set_id / set_name / rarity | TEXT | printing info |
+| image_uris / card_faces / prices | TEXT | JSON (faces for DFCs) |
+| power / toughness | TEXT | for the mobile guess engine |
+| edhrec_rank | INTEGER | popularity rank — orders guess candidates |
+| updated_at | INTEGER | unix epoch |
 
-### `cards_fts` (FTS5 virtual table)
-Full-text search index over `name`, `type_line`, `oracle_text`, `keywords`. Content-linked to `cards` table (no double storage).
+`cards_fts` is an FTS5 virtual table over `name, type_line, oracle_text, keywords`, content-linked
+to `cards` (no double storage), rebuilt inside the daily refresh transaction.
+
+### Other tables
+| Table | Purpose |
+|-------|---------|
+| `card_hashes` | 64-bit DCT pHash of every unique Scryfall artwork (card identification) |
+| `card_printings` | `(oracle_id, set_code)` — set-list custom formats (Middle School, Triple-A Ante) |
+| `uploads` | user image library: card-art + deck photos, with resolved card identity + confirm flag + quota |
+| `upload_reports` | moderation reports against an upload |
+| `user_fs` | per-account Win95 folder tree (one JSON blob) |
+| `user_desktop` | per-account desktop layout: mounted widgets + notes (one JSON blob) |
+| `password_resets` | sha256 of the emailed token, 1h expiry, single-use |
+| `tournaments` / `tournament_subs` / `tournament_rsvps` | events, parameter subscriptions, RSVPs (incl. geo cols) |
+| `mail` | async inbox: system / admin / user messages (replies via `from_user`) |
+| `battles` | ephemeral Card Duel rooms (reaped after 6h) |
+| `errors` | capped ring (≤500) of recent server + client errors (admin-viewable) |
 
 ---
 
-## API Endpoints
+## API reference
 
-### Health
-| Method | Path          | Auth | Description        |
-|--------|---------------|------|--------------------|
-| GET    | `/api/health` | No   | Returns `{ok:true}`|
+All routes are under `/api`. **Auth** column: `—` none, `JWT` bearer token, `admin` `x-admin-key`
+header (`ADMIN_API_KEY`), `bot` `x-bot-key` header (`BOT_API_KEY`), `soft` optional (reads token if
+present, never rejects). Per-IP / per-user rate limits apply to auth, uploads, GPU, reports,
+framecheck, and battle routes.
 
-### Authentication
-| Method | Path                 | Auth | Description                          |
-|--------|----------------------|------|--------------------------------------|
-| POST   | `/api/auth/register` | No   | Create account (username, email, pw) |
-| POST   | `/api/auth/login`    | No   | Login (username, pw) → JWT token     |
+### Health & telemetry
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/health` | — | `{ok:true}` |
+| POST | `/api/clientlog` | — | client error beacon (URL is redacted before storage) |
+| GET | `/api/admin/errors` | admin | recent server + client errors |
 
-**Register body**: `{username, email, password}` — username 2-32 chars, password 4-128 chars.
-**Login body**: `{username, password}`
-**Response**: `{token, user: {username, email}}`
+### Auth & account
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/auth/register` | — | create account (username 2–32, password **8–128**) → `{token, user}` |
+| POST | `/api/auth/login` | — | login → `{token, user}` |
+| POST | `/api/auth/forgot` | — | request reset — **always 200** (no account-existence leak); emails via Resend if configured |
+| POST | `/api/auth/reset` | — | complete reset with the emailed token + new password |
+| DELETE | `/api/account` | JWT | permanent delete — **requires current password**; removes decks/uploads/fs/desktop/mail/tournaments/files |
 
-### Decks (authenticated)
-| Method | Path             | Auth | Description                      |
-|--------|------------------|------|----------------------------------|
-| GET    | `/api/decks`     | Yes  | List all user's decks            |
-| PUT    | `/api/decks/:id` | Yes  | Create or update a deck (upsert) |
-| DELETE | `/api/decks/:id` | Yes  | Delete a deck                    |
-
-**PUT body**: `{name, cards, sideboard, public, splashOwner, splashSite, commander}`
-
-### Decks (public, no auth)
-| Method | Path                          | Auth | Description                              |
-|--------|-------------------------------|------|------------------------------------------|
-| GET    | `/api/decks/:id/share`        | No   | Get a public deck by ID                  |
-| GET    | `/api/users/:username/splash` | No   | Get a user's public splash deck          |
-| GET    | `/api/site/:site/splash`      | No   | Get the splash deck for a specific domain|
+### Decks
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/decks` | JWT | all of the user's decks |
+| PUT | `/api/decks/:id` | JWT | create/update (upsert) — body includes `cards, sideboard, commander, deckPhoto, layout, defaultLayout, printPref, public, splashOwner, splashSite` |
+| DELETE | `/api/decks/:id` | JWT | delete a deck |
+| GET | `/api/decks/:id/share` | — | a single public deck by id |
+| GET | `/api/users/:username/splash` | — | a user's public splash deck |
+| GET | `/api/site/:site/splash` | — | the public splash deck for a site domain |
 
 ### Cards
-| Method | Path                        | Auth | Description                                        |
-|--------|-----------------------------|------|----------------------------------------------------|
-| GET    | `/api/cards/search?q=&page=&per_page=` | No | Search cards (Scryfall syntax subset) |
-| GET    | `/api/cards/named?name=`    | No   | Lookup card by exact or fuzzy name                 |
-| GET    | `/api/cards/refresh/status`  | No   | Card DB refresh status                             |
-| POST   | `/api/cards/refresh`         | No   | Trigger manual card DB refresh                     |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/cards/search?q=&page=&per_page=` | — | search (Scryfall-syntax subset); **503 `{fallback:true}`** if unseeded |
+| GET | `/api/cards/named?name=` | — | exact-then-FTS card lookup |
+| GET | `/api/cards/keywords` | — | distinct keyword list (filter typeahead) |
+| GET | `/api/cards/prints?oracle=` | — | all paper printings (Scryfall, cached 24h) — powers art/printing swap |
+| POST | `/api/cards/guess` | — | mobile guess engine: candidates by color/cmc/type/P-T/name/format, ranked by EDHREC |
+| GET | `/api/cards/refresh/status` | — | card-DB refresh status |
+| POST | `/api/cards/refresh` | admin | trigger a card-DB refresh |
+| GET·POST | `/api/cards/hash-refresh[/status]` | admin (POST) | build/report the pHash artwork index |
+| GET·POST | `/api/cards/printings-refresh[/status]` | admin (POST) | build/report the printings set-list index |
 
-**Search returns 503** if card database has not been seeded yet, with `{fallback: true}`.
+**Search syntax (Scryfall subset):** `c:`/`color:`, `ci:`/`identity:` (incl. `c` colorless, `m`
+multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > < >= <= !=`,
+`r:`/`rarity:`, `kw:`/`keyword:`, and bare words (FTS over name/type/oracle/keywords).
 
-### Uploads (authenticated) — custom splash art + library
-| Method | Path                                          | Auth | Description                                              |
-|--------|-----------------------------------------------|------|----------------------------------------------------------|
-| POST   | `/api/uploads/card-art?autocrop=1&name=&oracle=` | Yes | Upload a custom card photo (multipart `file`)        |
-| POST   | `/api/uploads/deck-photo`                     | Yes  | Upload a full-deck photo (multipart `file`)              |
-| GET    | `/api/uploads`                                | Yes  | The user's upload library + quota                        |
-| PATCH  | `/api/uploads/:id`                            | Yes  | Set/confirm which card an upload depicts                 |
-| DELETE | `/api/uploads/:id`                            | Yes  | Delete an upload (auto-reverts decks that used it)       |
+### Uploads & moderation
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/uploads/analyze` | JWT | vision pass for the cropper (corners + read name + is-card) — no store, no quota |
+| POST | `/api/uploads/card-art?autocrop=1&name=&oracle=` | JWT | upload custom card art (multipart `file`); deskew → 3 WebP sizes → identity cascade |
+| POST | `/api/uploads/deck-photo` | JWT | full-deck photo for the splash header (≤1600px WebP) |
+| GET | `/api/uploads` | JWT | the user's library + card quota |
+| PATCH | `/api/uploads/:id` | JWT | set/confirm which card an upload depicts |
+| DELETE | `/api/uploads/:id` | JWT | delete files + row, then auto-revert any decks that used it |
+| POST | `/api/uploads/:id/report` · `/api/uploads/report` | soft | moderation report (by id or by image URL) |
+| GET | `/api/admin/reports` | admin | reported uploads, most-reported first |
+| POST | `/api/admin/uploads/:id/takedown` | admin | purge an upload (any owner) + revert decks |
 
-- **card-art**: best-effort vision pass that (a) checks "is this a Magic card?" — a *confident* non-card → **422**; (b) reads the **card name**; (c) locates the card's **4 corners** (and a bbox fallback). With `autocrop=1` the card is **perspective-deskewed** to straighten a tilted photo (ImageMagick `-distort Perspective` from the corners; falls back to bbox crop, then full frame), then re-encoded to three WebP sizes (small/normal/large, ~63:88). `name`/`oracle` (the card being replaced) auto-label + confirm the upload; otherwise the vision-read name is resolved against the card DB (unconfirmed, user confirms on the page). Returns `{ image_uris, customArt:true, autoCropped, uploadId, cardName, oracleId, confirmed }`.
-- **Quota**: 100 `kind='card'` uploads per user (`UPLOAD_LIMIT`); exceeding → **409**. Deck photos don't count.
-- **GET /api/uploads** → `{ uploads:[{id,kind,card_name,oracle_id,confirmed,small,normal,large,created_at}], cardCount, limit }`.
-- **PATCH** body `{cardName?, oracleId?}` → validates against the card DB, sets `confirmed=1`.
-- **DELETE** removes the files + row, then scans the user's decks and reverts any base art (→ default Scryfall image via `oracle_id`), per-copy `arts[i]`, or `deckPhoto` that referenced the deleted image.
-- Tracked in the **`uploads`** table (`id,user_id,key,kind,card_name,oracle_id,confirmed,small,normal,large,created_at`).
-- **deck-photo**: downsizes to ≤1600px long edge, re-encodes WebP. Returns `{ url }`.
-- Images are stored on local disk under `UPLOAD_DIR/<userId>/<uuid>__<size>.webp` and served read-only by nginx at `/u/...`. Uploads are rate-limited per user, size-capped (12 MB), and re-encoded (strips EXIF / embedded payloads). Filenames are server-generated.
+- **card-art**: best-effort vision check (a *confident* non-card → **422**), card-name read, and
+  corner location; `autocrop=1` perspective-deskews from the corners (bbox crop → full-frame
+  fallback), then re-encodes to small/normal/large WebP (~63:88). Quota: `UPLOAD_LIMIT` (default 100)
+  `kind='card'` uploads/user; over → **409**. Deck photos don't count. Files are server-named, stored
+  at `UPLOAD_DIR/<userId>/<key>__<size>.webp`, served read-only by nginx at `/u/…`. Re-encoding
+  strips EXIF / embedded payloads.
 
-### Supported Search Syntax (Scryfall subset)
-- `c:wubrg` / `color:wubrg` — Color filter
-- `ci:wubrg` / `identity:wubrg` — Color identity filter
-- `t:creature` / `type:instant` — Type filter
-- `o:text` / `oracle:text` — Oracle text search
-- `f:commander` / `format:modern` — Format legality
-- `cmc=3`, `cmc>2`, `cmc<=4`, `mv=3` — Mana value
-- `r:rare` / `rarity:mythic` — Rarity
-- Bare words — Full-text search on name, type, oracle text, keywords
+### Splash / share rendering
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/splash/render` | soft | composite a deck PNG server-side (`sharp`) — SSRF **allowlist**: `/u/…` files + `cards.scryfall.io` only |
+| POST | `/api/splash/bg-generate` | soft | AI scene background from a **closed word-list** prompt — **503** until `IMG_GEN_URL` is set |
 
----
+### Account-synced shells
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET·PUT | `/api/fs` | JWT | Win95 folder tree (≤200 KB JSON) |
+| GET·PUT | `/api/desktop` | JWT | desktop layout: widgets + notes (≤300 KB JSON) |
 
-## Frontend Features
+### Tournaments
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST·GET | `/api/tournaments` | JWT (POST) / soft (GET) | create / browse upcoming (filters: format, mode, level, region) |
+| GET | `/api/tournaments/mine` | JWT | tournaments I posted |
+| GET | `/api/tournaments/:id` | soft | detail + RSVP tallies + my RSVP |
+| DELETE | `/api/tournaments/:id` | JWT | delete one I host |
+| POST | `/api/tournaments/:id/rsvp` | JWT | set/clear my RSVP (`going`/`maybe`/`no`/`clear`) |
+| GET·POST·DELETE | `/api/tournaments/subs[/:id]` | JWT | parameter subscriptions (format/mode/region/level/fee/geo) |
+| GET | `/api/tournaments/feed` | JWT | upcoming events matching any of my subscriptions |
 
-### Core Deck Building
-- **3-panel layout**: Deck list (left) | Search/Visual (center) | Card detail/Stats (right)
-- **Card search** with debounced input (300ms), Scryfall syntax support
-- **Filter panel** — interactive card mockup with color, type, format, CMC, P/T filters
-- **Add/remove cards** with quantity controls (+/- buttons)
-- **Sideboard** support with collapsible section
-- **4-copy rule** enforcement warnings (visual highlight, stats warning)
-- **Basic land** exception for the 4-copy rule
+Posting a tournament fans out **mail** to every (other) user whose subscription matches.
 
-### Deck Visual View (MTGO-style)
-- Cards displayed as stacked columns sorted by CMC, type, or color
-- **Drag and drop** reordering between columns
-- **Hover zoom** — ghost overlay at 2.3x with large image, viewport-clamped
-- **Set badge** on hover — click to open printings popover
-- **Printings popover** — browse all printings of a card, click to swap art
-- **Zoom slider** (50%-150%)
+### Mail
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/mail` · `/api/mail/unread` | JWT | inbox / unread count + `is_admin` |
+| POST | `/api/mail/:id/read` · `/api/mail/read-all` | JWT | mark read |
+| DELETE | `/api/mail/:id` | JWT | delete a message |
+| POST | `/api/mail/:id/reply` | JWT | reply to a message that has a sender |
+| POST | `/api/mail/feedback` | JWT | feedback / feature request → admins |
+| POST | `/api/mail/admin/send` | JWT (admin flag) | send to one user or broadcast |
 
-### Deck Statistics
-- Total/unique card counts
-- Average mana value (excluding lands)
-- Estimated price (USD)
-- Mana curve bar chart (0-7+)
-- Color distribution pips
-- Type breakdown with percentages
-- Format legality check across 8 formats
+### Integrations & web tools
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/integrations/status` | — | whether the Discord-bot tournament ingest is configured |
+| POST | `/api/integrations/tournament` | bot | the MTG Discord bot posts a tournament (creates it + fans out mail) |
+| GET | `/api/web/framecheck?url=` | — | can a URL be iframed? Header-only, **SSRF-guarded** (validates + pins the IP on every redirect hop) |
 
-### Import/Export
-- **Import**: Plain text (`4 Lightning Bolt`) or MTG Arena format
-- **Export**: Plain text (grouped by type), MTG Arena format, JSON
-- Import resolves card names via local API first, Scryfall fallback
-- Section headers (`// Creatures`, `Sideboard`, `[Sideboard]`, `Deck`, `Commander`) recognized
-
-### Sharing & Splash Pages
-- **Share URL**: Base64-encoded deck data in URL hash (`#deck=...`)
-- **Public link toggle**: Makes deck accessible via `/api/decks/:id/share`
-- **Splash pages**: Full-screen deck display with:
-  - Commander slot (gold border, auto-detected legendary creature)
-  - Type breakdown bar (color-coded segments)
-  - Sortable columns (by CMC or type)
-  - Zoom slider (60%-160%)
-  - Copy list, download .txt, load into builder actions
-- **Multi-site splash**: One deck per site (mymagicdeck/myvintagedeck/mycommanderdeck)
-- **Username subdomains**: `jake.mymagicdeck.com` → user's splash deck
-
-### Authentication & Sync
-- JWT-based auth stored in localStorage (`mmd_token`)
-- User avatar with dropdown menu (Share, Sign Out)
-- On login: local guest decks are pushed to server, then server decks pulled
-- Server wins on conflict (local-only decks preserved if not on server)
-- Deck changes sync to server on every save/add/remove (fire-and-forget)
-
-### Keyboard Shortcuts
-| Shortcut  | Action                         |
-|-----------|--------------------------------|
-| Ctrl+K    | Focus search input             |
-| Ctrl+S    | Save current deck              |
-| Ctrl+D    | Toggle search/deck visual view |
-| Escape    | Close modals, splash, menus    |
-
-### Mobile Support
-- Responsive layout at ≤900px: single-column with bottom nav (Deck/Search/Card)
-- Further simplification at ≤600px: header buttons hidden
-- Splash pages: tighter padding, 70% default zoom
+### Card Duel (online)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/battle/create` | — | new room: a hidden card + clue schedule; returns a per-player token |
+| POST | `/api/battle/:code/join` | — | join by code (room caps at 2) |
+| GET | `/api/battle/:code` | — | public room state — **the answer is withheld until the round is over** |
+| POST | `/api/battle/:code/reveal` · `/guess` · `/rematch` | — | (token-gated) reveal next clue / guess / new round |
 
 ---
 
-## Card Data Pipeline
+## Frontend ("Deck OS")
 
-1. **Initial seed**: On first server start, if `cards` table is empty, bulk data is downloaded from Scryfall (`oracle_cards` type, ~30k unique cards)
-2. **Daily refresh**: Scheduled at 3:00 AM UTC via `setTimeout` + `setInterval`
-3. **Manual trigger**: `POST /api/cards/refresh`
-4. **Process**: Download bulk JSON → parse → upsert all cards in one transaction → rebuild FTS5 index
-5. **Status tracking**: `GET /api/cards/refresh/status` returns `{status, started, finished, count, error, total}`
+The desktop builder is a three-panel layout (deck list · search/visual · card detail/stats). On
+**mobile** (`max-width:900px`) it reframes as a Windows-95 PC: a desktop with icons, a Start menu, a
+taskbar, decks-as-files, account-synced folders, and every feature as a launchable **program**. All
+of this is mobile-gated; desktop browsers see the plain builder (plus the optional Level-B WM).
+
+### Extension surface
+- **`window.DeckOS`** — the versioned public API (`version '1.0'`): `registerProgram`, `store`
+  (swappable key/value), `decks`, `ui`, `mode`/`isLocal`, `widgets`, `calendar`, `notes`, folder
+  storage, and mod installation. A "program" is one `DeckOS.registerProgram({id,title,icon,mount})`
+  call (or an `MGW_APPS` entry); it gets a Win95 window + Start-menu entry + window states for free.
+- **Mods** — two trust tiers (see [`SECURITY.md`](SECURITY.md) and [`mymagicdeck/mods/`](mymagicdeck/mods)):
+  *trusted* (`new Function` userscript, full session, explicit opt-in) and *sandboxed*
+  (`sandbox="allow-scripts"` iframe over a narrow `postMessage` capability bridge).
+- **Personal (local) mode** — runs account-less in this browser; hides the account/subdomain
+  programs; decks live in `DeckOS.store`, optionally mirrored to a chosen folder or pointed at a
+  self-hosted API base.
+
+### Window management
+There are **two presentation layers over one shared program registry (`MGW_APPS`)**:
+- **MGW** (`mgw*`) drives the **mobile** shell — full / mini-drag / minimized + the desktop tray.
+- **WM** ("Level B", `wm*`) drives **desktop** floating, resizable windows; it has no registry of
+  its own and delegates back into `MGW_APPS`. Active when `body.wm-on`.
+
+This split is mid-migration — see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md) for the intended end state.
+Until that's resolved, both paths are load-bearing (MGW = mobile, WM = desktop).
+
+### Programs
+CGG (Card Guesser), Card Duel, Splash Builder, Share Deck, Share Image, Storage (uploads), HUD,
+Recycle Bin, System Settings, About, Files, Mail, MyMagicBot, Calendar, Notes, Mana Pool,
+TWENTYFOURTY (life counter), The Land Game, Tournaments, and web-shortcut programs.
+
+### Other frontend features
+- **Search** — debounced, local-API-first with a Scryfall fallback on a genuine local outage
+  (`AbortController` + sequence guard against races).
+- **Filter panel** — an interactive card mockup driving color/type/format/CMC/P-T/rarity/keyword filters.
+- **Deck visual view** — MTGO-style CMC/type/color columns, drag-reorder, hover-zoom, printings popover.
+- **Stats** — counts, average MV, price, mana curve, color pips, type breakdown, format legality.
+- **Import/export** — plain text + MTG Arena format; export as text/Arena/JSON.
+- **Sharing** — base64 deck in the URL hash, public-link toggle, splash pages, username subdomains.
+- **Keyboard** — Ctrl+K search, Ctrl+S save, Ctrl+D toggle view, Esc close.
+
+---
+
+## Pipelines
+
+### Card data
+1. **Seed** on first boot if `cards` is empty: download Scryfall `oracle_cards` bulk.
+2. **Daily refresh** ~03:00 UTC (`setTimeout` → `setInterval`); manual trigger `POST /api/cards/refresh` (admin).
+3. Download → parse → upsert all cards in one transaction → rebuild FTS5 → `wal_checkpoint(TRUNCATE)`.
+   Skips `reversible_card` printings (no gameplay data). Status at `/api/cards/refresh/status`.
+
+### Card identification (uploads)
+Neither signal is reliable alone on real photos, so identity uses a **staged cascade**
+(`cascadeIdentify`): (1) explicit expected card (splash-replace) wins; (2) the VLM-read **name**,
+fuzzy-matched (Levenshtein) against the card DB — name is ~unique in Magic; (3) disambiguate a
+garbled read by **mana cost / CMC**; (4) if several remain, **pHash ranks the crop within those
+few** (`rankHashAmong` — reliable as a local ranker even though global pHash isn't); (5) else the best
+fuzzy name as an *unconfirmed* suggestion (with an `escalateIdentify` hook for a future agentic
+verifier); (6) no readable name → global `matchHash` as an **unconfirmed suggestion only**. Corners
+come from OpenCV (`detect_corners.py`); the VLM is used only to read the name. `card_hashes` indexes
+a 64-bit DCT pHash of every unique Scryfall artwork (`POST /api/cards/hash-refresh`).
+
+### Splash / share image (`POST /api/splash/render`)
+Composites a deck PNG server-side (Scryfall images aren't CORS-enabled, so client capture can't
+export). Background = a key (placeholder PNG under `/u/_bg/`), a `#hex`, an AI scene
+(`/u/<sub>/bg_*.png` or the shared guest area), or none. Cards are fetched via an **allowlist**
+(`/u/…` files + `cards.scryfall.io`), composited with `sharp`, then an SVG overlay (title/price band,
+CMC curve, deck-list panel, type-breakdown bar) is drawn on top — either in fixed header/footer bands
+or at user-dragged positions (User Layout). **AI backgrounds** (`/bg-generate`) build a prompt from
+closed word-lists (`BG_SCENES`/`BG_VIBES`) + a hidden server-side whimsy modifier, call `IMG_GEN_URL`
+(dormant/503 until set), and are rate-limited + globally concurrency-capped to protect the inference box.
 
 ---
 
 ## Deployment
 
-- **Container**: Docker on Node.js 20 Alpine
-- **Data persistence**: SQLite database at `/data/mymagicdeck.db` (volume-mounted)
-- **Reverse proxy**: Nginx proxies `/api/` to the container on port 3002
-- **Environment variables**:
-  - `JWT_SECRET` — Required, must be set in production
-  - `DB_PATH` — Default: `/data/mymagicdeck.db`
-  - `PORT` — Default: `3002`
-  - `LOG_LEVEL` — Default: `info`
-  - `UPLOAD_DIR` — Default: `<dir of DB_PATH>/uploads` (mount nginx at `/u/` to serve it)
-  - `VLM_ENABLED` — Default: `true` (set `false` to skip the vision card-check)
-  - `VLM_BASE_URL` — OpenAI-compatible multimodal endpoint. Default: `http://192.168.1.207:8081/v1`
-  - `VLM_MODEL` — Default: `local`
-  - `VLM_TIMEOUT` — ms before the vision call is abandoned (falls back to smart-crop). Default: `60000`
-  - `IMG_GEN_URL` — optional text-to-image endpoint for AI splash backgrounds (e.g. a ComfyUI/SD HTTP wrapper). **Unset = feature dormant** (`/api/splash/bg-generate` returns 503). Contract: `POST {prompt,width,height}` → PNG bytes, or JSON `{image|b64_json}`. `IMG_GEN_TIMEOUT` (ms, default 120000).
-  - `UPLOAD_LIMIT` — card-art uploads per user. Default: `100`
-  - `PHASH_THRESHOLD` — max Hamming distance for a confident pHash card match. Default: `14`
+- **Container:** Docker, `node:20-alpine` + `imagemagick` + `py3-opencv`/`py3-numpy` + DejaVu fonts.
+- **Data:** SQLite at `/data/mymagicdeck.db` (host `/srv/data/mymagicdeck`, volume-mounted).
+- **Uploads:** `UPLOAD_DIR` (default `<DB dir>/uploads`); mount nginx at `/u/` to serve it read-only.
+- **Reverse proxy:** nginx proxies `/api/` to the container on :3002; public via the Cloudflare tunnel.
+- **Rebuild after an `api/` change:** `cd /srv/docker && docker compose build mymagicdeck-api && docker compose up -d mymagicdeck-api` (or `agent/rebuild-api.sh`). The static frontend needs no rebuild.
+- See [`api/DEPLOY.md`](api/DEPLOY.md) for homelab specifics.
 
-### Card recognition pipeline (uploads)
-- **Corners** come from OpenCV (`api/detect_corners.py`, document-scanner: Canny → largest convex quad → ordered TL,TR,BR,BL), invoked from `detectCornersCV()`. The VLM's corners proved unreliable; it's used only to *read the card name*. The cropper seeds its draggable handles from the CV corners (full-frame fallback).
-- **Card identity** uses a **staged cascade** (`cascadeIdentify`), because neither signal is reliable alone on real photos: (1) explicit expected card (splash replace) wins; (2) the VLM-read **name** is fuzzy-matched (Levenshtein) against the card DB — name is ~unique in Magic, so this usually resolves it; (3) a garbled read is disambiguated by **mana cost / CMC**; (4) if several candidates remain, pHash ranks the crop *within those few* (`rankHashAmong` — reliable as a local ranker even though global pHash isn't); (5) otherwise the best fuzzy name is an unconfirmed suggestion, with an `escalateIdentify` stub hook for a future tool-grounded/agentic verifier; (6) no readable name → global `matchHash` as an **unconfirmed suggestion only** (global pHash collides on low-contrast art/photos, so it never auto-confirms). `card_hashes` indexes a 64-bit DCT pHash of every unique Scryfall artwork.
-- **Hash index build**: `POST /api/cards/hash-refresh` (fire-and-forget) streams the `unique_artwork` bulk, downloads each small image, hashes it (resumable; only hashes stored, ~1–2 MB); `GET /api/cards/hash-refresh/status` reports progress. The in-memory index loads on boot and after each refresh.
+### Environment variables
+| Var | Default | Notes |
+|-----|---------|-------|
+| `PORT` | `3002` | listen port |
+| `JWT_SECRET` | — | **required**; must be ≥32 chars and not the default, or the server refuses to start |
+| `ADMIN_API_KEY` | — | gates `/cards/refresh`, `/hash-refresh`, `/printings-refresh`, `/admin/*`; unset → those endpoints 503/disabled |
+| `BOT_API_KEY` | — | service key for the Discord-bot tournament ingest; unset → integration 503 |
+| `ADMIN_USERNAME` | `jake` | user granted the `is_admin` flag on boot |
+| `RESEND_API_KEY` / `RESEND_FROM` | — | password-reset email; dormant until set (forgot still 200s) |
+| `APP_BASE_URL` | `https://mymagicdeck.com` | base for reset links |
+| `DB_PATH` | `/data/mymagicdeck.db` | SQLite path |
+| `UPLOAD_DIR` | `<DB dir>/uploads` | upload storage root |
+| `UPLOAD_LIMIT` | `100` | card-art uploads per user |
+| `VLM_ENABLED` | `true` | set `false` to skip the vision card-check |
+| `VLM_BASE_URL` | `http://192.168.1.207:8081/v1` | OpenAI-compatible multimodal endpoint |
+| `VLM_MODEL` / `VLM_TIMEOUT` | `local` / `60000` | model id / ms before falling back to smart-crop |
+| `IMG_GEN_URL` / `IMG_GEN_TIMEOUT` | — / `120000` | text-to-image endpoint for AI backgrounds; **unset = feature dormant (503)** |
+| `BG_MAX` / `BG_CONCURRENCY` | `6` / `1` | AI-background budget per user / global in-flight cap |
+| `PHASH_THRESHOLD` | `14` | max Hamming distance for a confident pHash match |
+| `LOG_LEVEL` | `info` | Fastify logger level |
 
-### Deck `data` blob fields (custom art / photo)
-- Per-card custom art rides inside the deck JSON: the stored card gets `image_uris` pointed at `/u/...` URLs plus `customArt:true` (and `_origImg` preserved so "Revert to original art" works). No schema change — it persists via the normal deck sync.
-- **Per-copy art**: a deck entry (`deck.cards[id] = {card, qty, arts}`) may carry `arts`, an object mapping copy index → `image_uris`, so individual copies of the same card (e.g. 4 different Force of Will photos) can each show different art. The art chooser has an "Apply to: This copy (#N) / All N copies" toggle; "All" sets the base `image_uris` and clears `arts`. Both the splash and the deck-editor render `arts[i]` per copy (copy index parsed from the builder's `cardId_<i>` instance uid).
-- **Splash layout** (blob): `defaultLayout` (`'cmc'|'type'|'user'`) sets which order a splash opens in; `layout = {positions:{ '<cardId>_<copyIdx>': {x,y,z} }}` stores the free-drag **User Layout** (each physical copy positioned independently; last-clicked raised via z). Both pass through `PUT /api/decks/:id`.
-
-### Shareable deck image
-- **`POST /api/splash/render`** (auth): composites a deck PNG server-side (Scryfall images aren't CORS-enabled, so client-side capture can't export). Body: `{width,height, background (key|#hex|null), cards:[{url,x,y,w,h}] (z-order), overlays:{name,price,list,cmcCurve,typeBreakdown}, meta:{deckName,priceText,list[],curve[],typeSeg[]}}`. Cards are fetched with an **allowlist** (our `/u/...` files + `cards.scryfall.io` only — anti-SSRF), composited via `sharp`, then an SVG overlay (name/price banner, CMC-curve, deck-list panel, type-breakdown bar) is drawn on top. The composer UI snapshots the current splash layout (any mode), lets the user pick a background + toggle overlays, and Download/Share the result.
-- **Backgrounds**: placeholder PNGs at `/srv/data/mymagicdeck/uploads/_bg/<key>.png` (served `/u/_bg/...`), generated with ImageMagick. **AI scene backgrounds** (`POST /api/splash/bg-generate`): a constrained prompt builder — closed word-lists only (`BG_SCENES`/`BG_VIBES`, no free text → limits misuse) — plus a hidden server-side "whimsy" modifier (`BG_WHIMSY`, never shown to the user). Calls `IMG_GEN_URL` (dormant/503 until set), saves to `/u/<userId>/bg_*.png`, and the renderer accepts that path as the `background` (validated to the caller's own dir). The diffusion model only makes the *scene*; cards are always composited by our renderer (an LLM can't legibly place specific cards).
-- **Header/footer + title**: the rendered image has top+bottom buffer bands totaling 10% (5% each); the deck name renders in the header as "\<name\> by \<author\>". Cards composite into the middle 90%; type-breakdown bar sits in the footer band.
-- **Splash layouts**: "Deck pic layout" (tidy grid) and **"Fan layout"** (`fanLayout()`) — a staggered cascade where the vertical step exceeds a card's top-strip height so every card's name + mana cost stays visible (the readability guarantee, done deterministically rather than via the AI).
-- `deckPhoto` (deck-level string URL) is passed through by `PUT /api/decks/:id` and rendered as a banner on the splash page.
-
-### Domain Routing
-- `mymagicdeck.com` → serves `index.html` (static) + `/api/` (proxy to container)
-- `*.mymagicdeck.com` → same static file, but JS detects subdomain and loads splash
-- `myvintagedeck.com` / `mycommanderdeck.com` → same static file, JS detects domain and loads site splash
+### Domain routing
+- `mymagicdeck.com` → static `index.html` + `/api/` (proxied to the container).
+- `*.mymagicdeck.com` → the same static file; JS detects the subdomain and loads that user's splash.
+- `myvintagedeck.com` / `mycommanderdeck.com` → the same static file; JS detects the domain and loads the site splash.
 
 ---
 
-## Known Limitations & Technical Debt
+## Testing & maintenance
 
-1. ~~Search goes directly to Scryfall~~ **(fixed)** — `doSearch()` now queries the local API first (with an `AbortController` + sequence guard to prevent races) and only falls back to `api.scryfall.com` on a genuine local outage (5xx/network), not on a 4xx. Colorless/multicolor (`c:c`, `ci:c`, `c:m`) are handled server-side.
-2. **No DB seeding feedback** — Users see no indication when the card database is being populated on first startup.
-3. **Deck sync is silent** — `syncDeckToApi()` catches errors to console only; users don't know if sync fails.
-4. **Password minimum is 4 characters** — Too weak for production.
-5. **No rate limiting** on any endpoint, including auth.
-6. **No token refresh** — JWT expires after 30 days with no renewal mechanism.
-7. **Duplicate function** — `splashCardTouch()` is defined twice (lines 1511 and 1528).
-8. **Price staleness** — Prices refresh daily but there's no UI indicator of when prices were last updated.
-9. **No email verification** — Accounts are created without confirming email.
-10. **`search-filters` referenced but doesn't exist** — `switchCenterView()` references `document.getElementById('search-filters')` but the element ID is `card-filter-panel`.
+- **`tests/run.sh`** — the regression loop: `frontend-check.mjs` (static checks on `index.html` —
+  `node --check` of the inline script, balanced tags, required element ids, API/PWA wiring) + the
+  API smoke tests run inside the container. **Green before every commit.**
+- **`tests/gui/`** — Puppeteer GUI tests per feature (run against a live instance).
+- **`agent/`** — ops scripts (`verify.sh`, `rebuild-api.sh`, `health.sh`, `preflight.sh`), the
+  `playbooks/`, and an optional MCP server. See [`AGENTS.md`](AGENTS.md) for the change→verify→commit loop.
+
+## Known limitations
+
+The security-relevant deferrals (synchronous-SQLite event-loop blocking under high load; no CSP, with
+the iframe-sandbox rationale) are tracked with their reasoning in [`SECURITY.md`](SECURITY.md). The one
+open architectural item is the **window-manager migration** (MGW/WM split) — see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md).
+
+---
+*Updated 2026-06-18 by Claude (Opus 4.8, via Claude Code) — reconciled with the current codebase
+(full API + schema reference, corrected stack/limitations). Keep it matching the code.*
