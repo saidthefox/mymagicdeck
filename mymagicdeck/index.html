@@ -1128,6 +1128,13 @@
     .os-widget{position:absolute;z-index:12;width:208px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.93;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 8px rgba(0,0,0,.4)}
     .os-widget .ow-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
     .os-widget .ow-btns{display:flex;gap:3px}
+    .dw{display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 4px}
+    .dw-face{width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:1.55rem;font-weight:800;background:linear-gradient(145deg,#fff,#cdd4e0);color:#1a2030;border-radius:12px;box-shadow:inset 0 2px 3px rgba(255,255,255,.8),0 2px 5px rgba(0,0,0,.4);cursor:pointer;user-select:none}
+    .dw-face.dw-pop{animation:dw-pop .35s ease}
+    @keyframes dw-pop{0%{transform:scale(.7) rotate(-12deg)}60%{transform:scale(1.12)}100%{transform:none}}
+    .dw-types{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:180px}
+    .dw-t{background:#d4d0c8;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:9px;padding:2px 5px;cursor:pointer;color:#000;font-family:inherit}
+    .dw-t.on{background:#1577d4;color:#fff;border-color:#0a4d8c}
     .os-widget .ow-bar button{background:#c0c0c0;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:10px;font-weight:bold;min-width:16px;height:14px;line-height:1;padding:0 1px;cursor:pointer;color:#000}
     .os-widget .ow-body{padding:6px 8px;max-height:300px;overflow:auto;line-height:1.45}
     .os-widget.pinned{opacity:.5;transition:opacity .15s}
@@ -6065,6 +6072,20 @@ widgetRegister('decklist', { title:'Deck List', icon:'📋', render(b){
 widgetRegister('pagestatus', { title:'Page Status', icon:'📡', render(b){
   if(!state.user){ b.innerHTML='<div style="color:#555">Sign in to see your pages.</div>'; return; }
   b.innerHTML=hudData().map(c=>'<div style="display:flex;align-items:center;gap:6px;padding:1px 0"><span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+(c.up?'#2c8a4a':'#999')+'"></span>'+_mgEsc(c.short)+(c.up&&c.deck?' · '+_mgEsc(c.deck):'')+'</div>').join('');
+}});
+// Rollable dice widget — tap the face to roll the chosen die (or coin); crypto-fair.
+widgetRegister('dice', { title:'Dice', icon:'🎲', render(b, inst){
+  if(!inst.sides)inst.sides=20;
+  const types=[4,6,8,10,12,20,100];
+  b.innerHTML='<div class="dw"><div class="dw-face" data-roll>'+(inst._face!=null?inst._face:('d'+inst.sides))+'</div>'+
+    '<div class="dw-types">'+types.map(t=>'<button class="dw-t'+(t===inst.sides?' on':'')+'" data-s="'+t+'">d'+t+'</button>').join('')+'<button class="dw-t dw-coin" data-coin>🪙</button></div></div>';
+  const faceEl=b.querySelector('[data-roll]');
+  const pop=v=>{ inst._face=v; faceEl.textContent=v; faceEl.classList.remove('dw-pop'); void faceEl.offsetWidth; faceEl.classList.add('dw-pop'); };
+  faceEl.addEventListener('click',()=>pop(_diceRand(inst.sides)+1));
+  b.querySelectorAll('[data-s]').forEach(btn=>btn.addEventListener('click',e=>{ e.stopPropagation(); inst.sides=+btn.dataset.s;
+    const list=widgetList(), w=list.find(x=>x.id===inst.id); if(w){ w.sides=inst.sides; widgetSave(list); }
+    b.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',+x.dataset.s===inst.sides)); pop(_diceRand(inst.sides)+1); }));
+  b.querySelector('[data-coin]').addEventListener('click',e=>{ e.stopPropagation(); pop(_diceRand(2)?'H':'T'); });
 }});
 if(window.DeckOS){ DeckOS.widgets={ register:widgetRegister, mount:widgetMount, unmount:widgetUnmount, types:()=>Object.keys(WIDGET_TYPES) }; }
 
