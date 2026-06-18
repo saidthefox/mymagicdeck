@@ -2555,8 +2555,8 @@ function openSplash(deckObj,username,opts){
       <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
       <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
       <span class="splash-user-ctl" id="splash-stats-wrap" style="display:none;position:relative">
-        <button class="btn small" onclick="toggleStatsMenu(event)" title="Add draggable stat panels onto the splash">📊 Stats ▾</button>
-        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each panel where you want it, then 💾 Save layout.</div></div>
+        <button class="btn small" onclick="toggleStatsMenu(event)" title="Add draggable widgets onto the splash">🧩 Widgets ▾</button>
+        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each widget where you want it, then 💾 Save layout.</div></div>
       </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
       <button class="btn small" onclick="openUploads()">🖼 Gallery</button>
