@@ -185,8 +185,8 @@ framecheck, and battle routes.
 | POST | `/api/cards/guess` | — | mobile guess engine: candidates by color/cmc/type/P-T/name/format, ranked by EDHREC |
 | GET | `/api/cards/refresh/status` | — | card-DB refresh status |
 | POST | `/api/cards/refresh` | admin | trigger a card-DB refresh |
-| GET·POST | `/api/cards/hash-refresh[/status]` | admin (POST) | build/report the pHash artwork index |
-| GET·POST | `/api/cards/printings-refresh[/status]` | admin (POST) | build/report the printings set-list index |
+| GET·POST | `/api/cards/hash-refresh` · `/api/cards/hash-refresh/status` | admin (POST) | build/report the pHash artwork index |
+| GET·POST | `/api/cards/printings-refresh` · `/api/cards/printings-refresh/status` | admin (POST) | build/report the printings set-list index |
 
 **Search syntax (Scryfall subset):** `c:`/`color:`, `ci:`/`identity:` (incl. `c` colorless, `m`
 multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > < >= <= !=`,
@@ -232,7 +232,7 @@ multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > 
 | GET | `/api/tournaments/:id` | soft | detail + RSVP tallies + my RSVP |
 | DELETE | `/api/tournaments/:id` | JWT | delete one I host |
 | POST | `/api/tournaments/:id/rsvp` | JWT | set/clear my RSVP (`going`/`maybe`/`no`/`clear`) |
-| GET·POST·DELETE | `/api/tournaments/subs[/:id]` | JWT | parameter subscriptions (format/mode/region/level/fee/geo) |
+| GET·POST·DELETE | `/api/tournaments/subs` · `/api/tournaments/subs/:id` | JWT | parameter subscriptions (format/mode/region/level/fee/geo) |
 | GET | `/api/tournaments/feed` | JWT | upcoming events matching any of my subscriptions |
 
 Posting a tournament fans out **mail** to every (other) user whose subscription matches.
@@ -260,7 +260,7 @@ Posting a tournament fans out **mail** to every (other) user whose subscription 
 | POST | `/api/battle/create` | — | new room: a hidden card + clue schedule; returns a per-player token |
 | POST | `/api/battle/:code/join` | — | join by code (room caps at 2) |
 | GET | `/api/battle/:code` | — | public room state — **the answer is withheld until the round is over** |
-| POST | `/api/battle/:code/reveal` · `/guess` · `/rematch` | — | (token-gated) reveal next clue / guess / new round |
+| POST | `/api/battle/:code/reveal` · `/api/battle/:code/guess` · `/api/battle/:code/rematch` | — | (token-gated) reveal next clue / guess / new round |
 
 ---
 

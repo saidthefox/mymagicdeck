@@ -9,6 +9,10 @@ echo "── frontend ───────────────────�
 node frontend-check.mjs || rc=1
 
 echo
+echo "── docs ──────────────────────────────────"
+node doc-check.mjs || rc=1
+
+echo
 echo "── api (mymagicdeck-api container) ───────"
 if docker ps --format '{{.Names}}' | grep -q '^mymagicdeck-api$'; then
   docker cp api-smoke.mjs mymagicdeck-api:/tmp/api-smoke.mjs >/dev/null 2>&1
