@@ -289,8 +289,10 @@ There are **two presentation layers over one shared program registry (`MGW_APPS`
 - **WM** ("Level B", `wm*`) drives **desktop** floating, resizable windows; it has no registry of
   its own and delegates back into `MGW_APPS`. Active when `body.wm-on`.
 
-This split is mid-migration — see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md) for the intended end state.
-Until that's resolved, both paths are load-bearing (MGW = mobile, WM = desktop).
+This is the **blessed end state**, not an unfinished migration: on desktop the `mgw*` lifecycle
+functions delegate to `wm*` (via `wmEligible`), so `wm*` owns every desktop window; `mgw*` does the
+real work only on mobile. Both paths are load-bearing (MGW = mobile, WM = desktop). Converging mobile
+onto `wm*` is possible but deliberately not planned — see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md).
 
 ### Programs
 CGG (Card Guesser), Card Duel, Splash Builder, Share Deck, Share Image, Storage (uploads), HUD,
@@ -389,8 +391,9 @@ closed word-lists (`BG_SCENES`/`BG_VIBES`) + a hidden server-side whimsy modifie
 ## Known limitations
 
 The security-relevant deferrals (synchronous-SQLite event-loop blocking under high load; no CSP, with
-the iframe-sandbox rationale) are tracked with their reasoning in [`SECURITY.md`](SECURITY.md). The one
-open architectural item is the **window-manager migration** (MGW/WM split) — see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md).
+the iframe-sandbox rationale) are tracked with their reasoning in [`SECURITY.md`](SECURITY.md). The
+window-manager split (MGW = mobile, WM = desktop) is the **blessed architecture**, not an open item —
+see [`WINDOW-MANAGER.md`](WINDOW-MANAGER.md).
 
 ---
 *Updated 2026-06-18 by Claude (Opus 4.8, via Claude Code) — reconciled with the current codebase

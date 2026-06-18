@@ -5248,11 +5248,12 @@ function mgLaunchApp(app){
   if(app==='cgg'){mgLaunch();return;}
   if(MGW_APPS[app])mgwLaunch(app);
 }
-// ===== MGW: generic Win95 window manager for "programs" =====
-// Any feature can run as a launchable Win95 program with full / mini-drag / minimized
-// states + a desktop-taskbar button. Each app reuses its existing overlay; MGW just
-// adds chrome + state. Register a new program (e.g. a 2-player guessing battle) by
-// adding one entry here with {overlay, win, title, icon, open, close}.
+// ===== MGW: the shared program registry + the MOBILE window shell =====
+// MGW_APPS (below) is the single registry every program is declared in — used by BOTH form
+// factors. The mgw* lifecycle functions are the MOBILE shell (full / mini-drag / minimized + a
+// desktop-tray button); on desktop (body.wm-on) they delegate to wm* via wmEligible() (see the WM
+// section). This split is the blessed end state, not a migration step — see WINDOW-MANAGER.md.
+// Register a new program by adding one entry here: {overlay, win, title, icon, open, close}.
 const MGW_APPS={
   splash: {overlay:'splash-overlay', win:null,     title:'Splash Builder', icon:'🖼️', frame:true, open:()=>{ const d=currentDeck(); if(d)openSplash(d, state.user?.username||'You', {edit:true}); else previewSplash(); },  close:()=>{ if(typeof closeSplash==='function')closeSplash(); else document.getElementById('splash-overlay').classList.remove('open'); }},
   share:  {overlay:'modal-share',    win:'.modal', title:'Share Deck',     icon:'🔗',  open:()=>openShare(),      close:()=>closeModal('modal-share')},
@@ -5600,14 +5601,16 @@ function mgwWireMiniDrag(key){
 function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)&&document.getElementById(mgDeskTarget).querySelector('.mg-desk'))mgRenderDesktop();}
 function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin" data-mgw="'+k+'">'+MGW_APPS[k].icon+' '+MGW_APPS[k].title+'</button>').join('');}
 
-// ===== WM (Level B): real floating windows on desktop. MGW programs delegate here when body.wm-on. =====
-// See WINDOW-MANAGER.md. Phase 1: the modal-based programs become floating/resizable windows over the
-// builder, with a persistent taskbar. (The builder + CGG + splash join in later phases.)
+// ===== WM (Level B): THE desktop window manager — real floating, resizable windows. =====
+// On desktop (body.wm-on) wm* owns every window: the builder/site (wmOpenSite/wmReleaseSite), CGG,
+// Splash, and all .modal programs. The mgw* lifecycle functions delegate here via wmEligible(); mgw*
+// is the mobile shell only. This is the blessed end state (not an unfinished migration) — see
+// WINDOW-MANAGER.md. Converging mobile onto wm* is possible but deliberately not planned.
 const wmEls = {};   // key -> adopted window element (persists across open/close)
 const wmWins = {};  // key -> { state:'normal|max|min', rect:{x,y,w,h} } for currently-open windows
 let wmZ = 2000, wmFocusedKey = null;
 function wmDesktop(){ return document.body.classList.contains('wm-on'); }
-const WM_SPECIAL=['cgg','splash']; // overlay-based programs that aren't plain modals (site = later phase)
+const WM_SPECIAL=['cgg','splash']; // overlay-based programs that aren't plain modals (the site has its own path: wmOpenSite/wmReleaseSite)
 function wmWinEl(key){ if(key==='cgg')return document.getElementById('mguess-card'); if(key==='splash')return document.getElementById('splash-overlay'); if(key==='site')return document.getElementById('site-window');
   // A .modal window gets MOVED into the WM layer on first open, so it's no longer found via
   // the overlay's querySelector on reopen — return the already-adopted element if we have it.
