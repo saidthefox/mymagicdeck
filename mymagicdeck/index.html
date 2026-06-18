@@ -989,7 +989,11 @@
     .mg-cbrow{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:12px;color:#000;cursor:pointer}
     .mg-desk{position:absolute;inset:0;background:var(--desk-bg,#017e7e);display:flex;flex-direction:column}
     .mg-deskicons{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:10px}
-    .mg-icon{width:74px;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px dotted transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+    .mg-icon{width:calc(74px * var(--os-icon,1));display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 3px;cursor:pointer;-webkit-tap-highlight-color:transparent;border:1px dotted transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:none}
+    /* Display app */
+    .disp-row{display:flex;align-items:center;gap:12px;padding:4px 2px}
+    .disp-val{min-width:48px;text-align:center;font-weight:700;color:var(--text-bright)}
+    .disp-sel{background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 6px;font-size:.82rem}
     .mg-deskicons.mg-free{display:block;position:relative;overflow:hidden}
     .mg-deskicons.mg-free .mg-icon{position:absolute}
     .mg-deskicons.mg-free .mg-icon.mg-dragging{z-index:60;opacity:.85}
@@ -1013,8 +1017,8 @@
     .mg-fbapp .mg-fbapp-ic{font-size:22px;line-height:1}
     .mg-fbapp-lbl{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-fbapp-x{position:absolute;top:-3px;right:0;width:15px;height:15px;border:none;border-radius:50%;background:#a33;color:#fff;font-size:9px;line-height:1;cursor:pointer;padding:0}
-    .mg-icon .mg-ico{font-size:30px;line-height:1}
-    .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:72px}
+    .mg-icon .mg-ico{font-size:calc(30px * var(--os-icon,1));line-height:1}
+    .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:calc(11px * var(--os-font,1));color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:calc(72px * var(--os-icon,1))}
     .mg-icon.sel{border:1px dotted #fff}
     .mg-icon.sel .mg-ilbl{background:#000080;text-shadow:none}
     .mg-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;background:#c0c0c0;border-bottom:2px solid #808080;padding:4px 6px;flex-wrap:wrap}
@@ -1738,7 +1742,7 @@
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
 <div class="modal-overlay" id="modal-decks"><div class="modal"><div class="modal-header"><div class="modal-title">My Decks</div><button class="modal-close" onclick="decksClose()">✕</button></div><div class="modal-body" id="deck-manager-list"></div><div class="modal-footer"><button class="btn" onclick="decksClose()">Close</button><button class="btn primary" onclick="newDeck();decksClose()">＋ New Deck</button></div></div></div>
 <div class="modal-overlay" id="modal-bin"><div class="modal" style="width:420px;max-width:95vw"><div class="modal-header"><div class="modal-title">Recycle Bin</div><button class="modal-close" onclick="closeModal('modal-bin')">✕</button></div><div class="modal-body" id="bin-list"></div><div class="modal-footer" id="bin-footer"></div></div></div>
-<div class="modal-overlay" id="modal-hud"><div class="modal" style="width:440px;max-width:96vw"><div class="modal-header"><div class="modal-title">HUD — Page Status</div><button class="modal-close" onclick="closeModal('modal-hud')">✕</button></div><div class="modal-body" id="hud-body"></div></div></div>
+<div class="modal-overlay" id="modal-hud"><div class="modal" style="width:440px;max-width:96vw"><div class="modal-header"><div class="modal-title">Display</div><button class="modal-close" onclick="closeModal('modal-hud')">✕</button></div><div class="modal-body" id="hud-body"></div></div></div>
 <div class="modal-overlay" id="modal-sysset"><div class="modal" style="width:400px;max-width:95vw"><div class="modal-header"><div class="modal-title">System Settings</div><button class="modal-close" onclick="closeModal('modal-sysset')">✕</button></div><div class="modal-body" id="sysset-body"></div></div></div>
 <div class="modal-overlay" id="modal-about"><div class="modal" style="width:380px;max-width:94vw"><div class="modal-header"><div class="modal-title">About</div><button class="modal-close" onclick="closeModal('modal-about')">✕</button></div><div class="modal-body" id="about-body"></div></div></div>
 <div class="modal-overlay" id="modal-battle"><div class="modal" style="width:460px;max-width:96vw"><div class="modal-header"><div class="modal-title">⚔️ Card Duel</div><button class="modal-close" onclick="closeModal('modal-battle')">✕</button></div><div class="modal-body" id="battle-body"></div></div></div>
@@ -2595,6 +2599,10 @@ function openSplash(deckObj,username,opts){
         <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each widget where you want it, then 💾 Save layout.</div></div>
       </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
+      <span class="splash-user-ctl-x" style="position:relative;display:inline-block">
+        <button class="btn small primary" onclick="splashPublishMenu(event)" title="Publish this splash to a subdomain">🌐 Publish ▾</button>
+        <div id="splash-pub-pop" class="dv-prints-pop"></div>
+      </span>
       <button class="btn small" onclick="openUploads()">🖼 Gallery</button>
       <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
     </div>
@@ -3179,6 +3187,29 @@ function freeStatResize(e,key){
     cur.s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]=cur; saveToStorage(); syncDeckToApi(deck.id); };
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
+// Publish the current splash deck onto a subdomain (moved here from the HUD).
+function splashPublishMenu(e){ if(e)e.stopPropagation(); const pop=document.getElementById('splash-pub-pop'); if(!pop)return;
+  if(!pop.classList.contains('open')){ pop.innerHTML=_splashPublishHtml(); pop.classList.add('open'); setTimeout(()=>document.addEventListener('click',_splashPubOutside,true),0); }
+  else { pop.classList.remove('open'); document.removeEventListener('click',_splashPubOutside,true); } }
+function _splashPubOutside(ev){ const pop=document.getElementById('splash-pub-pop'); if(pop&&pop.parentElement&&!pop.parentElement.contains(ev.target)){ pop.classList.remove('open'); document.removeEventListener('click',_splashPubOutside,true); } }
+function _splashPublishHtml(){
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="dv-pp-note">No deck loaded.</div>';
+  if(!state.user)return '<div class="dv-pp-note">Sign in to publish your splash to a subdomain.</div>';
+  const SITES=[{id:'mymagicdeck',label:'mymagicdeck.com',icon:'🃏',format:null},{id:'myvintagedeck',label:'myvintagedeck.com',icon:'⚗️',format:'vintage'},{id:'mycommanderdeck',label:'mycommanderdeck.com',icon:'👑',format:'commander'}];
+  const u=(state.user.username||'you').toLowerCase(); let rows='';
+  for(const s of SITES){ const isSet=deck.splashSite===s.id; let elig=true,note='';
+    if(s.format){ const cards=Object.values(deck.cards||{}); const bad=cards.filter(({card})=>{const l=(card.legalities||{})[s.format];return l!=='legal'&&l!=='restricted';});
+      if(bad.length){elig=false;note=bad.length+' not '+s.format+'-legal';}
+      if(elig&&s.format==='commander'){const t=cards.reduce((a,e)=>a+e.qty,0); if(t!==100){elig=false;note='needs 100 cards (has '+t+')';}} }
+    rows+='<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer;'+(elig?'':'opacity:.55')+'"><input type="checkbox" '+(isSet?'checked':'')+(elig?'':' disabled')+' onchange="splashSetSite(\''+s.id+'\',this.checked)"> '+s.icon+' '+s.label+(note?' <span style="color:var(--warn);font-size:.66rem">('+note+')</span>':'')+'</label>';
+    if(isSet)rows+='<div class="dv-pp-note" style="margin:0 0 4px 22px">→ '+_mgEsc(u)+'.'+s.label+'</div>'; }
+  return rows+'<div class="dv-pp-note">Publishing makes the deck public at your subdomain.</div>';
+}
+function splashSetSite(site,checked){ const deck=_splashDeck&&_splashDeck.deck; if(!deck||!state.user)return;
+  if(checked){ for(const dk of Object.values(state.decks||{})){ if(dk.splashSite===site&&dk.id!==deck.id){ dk.splashSite=null; dk.splashOwner=null; syncDeckToApi(dk.id); } }
+    deck.splashSite=site; deck.splashOwner=state.user.username; deck.public=true; toast('Published to '+site+'.com ⭐','success'); }
+  else { if(deck.splashSite===site){ deck.splashSite=null; deck.splashOwner=null; } toast('Unpublished from '+site+'.com','info'); }
+  saveToStorage(); syncDeckToApi(deck.id); const pop=document.getElementById('splash-pub-pop'); if(pop&&pop.classList.contains('open'))pop.innerHTML=_splashPublishHtml(); }
 function toggleStatsMenu(e){ if(e)e.stopPropagation(); const pop=document.getElementById('splash-stats-pop'); if(!pop)return;
   if(pop.classList.toggle('open')){ setTimeout(()=>document.addEventListener('click',_statsOutside,true),0); } else document.removeEventListener('click',_statsOutside,true); }
 function _statsOutside(ev){ const w=document.getElementById('splash-stats-wrap'); if(w&&!w.contains(ev.target)){ document.getElementById('splash-stats-pop')?.classList.remove('open'); document.removeEventListener('click',_statsOutside,true); } }
@@ -5510,7 +5541,7 @@ const MGW_APPS={
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
   storage:{overlay:'modal-uploads',  win:'.modal', title:'Gallery',        icon:'🖼️', open:()=>_openUploads(),    close:()=>closeModal('modal-uploads')},
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
-  hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
+  hud:    {overlay:'modal-hud',      win:'.modal', title:'Display',        icon:'🖥️', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
   about:  {overlay:'modal-about',    win:'.modal', title:'About',          icon:'ℹ️', open:()=>openAbout(),  close:()=>closeModal('modal-about')},
   battle: {overlay:'modal-battle',   win:'.modal', title:'Card Duel',      icon:'⚔️', open:()=>openBattle(), close:()=>closeModal('modal-battle')},
@@ -5757,23 +5788,28 @@ function hudData(){
   });
 }
 function openHud(){renderHud();openModal('modal-hud');}
+// Display: screen comfort — icon size, label text size, light/dark, desktop background (incl. AI).
 function renderHud(){
   const b=document.getElementById('hud-body');if(!b)return;
-  if(!state.user){b.innerHTML='<p style="color:var(--text-dim)">Sign in to see your published pages.</p>';return;}
-  const rows=hudData().map(c=>'<div style="display:flex;align-items:center;gap:9px;padding:9px 4px;border-bottom:1px solid var(--border)"><span style="width:10px;height:10px;border-radius:50%;flex-shrink:0;background:'+(c.up?'#39d353':'#888')+'"></span><div style="flex:1;min-width:0"><div style="color:var(--text);font-weight:600">'+_mgEsc(c.sub)+'</div><div style="color:var(--text-dim);font-size:.78rem">'+(c.up?('Deck: '+_mgEsc(c.deck||'(set)')):'Not published')+'</div></div><button class="btn small" onclick="closeModal(\'modal-hud\');mgwLaunch(\'share\')">Change</button></div>').join('');
-  // Desktop-widget manager: mount/unmount little panels onto the desktop.
+  const s=uiScaleGet();
+  const stepper=(which,label,val)=>'<div class="mg-smhdr" style="padding-left:0;margin-top:10px">'+label+'</div>'+
+    '<div class="disp-row"><button class="btn small" data-ui="'+which+'" data-d="-1">A−</button><span class="disp-val" id="disp-'+which+'">'+Math.round(val*100)+'%</span><button class="btn small" data-ui="'+which+'" data-d="1">A+</button></div>';
+  b.innerHTML=stepper('icon','Icon size',s.icon)+stepper('font','Label text size',s.font)+
+    displaySettingsHtml()+
+    '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">AI background</div>'+aiBgHtml();
+  wireDisplaySettings(b); wireAiBg(b);
+  b.querySelectorAll('[data-ui]').forEach(btn=>btn.addEventListener('click',()=>{ const which=btn.getAttribute('data-ui'); uiScaleBump(which, +btn.getAttribute('data-d')); const v=document.getElementById('disp-'+which); if(v)v.textContent=Math.round(uiScaleGet()[which]*100)+'%'; }));
+}
+// Widgets app: mount/unmount the live desktop panels (moved out of Display).
+function renderWidgetsApp(body){ if(!body)return;
   const mounted=widgetList();
   const avail=Object.keys(WIDGET_TYPES).map(t=>'<button class="btn small" data-mountw="'+t+'">+ '+_mgEsc(WIDGET_TYPES[t].title||t)+'</button>').join(' ');
-  const mountedHtml=mounted.length?mounted.map(w=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 2px;font-size:.82rem;color:var(--text)"><span>'+ (WIDGET_TYPES[w.type]?WIDGET_TYPES[w.type].icon+' '+_mgEsc(WIDGET_TYPES[w.type].title):_mgEsc(w.type))+'</span><button class="btn small" data-unmountw="'+w.id+'">Remove</button></div>').join(''):'<div style="color:var(--text-dim);font-size:.8rem;padding:2px">Nothing mounted.</div>';
-  b.innerHTML=rows+
-    '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Desktop widgets</div>'+
-    '<div style="color:var(--text-dim);font-size:.76rem;padding:2px 0 6px">Pin live panels to your desktop:</div>'+
-    '<div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:6px">'+avail+'</div>'+
-    mountedHtml+
-    displaySettingsHtml();
-  b.querySelectorAll('[data-mountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetMount(btn.getAttribute('data-mountw')); renderHud(); DeckOS.ui.toast('Widget mounted on the desktop'); }));
-  b.querySelectorAll('[data-unmountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetUnmount(btn.getAttribute('data-unmountw')); renderHud(); }));
-  wireDisplaySettings(b);
+  const mountedHtml=mounted.length?mounted.map(w=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 2px;font-size:.85rem;color:var(--text);border-bottom:1px solid var(--border)"><span>'+(WIDGET_TYPES[w.type]?WIDGET_TYPES[w.type].icon+' '+_mgEsc(WIDGET_TYPES[w.type].title):_mgEsc(w.type))+'</span><button class="btn small" data-unmountw="'+w.id+'">Remove</button></div>').join(''):'<div style="color:var(--text-dim);font-size:.82rem;padding:6px 2px">Nothing on the desktop yet.</div>';
+  body.innerHTML='<div class="t-wrap"><div style="color:var(--text);line-height:1.5;margin-bottom:8px">Pin live panels to your desktop — drag them where you like.</div>'+
+    '<div class="mg-smhdr" style="padding-left:0">Add a widget</div><div style="display:flex;flex-wrap:wrap;gap:6px;padding:6px 0 12px">'+avail+'</div>'+
+    '<div class="mg-smhdr" style="padding-left:0">On your desktop</div>'+mountedHtml+'</div>';
+  body.querySelectorAll('[data-mountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetMount(btn.getAttribute('data-mountw')); renderWidgetsApp(body); DeckOS.ui.toast('Widget pinned to the desktop'); }));
+  body.querySelectorAll('[data-unmountw]').forEach(btn=>btn.addEventListener('click',()=>{ widgetUnmount(btn.getAttribute('data-unmountw')); renderWidgetsApp(body); }));
 }
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
@@ -6078,12 +6114,12 @@ function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }
 // ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
 // Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
 let _deskSyncTimer=null;
-function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[]), appfolders:(typeof mgAppFolders==='function'?mgAppFolders():[])}})}).catch(()=>{}); }, 600); }
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[]), appfolders:(typeof mgAppFolders==='function'?mgAppFolders():[]), uiscale:(typeof uiScaleGet==='function'?uiScaleGet():null)}})}).catch(()=>{}); }, 600); }
 function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.uiscale&&typeof d.uiscale==='object')DeckOS.store.set('uiscale',d.uiscale); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
       else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
     }catch(e){}
   }
@@ -6110,8 +6146,31 @@ function wireDisplaySettings(b){
   const th=b.querySelector('[data-theme]'); if(th)th.addEventListener('change',()=>themeSet(th.checked?'light':'dark'));
 }
 function deskBgGet(){ try{ return DeckOS.store.get('deskbg')||''; }catch(e){ return ''; } }
-function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(d)d.style.setProperty('--desk-bg', c||'#017e7e'); } // .mg-desk paints over #pc-desktop, so drive both via the var
+function deskBgApply(c){ const d=document.getElementById('pc-desktop'); if(!d)return; // an image URL paints as cover; a color paints solid
+  const img=/^(\/u\/|https?:|data:)/.test(c||'');
+  d.style.setProperty('--desk-bg', img?("center/cover no-repeat url('"+String(c).replace(/'/g,'%27')+"')"):(c||'#017e7e')); }
 function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApply(c); desktopSyncSoon(); document.querySelectorAll('[data-bg]').forEach(sw=>sw.classList.toggle('on', sw.getAttribute('data-bg')===c)); }
+// ── UI scale: desktop icon size + label text size (per account, synced) ──
+function uiScaleGet(){ let s={}; try{ s=DeckOS.store.get('uiscale')||{}; }catch(e){} const cl=n=>Math.max(0.7,Math.min(1.6,(typeof n==='number'&&isFinite(n))?n:1)); return { icon:cl(s.icon), font:cl(s.font) }; }
+function uiScaleApply(){ const d=document.getElementById('pc-desktop'); if(!d)return; const s=uiScaleGet(); d.style.setProperty('--os-icon',s.icon); d.style.setProperty('--os-font',s.font); }
+function uiScaleBump(which,dir){ const s=uiScaleGet(); s[which]=Math.max(0.7,Math.min(1.6, Math.round((s[which]+dir*0.1)*10)/10)); try{ DeckOS.store.set('uiscale',s); }catch(e){} uiScaleApply(); if(typeof desktopSyncSoon==='function')desktopSyncSoon(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); return s; }
+// ── AI desktop background (reuses the rate-limited /splash/bg-generate scene forge) ──
+function aiBgHtml(){
+  if(!state.user) return '<div style="color:var(--text-dim);font-size:.8rem;padding:4px 2px">Sign in to generate an AI desktop background.</div>';
+  return '<div style="color:var(--text-dim);font-size:.74rem;padding:2px 2px 6px">Generate a scene for your desktop (rate-limited).</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'+
+    '<select id="dbg-scene" class="disp-sel">'+BG_SCENE_OPTS.map(o=>'<option value="'+o[0]+'">'+_mgEsc(o[1])+'</option>').join('')+'</select>'+
+    '<select id="dbg-vibe" class="disp-sel">'+BG_VIBE_OPTS.map(o=>'<option value="'+o[0]+'">'+_mgEsc(o[1])+'</option>').join('')+'</select>'+
+    '<button class="btn small primary" id="dbg-go">✨ Generate</button></div>'+
+    '<div id="dbg-status" style="font-size:.74rem;color:var(--text-dim);margin-top:5px"></div>';
+}
+function wireAiBg(b){ const go=b.querySelector('#dbg-go'); if(!go)return;
+  go.addEventListener('click',async()=>{ const scene=b.querySelector('#dbg-scene').value, vibe=b.querySelector('#dbg-vibe').value, st=b.querySelector('#dbg-status');
+    go.disabled=true; st.textContent='Generating… (can take ~30–60s)';
+    try{ const r=await apiFetch('/splash/bg-generate',{method:'POST',body:JSON.stringify({slots:{scene,vibe}})});
+      if(r&&r.url){ deskBgSet(r.url); st.textContent='Set as your desktop background ✓'; } else st.textContent='No image came back — try again.'; }
+    catch(e){ st.textContent=(e&&e.status===429)?'You’ve hit the limit — try again later.':((e&&e.status===503)?'AI scenes aren’t enabled yet.':'Generation failed.'); }
+    finally{ go.disabled=false; } }); }
 // ===== Web shortcuts — load an external MTG site inside a Win95 program window.
 // Only works for sites that allow framing (e.g. mtgtop8); blocked sites (scryfall, edhrec…)
 // refuse to embed, so every window also offers "Open ↗" in a real tab as a fallback. =====
@@ -6706,6 +6765,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:'🔮', width:'620px', desktop:true, mount(body){ mpRender(body); } });
   DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
+  DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
   DeckOS.registerProgram({ id:'files', title:'Files', icon:'🗂️', width:'460px', mount(body){ fbRender(body); } });
@@ -6989,7 +7049,8 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="documents"><div class="mg-ico">📁</div><div class="mg-ilbl">Documents</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">🖥️</div><div class="mg-ilbl">Display</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="widgets"><div class="mg-ico">🧩</div><div class="mg-ilbl">Widgets</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mail"><div class="mg-ico">📬'+(_mailUnread>0?'<span style="background:#e24b4a;color:#fff;border-radius:8px;font-size:9px;padding:0 4px;margin-left:-6px;vertical-align:super">'+_mailUnread+'</span>':'')+'</div><div class="mg-ilbl">Mail</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mymagicbot"><div class="mg-ico">🤖</div><div class="mg-ilbl">MyMagicBot</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
@@ -7061,6 +7122,7 @@ function mgRenderDesktop(){
   const deskc=a.querySelector('.mg-deskicons');
   if(deskc){ deskc.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskc){mgStartOpen=false;mgRenderDesktop();}});
     if(embedded){ deskc.classList.add('mg-free');
+      if(typeof uiScaleApply==='function')uiScaleApply();
       _appMeta={}; deskc.querySelectorAll('.mg-icon[data-app]').forEach(el=>{ const ico=el.querySelector('.mg-ico'), lbl=el.querySelector('.mg-ilbl'); const k=el.dataset.app;
         const emoji=(ico&&(ico.textContent||'').trim()) || (typeof MGW_APPS!=='undefined'&&MGW_APPS[k]&&MGW_APPS[k].icon) || '🧩'; // icons like TWENTYFOURTY use styled text, not an emoji → fall back to the program's registered icon
         _appMeta[k]={ emoji, label: lbl?(lbl.textContent||'').trim():k }; });
@@ -7161,7 +7223,7 @@ function mgAppFolderOpen(folderId, bub){
 }
 function mgIconPosGet(){ try{ return (window.DeckOS&&DeckOS.store.get('iconpos'))||{}; }catch(e){ return {}; } }
 function mgIconPosSet(key,x,y){ if(!key)return; const m=mgIconPosGet(); m[key]={x:Math.round(x),y:Math.round(y)}; try{ DeckOS.store.set('iconpos',m); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
-function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const COLW=82, ROWH=92, PAD=8, TASKBAR=46;
+function mgLayoutIcons(c){ if(!c)return; const pos=mgIconPosGet(); const _ic=(typeof uiScaleGet==='function'?uiScaleGet().icon:1); const COLW=Math.round(82*_ic), ROWH=Math.round(92*_ic), PAD=8, TASKBAR=46;
   const cw=Math.max(120, c.clientWidth||window.innerWidth||600);
   // Usable height excludes the fixed bottom taskbar; fall back to the viewport if the container
   // isn't measured yet (so icons never land in a single tall column / under the taskbar / scrolling).
@@ -7269,7 +7331,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   const folder=(key,label,icon,inner)=> inner ?
     ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smlbl">'+icon+' '+label+'</span><span class="mg-smchev">▸</span><div class="mg-smsub">'+inner+'</div></div>') : '';
   const games=item('cgg','🗃️ Card Guesser Game')+'<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+progs('games');
-  const utils=item('storage','🖼️ Gallery')+item('hud','📡 HUD')+progs('utilities');
+  const utils=item('storage','🖼️ Gallery')+item('hud','🖥️ Display')+progs('utilities');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">WalkerOS 1.0 Beta</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
     item('splash','🖼️ Splash Builder')+
