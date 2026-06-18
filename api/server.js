@@ -2677,8 +2677,32 @@ function buildOverlaySVGPositioned(W, H, overlays, meta, sp) {
       x += w;
     }
   }
+  // AI infographic profile: archetype headline + tagline + wrapped strategy + key-card chips.
+  if (overlays.profile && meta.profile && sp.profile) {
+    const p = sp.profile, s = p.s || 1, px = Math.round(p.x), py = Math.round(p.y);
+    const panelW = Math.max(180, Math.round(p.w)), panelH = Math.max(90, Math.round(p.h)), padX = Math.round(12 * s);
+    const pf = meta.profile, tx = px + padX, innerW = panelW - padX * 2;
+    parts.push(`<rect x="${px}" y="${py}" width="${panelW}" height="${panelH}" rx="8" fill="rgba(8,10,16,0.82)"/>`);
+    let cy = py + Math.round(26 * s);
+    parts.push(`<text x="${tx}" y="${cy}" font-family="${FONT}" font-size="${Math.round(20 * s)}" font-weight="bold" fill="#ffffff">${E(String(pf.archetype || '').slice(0, 40))}</text>`); cy += Math.round(18 * s);
+    if (pf.tagline) { parts.push(`<text x="${tx}" y="${cy}" font-family="${FONT}" font-size="${Math.round(12 * s)}" font-style="italic" fill="#cbd3e0">${E(String(pf.tagline).slice(0, 120))}</text>`); cy += Math.round(16 * s); }
+    if (pf.strategy) { const fs = Math.round(11.5 * s), lh = Math.round(15 * s); cy += Math.round(4 * s);
+      for (const ln of _wrapText(String(pf.strategy), innerW, fs, 8)) { if (cy > py + panelH - Math.round(22 * s)) break; parts.push(`<text x="${tx}" y="${cy}" font-family="${FONT}" font-size="${fs}" fill="#e8ebf2">${E(ln)}</text>`); cy += lh; } }
+    if (Array.isArray(pf.keyCards) && pf.keyCards.length) { cy += Math.round(8 * s); let kx = tx; const kh = Math.round(16 * s), kfs = Math.round(10 * s), pc = Math.round(6 * s);
+      for (const k of pf.keyCards.slice(0, 5)) { const w = Math.round(String(k).length * kfs * 0.56 + pc * 2); if (kx + w > px + panelW - padX) { kx = tx; cy += kh + Math.round(4 * s); } if (cy > py + panelH - Math.round(3 * s)) break;
+        parts.push(`<rect x="${kx}" y="${cy - kh + Math.round(3 * s)}" width="${w}" height="${kh}" rx="${Math.round(kh / 2)}" fill="rgba(125,224,160,0.16)" stroke="rgba(125,224,160,0.4)"/>`);
+        parts.push(`<text x="${kx + w / 2}" y="${cy - Math.round(3 * s)}" text-anchor="middle" font-family="${FONT}" font-size="${kfs}" fill="#bdf3d2">${E(k)}</text>`); kx += w + Math.round(5 * s); } }
+  }
   if (!parts.length) return null;
   return Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">${parts.join('')}</svg>`);
+}
+
+// Greedy word-wrap to fit width `maxW` at `fontPx` (≈0.55 em/char), capped at `maxLines`.
+function _wrapText(text, maxW, fontPx, maxLines) {
+  const per = Math.max(6, Math.floor(maxW / (fontPx * 0.55))), words = String(text).split(/\s+/), out = []; let cur = '';
+  for (const w of words) { if (!cur) cur = w; else if ((cur.length + 1 + w.length) <= per) cur += ' ' + w; else { out.push(cur); cur = w; if (out.length >= maxLines) break; } }
+  if (cur && out.length < maxLines) out.push(cur);
+  return out;
 }
 
 // ── POST /api/splash/render  → composited PNG of the deck ─────────────────────
@@ -2739,6 +2763,44 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
   reply.header('Content-Type', 'image/png');
   reply.header('Cache-Control', 'no-store');
   return reply.send(img);
+});
+
+// ── POST /api/splash/analyze — the blob LLM parses the decklist into an "infographic"
+// profile (archetype / tagline / strategy / key cards). Text only; no image generation. ──
+let _analyzeInFlight = 0; const ANALYZE_CONCURRENCY = 2;
+app.post('/api/splash/analyze', { preHandler: [softAuthenticate, rateLimitUpload] }, async (req, reply) => {
+  if (!VLM_ENABLED) return reply.code(503).send({ error: 'Deck analysis isn’t available right now.' });
+  const b = req.body || {};
+  const cards = Array.isArray(b.cards) ? b.cards.slice(0, 250) : [];
+  if (!cards.length) return reply.code(400).send({ error: 'No deck to analyze.' });
+  if (_analyzeInFlight >= ANALYZE_CONCURRENCY) return reply.code(429).send({ error: 'The analyst is busy — try again in a moment.' });
+  const lines = cards.map(c => `${Math.max(1, parseInt(c.q) || 1)} ${String(c.n || '').slice(0, 60)}${c.t ? ' (' + String(c.t).slice(0, 40) + ')' : ''}`).join('\n').slice(0, 4000);
+  const deckName = String(b.deckName || 'this deck').slice(0, 80);
+  const prompt = 'You are a Magic: The Gathering deck analyst. Analyze the decklist and reply with ONLY compact JSON, no prose or markdown:\n' +
+    '{"archetype":"<= 4 words","tagline":"punchy, <= 12 words","strategy":"<= 30 words, how it wins","keyCards":["3-5 defining card names taken verbatim from the list"]}\n\n' +
+    'Deck name: ' + deckName + '\n' + lines;
+  _analyzeInFlight++;
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), VLM_TIMEOUT);
+  try {
+    const r = await fetch(`${VLM_BASE_URL}/chat/completions`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
+      body: JSON.stringify({ model: VLM_MODEL, max_tokens: 500, temperature: 0.5, chat_template_kwargs: { enable_thinking: false }, messages: [{ role: 'user', content: prompt }] }),
+    });
+    if (!r.ok) throw new Error('LLM HTTP ' + r.status);
+    const j = await r.json();
+    const o = _extractJson(j.choices?.[0]?.message?.content || '');
+    const clip = (s, n) => (typeof s === 'string' ? s.trim().replace(/\s+/g, ' ').slice(0, n) : '');
+    const profile = {
+      archetype: clip(o.archetype, 40) || 'Custom Deck',
+      tagline: clip(o.tagline, 120),
+      strategy: clip(o.strategy, 320),
+      keyCards: Array.isArray(o.keyCards) ? o.keyCards.filter(x => typeof x === 'string').slice(0, 5).map(x => x.trim().slice(0, 60)) : [],
+    };
+    return { profile };
+  } catch (e) {
+    app.log.warn('deck analyze failed: ' + e.message);
+    return reply.code(502).send({ error: 'Analysis failed. Try again.' });
+  } finally { clearTimeout(timer); _analyzeInFlight--; }
 });
 
 // ── AI splash background generation (constrained prompts; dormant until IMG_GEN_URL) ──

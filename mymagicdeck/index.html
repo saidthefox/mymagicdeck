@@ -515,6 +515,14 @@
     .splash-stat .ss-nm { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .splash-stat .ss-q { flex:0 0 auto; font-weight:700; color:#fff; opacity:0.9; }
     .splash-stat .ss-list .mana-symbol { width:1.15em; height:1.15em; font-size:0.66em; }
+    /* AI infographic (deck profile) widget */
+    .splash-stat .ss-arch { font-weight:800; font-size:1.55em; line-height:1.1; color:#fff; }
+    .splash-stat .ss-tag { font-size:0.95em; color:#cbd3e0; font-style:italic; margin-top:0.25em; }
+    .splash-stat .ss-strat { font-size:0.86em; color:#e8ebf2; margin-top:0.5em; line-height:1.4; }
+    .splash-stat .ss-keys { display:flex; flex-wrap:wrap; gap:0.3em; margin-top:0.55em; }
+    .splash-stat .ss-key { font-size:0.72em; background:rgba(125,224,160,0.16); border:1px solid rgba(125,224,160,0.4); color:#bdf3d2; border-radius:0.8em; padding:0.12em 0.55em; }
+    .splash-stat .ss-prof-empty { font-size:0.85em; color:#9aa3b5; display:flex; flex-direction:column; gap:0.5em; align-items:flex-start; }
+    .splash-stat .ss-regen { margin-top:0.6em; }
     .splash-free.snap { background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 30px 30px; }
     /* Share-image composer */
     #modal-share-image, #modal-uploads { z-index: 4600; } /* opened from inside the splash overlay (z 2000) */
@@ -1836,6 +1844,7 @@
         <label><input type="checkbox" id="si-list"> Deck list</label>
         <label><input type="checkbox" id="si-curve"> CMC curve</label>
         <label><input type="checkbox" id="si-type"> Type breakdown</label>
+        <label><input type="checkbox" id="si-profile"> 🧠 Infographic</label>
       </div>
       <div class="si-actions">
         <button class="btn primary" onclick="_genShareImage()">Generate image</button>
@@ -2853,7 +2862,7 @@ function _shareMeta(deck, author){
   const typeColors={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
   const g={}; for(const{card,qty}of cards){ const c=getCardCategory(card); g[c]=(g[c]||0)+qty; }
   const typeSeg=CATEGORY_ORDER.filter(c=>g[c]).map(c=>({label:c,count:g[c],color:typeColors[c]||'#555'}));
-  return { deckName:deck.name||'Untitled Deck', author:author||null, priceText:'$'+price.toFixed(2), list, curve, typeSeg };
+  return { deckName:deck.name||'Untitled Deck', author:author||null, priceText:'$'+price.toFixed(2), list, curve, typeSeg, profile:deck.profile||null };
 }
 async function _genShareImage(){
   const snap=_snapshotLayout();
@@ -2872,7 +2881,7 @@ async function _genShareImage(){
   const maxDim=Math.max(cw,chh)||1; const s=Math.min(2.5, 3500/maxDim);
   const sc=v=>Math.round(v*s);
   const cards=snap.cards.map(c=>({url:c.url,x:sc(c.x+ox),y:sc(c.y+oy),w:sc(c.w),h:sc(c.h)}));
-  const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type') };
+  const overlays={ name:_chk('si-name'), price:_chk('si-price'), list:_chk('si-list'), cmcCurve:_chk('si-curve'), typeBreakdown:_chk('si-type'), profile:_chk('si-profile') };
   // If the deck is in User Layout, the stat panels carry positions — pass them so the
   // server places each overlay where the user dragged it instead of in fixed bands.
   let statPos=null;
@@ -3004,7 +3013,7 @@ function freeCardDown(e,key,cid,copyIdx){
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
 // ── Splash stat widgets (deck list / curve / types / price / name) ────────────
-const STAT_DEFS=[{id:'name',label:'Deck name'},{id:'curve',label:'Mana curve'},{id:'types',label:'Type breakdown'},{id:'price',label:'Price'},{id:'list',label:'Deck list'}];
+const STAT_DEFS=[{id:'name',label:'Deck name'},{id:'curve',label:'Mana curve'},{id:'types',label:'Type breakdown'},{id:'price',label:'Price'},{id:'list',label:'Deck list'},{id:'profile',label:'🧠 Infographic (AI)'}];
 const _STAT_TCOL={Creatures:'#2d6040',Instants:'#1a3a6a',Sorceries:'#4a2060',Enchantments:'#5a3010',Artifacts:'#3a4050',Planeswalkers:'#7a2020',Lands:'#3a2a10',Other:'#2a2a2a'};
 function _statWidgetInner(id,deck,username){
   const cards=Object.values(deck.cards||{}), sb=Object.values(deck.sideboard||{});
@@ -3017,7 +3026,31 @@ function _statWidgetInner(id,deck,username){
       g[cat].forEach(({card,qty})=>{ const cost=parseMana(card.mana_cost||''); // Hearthstone-style: cost · name · count
         txt+='<div class="ss-row"><span class="ss-cost">'+cost+'</span><span class="ss-nm">'+_mgEsc(card.name)+'</span><span class="ss-q">'+qty+'</span></div>'; }); }
     return '<div class="ss-t">Deck list</div><div class="ss-list">'+txt+'</div>'; }
+  if(id==='profile'){ const pf=deck.profile;
+    if(!pf) return '<div class="ss-t">Infographic</div><div class="ss-prof-empty">Let AI read your deck into a profile.<button class="btn small primary" onpointerdown="event.stopPropagation()" onclick="genInfographic(event)">🧠 Generate</button></div>';
+    const keys=(pf.keyCards||[]).map(k=>'<span class="ss-key">'+_mgEsc(k)+'</span>').join('');
+    return '<div class="ss-arch">'+_mgEsc(pf.archetype||'Custom Deck')+'</div>'+
+      (pf.tagline?'<div class="ss-tag">'+_mgEsc(pf.tagline)+'</div>':'')+
+      (pf.strategy?'<div class="ss-strat">'+_mgEsc(pf.strategy)+'</div>':'')+
+      (keys?'<div class="ss-keys">'+keys+'</div>':'')+
+      (_splashEdit?'<button class="btn small ss-regen" onpointerdown="event.stopPropagation()" onclick="genInfographic(event)" title="Regenerate">↻ Redo</button>':''); }
   return '';
+}
+// Infographic: the blob LLM reads the decklist into a profile (archetype/tagline/strategy/key cards).
+async function genInfographic(e){ if(e&&e.stopPropagation)e.stopPropagation();
+  const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  const cards=Object.values(deck.cards||{}).map(({card,qty})=>({n:card.name,q:qty,t:(card.type_line||'').split('//')[0].split('—')[0].trim()}));
+  if(!cards.length){ toast('Add cards to the deck first','info'); return; }
+  toast('Reading your deck… 🧠','info');
+  try{
+    const r=await apiFetch('/splash/analyze',{method:'POST',body:JSON.stringify({deckName:deck.name||'',cards})});
+    if(!r||!r.profile)throw new Error('no profile');
+    deck.profile=r.profile;
+    deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; deck.layout.statsOn.profile=true;
+    saveToStorage(); syncDeckToApi(deck.id);
+    const rad=document.querySelector('input[name="splash-sort"][value="user"]'); if(rad&&!rad.checked){ rad.checked=true; splashReorder(); } else _splashRebuildColumns();
+    toast('Infographic ready 🧠','success');
+  }catch(err){ toast(err&&err.status===429?'The analyst is busy — try again shortly':(err&&err.status===503?'Deck analysis isn’t enabled yet':'Analysis failed'),'error'); }
 }
 function freeStatDown(e,key){
   if(e.button!==undefined&&e.button!==0)return; e.preventDefault();
