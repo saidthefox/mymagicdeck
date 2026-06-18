@@ -417,6 +417,11 @@
     .splash-deckphoto.empty { min-height: 110px; align-items: center; border: 2px dashed var(--border); color: var(--text-dim); cursor: pointer; font-size: 0.85rem; }
     .splash-deckphoto.empty:hover { border-color: var(--accent); color: var(--text-bright); }
     .splash-photo-edit { position: absolute; top: 8px; right: 8px; }
+    .splash-deckphoto.uploading { pointer-events: none; }
+    .splash-photo-prog { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; z-index: 3; background: linear-gradient(transparent, rgba(0,0,0,0.78)); }
+    .splash-photo-prog .spp-track { height: 8px; background: rgba(255,255,255,0.2); border-radius: 5px; overflow: hidden; }
+    .splash-photo-prog .spp-fill { height: 100%; width: 0; background: var(--accent, #7de0a0); border-radius: 5px; transition: width 0.15s linear; }
+    .splash-photo-prog .spp-lbl { font-size: 0.74rem; font-weight: 600; color: #fff; text-shadow: 0 1px 2px #000; }
     /* My Uploads page */
     .uploads-count { font-size: 0.78rem; color: var(--text-dim); font-weight: 600; margin-left: 6px; }
     .uploads-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -3807,20 +3812,31 @@ function triggerDeckPhoto(){
   if(!inp){inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.id='deckphoto-file';inp.style.display='none';inp.addEventListener('change',()=>doDeckPhotoUpload(inp));document.body.appendChild(inp);}
   inp.value='';inp.click();
 }
-async function doDeckPhotoUpload(input){
+function _photoProgress(box){
+  if(!box)return null;
+  box.classList.add('uploading');
+  let p=box.querySelector('.splash-photo-prog');
+  if(!p){ p=document.createElement('div'); p.className='splash-photo-prog'; p.innerHTML='<div class="spp-track"><div class="spp-fill"></div></div><div class="spp-lbl">Uploading…</div>'; box.appendChild(p); }
+  return { set(pct,label){ const f=p.querySelector('.spp-fill'); if(f)f.style.width=Math.max(0,Math.min(100,pct))+'%'; const l=p.querySelector('.spp-lbl'); if(l)l.textContent=label; },
+           clear(){ box.classList.remove('uploading'); p.remove(); } };
+}
+function doDeckPhotoUpload(input){
   const f=input.files&&input.files[0]; if(!f)return;
   const deck=_splashDeck?.deck; if(!deck)return;
-  toast('Uploading deck photo…','info');
-  try{
-    const fd=new FormData();fd.append('file',f,f.name||'deck.jpg');
-    const res=await fetch(API_BASE+'/uploads/deck-photo',{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd});
-    const j=await res.json().catch(()=>({}));
-    if(!res.ok){toast(j.error||'Upload failed','error');return;}
-    deck.deckPhoto=j.url;
-    saveToStorage();syncDeckToApi(deck.id);
-    openSplash(deck,_splashDeck.username,{edit:true});
-    toast('Deck photo updated 📸','success');
-  }catch(err){toast('Upload failed','error');}
+  const box=document.querySelector('.splash-deckphoto');
+  const prog=_photoProgress(box); if(prog)prog.set(0,'Uploading 0%');
+  // XHR (not fetch) so we can report real upload progress; after 100% the server still
+  // decodes/resizes, so the bar holds at "Processing…" until the response lands.
+  const fd=new FormData(); fd.append('file',f,f.name||'deck.jpg');
+  const xhr=new XMLHttpRequest();
+  xhr.open('POST', API_BASE+'/uploads/deck-photo');
+  xhr.setRequestHeader('Authorization','Bearer '+apiToken());
+  xhr.upload.onprogress=e=>{ if(prog&&e.lengthComputable){ const pct=Math.round(e.loaded/e.total*100); prog.set(pct, pct<100?('Uploading '+pct+'%'):'Processing…'); } };
+  xhr.onload=()=>{ let j={}; try{ j=JSON.parse(xhr.responseText); }catch(_){}
+    if(xhr.status>=200&&xhr.status<300&&j.url){ deck.deckPhoto=j.url; saveToStorage(); syncDeckToApi(deck.id); openSplash(deck,_splashDeck.username,{edit:true}); toast('Deck photo updated 📸','success'); } // re-render drops the progress bar
+    else { if(prog)prog.clear(); toast(j.error||'Upload failed','error'); } };
+  xhr.onerror=()=>{ if(prog)prog.clear(); toast('Upload failed','error'); };
+  xhr.send(fd);
 }
 // ── My Uploads page ───────────────────────────────────────────────────────────
 let _uploadsCache=[];
