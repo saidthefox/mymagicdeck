@@ -6850,7 +6850,9 @@ function mgRenderDesktop(){
   const deskc=a.querySelector('.mg-deskicons');
   if(deskc){ deskc.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskc){mgStartOpen=false;mgRenderDesktop();}});
     if(embedded){ deskc.classList.add('mg-free');
-      _appMeta={}; deskc.querySelectorAll('.mg-icon[data-app]').forEach(el=>{ const ico=el.querySelector('.mg-ico'), lbl=el.querySelector('.mg-ilbl'); _appMeta[el.dataset.app]={ emoji: ico?(ico.textContent||'').trim():'🧩', label: lbl?(lbl.textContent||'').trim():el.dataset.app }; });
+      _appMeta={}; deskc.querySelectorAll('.mg-icon[data-app]').forEach(el=>{ const ico=el.querySelector('.mg-ico'), lbl=el.querySelector('.mg-ilbl'); const k=el.dataset.app;
+        const emoji=(ico&&(ico.textContent||'').trim()) || (typeof MGW_APPS!=='undefined'&&MGW_APPS[k]&&MGW_APPS[k].icon) || '🧩'; // icons like TWENTYFOURTY use styled text, not an emoji → fall back to the program's registered icon
+        _appMeta[k]={ emoji, label: lbl?(lbl.textContent||'').trim():k }; });
       mgRenderAppFolders(deskc);
       mgLayoutIcons(deskc); } }
 }
@@ -6897,8 +6899,24 @@ function mgRenderAppFolders(container){
     const bub=document.createElement('div'); bub.className='mg-icon mg-appfolder'; bub.dataset.appfolder=fld.id; bub.dataset.ikey='appfolder:'+fld.id;
     bub.innerHTML='<div class="mg-folderbubble">'+minis.slice(0,4).map(m=>'<span class="mg-fbm">'+m+'</span>').join('')+'</div><div class="mg-ilbl">'+_mgEsc(fld.name||'Folder')+'</div>';
     container.appendChild(bub);
-    mgWireIconDrag(bub, ()=>mgAppFolderOpen(fld.id, bub));
+    // Tap opens the folder; a deliberate slow second click (Windows-style, not a fast
+    // double-click) renames it inline.
+    let lastTap=0;
+    mgWireIconDrag(bub, ()=>{ const now=Date.now(), gap=now-lastTap; lastTap=now; if(gap>400&&gap<1400)mgAppFolderRenameInline(fld.id, bub); else mgAppFolderOpen(fld.id, bub); });
   });
+}
+function mgAppFolderRenameInline(folderId, bub){
+  mgAppFolderClosePop();
+  const lbl=bub.querySelector('.mg-ilbl'); if(!lbl||bub.querySelector('.mg-rnm'))return;
+  const f=mgAppFolders().find(x=>x.id===folderId); if(!f)return;
+  const inp=document.createElement('input'); inp.className='mg-rnm'; inp.value=f.name||'Folder'; inp.maxLength=40;
+  lbl.replaceWith(inp); inp.focus(); try{inp.select();}catch(_){}
+  let done=false;
+  const commit=()=>{ if(done)return; done=true; const v=(inp.value||'').trim()||'Folder'; const list=mgAppFolders(); const ff=list.find(x=>x.id===folderId); if(ff)ff.name=v; mgAppFoldersSave(list); mgRenderDesktop(); };
+  inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){e.preventDefault();inp.blur();} else if(e.key==='Escape'){ done=true; mgRenderDesktop(); } });
+  inp.addEventListener('blur',commit);
+  inp.addEventListener('pointerdown',e=>e.stopPropagation()); // don't start an icon drag
+  inp.addEventListener('click',e=>e.stopPropagation());
 }
 function mgAppFolderClosePop(){ const p=document.getElementById('mg-fbpop'); if(p)p.remove(); document.removeEventListener('click', _fbPopOutside, true); }
 function _fbPopOutside(e){ const p=document.getElementById('mg-fbpop'); if(p && !p.contains(e.target) && !e.target.closest('.mg-appfolder'))mgAppFolderClosePop(); }
