@@ -1774,7 +1774,9 @@
       <div class="auth-signedin" id="auth-signedin" style="display:none">
         <div style="text-align:center;font-size:.95rem;margin:6px 0 16px">Signed in as <b id="auth-signedin-name"></b></div>
         <button class="btn primary" style="width:100%;justify-content:center;padding:10px" onclick="accountSignOut()">🚪 Sign Out</button>
-        <div class="auth-switch" style="margin-top:12px"><a onclick="deleteAccount()" style="color:#c0392b">Delete account…</a></div>
+        <div style="margin-top:16px"><label style="display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:5px">🔫 Holstered deck <span style="opacity:.7">— loaded &amp; selected on sign-in</span></label>
+          <select id="auth-holster" class="auth-input" style="width:100%" onchange="holsterSet(this.value)"></select></div>
+        <div class="auth-switch" style="margin-top:14px"><a onclick="deleteAccount()" style="color:#c0392b">Delete account…</a></div>
       </div>
     </div>
   </div>
@@ -2168,6 +2170,8 @@ async function pullDecksFromApi(){
       const ids=Object.keys(state.decks);
       state.currentDeckId=ids.length?ids[0]:null;
     }
+    // Holstered deck wins: select it on sign-in/load if it still exists.
+    const _hid=(typeof holsterGet==='function')?holsterGet():''; if(_hid&&state.decks[_hid]){ state.currentDeckId=_hid; if(typeof mgActiveDeckId!=='undefined')mgActiveDeckId=_hid; }
     saveToStorage();
     renderAll();
     document.getElementById('deck-name-input').value=currentDeck()?.name||'Untitled Deck';
@@ -2215,7 +2219,10 @@ function _updateAuthUI(){
   const form=document.getElementById('auth-form'), si=document.getElementById('auth-signedin');
   if(form)form.style.display=signedIn?'none':'';
   if(si)si.style.display=signedIn?'':'none';
-  if(signedIn){ document.getElementById('auth-modal-title').textContent='Account'; document.getElementById('auth-signedin-name').textContent=state.user.username; return; }
+  if(signedIn){ document.getElementById('auth-modal-title').textContent='Account'; document.getElementById('auth-signedin-name').textContent=state.user.username;
+    const hs=document.getElementById('auth-holster'); if(hs){ const cur=(typeof holsterGet==='function'?holsterGet():''); const decks=Object.values(state.decks||{}).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+      hs.innerHTML='<option value="">(last used deck)</option>'+decks.map(d=>'<option value="'+d.id+'"'+(d.id===cur?' selected':'')+'>'+_mgEsc(d.name||'Untitled')+'</option>').join(''); }
+    return; }
   const isSignup=_authMode==='signup', isForgot=_authMode==='forgot';
   document.getElementById('auth-modal-title').textContent=isForgot?'Reset Password':(isSignup?'Create Account':'Sign In');
   document.getElementById('auth-email').style.display=isSignup?'':'none';
@@ -6087,7 +6094,7 @@ widgetRegister('dice', { title:'Dice', icon:'🎲', render(b, inst){
     b.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',+x.dataset.s===inst.sides)); pop(_diceRand(inst.sides)+1); }));
   b.querySelector('[data-coin]').addEventListener('click',e=>{ e.stopPropagation(); pop(_diceRand(2)?'H':'T'); });
 }});
-if(window.DeckOS){ DeckOS.widgets={ register:widgetRegister, mount:widgetMount, unmount:widgetUnmount, types:()=>Object.keys(WIDGET_TYPES) }; }
+// (DeckOS.widgets is attached after window.DeckOS is defined — see below — so the mod API exists.)
 
 // ===== Notes: little text notes that live on the desktop. Each note is a saved file
 // (DeckOS.store('notes')); pinning is just a STATE of that same file — faded + locked in
@@ -6135,12 +6142,12 @@ function notesRenderAll(){ notesList().forEach(n=>{ if(n.placed)noteRender(n); }
 // ===== Desktop layout persistence: localStorage (instant + guest) + per-account server sync.
 // Pinned widgets / notes follow the account across log-out, log-in, and browsers. =====
 let _deskSyncTimer=null;
-function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[]), appfolders:(typeof mgAppFolders==='function'?mgAppFolders():[]), uiscale:(typeof uiScaleGet==='function'?uiScaleGet():null)}})}).catch(()=>{}); }, 600); }
+function desktopSyncSoon(){ if(!(state.user&&apiToken()))return; clearTimeout(_deskSyncTimer); _deskSyncTimer=setTimeout(()=>{ apiFetch('/desktop',{method:'PUT',body:JSON.stringify({data:{widgets:widgetList(), notes:notesList(), bg:(typeof deskBgGet==='function'?deskBgGet():''), iconpos:(typeof mgIconPosGet==='function'?mgIconPosGet():{}), webshortcuts:(typeof webUserShortcuts==='function'?webUserShortcuts():[]), appfolders:(typeof mgAppFolders==='function'?mgAppFolders():[]), uiscale:(typeof uiScaleGet==='function'?uiScaleGet():null), holster:(typeof holsterGet==='function'?holsterGet():'')}})}).catch(()=>{}); }, 600); }
 function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget, #pc-desktop > .os-note').forEach(el=>el.remove()); }
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.uiscale&&typeof d.uiscale==='object')DeckOS.store.set('uiscale',d.uiscale); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
+      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.uiscale&&typeof d.uiscale==='object')DeckOS.store.set('uiscale',d.uiscale); if(typeof d.holster==='string')DeckOS.store.set('holster',d.holster); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
       else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
     }catch(e){}
   }
@@ -6175,6 +6182,10 @@ function deskBgSet(c){ try{ DeckOS.store.set('deskbg', c); }catch(e){} deskBgApp
 function uiScaleGet(){ let s={}; try{ s=DeckOS.store.get('uiscale')||{}; }catch(e){} const cl=n=>Math.max(0.7,Math.min(1.6,(typeof n==='number'&&isFinite(n))?n:1)); return { icon:cl(s.icon), font:cl(s.font) }; }
 function uiScaleApply(){ const d=document.getElementById('pc-desktop'); if(!d)return; const s=uiScaleGet(); d.style.setProperty('--os-icon',s.icon); d.style.setProperty('--os-font',s.font); }
 function uiScaleBump(which,dir){ const s=uiScaleGet(); s[which]=Math.max(0.7,Math.min(1.6, Math.round((s[which]+dir*0.1)*10)/10)); try{ DeckOS.store.set('uiscale',s); }catch(e){} uiScaleApply(); if(typeof desktopSyncSoon==='function')desktopSyncSoon(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); return s; }
+// ── Holstered deck: the deck loaded + selected on sign-in (set from the Account page) ──
+function holsterGet(){ try{ return DeckOS.store.get('holster')||''; }catch(e){ return ''; } }
+function holsterSet(id){ try{ DeckOS.store.set('holster', id||''); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon();
+  toast(id&&state.decks&&state.decks[id]?('Holstered “'+(state.decks[id].name||'deck')+'” 🔫'):'Holster cleared','info'); }
 // ── AI desktop background (reuses the rate-limited /splash/bg-generate scene forge) ──
 function aiBgHtml(){
   if(!state.user) return '<div style="color:var(--text-dim);font-size:.8rem;padding:4px 2px">Sign in to generate an AI desktop background.</div>';
@@ -6777,6 +6788,7 @@ function mpRender(body){
 }
 if(window.DeckOS){
   try{ window.WalkerOS = window.DeckOS; }catch(e){} // public name is WalkerOS; DeckOS kept as the internal/mod-API alias
+  if(typeof widgetRegister==='function')DeckOS.widgets={ register:widgetRegister, mount:widgetMount, unmount:widgetUnmount, types:()=>Object.keys(WIDGET_TYPES) }; // mod API (now that DeckOS exists)
   DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
   DeckOS.registerProgram({ id:'calendar', title:'Calendar', icon:'📅', width:'560px', desktop:true, mount(body){ calRender(body); } });
   DeckOS.notes={ create:notesCreate, list:notesList };
