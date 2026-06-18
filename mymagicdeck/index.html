@@ -1288,7 +1288,7 @@
     <div class="user-menu" id="user-menu" style="display:none;">
       <div class="user-menu-name" id="user-menu-name"></div>
       <div class="user-menu-item" onclick="openShare();closeUserMenu()">🔗 Share Deck</div>
-      <div class="user-menu-item" onclick="openUploads();closeUserMenu()">🖼 My Uploads</div>
+      <div class="user-menu-item" onclick="openUploads();closeUserMenu()">🖼 Gallery</div>
       <div class="user-menu-item" onclick="toggleMguessGame()">🎴 Card-guess game: <span id="mguess-state">on</span></div>
       <div class="user-menu-sep"></div>
       <div class="user-menu-item danger" onclick="logout()">Sign Out</div>
@@ -1728,7 +1728,7 @@
 <div class="modal-overlay" id="modal-uploads">
   <div class="modal" style="width:980px;max-width:96vw">
     <div class="modal-header">
-      <div class="modal-title">My Uploads <span class="uploads-count" id="uploads-count"></span></div>
+      <div class="modal-title">Gallery <span class="uploads-count" id="uploads-count"></span></div>
       <button class="modal-close" onclick="closeModal('modal-uploads')">✕</button>
     </div>
     <div class="modal-body">
@@ -1974,7 +1974,10 @@ let API_BASE=(function(){try{const b=localStorage.getItem('deckos_api_base');ret
 function apiToken(){return localStorage.getItem('mmd_token')||null}
 async function apiFetch(path,opts={}){
   const token=apiToken();
-  const headers={'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})};
+  // Only declare a JSON content-type when there's actually a body — Fastify rejects an empty
+  // body sent with Content-Type: application/json (400), which silently broke bodyless DELETE/
+  // POST calls like mail delete + mark-all-read.
+  const headers={...(opts.body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})};
   const res=await fetch(API_BASE+path,{...opts,headers});
   if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));const err=new Error(body.error||'Request failed');err.status=res.status;throw err}
   return res.json();
@@ -2518,7 +2521,7 @@ function openSplash(deckObj,username,opts){
         <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each panel where you want it, then 💾 Save layout.</div></div>
       </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
-      <button class="btn small" onclick="openUploads()">🗂 My Uploads</button>
+      <button class="btn small" onclick="openUploads()">🖼 Gallery</button>
       <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
     </div>
     <div class="splash-zoom-wrap">
@@ -5270,7 +5273,7 @@ const MGW_APPS={
   decks:  {overlay:'modal-decks',    win:'.modal', title:'My Decks',       icon:'📂',  open:()=>openDeckManager(),close:()=>decksClose()},
   import: {overlay:'modal-import',   win:'.modal', title:'Import Deck',     icon:'⬇',   open:()=>openImport(),     close:()=>closeModal('modal-import')},
   account:{overlay:'modal-auth',     win:'.modal', title:'Account',        icon:'👤',  open:()=>openAuth('login'),close:()=>closeModal('modal-auth')},
-  storage:{overlay:'modal-uploads',  win:'.modal', title:'Storage',        icon:'💾', open:()=>_openUploads(),    close:()=>closeModal('modal-uploads')},
+  storage:{overlay:'modal-uploads',  win:'.modal', title:'Gallery',        icon:'🖼️', open:()=>_openUploads(),    close:()=>closeModal('modal-uploads')},
   bin:    {overlay:'modal-bin',      win:'.modal', title:'Recycle Bin',    icon:'🗑️', open:()=>openBin(),    close:()=>closeModal('modal-bin')},
   hud:    {overlay:'modal-hud',      win:'.modal', title:'HUD',            icon:'📡', open:()=>openHud(),    close:()=>closeModal('modal-hud')},
   sysset: {overlay:'modal-sysset',   win:'.modal', title:'System Settings',icon:'⚙️', open:()=>openSysset(), close:()=>closeModal('modal-sysset')},
@@ -6682,7 +6685,7 @@ function mgRenderDesktop(){
   // Default desktop layout order: Recycle Bin, Storage, Calendar, Notes, HUD, Tournaments,
   // MyMagicDeck, Splash, CGG, Card Duel, TWENTYFOURTY (then decks, then folders).
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">💾</div><div class="mg-ilbl">Storage</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Gallery</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">📡</div><div class="mg-ilbl">HUD</div></div>';
@@ -6695,6 +6698,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">The Land Game</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="manapool"><div class="mg-ico">🔮</div><div class="mg-ilbl">Mana Pool</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-stonesmtg"><div class="mg-ico">🪨</div><div class="mg-ilbl">Stones MTG</div></div>';
   if(mgCurrentFolder===null&&embedded&&typeof webUserShortcuts==='function')webUserShortcuts().forEach(a=>{ icons+='<div class="mg-icon" data-app="web-'+a.id+'"><div class="mg-ico">'+(a.icon||'🌐')+'</div><div class="mg-ilbl">'+_mgEsc(a.title)+'</div></div>'; });
@@ -6864,7 +6868,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
   const folder=(key,label,icon,inner)=> inner ?
     ('<div class="mg-smcat'+(_smCats[key]?' open':'')+'" data-cat="'+key+'"><span class="mg-smchev">▸</span>'+icon+' '+label+'</div><div class="mg-smsub">'+inner+'</div>') : '';
   const games=item('cgg','🗃️ Card Guesser Game')+'<div class="mg-smitem" data-app="battle">⚔️ Card Duel</div>'+progs('games');
-  const utils=item('storage','💾 Storage')+item('hud','📡 HUD')+progs('utilities');
+  const utils=item('storage','🖼️ Gallery')+item('hud','📡 HUD')+progs('utilities');
   return '<div class="mg-startmenu mg-bvl"><div class="mg-smtitle"><span>'+owner+'</span><span class="mg-smtitle-os">DeckOS v1.0 Beta</span></div><div class="mg-smbody">'+
     '<div class="mg-smhdr">Programs'+(local?' · Personal':'')+'</div>'+
     item('splash','🖼️ Splash Builder')+
