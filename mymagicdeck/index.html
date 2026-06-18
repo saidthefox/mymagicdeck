@@ -3065,20 +3065,30 @@ function setDefaultLayout(){
   toast('Default set: '+(mode==='user'?'User Layout':mode==='type'?'By Type':'By CMC'),'success');
 }
 // One-click tidy arrangement for users who don't want to hand-place every card.
+// Deck-pic grid: one column per unique card, its copies cascading +1 grid right / +2
+// grid down (each copy's top corner peeks out, bottom copy in front), sorted by type.
+// Columns are separated by a 1-grid gap and wrap to a new row; the sideboard fans
+// horizontally along the bottom. The whole thing sits inset from the edges (buffer).
 function deckPicLayout(){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   _splashSnapshot(deck); // captured for ↶ Undo
-  const CARD_W=121,CARD_H=169,GAP=10;
-  const items=[];
-  const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const e=store&&store[cid]; const qty=e?e.qty:1; for(let k=0;k<qty;k++)items.push({card,key:zone+cid+'_'+k}); } };
-  collect(Object.values(deck.cards||{}),deck.cards,''); collect(Object.values(deck.sideboard||{}),deck.sideboard,'sb_');
-  items.sort((a,b)=>{
-    const ca=CATEGORY_ORDER.indexOf(getCardCategory(a.card)), cb=CATEGORY_ORDER.indexOf(getCardCategory(b.card));
-    return ca-cb || (a.card.cmc||0)-(b.card.cmc||0) || a.card.name.localeCompare(b.card.name);
-  });
-  const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
-  const positions={};
-  items.forEach((it,i)=>{ const col=i%perRow,row=Math.floor(i/perRow); positions[it.key]={x:col*(CARD_W+GAP),y:row*(CARD_H+GAP),z:i+1}; });
+  const CARD_W=121, CARD_H=169, G=15, BUF=G*2; // 15px snap grid; 2-grid edge buffer
+  const catIdx=c=>CATEGORY_ORDER.indexOf(getCardCategory(c));
+  // unique mainboard cards (with counts), type-sorted
+  const ents=Object.values(deck.cards||{}).map(e=>({card:e.card, cid:getCardId(e.card), qty:e.qty||1}))
+    .sort((a,b)=> catIdx(a.card)-catIdx(b.card) || (a.card.cmc||0)-(b.card.cmc||0) || a.card.name.localeCompare(b.card.name));
+  const maxW=Math.min(window.innerWidth,1400)-40;
+  const positions={}; let z=1, colX=BUF, rowTop=BUF, rowBottom=BUF;
+  for(const ent of ents){
+    const n=ent.qty, colW=CARD_W+(n-1)*G, colH=CARD_H+(n-1)*2*G;
+    if(colX>BUF && colX+colW > BUF+maxW){ colX=BUF; rowTop=rowBottom+G*2; rowBottom=rowTop; } // wrap
+    for(let k=0;k<n;k++) positions[ent.cid+'_'+k]={ x:colX+k*G, y:rowTop+k*2*G, z:z++ };
+    rowBottom=Math.max(rowBottom, rowTop+colH);
+    colX += (n-1)*G + CARD_W + G; // 1-grid gap between this column's bottom card and the next column's first
+  }
+  // sideboard: horizontal fan along the bottom, under everything
+  const sb=[]; for(const e of Object.values(deck.sideboard||{})){ const cid=getCardId(e.card); for(let k=0;k<(e.qty||1);k++)sb.push('sb_'+cid+'_'+k); }
+  if(sb.length){ const HSTEP=46, sy=rowBottom+G*2; sb.forEach((key,i)=>positions[key]={x:BUF+i*HSTEP, y:sy, z:z++}); }
   deck.layout=deck.layout||{}; deck.layout.positions=positions;
   const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true;
   splashReorder(); // rebuild in user mode + show the user controls
