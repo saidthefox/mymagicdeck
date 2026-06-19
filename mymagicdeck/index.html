@@ -1235,8 +1235,9 @@
     .lc-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;height:100%}
     .lc-fs{display:flex;flex-direction:column;width:100%;height:100%;min-height:540px;background:#0c0c0c;color:#fff;position:relative}
     /* Shared controls pinned to the left wall, vertically centered, rotated to read along it. */
-    .lc-side{position:absolute;left:4px;top:0;bottom:0;width:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:5;pointer-events:none}
-    .lc-side .lc-ctl{transform:rotate(-90deg);pointer-events:auto}
+    .lc-side{position:absolute;left:0;top:0;bottom:0;width:64px;display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none}
+    .lc-side-inner{display:flex;align-items:center;gap:28px;transform:rotate(-90deg);white-space:nowrap;pointer-events:auto}
+    .lc-side-inner .lc-ctl button{white-space:nowrap}
     .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
@@ -6446,7 +6447,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
       steps(i)+'</div>';
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs">'+
       half(0,true)+half(1,false)+
-      '<div class="lc-side">'+resetCtl+startCtl+'</div>'+
+      '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>'+
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
   body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));
