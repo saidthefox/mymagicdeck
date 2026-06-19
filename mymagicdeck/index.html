@@ -1233,7 +1233,10 @@
     /* TWENTYFOURTY life counter — two-seat layout (opponent across the table = top, flipped).
        Each half is a column: player control (toward center line) · big life · step buttons (outer edge). */
     .lc-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;height:100%}
-    .lc-fs{display:flex;flex-direction:column;width:100%;height:100%;min-height:540px;background:#0c0c0c;color:#fff}
+    .lc-fs{display:flex;flex-direction:column;width:100%;height:100%;min-height:540px;background:#0c0c0c;color:#fff;position:relative}
+    /* Shared controls pinned to the left wall, vertically centered, rotated to read along it. */
+    .lc-side{position:absolute;left:4px;top:0;bottom:0;width:54px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:5;pointer-events:none}
+    .lc-side .lc-ctl{transform:rotate(-90deg);pointer-events:auto}
     .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
@@ -3466,7 +3469,7 @@ function renderDeckSection(entries,prefix){
 function renderDeck(){
   const cards=deckCards(),total=totalCards(),sbCards=sideboardCards(),sbTotal=totalSideboard();
   const badge=document.getElementById('deck-count-badge');
-  badge.textContent=sbTotal?((total+sbTotal)+' ('+total+'+'+sbTotal+' SB)'):(total+' cards');
+  badge.textContent=sbTotal?((total+sbTotal)+' ('+total+'+'+sbTotal+')'):(total+' cards');
   badge.title=sbTotal?(total+' mainboard + '+sbTotal+' sideboard = '+(total+sbTotal)):(total+' cards');
   badge.className='deck-count-badge'+(total>100?' over':'');
   const empty=document.getElementById('deck-empty'),sections=document.getElementById('deck-sections');
@@ -5956,6 +5959,7 @@ function wmRect(key){
     return { x:Math.max(8,Math.round((innerWidth-w)/2)), y:Math.max(8,Math.round((innerHeight-h)/2)-16), w, h }; }
   if(key==='manapool'){ return { x, y, w:Math.min(620, innerWidth-40), h:Math.min(600, innerHeight-60) }; } // tall enough to show the whole pool
   if(key==='dicebag'){ return { x, y, w:Math.min(440, innerWidth-40), h:Math.min(560, innerHeight-60) }; } // show the whole dice tray on open
+  if(key==='twentyfourty'){ return { x, y, w:Math.min(560, innerWidth-40), h:Math.min(640, innerHeight-40) }; } // both seats fully visible
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
 }
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
@@ -6434,13 +6438,15 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const startCtl='<div class="lc-ctl">'+
       '<button class="'+(s.start===20?'lc-on':'')+'" data-lcstart="20">20</button>'+
       '<button class="'+(s.start===40?'lc-on':'')+'" data-lcstart="40">40</button></div>';
-  // DOM order is [control, life, steps]; the flipped half reverses it visually so steps land at the
-  // screen edge (under the opponent's number from their seat) and the control sits at the center line.
-  const half=(i,flip,ctl)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+ctl+
+  // Each half: big life number + step buttons at the outer (screen) edge. The shared Reset
+  // and 20/40 controls live in a vertical strip pinned to the LEFT wall, centered between the
+  // seats and rotated so both players can read them.
+  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+
       '<div class="lc-life'+(s.players[i].life<=0?' dead':'')+'">'+s.players[i].life+'</div>'+
       steps(i)+'</div>';
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs">'+
-      half(0,true,resetCtl)+half(1,false,startCtl)+
+      half(0,true)+half(1,false)+
+      '<div class="lc-side">'+resetCtl+startCtl+'</div>'+
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
   body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));
