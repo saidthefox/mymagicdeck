@@ -91,13 +91,13 @@
     .panel-header {
       padding: 10px 14px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;
       letter-spacing: 0.08em; color: var(--text-dim); border-bottom: 1px solid var(--border);
-      flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 10px;
     }
     .panel-body { flex: 1; overflow-y: auto; padding: 10px; }
 
     /* Left panel */
     #panel-deck { background: var(--surface); }
-    .deck-count-badge { background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
+    .deck-count-badge { background: var(--accent-dim); color: var(--accent); border-radius: 10px; padding: 1px 8px; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; white-space: nowrap; }
     .deck-count-badge.over { background: var(--danger-dim); color: var(--danger); }
     .deck-section { margin-bottom: 12px; }
     .deck-section-header { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim); padding: 2px 4px 6px; display: flex; align-items: center; justify-content: space-between; }
@@ -1382,7 +1382,7 @@
 </div>
 <div id="app">
     <div class="panel" id="panel-deck">
-    <div class="panel-header"><input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" oninput="deckRename(this.value)" style="flex:0 1 70%;min-width:0" /><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
+    <div class="panel-header"><input type="text" id="deck-name-input" placeholder="Untitled Deck" value="Untitled Deck" oninput="deckRename(this.value)" style="flex:1 1 auto;min-width:0" /><span class="deck-count-badge" id="deck-count-badge">0 cards</span></div>
     <div class="panel-body" id="deck-panel-body">
       <div class="deck-empty" id="deck-empty"><div class="icon">🃏</div>Search for cards and click<br/>to add them to your deck.</div>
       <div id="mainboard-area" style="display:none;">
@@ -3466,7 +3466,9 @@ function renderDeckSection(entries,prefix){
 function renderDeck(){
   const cards=deckCards(),total=totalCards(),sbCards=sideboardCards(),sbTotal=totalSideboard();
   const badge=document.getElementById('deck-count-badge');
-  badge.textContent=total+' cards';badge.className='deck-count-badge'+(total>100?' over':'');
+  badge.textContent=sbTotal?((total+sbTotal)+' ('+total+'+'+sbTotal+' SB)'):(total+' cards');
+  badge.title=sbTotal?(total+' mainboard + '+sbTotal+' sideboard = '+(total+sbTotal)):(total+' cards');
+  badge.className='deck-count-badge'+(total>100?' over':'');
   const empty=document.getElementById('deck-empty'),sections=document.getElementById('deck-sections');
   const mbArea=document.getElementById('mainboard-area');
   if(!cards.length&&!sbCards.length){empty.style.display='block';sections.innerHTML='';mbArea.style.display='none';document.getElementById('sideboard-area').style.display='none';return}
