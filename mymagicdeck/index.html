@@ -6164,8 +6164,13 @@ function desktopClearDom(){ document.querySelectorAll('#pc-desktop > .os-widget,
 async function desktopPullRender(){
   if(state.user&&apiToken()){
     try{ const r=await apiFetch('/desktop'); const d=(r&&r.data)||{};
-      if(Array.isArray(d.widgets)||Array.isArray(d.notes)||d.bg!=null||d.iconpos||Array.isArray(d.webshortcuts)){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.uiscale&&typeof d.uiscale==='object')DeckOS.store.set('uiscale',d.uiscale); if(typeof d.holster==='string')DeckOS.store.set('holster',d.holster); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } }
-      else desktopSyncSoon(); // server has nothing yet → seed it from this device's local layout
+      // Only restore when the server actually holds a *meaningful* layout. An empty/default
+      // server row must never clobber this device's local layout — otherwise a clean browser
+      // login wipes your saved desktop in both places. When the server is empty but this device
+      // has content, seed the server from local instead of erasing local.
+      const srvHas = (Array.isArray(d.widgets)&&d.widgets.length)||(Array.isArray(d.notes)&&d.notes.length)||(!!d.bg)||(d.iconpos&&Object.keys(d.iconpos).length)||(Array.isArray(d.webshortcuts)&&d.webshortcuts.length)||(Array.isArray(d.appfolders)&&d.appfolders.length)||(!!d.holster)||(d.uiscale&&typeof d.uiscale==='object'&&(d.uiscale.icon!==1||d.uiscale.font!==1));
+      if(srvHas){ if(Array.isArray(d.widgets))DeckOS.store.set('widgets',d.widgets); if(Array.isArray(d.notes))DeckOS.store.set('notes',d.notes); if(d.iconpos&&typeof d.iconpos==='object')DeckOS.store.set('iconpos',d.iconpos); if(Array.isArray(d.webshortcuts))DeckOS.store.set('webshortcuts',d.webshortcuts); if(Array.isArray(d.appfolders))DeckOS.store.set('appfolders',d.appfolders); if(d.uiscale&&typeof d.uiscale==='object')DeckOS.store.set('uiscale',d.uiscale); if(typeof d.holster==='string')DeckOS.store.set('holster',d.holster); if(d.bg!=null){ try{ DeckOS.store.set('deskbg',d.bg); }catch(e){} deskBgApply(d.bg); } if(typeof uiScaleApply==='function')uiScaleApply(); }
+      else desktopSyncSoon(); // server has no meaningful layout yet → seed it from this device (never wipe local)
     }catch(e){}
   }
   if(typeof webRegisterAll==='function')webRegisterAll(); // register any synced web shortcuts
