@@ -5955,8 +5955,8 @@ function wmStartMenu(){
   m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); mgWireStartMenu(m);
   setTimeout(()=>{ const close=e=>{ const mm=document.getElementById('wm-startmenu'); if(mm && !mm.contains(e.target) && !e.target.closest('.wm-start')){ mm.remove(); document.removeEventListener('click', close, true); } }; document.addEventListener('click', close, true); }, 0);
 }
-function wmRect(key){
-  try{ const r=DeckOS.store.get('wm:rect:'+key); if(r&&r.w) return {...r}; }catch(e){}
+// The sensible per-program open size (what fits its content).
+function wmDefaultRect(key){
   const n=Object.keys(wmWins).length, x=Math.max(8,Math.min(60+n*30, innerWidth-380)), y=Math.max(8,Math.min(48+n*26, innerHeight-340));
   if(key==='cgg'){ const h=Math.min(560, innerHeight-120); return { x, y, w:Math.round(h*0.7), h }; } // CGG opens at a Magic-card ratio
   if(key==='account'){ const w=Math.min(380, innerWidth-24), h=Math.min(440, innerHeight-60); // Account opens centered
@@ -5965,6 +5965,13 @@ function wmRect(key){
   if(key==='dicebag'){ return { x, y, w:Math.min(440, innerWidth-40), h:Math.min(560, innerHeight-60) }; } // show the whole dice tray on open
   if(key==='twentyfourty'){ return { x, y, w:Math.min(560, innerWidth-40), h:Math.min(640, innerHeight-40) }; } // both seats fully visible
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
+}
+function wmRect(key){
+  const def=wmDefaultRect(key);
+  // Honor a saved position, but never open SMALLER than the program's default — fixes windows
+  // that saved a too-small size (e.g. before their default existed). User-enlarged sizes are kept.
+  try{ const r=DeckOS.store.get('wm:rect:'+key); if(r&&r.w) return { x:(typeof r.x==='number'?r.x:def.x), y:(typeof r.y==='number'?r.y:def.y), w:Math.max(r.w,def.w), h:Math.max(r.h||0,def.h) }; }catch(e){}
+  return def;
 }
 function wmSaveRect(key){ const w=wmWins[key]; if(w && w.state==='normal'){ try{ DeckOS.store.set('wm:rect:'+key, w.rect); }catch(e){} } }
 function wmApply(key){ const w=wmWins[key]; if(!w)return; const el=w.el||wmEls[key]; if(w.state==='max'){ el.classList.add('wm-max'); } else { el.classList.remove('wm-max'); el.style.left=w.rect.x+'px'; el.style.top=w.rect.y+'px'; el.style.width=w.rect.w+'px'; el.style.height=w.rect.h+'px'; } if(key==='site'&&typeof mmdApply==='function')mmdApply(); }
