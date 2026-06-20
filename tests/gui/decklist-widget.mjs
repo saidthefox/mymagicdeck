@@ -21,13 +21,9 @@ await p.evaluate(async () => {
   d.cards = { [getCardId(lb)]: { card: sanitizeCard(lb), qty: 4 }, [getCardId(le)]: { card: sanitizeCard(le), qty: 2 } };
   d.sideboard = { [getCardId(pb)]: { card: sanitizeCard(pb), qty: 3 } };
   state.user = state.user || { username: 'tester' };
-  openHud();
+  widgetMount('decklist'); // widget mounting moved out of Display into the Widgets app
 });
-await p.waitForTimeout(400);
-await p.click('#modal-hud [data-mountw="decklist"]', { timeout: 5000 });
 await p.waitForTimeout(500);
-await p.click('#modal-hud [data-w="close"], #modal-hud .modal-close', { timeout: 3000 }).catch(() => {});
-await p.waitForTimeout(400);
 const text = await p.evaluate(() => { const b = document.querySelector('.os-widget .ow-body'); return b ? b.innerText : '(no widget body)'; });
 await p.screenshot({ path: SHOTS + '/decklist-widget.png' });
 console.log('--- widget text ---\n' + text);

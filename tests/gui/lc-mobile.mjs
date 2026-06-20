@@ -23,8 +23,8 @@ const m = await p.evaluate(() => {
     halves: halves.length,
     topFlipped: top ? getComputedStyle(top).transform : null,
     lifeFontPx: life ? Math.round(parseFloat(getComputedStyle(life).fontSize)) : null,
-    topCtl: top ? top.querySelector('.lc-ctl button')?.textContent.trim() : null,
-    botCtl: bot ? [...bot.querySelectorAll('.lc-ctl button')].map(x => x.textContent.trim()).join(',') : null,
+    resetCtl: document.querySelector('#modal-prog-twentyfourty .lc-side [data-lcreset]')?.textContent.trim() || null,
+    startCtls: [...document.querySelectorAll('#modal-prog-twentyfourty .lc-side [data-lcstart]')].map(x => x.textContent.trim()).join(','),
     topStepsAtEdge: top ? (top.querySelector('.lc-ovbtns').getBoundingClientRect().top < top.querySelector('.lc-life').getBoundingClientRect().top) : null,
     ovBtns: top ? top.querySelectorAll('.lc-ovbtns button').length : 0,
   };
@@ -32,10 +32,10 @@ const m = await p.evaluate(() => {
 console.log(JSON.stringify(m, null, 0));
 // Tap a + on the bottom (me) half and confirm it changes (dispatch to avoid touch-actionability flake).
 const meLife = await p.evaluate(() => {
-  const before = document.querySelector('#modal-prog-twentyfourty .lc-half:last-child .lc-life').textContent;
-  document.querySelector('#modal-prog-twentyfourty .lc-half:last-child .lc-ovbtns button:nth-child(3)').click();
-  const after = document.querySelector('#modal-prog-twentyfourty .lc-half:last-child .lc-life').textContent;
-  return before + '→' + after;
+  const life = () => document.querySelectorAll('#modal-prog-twentyfourty .lc-half')[1].querySelector('.lc-life').textContent; // re-query: lcRender rebuilds the body on each tap
+  const before = life();
+  document.querySelectorAll('#modal-prog-twentyfourty .lc-half')[1].querySelector('.lc-ovbtns button:nth-child(3)').click();
+  return before + '→' + life();
 });
 console.log('me life on + tap:', meLife);
 await p.screenshot({ path: SHOTS + '/lc-mobile.png' });
