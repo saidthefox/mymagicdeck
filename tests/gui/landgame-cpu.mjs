@@ -27,12 +27,12 @@ async function settleToHumanTurn(){
 const start = await p.evaluate(()=>{
   const div=document.createElement('div'); div.id='lgtest'; document.body.appendChild(div);
   lgRender(div); lgStart('cpu');
-  return { hasBacks: !!div.querySelector('.lg-backs'), humanCards: div.querySelectorAll('.lg-card[data-h]').length, cpu:_lg.cpu, view:_lg.view };
+  return { hasBacks: !!div.querySelector('.lg-backs'), humanCards: div.querySelectorAll('[data-h]').length, cpu:_lg.cpu, view:_lg.view };
 });
 
 await settleToHumanTurn();
 const t0 = await p.evaluate(()=>_lg.turn);
-await p.evaluate(()=>{ document.getElementById('lgtest').querySelector('.lg-card[data-h]')?.click(); }); // play a land
+await p.evaluate(()=>{ document.getElementById('lgtest').querySelector('[data-h]')?.click(); }); // play a land
 await settleToHumanTurn();                                                                              // resolve any human ETB choice
 await p.evaluate(()=>{ document.getElementById('lgtest').querySelector('#lg-end')?.click(); });          // end turn → hand to CPU
 await p.waitForTimeout(800);
