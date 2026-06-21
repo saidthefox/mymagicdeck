@@ -219,6 +219,7 @@ multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > 
 |--------|------|------|-------------|
 | POST | `/api/splash/render` | soft | composite a deck PNG server-side (`sharp`) — SSRF **allowlist**: `/u/…` files + `cards.scryfall.io` only |
 | POST | `/api/splash/bg-generate` | soft | AI scene background from a **closed word-list** prompt — **503** until `IMG_GEN_URL` is set |
+| GET | `/api/splash/bg-recent` | yes | caller's last 5 generated backgrounds (from disk; for the Display app's reuse/download strip) |
 | POST | `/api/splash/analyze` | soft | blob LLM parses the decklist → infographic profile (archetype/tagline/strategy/keyCards); text only |
 
 ### Account-synced shells

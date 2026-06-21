@@ -2864,6 +2864,23 @@ app.post('/api/splash/bg-generate', { preHandler: [softAuthenticate, rateLimitBg
   } finally { clearTimeout(timer); _bgInFlight--; }
 });
 
+// ── GET /api/splash/bg-recent — this account's most recent generated backgrounds ──
+// The generated PNGs live on disk (UPLOAD_DIR/<sub>/bg_*.png) with no DB row, so list
+// from the filesystem. Reads only the caller's own folder; filenames are regex-gated.
+app.get('/api/splash/bg-recent', { preHandler: authenticate }, async (req) => {
+  const dir = path.join(UPLOAD_DIR, String(req.user.sub));
+  let items = [];
+  try {
+    items = fs.readdirSync(dir)
+      .filter(f => /^bg_[0-9a-f]+\.png$/i.test(f))
+      .map(f => ({ f, t: fs.statSync(path.join(dir, f)).mtimeMs }))
+      .sort((a, b) => b.t - a.t)
+      .slice(0, 5)
+      .map(x => ({ url: '/u/' + req.user.sub + '/' + x.f, ts: Math.round(x.t) }));
+  } catch (_) { /* no folder yet */ }
+  return { backgrounds: items };
+});
+
 // ── Card Duel (online) ──────────────────────────────────────────────────────
 const _battleBuckets = new Map();
 function rateLimitBattle(req, reply, done) {

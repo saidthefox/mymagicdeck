@@ -6216,13 +6216,27 @@ function aiBgHtml(){
     '<select id="dbg-scene" class="disp-sel">'+BG_SCENE_OPTS.map(o=>'<option value="'+o[0]+'">'+_mgEsc(o[1])+'</option>').join('')+'</select>'+
     '<select id="dbg-vibe" class="disp-sel">'+BG_VIBE_OPTS.map(o=>'<option value="'+o[0]+'">'+_mgEsc(o[1])+'</option>').join('')+'</select>'+
     '<button class="btn small primary" id="dbg-go">✨ Generate</button></div>'+
-    '<div id="dbg-status" style="font-size:.74rem;color:var(--text-dim);margin-top:5px"></div>';
+    '<div id="dbg-status" style="font-size:.74rem;color:var(--text-dim);margin-top:5px"></div>'+
+    '<div id="dbg-recent"></div>';
+}
+// Render this account's last few generated backgrounds — click a tile to set it, ⤓ to download.
+async function _bgRecentRender(b){ const wrap=b.querySelector('#dbg-recent'); if(!wrap||!state.user)return;
+  try{ const r=await apiFetch('/splash/bg-recent'); const list=(r&&r.backgrounds)||[];
+    if(!list.length){ wrap.innerHTML=''; return; }
+    const cur=(typeof deskBgGet==='function'?deskBgGet():'');
+    wrap.innerHTML='<div style="color:var(--text-dim);font-size:.74rem;padding:8px 2px 4px">Recent backgrounds</div>'+
+      '<div style="display:flex;gap:6px;flex-wrap:wrap">'+list.map(x=>{ const u=_mgEsc(x.url); const on=x.url===cur;
+        return '<div data-bgurl="'+u+'" title="Click to set as background" style="position:relative;width:74px;height:48px;border-radius:3px;background:#222 center/cover no-repeat url(\''+u+'\');cursor:pointer;border:2px solid '+(on?'var(--accent,#5b8def)':'#0006')+'">'+
+          '<a class="dbg-dl" href="'+u+'" download title="Download" style="position:absolute;bottom:1px;right:1px;background:rgba(0,0,0,.6);color:#fff;text-decoration:none;font-size:.72rem;line-height:1;padding:1px 4px;border-radius:2px">⤓</a></div>'; }).join('')+'</div>';
+    wrap.querySelectorAll('[data-bgurl]').forEach(t=>t.addEventListener('click',e=>{ if(e.target.closest('.dbg-dl'))return; deskBgSet(t.getAttribute('data-bgurl')); _bgRecentRender(b); }));
+  }catch(e){}
 }
 function wireAiBg(b){ const go=b.querySelector('#dbg-go'); if(!go)return;
+  _bgRecentRender(b);
   go.addEventListener('click',async()=>{ const scene=b.querySelector('#dbg-scene').value, vibe=b.querySelector('#dbg-vibe').value, st=b.querySelector('#dbg-status');
     go.disabled=true; st.textContent='Generating… (can take ~30–60s)';
     try{ const r=await apiFetch('/splash/bg-generate',{method:'POST',body:JSON.stringify({slots:{scene,vibe}})});
-      if(r&&r.url){ deskBgSet(r.url); st.textContent='Set as your desktop background ✓'; } else st.textContent='No image came back — try again.'; }
+      if(r&&r.url){ deskBgSet(r.url); st.textContent='Set as your desktop background ✓'; _bgRecentRender(b); } else st.textContent='No image came back — try again.'; }
     catch(e){ st.textContent=(e&&e.status===429)?'You’ve hit the limit — try again later.':((e&&e.status===503)?'AI scenes aren’t enabled yet.':'Generation failed.'); }
     finally{ go.disabled=false; } }); }
 // ===== Web shortcuts — load an external MTG site inside a Win95 program window.
