@@ -1317,6 +1317,15 @@
     .lg-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .lg-banner{font-weight:bold;padding:4px 8px;background:#000080;color:#fff;border-radius:3px;display:inline-block}
     .lg-log{max-height:64px;overflow:auto;font-size:10px;color:#666;background:#fafafa;border:1px solid #eee;padding:4px;margin-top:8px;line-height:1.5}
+    .lg-pile.near{outline:2px dashed #d98a00;background:#fff7e8}
+    .lg-prog{font-size:10px;color:#1577d4;font-weight:bold;white-space:nowrap}
+    .lg-backs{font-size:14px;letter-spacing:-1px;color:#3a4a6b}.lg-backs b{font-size:10px;color:#888;margin-left:3px;letter-spacing:0}
+    .lg-think{background:#5a4a8a !important;animation:lgpulse 1s ease-in-out infinite}
+    @keyframes lgpulse{0%,100%{opacity:1}50%{opacity:.55}}
+    .lg-curtain{text-align:center;padding:26px 14px;border:1px solid #b5b5b5;background:#f4f4f4;border-radius:4px}
+    .lg-rules{margin:12px auto 0;max-width:320px;text-align:left}
+    .lg-rules summary{cursor:pointer;font-size:11px;color:#1577d4}
+    .lg-rules>div{font-size:10px;color:#555;line-height:1.6;margin-top:6px}
     /* Embedded web-shortcut windows (load an external site in a Win95 frame) */
     .web-wrap{display:flex;flex-direction:column;height:100%;min-height:340px;background:#fff}
     .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
@@ -5964,6 +5973,7 @@ function wmDefaultRect(key){
   if(key==='manapool'){ return { x, y, w:Math.min(620, innerWidth-40), h:Math.min(600, innerHeight-60) }; } // tall enough to show the whole pool
   if(key==='dicebag'){ return { x, y, w:Math.min(440, innerWidth-40), h:Math.min(560, innerHeight-60) }; } // show the whole dice tray on open
   if(key==='twentyfourty'){ return { x, y, w:Math.min(560, innerWidth-40), h:Math.min(640, innerHeight-40) }; } // both seats fully visible
+  if(key==='landgame'){ return { x, y, w:Math.min(480, innerWidth-40), h:Math.min(660, innerHeight-40) }; } // board + hand + log without scrolling
   return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
 }
 function wmRect(key){
@@ -6220,7 +6230,7 @@ function aiBgHtml(){
     '<div id="dbg-recent"></div>';
 }
 // Render this account's last few generated backgrounds — click a tile to set it, ⤓ to download.
-async function _bgRecentRender(b){ const wrap=b.querySelector('#dbg-recent'); if(!wrap||!state.user)return;
+async function _bgRecentRender(b){ const wrap=b.querySelector('#dbg-recent'); if(!wrap||!state.user||!apiToken())return; // bg-recent needs a bearer token
   try{ const r=await apiFetch('/splash/bg-recent'); const list=(r&&r.backgrounds)||[];
     if(!list.length){ wrap.innerHTML=''; return; }
     const cur=(typeof deskBgGet==='function'?deskBgGet():'');
@@ -6358,61 +6368,120 @@ const LG_TYPES=['plains','island','swamp','mountain','forest','wastes'];
 const LG_NAME={plains:'Plains',island:'Island',swamp:'Swamp',mountain:'Mountain',forest:'Forest',wastes:'Wastes'};
 const LG_ICO={plains:'🌾',island:'🏝️',swamp:'💀',mountain:'⛰️',forest:'🌲',wastes:'◇'};
 let _lg=null, _lgBody=null;
-function lgRerender(){ if(_lgBody)lgRender(_lgBody); }
+function lgRerender(){ if(_lgBody)lgRender(_lgBody); lgMaybeCpu(); }
 function lgShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function lgMakePlayer(name){ const deck=[]; LG_TYPES.forEach(t=>{ for(let i=0;i<5;i++)deck.push(t); }); lgShuffle(deck); return { name, deck, hand:deck.splice(0,5), gy:[], exile:[], field:{plains:0,island:0,swamp:0,mountain:0,forest:0,wastes:0} }; }
 function lgStackTopType(){ const t=_lg.stack[_lg.stack.length-1]; return t ? (t.kind==='land'?t.type:'island') : null; } // a counter on the stack is itself "Island"
 function lgCanCounter(pi){ const t=lgStackTopType(); if(!t)return false; const h=_lg.players[pi].hand; const isl=h.filter(x=>x==='island').length; return t==='island' ? isl>=2 : (isl>=1 && h.includes(t)); } // discard Island + exile a copy of the type being countered
-function lgStart(){ _lg={ players:[lgMakePlayer('Player 1'),lgMakePlayer('Player 2')], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, skipDraw:true, choice:null, winner:null, mode:'turn', log:['Player 1 goes first (no draw on turn 1).'] }; lgRerender(); }
+function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode==='cpu'?1:-1;
+  const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
+  _lg={ players:[lgMakePlayer(names[0]),lgMakePlayer(names[1])], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'] }; lgRerender(); }
+// Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
+function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond')return _lg.priority; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
 function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ _lg.log.push(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); _lg.log.push(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
 function lgWinner(){ for(let i=0;i<2;i++){ const f=_lg.players[i].field; if(LG_TYPES.some(t=>f[t]>=5)||LG_TYPES.filter(t=>f[t]>0).length>=6)return i; } return null; }
 function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; _lg.log.push('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
 function lgCast(type){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active))lgGivePriority(1-_lg.active); else lgResolveTop(); }
-function lgGivePriority(who){ _lg.mode='respond'; _lg.priority=who; _lg.lastPass=null; lgRerender(); }
+function lgGivePriority(who){ const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===who){ lgResolveTop(); return; } // you don't respond to your own top-of-stack object — resolve it
+  _lg.mode='respond'; _lg.priority=who; _lg.lastPass=null; lgRerender(); }
 function lgCounter(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(!lgCanCounter(me))return; const p=_lg.players[me]; const t=lgStackTopType();
   p.hand.splice(p.hand.indexOf('island'),1); p.gy.push('island');   // discard the Island (the "Force of Will")
   p.hand.splice(p.hand.indexOf(t),1); p.exile.push(t);              // exile a card matching the type being countered
   _lg.stack.push({kind:'counter',ctrl:me}); _lg.log.push(p.name+' counters with Island + '+LG_NAME[t]+'.'); _lg.lastPass=null; _lg.priority=1-me; lgRerender(); }
-function lgPassPriority(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(_lg.lastPass!=null&&_lg.lastPass!==me){ _lg.lastPass=null; lgResolveTop(); return; } _lg.lastPass=me; _lg.priority=1-me; lgRerender(); }
+function lgPassPriority(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(_lg.lastPass!=null&&_lg.lastPass!==me){ _lg.lastPass=null; lgResolveTop(); return; } _lg.lastPass=me; _lg.priority=1-me;
+  const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===_lg.priority){ _lg.lastPass=null; lgResolveTop(); return; } // ceremony pass: the controller won't counter their own object
+  lgRerender(); }
 function lgResolveTop(){ const item=_lg.stack.pop(); if(!item){ lgAfterResolve(); return; }
   if(item.kind==='counter'){ const below=_lg.stack.pop(); if(below){ if(below.kind==='land'){ _lg.players[below.ctrl].gy.push(below.type); _lg.log.push(LG_NAME[below.type]+' is countered.'); } else _lg.log.push('The counter is countered.'); } }
   else { _lg.players[item.ctrl].field[item.type]++; _lg.log.push(LG_NAME[item.type]+' enters play.'); if(lgCheckWin())return; lgETB(item.type,item.ctrl); }
   lgContinue(); }
 function lgContinue(){ if(_lg.winner!=null)return; if(lgCheckWin())return; if(_lg.choice){ _lg.mode='choose'; lgRerender(); return; } lgAfterResolve(); }
 function lgAfterResolve(){ if(_lg.stack.length)lgGivePriority(_lg.active); else { _lg.mode='turn'; _lg.priority=_lg.active; lgRerender(); } }
-function lgChoose(who,prompt,options,onPick){ _lg.choice={who,prompt,options,onPick}; }
+function lgChoose(who,prompt,options,onPick,kind){ _lg.choice={who,prompt,options,onPick,kind}; }
 function lgPick(v){ const c=_lg.choice; if(!c)return; _lg.choice=null; c.onPick(v); lgContinue(); }
 function lgETB(type,ctrl){ const me=_lg.players[ctrl], opp=_lg.players[1-ctrl];
   if(type==='wastes'){ lgDraw(ctrl); _lg.log.push(me.name+' draws (Wastes).'); }
-  else if(type==='forest'){ if(me.gy.length)lgChoose(ctrl,'Forest — return a land from your graveyard:', me.gy.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=me.gy.splice(v,1)[0]; me.hand.push(t); _lg.log.push(me.name+' returns '+LG_NAME[t]+' to hand.'); }); else _lg.log.push('Forest fizzles (empty graveyard).'); }
-  else if(type==='plains'){ const opts=LG_TYPES.filter(t=>me.field[t]>0 && t!=='plains' && t!=='island'); /* Plains/Island ETBs are no-ops/recursive — not worth flickering */ if(opts.length)lgChoose(ctrl,'Plains — flicker one of your lands to re-trigger its ETB (optional):', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})).concat([{label:'⊘ Don’t flicker',value:'__none__'}]), v=>{ if(v==='__none__'){ _lg.log.push(me.name+' declines to flicker.'); return; } _lg.log.push(me.name+' flickers '+LG_NAME[v]+'.'); lgETB(v,ctrl); }); else _lg.log.push('Plains fizzles (nothing useful to flicker).'); }
-  else if(type==='mountain'){ const opts=LG_TYPES.filter(t=>opp.field[t]>0); if(opts.length)lgChoose(ctrl,'Mountain — destroy an opponent land:', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})), v=>{ opp.field[v]--; opp.gy.push(v); _lg.log.push(me.name+' destroys opponent '+LG_NAME[v]+'.'); }); else _lg.log.push('Mountain fizzles (no opponent lands).'); }
-  else if(type==='swamp'){ if(opp.hand.length)lgChoose(1-ctrl,'Swamp — '+opp.name+', discard a card:', opp.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=opp.hand.splice(v,1)[0]; opp.gy.push(t); _lg.log.push(opp.name+' discards '+LG_NAME[t]+'.'); }); else _lg.log.push('Swamp fizzles (empty hand).'); }
+  else if(type==='forest'){ if(me.gy.length)lgChoose(ctrl,'Forest — return a land from your graveyard:', me.gy.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=me.gy.splice(v,1)[0]; me.hand.push(t); _lg.log.push(me.name+' returns '+LG_NAME[t]+' to hand.'); }, 'forest'); else _lg.log.push('Forest fizzles (empty graveyard).'); }
+  else if(type==='plains'){ const opts=LG_TYPES.filter(t=>me.field[t]>0 && t!=='plains' && t!=='island'); /* Plains/Island ETBs are no-ops/recursive — not worth flickering */ if(opts.length)lgChoose(ctrl,'Plains — flicker one of your lands to re-trigger its ETB (optional):', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})).concat([{label:'⊘ Don’t flicker',value:'__none__'}]), v=>{ if(v==='__none__'){ _lg.log.push(me.name+' declines to flicker.'); return; } _lg.log.push(me.name+' flickers '+LG_NAME[v]+'.'); lgETB(v,ctrl); }, 'plains'); else _lg.log.push('Plains fizzles (nothing useful to flicker).'); }
+  else if(type==='mountain'){ const opts=LG_TYPES.filter(t=>opp.field[t]>0); if(opts.length)lgChoose(ctrl,'Mountain — destroy an opponent land:', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})), v=>{ opp.field[v]--; opp.gy.push(v); _lg.log.push(me.name+' destroys opponent '+LG_NAME[v]+'.'); }, 'mountain'); else _lg.log.push('Mountain fizzles (no opponent lands).'); }
+  else if(type==='swamp'){ if(opp.hand.length)lgChoose(1-ctrl,'Swamp — '+opp.name+', discard a card:', opp.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=opp.hand.splice(v,1)[0]; opp.gy.push(t); _lg.log.push(opp.name+' discards '+LG_NAME[t]+'.'); }, 'discard'); else _lg.log.push('Swamp fizzles (empty hand).'); }
 }
 function lgEndTurn(){ if(_lg.mode!=='turn')return; const a=_lg.players[_lg.active];
-  if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); _lg.log.push(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }); _lg.mode='choose'; lgRerender(); return; }
+  if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); _lg.log.push(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }, 'discard'); _lg.mode='choose'; lgRerender(); return; }
   _lg.active=1-_lg.active; _lg.turn++; _lg.castThisTurn=false;
   lgDraw(_lg.active); // every turn after P1's first draws (P1 skipped its turn-1 draw at game start)
   _lg.mode='turn'; _lg.priority=_lg.active; _lg.log.push('— '+_lg.players[_lg.active].name+"'s turn —"); lgRerender(); }
+// ── Computer opponent ("Normal" heuristic). Drives the same transitions a human would. ──
+function lgTypesInPlay(f){ return LG_TYPES.filter(t=>f[t]>0).length; }
+function lgMaybeCpu(){ if(!_lg||_lg.mode2!=='cpu'||_lg.winner!=null)return; if(lgActor()!==_lg.cpu)return; if(_lg._cpuPending)return;
+  _lg._cpuPending=true; setTimeout(()=>{ if(!_lg)return; _lg._cpuPending=false; lgCpuAct(); }, 700); }
+function lgCpuAct(){ if(!_lg||_lg.winner!=null||lgActor()!==_lg.cpu)return;
+  if(_lg.mode==='turn'){ const t=(!_lg.castThisTurn)?lgCpuPickPlay():null; if(t)lgCast(t); else lgEndTurn(); return; }
+  if(_lg.mode==='respond'){ if(lgCanCounter(_lg.cpu)&&lgCpuShouldCounter())lgCounter(); else lgPassPriority(); return; }
+  if(_lg.mode==='choose'){ lgPick(lgCpuChoose(_lg.choice)); return; } }
+function lgCpuPickPlay(){ const me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu], mf=me.field, of=opp.field;
+  const types=[...new Set(me.hand)]; if(!types.length)return null;
+  const myTypes=lgTypesInPlay(mf), oppMax=Math.max(0,...LG_TYPES.map(t=>of[t]));
+  let best=null, bestScore=-1e9;
+  for(const t of types){ let s=0; const after=mf[t]+1;
+    if(after>=5)s+=1000;                                   // wins by 5-of-a-kind
+    if(mf[t]===0 && myTypes+1>=6)s+=1000;                  // wins by 6-different
+    s+=after*3; if(mf[t]===0)s+=12;                        // build the pile / broaden toward 6
+    if(t==='mountain'){ s+= oppMax>0 ? 14+oppMax*6 : -8; if(oppMax>=4)s+=40; }
+    else if(t==='wastes')s+=10;                            // card advantage
+    else if(t==='swamp')s+= opp.hand.length?8:-4;          // strip their hand
+    else if(t==='forest')s+= me.gy.length?9:-6;            // regrow
+    else if(t==='plains'){ const fl=LG_TYPES.filter(x=>mf[x]>0&&x!=='plains'&&x!=='island'); s+= (fl.includes('mountain')&&oppMax>0)?16:(fl.length?6:-6); }
+    else if(t==='island')s-=10;                            // ETB no-op — hold Islands for counters
+    s+=Math.random()*2;
+    if(s>bestScore){ bestScore=s; best=t; } }
+  return best; }
+function lgCpuShouldCounter(){ const top=_lg.stack[_lg.stack.length-1]; if(!top||top.kind!=='land'||top.ctrl===_lg.cpu)return false;
+  const opp=_lg.players[top.ctrl], me=_lg.players[_lg.cpu], of=opp.field, mf=me.field, t=top.type;
+  const myIsl=me.hand.filter(x=>x==='island').length;
+  if(of[t]+1>=5)return true;                                       // would win 5-of-a-kind
+  if(of[t]===0 && lgTypesInPlay(of)+1>=6)return true;              // would win 6-different
+  if(t==='mountain'){ const myMax=Math.max(0,...LG_TYPES.map(x=>mf[x])); if(myMax>=4)return true; if(myMax>=3&&myIsl>=2)return true; }
+  if(of[t]===0 && lgTypesInPlay(of)+1>=5 && myIsl>=2)return true;  // getting dangerously broad — spare an Island
+  return false; }
+function lgCpuChoose(c){ const opts=c.options, me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu];
+  if(c.kind==='mountain'){ let v=opts[0].value, n=-1; for(const o of opts){ const k=opp.field[o.value]||0; if(k>n){n=k;v=o.value;} } return v; } // smash their tallest
+  if(c.kind==='forest'){ const rank={mountain:5,wastes:4,swamp:3,forest:2,plains:1,island:0}; let v=opts[0].value, r=-1; for(const o of opts){ const k=rank[me.gy[o.value]]||0; if(k>r){r=k;v=o.value;} } return v; }
+  if(c.kind==='plains'){ if(opts.some(o=>o.value==='mountain')&&LG_TYPES.some(t=>opp.field[t]>0))return 'mountain'; if(opts.some(o=>o.value==='wastes'))return 'wastes'; const real=opts.filter(o=>o.value!=='__none__'); return real.length?real[0].value:'__none__'; }
+  // 'discard' (end-of-turn trim, or our own card to a human Swamp): ditch the least useful — spare Islands / already-owned types
+  let v=opts[0].value, s=-1; for(const o of opts){ const t=me.hand[o.value]; let sc=(t==='island'?3:0)+(me.field[t]>=5?5:0)+me.field[t]; if(sc>s){s=sc;v=o.value;} } return v; }
 function lgRender(body){ if(!body)return; _lgBody=body; body.style.padding='8px';
-  if(!_lg){ body.innerHTML='<div class="lg-wrap" style="text-align:center;padding:18px"><div style="font-size:34px">🏞️</div><h3 style="margin:6px 0">The Land Game</h3><div style="color:#555;font-size:11px;max-width:300px;margin:0 auto 12px;line-height:1.5">Two players, one device (open hands). Each deck is 5 of every basic land. Play a land to trigger its ability; Islands counter (counter-wars allowed). First to <b>5 of a kind</b> or <b>6 different</b> in play wins.</div><button class="btn small" id="lg-start">Start game</button></div>'; const s=body.querySelector('#lg-start'); if(s)s.onclick=lgStart; return; }
-  const me=_lg.active, opp=1-me;
-  const field=pi=>{ const f=_lg.players[pi].field; return '<div class="lg-field">'+LG_TYPES.map(t=>'<div class="lg-pile'+(f[t]>=5?' win':'')+'" title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<span class="n">'+f[t]+'</span></div>').join('')+'</div>'; };
+  if(!_lg){ body.innerHTML='<div class="lg-wrap" style="text-align:center;padding:16px"><div style="font-size:34px">🏞️</div><h3 style="margin:6px 0">The Land Game</h3>'+
+      '<div style="color:#555;font-size:11px;max-width:320px;margin:0 auto 12px;line-height:1.5">Each deck is 5 of every basic land. Play one land a turn to trigger its ability; Islands can counter (counter-wars allowed). First to <b>5 of a kind</b> or <b>6 different</b> lands in play wins.</div>'+
+      '<div class="lg-bar" style="justify-content:center"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button></div>'+
+      '<details class="lg-rules"><summary>How each land works</summary><div>'+LG_ICO.plains+' <b>Plains</b> — flicker one of your lands to re-trigger its ability.<br>'+LG_ICO.island+' <b>Island</b> — no enter ability; discard it (+ a copy) to counter a land.<br>'+LG_ICO.swamp+' <b>Swamp</b> — opponent discards a card.<br>'+LG_ICO.mountain+' <b>Mountain</b> — destroy an opponent’s land.<br>'+LG_ICO.forest+' <b>Forest</b> — return a land from your graveyard.<br>'+LG_ICO.wastes+' <b>Wastes</b> — draw a card.</div></details></div>';
+    const c=body.querySelector('#lg-cpu'); if(c)c.onclick=()=>lgStart('cpu'); const h=body.querySelector('#lg-hot'); if(h)h.onclick=()=>lgStart('hotseat'); return; }
+  const actor=lgActor();
+  // Hot-seat: drop a curtain between humans so hands stay secret on the shared device.
+  if(_lg.mode2==='hotseat' && _lg.mode!=='over' && actor!=null && actor!==_lg.view){
+    body.innerHTML='<div class="lg-wrap"><div class="lg-curtain"><div style="font-size:32px">📱</div><div class="lg-banner">Pass to '+_mgEsc(_lg.players[actor].name)+'</div><div style="font-size:11px;color:#555;margin:10px 0">Hands are secret — tap when '+_mgEsc(_lg.players[actor].name)+' is holding the device.</div><button class="btn small" id="lg-reveal">I’m ready ▸</button></div></div>';
+    const r=body.querySelector('#lg-reveal'); if(r)r.onclick=()=>{ _lg.view=actor; lgRerender(); }; return; }
+  const me=_lg.view, opp=1-me, canAct=(actor===me); // the viewer is the one who acts (the CPU is never the viewer)
+  const field=pi=>{ const f=_lg.players[pi].field; return '<div class="lg-field">'+LG_TYPES.map(t=>'<div class="lg-pile'+(f[t]>=5?' win':(f[t]===4?' near':''))+'" title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<span class="n">'+f[t]+'</span></div>').join('')+'</div>'; };
+  const prog=pi=>{ const f=_lg.players[pi].field; return '<span class="lg-prog">★ '+Math.max(0,...LG_TYPES.map(t=>f[t]))+'/5 · '+lgTypesInPlay(f)+'/6</span>'; };
   const hand=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<span style="color:#999;font-size:10px">(empty)</span>'; return '<div class="lg-hand">'+h.map((t,i)=>'<div class="lg-card'+(click?'':' dis')+'" data-h="'+i+'" data-t="'+t+'">'+LG_ICO[t]+'<span>'+LG_NAME[t]+'</span></div>').join('')+'</div>'; };
-  const side=pi=>{ const p=_lg.players[pi]; return '<div class="lg-side'+(pi===me?' active':'')+'"><b>'+_mgEsc(p.name)+'</b> <span style="color:#888;font-size:10px">deck '+p.deck.length+' · gy '+p.gy.length+(p.exile.length?(' · exile '+p.exile.length):'')+'</span>'+field(pi)+'</div>'; };
+  const backs=pi=>{ const n=_lg.players[pi].hand.length; return n?'<span class="lg-backs">'+'🂠'.repeat(Math.min(n,7))+(n>7?'…':'')+' <b>×'+n+'</b></span>':'<span style="color:#999;font-size:10px">(empty)</span>'; };
+  const side=pi=>{ const p=_lg.players[pi]; return '<div class="lg-side'+(pi===_lg.active?' active':'')+'"><b>'+_mgEsc(p.name)+'</b> '+prog(pi)+' <span style="color:#888;font-size:10px">deck '+p.deck.length+' · gy '+p.gy.length+(p.exile.length?(' · exile '+p.exile.length):'')+'</span>'+field(pi)+'</div>'; };
   const stack=_lg.stack.length?'<div class="lg-stack"><b>Stack:</b> '+_lg.stack.map(s=>s.kind==='land'?(LG_ICO[s.type]+LG_NAME[s.type]+' — '+_lg.players[s.ctrl].name):('🚫 counter — '+_lg.players[s.ctrl].name)).join(' ▸ ')+'</div>':'';
+  const playable=canAct&&_lg.mode==='turn'&&!_lg.castThisTurn;
   let ctrl='';
-  if(_lg.mode==='turn'){ ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'+(_lg.castThisTurn?'':'<div style="font-size:10px;color:#555;margin-top:4px">Play a land:</div>'+hand(me,true))+'<div class="lg-bar" style="margin-top:6px"><button class="btn small" id="lg-end">End turn ▸</button></div>'; }
-  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div><div class="lg-bar" style="margin-top:6px">'+(lgCanCounter(pr)?'<button class="btn small" id="lg-counter">🏝️ Counter (Island + '+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button></div>'; }
-  else if(_lg.mode==='choose'){ const c=_lg.choice; ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div style="font-size:11px;margin:4px 0">'+_mgEsc(c.prompt)+'</div><div class="lg-bar">'+c.options.map(o=>'<button class="btn small" data-pick="'+o.value+'">'+o.label+'</button>').join('')+'</div>'; }
+  if(_lg.mode2==='cpu'&&actor===_lg.cpu){ ctrl='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
+  else if(_lg.mode==='turn'){ ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'+(canAct?'<div class="lg-bar" style="margin-top:6px"><button class="btn small" id="lg-end">End turn ▸</button></div>':''); }
+  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div>'+(canAct?'<div class="lg-bar" style="margin-top:6px">'+(lgCanCounter(pr)?'<button class="btn small" id="lg-counter">🏝️ Counter (Island + '+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button></div>':''); }
+  else if(_lg.mode==='choose'){ const c=_lg.choice; ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div style="font-size:11px;margin:4px 0">'+_mgEsc(c.prompt)+'</div>'+(canAct?'<div class="lg-bar">'+c.options.map(o=>'<button class="btn small" data-pick="'+o.value+'">'+o.label+'</button>').join('')+'</div>':''); }
   else if(_lg.mode==='over'){ ctrl='<div class="lg-banner" style="background:#2c8a4a">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div><div class="lg-bar" style="margin-top:6px"><button class="btn small" id="lg-again">Play again</button></div>'; }
-  body.innerHTML='<div class="lg-wrap">'+side(opp)+'<div style="font-size:10px;color:#888;margin:2px 0">'+_mgEsc(_lg.players[opp].name)+' hand: '+hand(opp,false)+'</div>'+stack+side(me)+'<div style="margin-top:6px">'+ctrl+'</div><div class="lg-log">'+_lg.log.slice(-7).reverse().map(_mgEsc).join('<br>')+'</div></div>';
-  if(_lg.mode==='turn'&&!_lg.castThisTurn)body.querySelectorAll('.lg-card[data-h]').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
+  body.innerHTML='<div class="lg-wrap">'+side(opp)+'<div style="font-size:10px;color:#888;margin:2px 0">'+_mgEsc(_lg.players[opp].name)+' hand: '+backs(opp)+'</div>'+stack+side(me)+'<div style="font-size:10px;color:#888;margin:4px 0 2px">'+_mgEsc(_lg.players[me].name)+' hand:</div>'+hand(me,playable)+'<div style="margin-top:6px">'+ctrl+'</div><div class="lg-log">'+_lg.log.slice(-7).reverse().map(_mgEsc).join('<br>')+'</div></div>';
+  if(playable)body.querySelectorAll('.lg-card[data-h]').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
   const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=lgEndTurn;
   const cb=body.querySelector('#lg-counter'); if(cb)cb.onclick=lgCounter;
   const pb=body.querySelector('#lg-pass'); if(pb)pb.onclick=lgPassPriority;
   body.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>{ const v=el.getAttribute('data-pick'); lgPick(isNaN(+v)?v:+v); }));
-  const ab=body.querySelector('#lg-again'); if(ab)ab.onclick=lgStart;
+  const ab=body.querySelector('#lg-again'); if(ab)ab.onclick=()=>lgStart(_lg.mode2);
 }
 // ===== Mail — async inbox: subscription/system mail + admin messages (no user→user yet) =====
 let _mailUnread=0;
