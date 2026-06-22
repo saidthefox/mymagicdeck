@@ -99,7 +99,7 @@ try {
     await Ja('/lg/queue', { method:'DELETE' }, D);
 
     // --- Cardle (daily card guess) ---
-    const F = tok(990006, 'smoke_F');
+    const F = tok(990600 + Math.floor(Math.random() * 9000), 'smoke_F'); // unique each run → state.n===0 holds
     const cst = await Ja('/cardle/state', null, F);
     assert(cst.status === 200 && cst.body.day && cst.body.max === 8 && cst.body.n === 0, 'GET /cardle/state → fresh daily game');
     const cg = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'Llanowar Elves' }) }, F);
