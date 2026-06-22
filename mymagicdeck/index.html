@@ -1415,11 +1415,22 @@
     .lg-board .btn,.lg-start .btn,.lg-curtain .btn{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e;border:1px solid #6b4f1a;border-radius:6px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.3);box-shadow:0 2px 3px rgba(0,0,0,.4)}
     .lg-board .btn:hover,.lg-start .btn:hover,.lg-curtain .btn:hover{background:linear-gradient(180deg,#e0b755,#9a7a26)}
     .lg-board .btn.primary,.lg-start .btn.primary{background:linear-gradient(180deg,#4aa0e0,#2060a0);color:#fff;border-color:#1b4d86;text-shadow:0 1px 1px #000}
-    .lg-start,.lg-curtain{text-align:center;padding:22px 16px;border-radius:8px;color:#f0e6d2;min-height:300px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    .lg-topstrip .lg-gyzone{margin-left:18px}
+    .lg-fmtrow{display:flex;gap:10px;justify-content:center;margin:4px 0 12px}
+    .lg-fmtcard{width:88px;height:112px;border-radius:9px;border:2px solid #b8932f;background:linear-gradient(160deg,#3a2c18,#241a0e);color:#d8cdae;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 5px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.12)}
+    .lg-fmtcard.on{background:linear-gradient(160deg,#caa242,#8a6a1e);color:#241a0e;box-shadow:0 0 0 2px #ffd968,0 3px 8px rgba(0,0,0,.45)}
+    .lg-fmtico{font-size:30px;line-height:1}
+    .lg-fmtnm{font-size:11px;font-weight:bold;text-align:center;line-height:1.1;padding:0 4px}
+    .lg-blurb{max-width:70%;margin:0 auto 14px;padding:9px 12px;border:1px solid #b8932f;border-radius:8px;background:rgba(0,0,0,.22);color:#e7dcc0;font-size:11px;line-height:1.5}
+    .lg-blurb b{color:#ffe9b8}
+    .lg-landrule{display:flex;gap:7px;align-items:flex-start;margin:5px 0;text-align:left}
+    .lg-lr-ico{font-size:16px;line-height:1.2;flex-shrink:0}
+    .lg-start,.lg-curtain{text-align:center;padding:18px 16px;border-radius:8px;color:#f0e6d2;min-height:418px;height:100%;overflow:auto;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;
       background:radial-gradient(120% 90% at 50% 30%,#2c5d4e,#11231d);box-shadow:inset 0 0 0 2px #b8932f,inset 0 0 0 5px #5e441a}
+    .lg-start{justify-content:flex-start;padding-top:16px}
     .lg-start h3{margin:6px 0;color:#ffe9b8;text-shadow:0 1px 2px #000;font-size:18px}
     .lg-start .sub{color:#d8cdae;font-size:11px;max-width:340px;line-height:1.5;margin-bottom:14px}
-    .lg-fmtrow,.lg-segrow{display:inline-flex;border:1px solid #b8932f;border-radius:7px;overflow:hidden;margin:2px 0 10px}
+    .lg-segrow{display:inline-flex;border:1px solid #b8932f;border-radius:7px;overflow:hidden;margin:2px 0 10px}
     .lg-seg{background:#241a0e;color:#d8cdae;border:none;border-right:1px solid #6b4f1a;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer}
     .lg-seg:last-child{border-right:none}
     .lg-seg.on{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e}
@@ -6495,6 +6506,19 @@ function lgOptsSet(o){ try{ DeckOS.store.set('lg:opts',o); }catch(e){} if(_lg)_l
 // ===== Basics menu state + dynamic title + online (server-authoritative) =====
 let _lgo=null, _lgM={ fmt:'land', online:false, tc:'5m', code:'', invite:null, queue:false, stats:null, history:null, msg:'' };
 const LG_TC_NAME={ '1m':'Bullet · 1 min', '5m':'Blitz · 5 min', 'corr':'Correspondence' };
+const LG_FMT_DATA={
+  land:{ icon:'🏞️', name:'The Land Game', play:true,
+    blurb:'A duel of basic lands. Each deck is exactly 5 of every basic land type. You play one land per turn; its enter-the-battlefield ability triggers right away. First player to reach <b>five of one land</b> or <b>six different lands</b> in play wins.',
+    lands:[ ['🌾','Plains','When it enters, you may flicker one of your other lands in play — exile and immediately return it — to re-trigger that land’s enter ability.'],
+            ['🏝️','Island','No enter ability. Instead, while a land is on the stack you may discard an Island and exile a matching land from your hand to counter it. A counter is itself an Island, so counters can be countered.'],
+            ['💀','Swamp','When it enters, the opponent discards one card of their choice from their hand.'],
+            ['⛰️','Mountain','When it enters, destroy one land an opponent controls — it goes to their graveyard.'],
+            ['🌲','Forest','When it enters, return one land from your graveyard to your hand.'],
+            ['◇','Wastes','When it enters, draw a card.'] ] },
+  test:{ icon:'🧪', name:'Test', play:false,
+    blurb:'A placeholder format slot — not playable yet. It’s here so the format selector has room to grow as new rule sets are added.',
+    lands:[] }
+};
 function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
   document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
   if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar(); }catch(e){} }
@@ -6614,15 +6638,15 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   if(!_lg){ lgSetTitle('Basics'); if(_lgo)lgoStop(); if(_lgM.stats===null && state.user && apiToken())lgLoadStats();
     const loggedIn = !!(state.user && apiToken());
     const seg=(items,cur,attr)=>items.map(o=>'<button class="lg-seg'+(o.id===cur?' on':'')+'" '+attr+'="'+o.id+'">'+_mgEsc(o.name)+'</button>').join('');
-    const fmts=[{id:'land',name:'The Land Game'},{id:'test',name:'Test'}];
     const tcs=[{id:'1m',name:'Bullet 1m'},{id:'5m',name:'Blitz 5m'},{id:'corr',name:'Correspondence'}];
-    let mid='';
-    if(_lgM.fmt!=='land'){ mid='<div class="sub" style="margin-top:10px">Test format — a placeholder slot. Not playable yet.</div>'; }
-    else {
-      mid='<div class="sub">Each deck is 5 of every basic land. Play one land a turn to trigger its ability; Islands can counter. First to <b>5 of a kind</b> or <b>6 different</b> lands wins.</div>'+
-        '<div class="lg-bar"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button><button class="btn small'+(_lgM.online?' primary':'')+'" id="lg-online">🌐 Online</button></div>';
+    const fd=LG_FMT_DATA[_lgM.fmt]||LG_FMT_DATA.land;
+    const fmtCards=Object.keys(LG_FMT_DATA).map(k=>{ const f=LG_FMT_DATA[k]; return '<button class="lg-fmtcard'+(k===_lgM.fmt?' on':'')+'" data-fmt="'+k+'"><span class="lg-fmtico">'+f.icon+'</span><span class="lg-fmtnm">'+_mgEsc(f.name)+'</span></button>'; }).join('');
+    const rulesBox='<details class="lg-rules"'+(fd.lands.length?'':'')+'><summary>How the lands work — '+_mgEsc(fd.name)+'</summary><div>'+(fd.lands.length?fd.lands.map(l=>'<div class="lg-landrule"><span class="lg-lr-ico">'+l[0]+'</span><span><b>'+l[1]+'</b> — '+l[2]+'</span></div>').join(''):'<div style="color:#c9b88f">No rules yet — this format is a placeholder.</div>')+'</div></details>';
+    let mid='<div class="lg-blurb">'+fd.blurb+'</div>';
+    if(fd.play){
+      mid+='<div class="lg-bar"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button><button class="btn small'+(_lgM.online?' primary':'')+'" id="lg-online">🌐 Online</button></div>';
       if(_lgM.online){
-        if(!loggedIn){ mid+='<div class="lg-onl"><div class="sub">Sign in to play online vs another player.</div><button class="btn small primary" id="lg-signin">Sign in</button></div>'; }
+        if(!loggedIn){ mid+='<div class="lg-onl"><div class="sub" style="margin:0 0 8px">Sign in to play online vs another player.</div><button class="btn small primary" id="lg-signin">Sign in</button></div>'; }
         else if(_lgM.queue){ mid+='<div class="lg-onl"><div class="lg-search">🔍 Searching for an opponent…</div><button class="btn small" id="lg-qcancel">Cancel</button></div>'; }
         else { mid+='<div class="lg-onl"><div class="lg-seglabel">Time control</div><div class="lg-segrow">'+seg(tcs,_lgM.tc,'data-tc')+'</div>'+
           '<div class="lg-bar" style="margin-top:8px"><button class="btn small primary" id="lg-find">⚔ Find match</button><button class="btn small" id="lg-invite">✉ Invite a friend</button></div>'+
@@ -6633,9 +6657,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
         if(_lgM.history&&_lgM.history.length){ hist='<div class="lg-hist">'+_lgM.history.slice(0,5).map(h=>'<div class="lg-hrow"><span class="lg-h'+(h.result==='win'?'w':(h.result==='loss'?'l':'d'))+'">'+(h.result==='win'?'W':(h.result==='loss'?'L':'·'))+'</span> vs '+_mgEsc(h.opp||'?')+' <span class="lg-hsub">'+_mgEsc(LG_TC_NAME[h.clock]||h.clock||'')+'</span></div>').join('')+'</div>'; }
         mid+='<div class="lg-statsbox">🏆 '+st.total+' games · '+st.winPct+'% won ('+st.wins+'–'+st.losses+')'+hist+'</div>'; }
     }
-    body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:40px">🏞️</div><h3>Basics</h3>'+
-      '<div class="lg-fmtrow">'+seg(fmts,_lgM.fmt,'data-fmt')+'</div>'+mid+
-      '<details class="lg-rules"><summary>How each land works</summary><div>'+LG_ICO.plains+' <b>Plains</b> — flicker one of your lands.<br>'+LG_ICO.island+' <b>Island</b> — discard it (+ a copy) to counter a land.<br>'+LG_ICO.swamp+' <b>Swamp</b> — opponent discards.<br>'+LG_ICO.mountain+' <b>Mountain</b> — destroy an opponent land.<br>'+LG_ICO.forest+' <b>Forest</b> — return a land from your graveyard.<br>'+LG_ICO.wastes+' <b>Wastes</b> — draw a card.</div></details></div></div>';
+    body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:38px">🏞️</div><h3>Basics</h3>'+
+      '<div class="lg-fmtrow">'+fmtCards+'</div>'+mid+rulesBox+'</div></div>';
     body.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{ _lgM.fmt=b.getAttribute('data-fmt'); _lgM.online=false; _lgM.msg=''; lgRender(body); });
     body.querySelectorAll('[data-tc]').forEach(b=>b.onclick=()=>{ _lgM.tc=b.getAttribute('data-tc'); lgRender(body); });
     const c=body.querySelector('#lg-cpu'); if(c)c.onclick=()=>lgStart('cpu');
@@ -6696,7 +6719,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<button class="lg-gear" id="lg-gear" title="Settings">⚙</button>'+
-    (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div><label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label></div>'):'')+
+    (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div>'+(_lg.mode2!=='online'?'<label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label>':'')+'<button class="btn small" id="lg-quit" style="margin-top:8px;width:100%">⮐ End game · back to menu</button></div>'):'')+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
     '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+playedRow(me)+'</div>'+
@@ -6715,6 +6738,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   const rs=body.querySelector('#lg-resign'); if(rs)rs.onclick=()=>lgoMove({type:'resign'});
   const gr=body.querySelector('#lg-gear'); if(gr)gr.onclick=()=>{ _lgSet=!_lgSet; lgRerender(); };
   const sa=body.querySelector('#lg-opt-stopall'); if(sa)sa.onchange=()=>{ lgOptsSet({stopAll:sa.checked}); lgRerender(); };
+  const qb=body.querySelector('#lg-quit'); if(qb)qb.onclick=()=>{ _lgSet=false; if(onl&&_lg.mode!=='over')lgoMove({type:'resign'}); lgMenu(); };
 }
 // ===== Mail — async inbox: subscription/system mail + admin messages (no user→user yet) =====
 let _mailUnread=0;
