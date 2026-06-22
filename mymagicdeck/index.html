@@ -1125,9 +1125,12 @@
     #wm-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.wm-on .mg-taskbar{display:none} /* the persistent #wm-taskbar replaces the desktop's own taskbar */
     /* Pinned mobile taskbar — the regular Start + open-app buttons, always on top, reserves bounds */
-    #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:#c0c0c0;border-top:2px solid #fff;box-sizing:border-box;overflow-x:auto;font-family:Tahoma,'MS Sans Serif',sans-serif}
-    #mg-mtask .mt-start{flex-shrink:0;font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:0 14px;cursor:pointer}
-    #mg-mtask .mt-start:active{border-color:#808080 #fff #fff #808080}
+    #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:#c0c0c0;border-top:2px solid #fff;box-sizing:border-box;overflow:hidden;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    #mg-mtask .mt-apps{display:flex;align-items:stretch;gap:6px;flex:1;min-width:0;overflow-x:auto}
+    #mg-mtask .mt-start,#mg-mtask .mt-desk{flex-shrink:0;font-weight:bold;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;cursor:pointer}
+    #mg-mtask .mt-start{font-size:12px;padding:0 14px}
+    #mg-mtask .mt-desk{font-size:16px;line-height:1;padding:0 12px}
+    #mg-mtask .mt-start:active,#mg-mtask .mt-desk:active{border-color:#808080 #fff #fff #808080}
     #mt-startmenu{position:fixed;left:4px;bottom:var(--mtask-h,40px);z-index:6001}
     #mt-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.mtask-on .modal-overlay{bottom:var(--mtask-h)} /* reserve space so full-screen apps don't cover the bar */
@@ -6087,13 +6090,19 @@ function taskbarApply(){ const pinned=taskbarPinned() && !document.body.classLis
 function mtaskRender(){ let bar=document.getElementById('mg-mtask'); const on=document.body.classList.contains('mtask-on');
   if(!on){ if(bar)bar.remove(); const sm=document.getElementById('mt-startmenu'); if(sm)sm.remove(); return; }
   if(!bar){ bar=document.createElement('div'); bar.id='mg-mtask'; document.body.appendChild(bar); }
-  bar.innerHTML='<button class="mt-start" id="mt-start">Start</button>'+mgwTaskbarHtml();
+  bar.innerHTML='<button class="mt-start" id="mt-start">Start</button><div class="mt-apps">'+mgwTaskbarHtml()+'</div><button class="mt-desk" id="mt-desk" title="Show desktop (minimize all; tap again to restore)">🖥️</button>';
   const st=bar.querySelector('#mt-start'); if(st)st.onclick=e=>{ e.stopPropagation(); mtaskStartMenu(); };
-  bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); if(typeof mgwToFull==='function')mgwToFull(k); mtaskRender(); }); }
+  const dk=bar.querySelector('#mt-desk'); if(dk)dk.onclick=mtaskShowDesktop;
+  bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); const full=mgwState[k]&&mgwState[k].s==='full'; if(full){ if(typeof mgwMin==='function')mgwMin(k); } else if(typeof mgwToFull==='function')mgwToFull(k); _mtaskMinned=null; mtaskRender(); }); }
+let _mtaskMinned=null;
+function mtaskShowDesktop(){ const full=Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s==='full');
+  if(full.length){ _mtaskMinned=full.slice(); full.forEach(k=>{ if(typeof mgwMin==='function')mgwMin(k); }); }
+  else if(_mtaskMinned&&_mtaskMinned.length){ const r=_mtaskMinned.slice(); _mtaskMinned=null; r.forEach(k=>{ if(typeof mgwToFull==='function')mgwToFull(k); }); }
+  mtaskRender(); }
 function mtaskStartMenu(){ let m=document.getElementById('mt-startmenu'); if(m){ m.remove(); return; }
   m=document.createElement('div'); m.id='mt-startmenu'; m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); if(typeof mgWireStartMenu==='function')mgWireStartMenu(m);
   setTimeout(()=>{ const close=ev=>{ if(!m.contains(ev.target)&&ev.target.id!=='mt-start'){ m.remove(); document.removeEventListener('pointerdown',close,true); } }; document.addEventListener('pointerdown',close,true); },0); }
-function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin" data-mgw="'+k+'" title="'+_mgEsc(MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
+function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(mgwState[k]&&mgwState[k].s==='full'?' active':'')+'" data-mgw="'+k+'" title="'+_mgEsc(MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
 
 // ===== WM (Level B): THE desktop window manager — real floating, resizable windows. =====
 // On desktop (body.wm-on) wm* owns every window: the builder/site (wmOpenSite/wmReleaseSite), CGG,
