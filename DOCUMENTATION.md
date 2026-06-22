@@ -266,6 +266,23 @@ Posting a tournament fans out **mail** to every (other) user whose subscription 
 | GET | `/api/battle/:code` | — | public room state — **the answer is withheld until the round is over** |
 | POST | `/api/battle/:code/reveal` · `/api/battle/:code/guess` · `/api/battle/:code/rematch` | — | (token-gated) reveal next clue / guess / new round |
 
+### Basics — The Land Game (online PvP, server-authoritative)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/api/lg/create` | yes | create a match room (you = host); returns a join code. `{format,clock}` |
+| POST | `/api/lg/join` | yes | join a waiting match by `{code}`; deals hands, starts play |
+| POST | `/api/lg/queue` | yes | matchmaking: pair with a waiting player (`{matched,code}`) or enqueue (`{queued}`) |
+| GET | `/api/lg/queue` | yes | poll matchmaking status (queued / matched→code) |
+| DELETE | `/api/lg/queue` | yes | leave the matchmaking queue |
+| GET | `/api/lg/stats` | yes | your `{total, wins, losses, winPct}` |
+| GET | `/api/lg/history` | yes | your last 25 results (opponent, win/loss, reason, clock) |
+| GET | `/api/lg/:code` | yes | poll redacted match state (opponent hand hidden); lazily flags time-outs |
+| POST | `/api/lg/:code/move` | yes | apply a move `{move:{type:play|counter|pass|pick|resign,value?}}` (server-authoritative; chess-clock) |
+
+Engine runs server-side (hidden hands, clocks, results can't be faked). Tables: `lg_matches` (live rooms),
+`lg_results` (finished games → stats/history), `lg_queue` (matchmaking). Time controls: `1m` bullet / `5m`
+blitz (total per side, chess-clock) / `corr` correspondence (untimed).
+
 ---
 
 ## Frontend ("Deck OS")

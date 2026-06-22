@@ -65,6 +65,39 @@ try {
     const noauth = await J('/admin/errors');
     assert(noauth.status === 503 || noauth.status === 403, 'GET /admin/errors without key is blocked');
   } else { console.log('  (skipped admin/errors assert: no ADMIN_API_KEY)'); }
+
+  // --- Basics — The Land Game: online PvP ---
+  const crypto = require('crypto'); const SEC = process.env.JWT_SECRET;
+  if (SEC) {
+    const tok = (sub, username) => { const h = Buffer.from(JSON.stringify({ alg:'HS256', typ:'JWT' })).toString('base64url'); const p = Buffer.from(JSON.stringify({ sub, username, iat: Math.floor(Date.now()/1000) })).toString('base64url'); return h+'.'+p+'.'+crypto.createHmac('sha256', SEC).update(h+'.'+p).digest('base64url'); };
+    const A = tok(990001, 'smoke_A'), B = tok(990002, 'smoke_B'), C = tok(990003, 'smoke_C');
+    const Ja = (p, opt, t) => fetch(BASE + p, { ...opt, headers: { ...(opt && opt.body ? { 'content-type':'application/json' } : {}), ...(t ? { authorization:'Bearer '+t } : {}) } }).then(async r => ({ status:r.status, body: await r.json().catch(()=>null) }));
+    const cr = await Ja('/lg/create', { method:'POST', body: JSON.stringify({ format:'land', clock:'corr' }) }, A);
+    const code = cr.body && cr.body.code;
+    assert(cr.status === 200 && code, 'POST /lg/create → match code');
+    const jn2 = await Ja('/lg/join', { method:'POST', body: JSON.stringify({ code }) }, B);
+    assert(jn2.status === 200 && jn2.body.seat === 1 && jn2.body.state, 'POST /lg/join → seat 1 + state');
+    assert(jn2.body.state.players[0].hand.every(x => x === '?'), 'join: opponent hand is redacted (hidden)');
+    const ga = await Ja('/lg/' + code, null, A);
+    assert(ga.status === 200 && ga.body.seat === 0 && ga.body.state.players[0].hand.some(x => x !== '?') && ga.body.state.players[1].hand.every(x => x === '?'), 'GET /lg/:code → own hand real, opponent hidden');
+    const intruder = await Ja('/lg/' + code, null, C);
+    assert(intruder.status === 403, 'GET /lg/:code by non-participant → 403');
+    const t0 = ga.body.state.players[0].hand.find(x => x !== 'swamp') || ga.body.state.players[0].hand[0]; // avoid Swamp (opens an opponent-discard choice, so the turn wouldn't auto-end yet)
+    const mv = await Ja('/lg/' + code + '/move', { method:'POST', body: JSON.stringify({ move:{ type:'play', value:t0 } }) }, A);
+    assert(mv.status === 200 && mv.body.state.mode === 'respond' && mv.body.state.priority === 1, 'POST /lg/:code/move play → defender gets a response window');
+    const pass = await Ja('/lg/' + code + '/move', { method:'POST', body: JSON.stringify({ move:{ type:'pass' } }) }, B);
+    assert(pass.status === 200 && pass.body.state.turn === 2 && pass.body.state.active === 1, 'pass → land resolves and turn auto-ends');
+    const wrongTurn = await Ja('/lg/' + code + '/move', { method:'POST', body: JSON.stringify({ move:{ type:'play', value:'plains' } }) }, A);
+    assert(wrongTurn.status === 400, 'move out of turn → 400');
+    const st = await Ja('/lg/stats', null, A);
+    assert(st.status === 200 && typeof st.body.total === 'number', 'GET /lg/stats → totals');
+    // matchmaking: two distinct users at same TC pair up
+    const D = tok(990004, 'smoke_D'), E = tok(990005, 'smoke_E');
+    const q1 = await Ja('/lg/queue', { method:'POST', body: JSON.stringify({ format:'land', clock:'1m' }) }, D);
+    const q2 = await Ja('/lg/queue', { method:'POST', body: JSON.stringify({ format:'land', clock:'1m' }) }, E);
+    assert(q1.body.queued === true && q2.body.matched === true && q2.body.code, 'matchmaking: second player pairs with the first');
+    await Ja('/lg/queue', { method:'DELETE' }, D);
+  } else { console.log('  (skipped lg online asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
 }

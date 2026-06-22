@@ -1419,6 +1419,23 @@
       background:radial-gradient(120% 90% at 50% 30%,#2c5d4e,#11231d);box-shadow:inset 0 0 0 2px #b8932f,inset 0 0 0 5px #5e441a}
     .lg-start h3{margin:6px 0;color:#ffe9b8;text-shadow:0 1px 2px #000;font-size:18px}
     .lg-start .sub{color:#d8cdae;font-size:11px;max-width:340px;line-height:1.5;margin-bottom:14px}
+    .lg-fmtrow,.lg-segrow{display:inline-flex;border:1px solid #b8932f;border-radius:7px;overflow:hidden;margin:2px 0 10px}
+    .lg-seg{background:#241a0e;color:#d8cdae;border:none;border-right:1px solid #6b4f1a;padding:5px 12px;font-size:11px;font-weight:bold;cursor:pointer}
+    .lg-seg:last-child{border-right:none}
+    .lg-seg.on{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e}
+    .lg-seglabel{font-size:10px;color:#c9b88f;margin:6px 0 2px}
+    .lg-onl{margin-top:6px;padding:10px;border:1px solid rgba(184,147,47,.4);border-radius:8px;background:rgba(0,0,0,.22);max-width:340px}
+    .lg-search{font-size:13px;color:#ffe9b8;margin-bottom:8px}
+    .lg-join-in{width:84px;text-transform:uppercase;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;border-radius:0;padding:3px 6px;font-size:12px;letter-spacing:1px}
+    .lg-err{color:#ff9a8a;font-size:10px;margin-top:6px}
+    .lg-code{font-size:26px;font-weight:bold;letter-spacing:4px;color:#ffe9b8;background:rgba(0,0,0,.3);border:1px solid #b8932f;border-radius:6px;padding:6px 14px;margin:8px 0;display:inline-block}
+    .lg-statsbox{margin-top:12px;font-size:11px;color:#e7dcc0}
+    .lg-hist{margin-top:6px;text-align:left;display:inline-block}
+    .lg-hrow{font-size:10px;color:#c9b88f;line-height:1.6}
+    .lg-hw{color:#7CFC00;font-weight:bold}.lg-hl{color:#ff7a6a;font-weight:bold}.lg-hd{color:#c9b88f;font-weight:bold}
+    .lg-hsub{color:#9b8e6f}
+    .lg-clock{margin-left:auto;font-size:13px;font-weight:bold;font-variant-numeric:tabular-nums;color:#ffe9b8;background:rgba(0,0,0,.35);border:1px solid #b8932f;border-radius:5px;padding:1px 7px}
+    .lg-clock.low{color:#ff7a6a;border-color:#ff7a6a}
     .lg-rules{margin:14px auto 0;max-width:340px;text-align:left}
     .lg-rules summary{cursor:pointer;font-size:11px;color:#ffd968}
     .lg-rules>div{font-size:10px;color:#d8cdae;line-height:1.7;margin-top:6px}
@@ -6475,13 +6492,48 @@ let _lg=null, _lgBody=null, _lgSet=false; // _lgSet: settings panel open
 function lgRerender(){ if(_lgBody)lgRender(_lgBody); lgMaybeCpu(); }
 function lgOptsGet(){ try{ const o=DeckOS.store.get('lg:opts'); return { stopAll:!!(o&&o.stopAll) }; }catch(e){ return { stopAll:false }; } }
 function lgOptsSet(o){ try{ DeckOS.store.set('lg:opts',o); }catch(e){} if(_lg)_lg.opts=o; }
+// ===== Basics menu state + dynamic title + online (server-authoritative) =====
+let _lgo=null, _lgM={ fmt:'land', online:false, tc:'5m', code:'', invite:null, queue:false, stats:null, history:null, msg:'' };
+const LG_TC_NAME={ '1m':'Bullet · 1 min', '5m':'Blitz · 5 min', 'corr':'Correspondence' };
+function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
+  document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
+  if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar(); }catch(e){} }
+function lgPromptFor(k){ return ({forest:'Return a land from your graveyard:',plains:'Flicker one of your lands:',mountain:'Destroy an opponent land:',swamp:'Discard a card:',discard:'Discard down to 5:'})[k]||''; }
+function lgFmtTime(ms){ if(ms==null)return ''; ms=Math.max(0,ms); const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
+function lgoStop(){ if(_lgo){ clearTimeout(_lgo._t); clearInterval(_lgo._clk); } _lgo=null; }
+function lgMenu(){ lgoStop(); _lg=null; lgSetTitle('Basics'); lgLoadStats(); if(_lgBody)lgRender(_lgBody); }
+function lgLoadStats(){ if(!(state.user&&apiToken()))return;
+  apiFetch('/lg/stats').then(s=>{ _lgM.stats=s; if(!_lg&&_lgBody)lgRender(_lgBody); }).catch(()=>{});
+  apiFetch('/lg/history').then(h=>{ _lgM.history=h.history||[]; if(!_lg&&_lgBody)lgRender(_lgBody); }).catch(()=>{}); }
+function lgoStart(code,seat,clock){ lgoStop(); _lgo={ code, seat, clock, _t:null, _clk:null, st:null, waiting:null, clkBase:null, clkAt:0, actor:null }; lgSetTitle('Basics — The Land Game'); lgoPoll(); _lgo._clk=setInterval(lgoTickClock,250); }
+async function lgoPoll(){ if(!_lgo)return; let delay=2600;
+  try{ const r=await apiFetch('/lg/'+_lgo.code); if(!_lgo)return;
+    if(r.status==='waiting'){ _lgo.waiting=r; _lg=null; lgoRenderWait(); }
+    else if(r.status==='playing'){ _lgo.st=r.state; _lgo.seat=r.seat; _lgo.waiting=null; lgoMap(r.state); if(_lgBody)lgRender(_lgBody); if(r.state.clock!=='corr'&&r.state.status!=='over')delay=1400; }
+  }catch(e){}
+  if(_lgo){ clearTimeout(_lgo._t); _lgo._t=setTimeout(lgoPoll,delay); } }
+function lgoMap(st){ const mk=p=>({ hand:p.hand.slice(), deck:new Array(p.deck), gy:p.gy.slice(), exile:p.exile.slice(), field:p.field });
+  const ch=st.choice? (st.choice.hidden? {who:st.choice.who,kind:'hidden',options:[],prompt:'is deciding…'} : {who:st.choice.who,kind:st.choice.kind,options:st.choice.options,prompt:lgPromptFor(st.choice.kind)}) : null;
+  _lg={ players:[mk(st.players[0]),mk(st.players[1])], names:st.names, active:st.active, turn:st.turn, stack:st.stack||[], priority:st.priority, lastPass:null, castThisTurn:st.castThisTurn, choice:ch, winner:st.winner, reason:st.reason, mode:st.mode, mode2:'online', cpu:-1, view:_lgo.seat, opts:{}, clocks:st.clocks, clock:st.clock, log:st.log||[] };
+  if(st.clocks){ _lgo.clkBase={0:st.clocks[0],1:st.clocks[1]}; _lgo.clkAt=Date.now(); _lgo.actor=lgActor(); } }
+function lgoTickClock(){ if(!_lgo||!_lgo.clkBase)return; const now=Date.now();
+  document.querySelectorAll('#modal-prog-landgame [data-clk]').forEach(el=>{ const pi=+el.getAttribute('data-clk'); let ms=_lgo.clkBase[pi]; if(pi===_lgo.actor&&_lg&&_lg.mode!=='over')ms-=(now-_lgo.clkAt); el.textContent=lgFmtTime(ms); el.classList.toggle('low', ms<=10000); }); }
+async function lgoMove(move){ if(!_lgo)return; try{ const r=await apiFetch('/lg/'+_lgo.code+'/move',{method:'POST',body:JSON.stringify({move})}); if(r&&r.state){ _lgo.st=r.state; lgoMap(r.state); if(_lgBody)lgRender(_lgBody); } }catch(e){} }
+function lgoCreate(){ apiFetch('/lg/create',{method:'POST',body:JSON.stringify({format:_lgM.fmt,clock:_lgM.tc})}).then(r=>{ _lgM.invite=r.code; if(_lgBody)lgRender(_lgBody); lgoStart(r.code,0,_lgM.tc); }).catch(e=>{ _lgM.msg='Could not create match.'; if(_lgBody)lgRender(_lgBody); }); }
+function lgoJoin(code){ code=(code||'').trim().toUpperCase(); if(!code)return; apiFetch('/lg/join',{method:'POST',body:JSON.stringify({code})}).then(r=>{ lgoStart(r.code,r.seat,_lgM.tc); }).catch(e=>{ _lgM.msg=(e&&e.status===404)?'No match with that code.':'Could not join.'; if(_lgBody)lgRender(_lgBody); }); }
+function lgoFind(){ apiFetch('/lg/queue',{method:'POST',body:JSON.stringify({format:_lgM.fmt,clock:_lgM.tc})}).then(r=>{ if(r.matched){ lgoStart(r.code,r.seat,_lgM.tc); } else { _lgM.queue=true; if(_lgBody)lgRender(_lgBody); lgoQueuePoll(); } }).catch(()=>{ _lgM.msg='Matchmaking unavailable.'; if(_lgBody)lgRender(_lgBody); }); }
+function lgoQueueCancel(){ _lgM.queue=false; clearTimeout(_lgM._qt); apiFetch('/lg/queue',{method:'DELETE'}).catch(()=>{}); if(_lgBody)lgRender(_lgBody); }
+async function lgoQueuePoll(){ if(!_lgM.queue)return; try{ const r=await apiFetch('/lg/queue'); if(r.matched){ _lgM.queue=false; lgoStart(r.code,r.seat!=null?r.seat:0,_lgM.tc); return; } }catch(e){} if(_lgM.queue){ clearTimeout(_lgM._qt); _lgM._qt=setTimeout(lgoQueuePoll,2000); } }
+function lgoRenderWait(){ if(!_lgBody)return; const code=_lgo&&_lgo.code; _lgBody.style.cssText='padding:6px;height:100%;box-sizing:border-box';
+  _lgBody.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:34px">🕑</div><h3>Waiting for opponent…</h3><div class="sub">Share this code with a friend (both must be signed in):</div><div class="lg-code">'+_mgEsc(code||'')+'</div><div class="lg-bar"><button class="btn small" id="lg-wait-cancel">Cancel</button></div></div></div>';
+  const c=_lgBody.querySelector('#lg-wait-cancel'); if(c)c.onclick=lgMenu; }
 function lgShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function lgMakePlayer(name){ const deck=[]; LG_TYPES.forEach(t=>{ for(let i=0;i<5;i++)deck.push(t); }); lgShuffle(deck); return { name, deck, hand:deck.splice(0,5), gy:[], exile:[], field:{plains:0,island:0,swamp:0,mountain:0,forest:0,wastes:0} }; }
 function lgStackTopType(){ const t=_lg.stack[_lg.stack.length-1]; return t ? (t.kind==='land'?t.type:'island') : null; } // a counter on the stack is itself "Island"
 function lgCanCounter(pi){ const t=lgStackTopType(); if(!t)return false; const h=_lg.players[pi].hand; const isl=h.filter(x=>x==='island').length; return t==='island' ? isl>=2 : (isl>=1 && h.includes(t)); } // discard Island + exile a copy of the type being countered
 function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode==='cpu'?1:-1;
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
-  _lg={ players:[lgMakePlayer(names[0]),lgMakePlayer(names[1])], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'] }; lgRerender(); }
+  _lg={ players:[lgMakePlayer(names[0]),lgMakePlayer(names[1])], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'] }; lgSetTitle('Basics — The Land Game'); lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
 function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond')return _lg.priority; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
 function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ _lg.log.push(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); _lg.log.push(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
@@ -6559,11 +6611,42 @@ function lgCpuChoose(c){ const opts=c.options, me=_lg.players[_lg.cpu], opp=_lg.
   // 'discard' (end-of-turn trim, or our own card to a human Swamp): ditch the least useful — spare Islands / already-owned types
   let v=opts[0].value, s=-1; for(const o of opts){ const t=me.hand[o.value]; let sc=(t==='island'?3:0)+(me.field[t]>=5?5:0)+me.field[t]; if(sc>s){s=sc;v=o.value;} } return v; }
 function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padding:6px;height:100%;box-sizing:border-box';
-  if(!_lg){ body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:40px">🏞️</div><h3>Basics</h3>'+
-      '<div class="sub">Each deck is 5 of every basic land. Play one land a turn to trigger its ability; Islands can counter (counter-wars allowed). First to <b>5 of a kind</b> or <b>6 different</b> lands in play wins.</div>'+
-      '<div class="lg-bar"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button></div>'+
-      '<details class="lg-rules"><summary>How each land works</summary><div>'+LG_ICO.plains+' <b>Plains</b> — flicker one of your lands to re-trigger its ability.<br>'+LG_ICO.island+' <b>Island</b> — no enter ability; discard it (+ a copy) to counter a land.<br>'+LG_ICO.swamp+' <b>Swamp</b> — opponent discards a card.<br>'+LG_ICO.mountain+' <b>Mountain</b> — destroy an opponent’s land.<br>'+LG_ICO.forest+' <b>Forest</b> — return a land from your graveyard.<br>'+LG_ICO.wastes+' <b>Wastes</b> — draw a card.</div></details></div></div>';
-    const c=body.querySelector('#lg-cpu'); if(c)c.onclick=()=>lgStart('cpu'); const h=body.querySelector('#lg-hot'); if(h)h.onclick=()=>lgStart('hotseat'); return; }
+  if(!_lg){ lgSetTitle('Basics'); if(_lgo)lgoStop(); if(_lgM.stats===null && state.user && apiToken())lgLoadStats();
+    const loggedIn = !!(state.user && apiToken());
+    const seg=(items,cur,attr)=>items.map(o=>'<button class="lg-seg'+(o.id===cur?' on':'')+'" '+attr+'="'+o.id+'">'+_mgEsc(o.name)+'</button>').join('');
+    const fmts=[{id:'land',name:'The Land Game'},{id:'test',name:'Test'}];
+    const tcs=[{id:'1m',name:'Bullet 1m'},{id:'5m',name:'Blitz 5m'},{id:'corr',name:'Correspondence'}];
+    let mid='';
+    if(_lgM.fmt!=='land'){ mid='<div class="sub" style="margin-top:10px">Test format — a placeholder slot. Not playable yet.</div>'; }
+    else {
+      mid='<div class="sub">Each deck is 5 of every basic land. Play one land a turn to trigger its ability; Islands can counter. First to <b>5 of a kind</b> or <b>6 different</b> lands wins.</div>'+
+        '<div class="lg-bar"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button><button class="btn small'+(_lgM.online?' primary':'')+'" id="lg-online">🌐 Online</button></div>';
+      if(_lgM.online){
+        if(!loggedIn){ mid+='<div class="lg-onl"><div class="sub">Sign in to play online vs another player.</div><button class="btn small primary" id="lg-signin">Sign in</button></div>'; }
+        else if(_lgM.queue){ mid+='<div class="lg-onl"><div class="lg-search">🔍 Searching for an opponent…</div><button class="btn small" id="lg-qcancel">Cancel</button></div>'; }
+        else { mid+='<div class="lg-onl"><div class="lg-seglabel">Time control</div><div class="lg-segrow">'+seg(tcs,_lgM.tc,'data-tc')+'</div>'+
+          '<div class="lg-bar" style="margin-top:8px"><button class="btn small primary" id="lg-find">⚔ Find match</button><button class="btn small" id="lg-invite">✉ Invite a friend</button></div>'+
+          '<div class="lg-bar" style="margin-top:6px"><input id="lg-joincode" class="lg-join-in" placeholder="code" maxlength="6"><button class="btn small" id="lg-joinbtn">Join code</button></div>'+
+          (_lgM.msg?'<div class="lg-err">'+_mgEsc(_lgM.msg)+'</div>':'')+'</div>'; }
+      }
+      if(loggedIn && _lgM.stats){ const st=_lgM.stats; let hist='';
+        if(_lgM.history&&_lgM.history.length){ hist='<div class="lg-hist">'+_lgM.history.slice(0,5).map(h=>'<div class="lg-hrow"><span class="lg-h'+(h.result==='win'?'w':(h.result==='loss'?'l':'d'))+'">'+(h.result==='win'?'W':(h.result==='loss'?'L':'·'))+'</span> vs '+_mgEsc(h.opp||'?')+' <span class="lg-hsub">'+_mgEsc(LG_TC_NAME[h.clock]||h.clock||'')+'</span></div>').join('')+'</div>'; }
+        mid+='<div class="lg-statsbox">🏆 '+st.total+' games · '+st.winPct+'% won ('+st.wins+'–'+st.losses+')'+hist+'</div>'; }
+    }
+    body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:40px">🏞️</div><h3>Basics</h3>'+
+      '<div class="lg-fmtrow">'+seg(fmts,_lgM.fmt,'data-fmt')+'</div>'+mid+
+      '<details class="lg-rules"><summary>How each land works</summary><div>'+LG_ICO.plains+' <b>Plains</b> — flicker one of your lands.<br>'+LG_ICO.island+' <b>Island</b> — discard it (+ a copy) to counter a land.<br>'+LG_ICO.swamp+' <b>Swamp</b> — opponent discards.<br>'+LG_ICO.mountain+' <b>Mountain</b> — destroy an opponent land.<br>'+LG_ICO.forest+' <b>Forest</b> — return a land from your graveyard.<br>'+LG_ICO.wastes+' <b>Wastes</b> — draw a card.</div></details></div></div>';
+    body.querySelectorAll('[data-fmt]').forEach(b=>b.onclick=()=>{ _lgM.fmt=b.getAttribute('data-fmt'); _lgM.online=false; _lgM.msg=''; lgRender(body); });
+    body.querySelectorAll('[data-tc]').forEach(b=>b.onclick=()=>{ _lgM.tc=b.getAttribute('data-tc'); lgRender(body); });
+    const c=body.querySelector('#lg-cpu'); if(c)c.onclick=()=>lgStart('cpu');
+    const h=body.querySelector('#lg-hot'); if(h)h.onclick=()=>lgStart('hotseat');
+    const on=body.querySelector('#lg-online'); if(on)on.onclick=()=>{ if(!loggedIn){ _lgM.online=true; lgRender(body); if(typeof signInClick==='function')signInClick('login'); return; } _lgM.online=!_lgM.online; _lgM.msg=''; lgRender(body); };
+    const si=body.querySelector('#lg-signin'); if(si)si.onclick=()=>{ if(typeof signInClick==='function')signInClick('login'); };
+    const f=body.querySelector('#lg-find'); if(f)f.onclick=lgoFind;
+    const inv=body.querySelector('#lg-invite'); if(inv)inv.onclick=lgoCreate;
+    const jb=body.querySelector('#lg-joinbtn'); if(jb)jb.onclick=()=>lgoJoin(body.querySelector('#lg-joincode').value);
+    const qc=body.querySelector('#lg-qcancel'); if(qc)qc.onclick=lgoQueueCancel;
+    return; }
   const actor=lgActor();
   // Hot-seat: drop a curtain between humans so hands stay secret on the shared device.
   if(_lg.mode2==='hotseat' && _lg.mode!=='over' && actor!=null && actor!==_lg.view){
@@ -6583,8 +6666,10 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
       const cards=Array.from({length:Math.min(n,5)}).map((_,k)=>'<div class="lg-pcard" style="'+cvars(t)+';margin-left:'+(k?-38:0)+'px;z-index:'+k+'"><span class="lg-bc-ic">'+LG_ICO[t]+'</span></div>').join('');
       return '<div class="lg-pilegrp'+(can?' lg-sel':'')+(n>=5?' max':'')+'"'+(can?(' data-pick="'+t+'"'):'')+' title="'+LG_NAME[t]+' ×'+n+'"><div class="lg-pilecards">'+cards+'</div></div>'; });
     return '<div class="lg-played">'+piles.join('')+'</div>'; };
+  const pname=pi=>(_lg.names&&_lg.names[pi])||(_lg.players[pi]&&_lg.players[pi].name)||('Player '+(pi+1));
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
-    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-phead"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pname">'+_mgEsc(p.name)+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div></div><div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div></div>'; };
+    const clk=_lg.clocks?('<span class="lg-clock" data-clk="'+pi+'">'+lgFmtTime(_lg.clocks[pi])+'</span>'):'';
+    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-phead"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pname">'+_mgEsc(pname(pi))+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div>'+clk+'</div><div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div></div>'; };
   const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length;
     const handSel = choosing && (choosing.kind==='discard'||choosing.kind==='swamp') && pi===me; // pick a card to discard
     return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+(handSel?' lg-sel':'')+'" data-h="'+i+'" data-t="'+t+'"'+(handSel?(' data-pick="'+i+'"'):'')+' style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
@@ -6597,16 +6682,17 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     return '<div class="lg-zonebox">'+(keys.length?keys.map(t=>{ return '<span class="lg-chip'+(canForest?' lg-sel':'')+'" style="color:'+LG_COL[t][0]+'"'+(canForest?(' data-pick="'+m[t].first+'"'):'')+' title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<b>'+m[t].n+'</b></span>'; }).join(''):'<span class="lg-zlbl">—</span>')+'</div>'; };
   const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><span class="lg-zlbl">⚰</span>'+zoneBox(p.gy,forestSel)+'<span class="lg-zlbl">✦</span>'+zoneBox(p.exile,false)+'</div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
-      ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
+      ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(pname(s.ctrl))+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
       : '<div class="lg-bigcard mini" style="--c1:#c0392b;--c2:#641a12;--tx:#fff" title="counter"><div class="lg-bc-art"><span class="lg-bc-ic">🚫</span><span class="lg-bc-nm">Counter</span></div></div>' ).join('')+'</div>'; };
   const playable=canAct&&_lg.mode==='turn'&&!_lg.castThisTurn;
   const handActive=playable||(!!choosing&&(choosing.kind==='discard'||choosing.kind==='swamp')); // raise the hand when you're playing or discarding; otherwise it tucks away
   let cBan='', cBtn=''; // banner sits above the centre divider; buttons go below it (player's side)
   if(_lg.mode2==='cpu'&&actor===_lg.cpu){ cBan='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
-  else if(_lg.mode==='turn'){ cBan='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'; if(canAct)cBtn='<button class="btn small" id="lg-end">End turn ▸</button>'; }
-  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); cBan='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div>'; if(canAct)cBtn=(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button>'; }
-  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=c.options.find(o=>o.value==='__none__'); cBan='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div class="lg-prompt">'+_mgEsc(c.prompt)+'</div>'; if(canAct)cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); }
-  else if(_lg.mode==='over'){ cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div>'; cBtn='<button class="btn small primary" id="lg-again">Play again</button>'; }
+  else if(_lg.mode2==='online'&&actor!=null&&actor!==me&&_lg.mode!=='over'){ cBan='<div class="lg-banner lg-think">⏳ '+_mgEsc(pname(actor))+'…</div>'; }
+  else if(_lg.mode==='turn'){ cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'; if(canAct)cBtn='<button class="btn small" id="lg-end">End turn ▸</button>'; }
+  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); cBan='<div class="lg-banner">'+_mgEsc(pname(pr))+' — respond?</div>'; if(canAct)cBtn=(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button>'; }
+  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=(c.options||[]).find(o=>o.value==='__none__'); cBan='<div class="lg-banner">'+_mgEsc(pname(c.who))+'</div><div class="lg-prompt">'+_mgEsc(c.prompt||'')+'</div>'; if(canAct)cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); }
+  else if(_lg.mode==='over'){ const r=_lg.reason==='time'?' (on time)':(_lg.reason==='resign'?' (resign)':''); cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(pname(_lg.winner))+' wins!'+r+'</div>'; cBtn='<button class="btn small primary" id="lg-again">'+(_lg.mode2==='online'?'↩ Menu':'Play again')+'</button>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<button class="lg-gear" id="lg-gear" title="Settings">⚙</button>'+
@@ -6614,17 +6700,19 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
     '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+playedRow(me)+'</div>'+
-    '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+'</div>'+
+    '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+(_lg.mode2==='online'&&_lg.mode!=='over'?'<div class="lg-bar" style="margin-top:10px"><button class="btn small" id="lg-resign">🏳 Resign</button></div>':'')+'</div>'+
     '<div class="lg-pgy">'+gyZone(me)+'</div>'+
     deckMine()+
     '<div class="lg-botstrip"><div class="lg-hand'+(handActive?' active':'')+'">'+fan(me,playable)+'</div></div>'+
     '</div></div>';
-  if(playable)body.querySelectorAll('.lg-bigcard[data-h]:not([data-pick])').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
-  const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=lgEndTurn;
-  const cb=body.querySelector('#lg-counter'); if(cb)cb.onclick=lgCounter;
-  const pb=body.querySelector('#lg-pass'); if(pb)pb.onclick=lgPassPriority;
-  body.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>{ const v=el.getAttribute('data-pick'); lgPick(isNaN(+v)?v:+v); }));
-  const ab=body.querySelector('#lg-again'); if(ab)ab.onclick=()=>lgStart(_lg.mode2);
+  const onl=_lg.mode2==='online';
+  if(playable)body.querySelectorAll('.lg-bigcard[data-h]:not([data-pick])').forEach(el=>el.addEventListener('click',()=>{ const t=el.getAttribute('data-t'); onl?lgoMove({type:'play',value:t}):lgCast(t); }));
+  const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=()=>{ onl?lgoMove({type:'endturn'}):lgEndTurn(); };
+  const cb=body.querySelector('#lg-counter'); if(cb)cb.onclick=()=>{ onl?lgoMove({type:'counter'}):lgCounter(); };
+  const pb=body.querySelector('#lg-pass'); if(pb)pb.onclick=()=>{ onl?lgoMove({type:'pass'}):lgPassPriority(); };
+  body.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>{ const v=el.getAttribute('data-pick'); const val=isNaN(+v)?v:+v; onl?lgoMove({type:'pick',value:val}):lgPick(val); }));
+  const ab=body.querySelector('#lg-again'); if(ab)ab.onclick=()=> onl?lgMenu():lgStart(_lg.mode2);
+  const rs=body.querySelector('#lg-resign'); if(rs)rs.onclick=()=>lgoMove({type:'resign'});
   const gr=body.querySelector('#lg-gear'); if(gr)gr.onclick=()=>{ _lgSet=!_lgSet; lgRerender(); };
   const sa=body.querySelector('#lg-opt-stopall'); if(sa)sa.onchange=()=>{ lgOptsSet({stopAll:sa.checked}); lgRerender(); };
 }
@@ -7047,7 +7135,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'documents', title:'Documents', icon:'📁', width:'460px', desktop:true, mount(body){ notesRenderApp(body); } }); // permanent folder of saved notes
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:MP_ICON, width:'620px', desktop:true, mount(body){ mpRender(body); } });
-  DeckOS.registerProgram({ id:'landgame', title:'Basics — The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
+  DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));

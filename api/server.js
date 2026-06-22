@@ -2992,6 +2992,168 @@ app.post('/api/battle/:code/rematch', { preHandler: rateLimitBattle }, async (re
   return battlePublic(battleGet(row.code));
 });
 
+// ===== Basics — The Land Game: online PvP (server-authoritative) =====
+db.exec(`CREATE TABLE IF NOT EXISTS lg_matches (
+  code       TEXT PRIMARY KEY,
+  p1_user    INTEGER NOT NULL,
+  p2_user    INTEGER,
+  p1_name    TEXT NOT NULL,
+  p2_name    TEXT,
+  format     TEXT NOT NULL,
+  clock      TEXT NOT NULL,
+  state      TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'waiting',
+  created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+  updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS lg_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  format TEXT, clock TEXT, p1_user INTEGER, p2_user INTEGER, p1_name TEXT, p2_name TEXT,
+  winner_user INTEGER, reason TEXT, ended_at INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+db.exec(`CREATE TABLE IF NOT EXISTS lg_queue (
+  user_id INTEGER PRIMARY KEY, name TEXT, format TEXT, clock TEXT, since INTEGER NOT NULL DEFAULT (unixepoch())
+)`);
+
+const LG_T = ['plains','island','swamp','mountain','forest','wastes'];
+const LG_CLOCK_MS = { '1m':60000, '5m':300000, 'corr':null };
+function lgShuf(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function lgMkPlayer(){ const deck=[]; LG_T.forEach(t=>{ for(let i=0;i<5;i++)deck.push(t); }); lgShuf(deck); return { hand:deck.splice(0,5), deck, gy:[], exile:[], field:{plains:0,island:0,swamp:0,mountain:0,forest:0,wastes:0} }; }
+function lgNm(s,i){ return (s.names && s.names[i]) || ('Player '+(i+1)); }
+function lgNew(clock, names){ const ms=LG_CLOCK_MS[clock];
+  const s={ players:[lgMkPlayer(),lgMkPlayer()], names:names||[null,null], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, reason:null, mode:'turn', clock, clocks: ms!=null?{0:ms,1:ms}:null, lastActAt:Date.now(), status:'playing', recorded:false, log:[] };
+  s.log.push(lgNm(s,0)+' goes first (no draw on turn 1).'); return s; }
+function lgTypes(f){ return LG_T.filter(t=>f[t]>0).length; }
+function lgDraw(s,pi){ const p=s.players[pi]; if(!p.deck.length){ if(!p.gy.length){ s.log.push(lgNm(s,pi)+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuf(p.deck); s.log.push(lgNm(s,pi)+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
+function lgStackTop(s){ const t=s.stack[s.stack.length-1]; return t?(t.kind==='land'?t.type:'island'):null; }
+function lgCanCtr(s,pi){ const t=lgStackTop(s); if(!t)return false; const h=s.players[pi].hand; const isl=h.filter(x=>x==='island').length; return t==='island'?isl>=2:(isl>=1&&h.includes(t)); }
+function lgWin(s){ for(let i=0;i<2;i++){ const f=s.players[i].field; if(LG_T.some(t=>f[t]>=5)||lgTypes(f)>=6)return i; } return null; }
+function lgCheckWin(s){ const w=lgWin(s); if(w!=null&&s.winner==null){ s.winner=w; s.reason='win'; s.mode='over'; s.status='over'; s.log.push('🏆 '+lgNm(s,w)+' wins!'); return true; } return s.winner!=null; }
+function lgGivePri(s,who){ const top=s.stack[s.stack.length-1]; if(top&&top.ctrl===who){ lgResolve(s); return; } s.mode='respond'; s.priority=who; s.lastPass=null; }
+function lgResolve(s){ const item=s.stack.pop(); if(!item){ lgAfter(s); return; }
+  if(item.kind==='counter'){ const below=s.stack.pop(); if(below){ if(below.kind==='land'){ s.players[below.ctrl].gy.push(below.type); s.log.push(below.type+' is countered.'); } else s.log.push('The counter is countered.'); } }
+  else { s.players[item.ctrl].field[item.type]++; s.log.push(item.type+' enters play.'); if(lgCheckWin(s))return; lgETB(s,item.type,item.ctrl); }
+  lgContinue(s); }
+function lgContinue(s){ if(s.winner!=null)return; if(lgCheckWin(s))return; if(s.choice){ s.mode='choose'; return; } lgAfter(s); }
+function lgAfter(s){ if(s.stack.length){ lgGivePri(s,s.active); return; } s.mode='turn'; s.priority=s.active; if(s.castThisTurn){ lgEnd(s); } }
+function lgETB(s,type,ctrl){ const me=s.players[ctrl], opp=s.players[1-ctrl];
+  if(type==='wastes'){ lgDraw(s,ctrl); s.log.push(lgNm(s,ctrl)+' draws (Wastes).'); }
+  else if(type==='forest'){ if(me.gy.length) s.choice={who:ctrl,kind:'forest',ctrl,options:me.gy.map((t,i)=>({label:t,value:i}))}; else s.log.push('Forest fizzles.'); }
+  else if(type==='plains'){ const opts=LG_T.filter(t=>me.field[t]>0&&t!=='plains'&&t!=='island'); if(opts.length) s.choice={who:ctrl,kind:'plains',ctrl,options:opts.map(t=>({label:t,value:t})).concat([{label:'__none__',value:'__none__'}])}; else s.log.push('Plains fizzles.'); }
+  else if(type==='mountain'){ const opts=LG_T.filter(t=>opp.field[t]>0); if(opts.length) s.choice={who:ctrl,kind:'mountain',ctrl,options:opts.map(t=>({label:t,value:t}))}; else s.log.push('Mountain fizzles.'); }
+  else if(type==='swamp'){ if(opp.hand.length) s.choice={who:1-ctrl,kind:'swamp',ctrl,options:opp.hand.map((t,i)=>({label:t,value:i}))}; else s.log.push('Swamp fizzles.'); }
+}
+function lgEnd(s){ if(s.mode!=='turn')return; const a=s.players[s.active];
+  if(a.hand.length>5){ s.choice={who:s.active,kind:'discard',options:a.hand.map((t,i)=>({label:t,value:i}))}; s.mode='choose'; return; }
+  s.active=1-s.active; s.turn++; s.castThisTurn=false; lgDraw(s,s.active); s.mode='turn'; s.priority=s.active; s.log.push('— '+lgNm(s,s.active)+"'s turn —"); }
+function lgActorOf(s){ if(s.mode==='turn')return s.active; if(s.mode==='respond')return s.priority; if(s.mode==='choose')return s.choice?s.choice.who:s.active; return null; }
+function lgPick(s,seat,value){ const c=s.choice, kind=c.kind, ctrl=c.ctrl; s.choice=null;
+  if(kind==='forest'){ const me=s.players[seat]; const t=me.gy.splice(+value,1)[0]; if(t!=null){ me.hand.push(t); s.log.push(lgNm(s,seat)+' returns '+t+'.'); } lgContinue(s); return {}; }
+  if(kind==='plains'){ if(value==='__none__'){ lgContinue(s); return {}; } s.log.push(lgNm(s,ctrl)+' flickers '+value+'.'); lgETB(s,value,ctrl); lgContinue(s); return {}; }
+  if(kind==='mountain'){ const opp=s.players[1-ctrl]; if(opp.field[value]>0){ opp.field[value]--; opp.gy.push(value); s.log.push(lgNm(s,ctrl)+' destroys '+value+'.'); } lgContinue(s); return {}; }
+  if(kind==='swamp'){ const me=s.players[seat]; const t=me.hand.splice(+value,1)[0]; if(t!=null){ me.gy.push(t); s.log.push(lgNm(s,seat)+' discards '+t+'.'); } lgContinue(s); return {}; }
+  if(kind==='discard'){ const a=s.players[seat]; const t=a.hand.splice(+value,1)[0]; if(t!=null){ a.gy.push(t); s.log.push(lgNm(s,seat)+' discards '+t+'.'); } s.mode='turn'; lgEnd(s); return {}; }
+  return {error:'bad pick'}; }
+function lgsrvApply(s,seat,m){
+  if(s.status==='over') return {error:'Game over.'};
+  m=m||{};
+  if(m.type==='resign'){ s.winner=1-seat; s.reason='resign'; s.mode='over'; s.status='over'; s.log.push(lgNm(s,seat)+' resigns.'); return {}; }
+  if(m.type==='play'){ if(s.mode!=='turn'||s.active!==seat||s.castThisTurn) return {error:'Not your move.'}; const p=s.players[seat]; const i=p.hand.indexOf(m.value); if(i<0) return {error:'No such card.'}; p.hand.splice(i,1); s.stack.push({kind:'land',type:m.value,ctrl:seat}); s.castThisTurn=true; s.log.push(lgNm(s,seat)+' plays '+m.value+'.'); lgGivePri(s,1-seat); return {}; }
+  if(m.type==='counter'){ if(s.mode!=='respond'||s.priority!==seat||!lgCanCtr(s,seat)) return {error:'Cannot counter.'}; const p=s.players[seat], t=lgStackTop(s); p.hand.splice(p.hand.indexOf('island'),1); p.gy.push('island'); p.hand.splice(p.hand.indexOf(t),1); p.exile.push(t); s.stack.push({kind:'counter',ctrl:seat}); s.log.push(lgNm(s,seat)+' counters.'); s.lastPass=null; s.priority=1-seat; return {}; }
+  if(m.type==='pass'){ if(s.mode!=='respond'||s.priority!==seat) return {error:'Not your priority.'}; if(s.lastPass!=null&&s.lastPass!==seat){ s.lastPass=null; lgResolve(s); return {}; } s.lastPass=seat; s.priority=1-seat; const top=s.stack[s.stack.length-1]; if(top&&top.ctrl===s.priority){ s.lastPass=null; lgResolve(s); } return {}; }
+  if(m.type==='pick'){ if(s.mode!=='choose'||!s.choice||s.choice.who!==seat) return {error:'Not your choice.'}; return lgPick(s,seat,m.value); }
+  if(m.type==='endturn'){ if(s.mode!=='turn'||s.active!==seat) return {error:'Not your turn.'}; lgEnd(s); return {}; }
+  return {error:'Unknown move.'}; }
+function lgClockTick(s,seat){ if(!s.clocks||s.status==='over')return; const now=Date.now(); s.clocks[seat]=Math.max(0,s.clocks[seat]-(now-s.lastActAt)); s.lastActAt=now; if(s.clocks[seat]<=0){ s.winner=1-seat; s.reason='time'; s.mode='over'; s.status='over'; s.log.push(lgNm(s,seat)+' flags (out of time).'); } }
+function lgLazyTimeout(s){ if(s.status==='over'||!s.clocks)return false; const a=lgActorOf(s); if(a==null)return false; if(Date.now()-s.lastActAt>=s.clocks[a]){ s.clocks[a]=0; s.winner=1-a; s.reason='time'; s.mode='over'; s.status='over'; s.log.push(lgNm(s,a)+' flags (out of time).'); return true; } return false; }
+function lgRedact(s,seat){
+  const pp=i=>{ const p=s.players[i]; return { hand: i===seat ? p.hand.slice() : p.hand.map(()=>'?'), deck:p.deck.length, gy:p.gy.slice(), exile:p.exile.slice(), field:Object.assign({},p.field) }; };
+  let clocks=null; if(s.clocks){ clocks={0:s.clocks[0],1:s.clocks[1]}; const a=lgActorOf(s); if(a!=null&&s.status!=='over')clocks[a]=Math.max(0,clocks[a]-(Date.now()-s.lastActAt)); }
+  return { seat, active:s.active, turn:s.turn, stack:s.stack, priority:s.priority, mode:s.mode, status:s.status, winner:s.winner, reason:s.reason, castThisTurn:s.castThisTurn,
+    names:s.names, players:[pp(0),pp(1)],
+    choice: s.choice ? (s.choice.who===seat ? { who:s.choice.who, kind:s.choice.kind, options:s.choice.options } : { who:s.choice.who, hidden:true }) : null,
+    clock:s.clock, clocks, log:s.log.slice(-8) }; }
+function lgMatchGet(code){ return db.prepare('SELECT * FROM lg_matches WHERE code = ?').get((code||'').toUpperCase()); }
+function lgMatchSeat(row,uid){ return row.p1_user===uid?0:(row.p2_user===uid?1:-1); }
+function lgRecord(row,s){ if(s.status!=='over'||s.recorded)return; s.recorded=true;
+  const winnerUser = s.winner==null?null:(s.winner===0?row.p1_user:row.p2_user);
+  db.prepare('INSERT INTO lg_results (format,clock,p1_user,p2_user,p1_name,p2_name,winner_user,reason) VALUES (?,?,?,?,?,?,?,?)')
+    .run(row.format,row.clock,row.p1_user,row.p2_user,row.p1_name,row.p2_name,winnerUser,s.reason||'over'); }
+function lgMatchSave(code,s){ db.prepare('UPDATE lg_matches SET state=?, status=?, updated_at=unixepoch() WHERE code=?').run(JSON.stringify(s), s.status, code); }
+const _lgBuckets=new Map();
+function rateLimitLg(req,reply,done){ const ip=clientIp(req); const now=Date.now(); let b=_lgBuckets.get(ip); if(!b||now-b.start>60000){ b={start:now,count:0}; _lgBuckets.set(ip,b);} if(++b.count>120){ reply.code(429).send({error:'Slow down.'}); return; } done(); }
+
+app.post('/api/lg/create', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const { format, clock } = req.body||{}; if(format!=='land') return reply.code(400).send({error:'Unknown format.'}); if(!LG_CLOCK_MS.hasOwnProperty(clock)) return reply.code(400).send({error:'Bad time control.'});
+  let code; for(let i=0;i<10;i++){ code=crypto.randomBytes(3).toString('hex').toUpperCase().slice(0,5); if(!lgMatchGet(code))break; }
+  const st={ status:'waiting', clock, format, names:[req.user.username,null] };
+  db.prepare('INSERT INTO lg_matches (code,p1_user,p1_name,format,clock,state,status) VALUES (?,?,?,?,?,?,?)').run(code, req.user.sub, req.user.username, format, clock, JSON.stringify(st), 'waiting');
+  return { code, status:'waiting' };
+});
+app.post('/api/lg/join', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const row=lgMatchGet((req.body||{}).code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  if(row.status!=='waiting'||row.p2_user) return reply.code(409).send({error:'Match already started.'});
+  if(row.p1_user===req.user.sub) return reply.code(409).send({error:'You created this match.'});
+  const s=lgNew(row.clock,[row.p1_name, req.user.username]);
+  db.prepare('UPDATE lg_matches SET p2_user=?, p2_name=?, state=?, status=?, updated_at=unixepoch() WHERE code=?').run(req.user.sub, req.user.username, JSON.stringify(s), 'playing', row.code);
+  return { code:row.code, seat:1, state:lgRedact(s,1) };
+});
+app.post('/api/lg/queue', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const { format, clock } = req.body||{}; if(format!=='land'||!LG_CLOCK_MS.hasOwnProperty(clock)) return reply.code(400).send({error:'Bad request.'});
+  db.prepare('DELETE FROM lg_queue WHERE since < ?').run(Math.floor(Date.now()/1000)-120);
+  const mate=db.prepare('SELECT * FROM lg_queue WHERE format=? AND clock=? AND user_id<>? ORDER BY since LIMIT 1').get(format,clock,req.user.sub);
+  if(mate){ db.prepare('DELETE FROM lg_queue WHERE user_id IN (?,?)').run(mate.user_id, req.user.sub);
+    let code; for(let i=0;i<10;i++){ code=crypto.randomBytes(3).toString('hex').toUpperCase().slice(0,5); if(!lgMatchGet(code))break; }
+    const s=lgNew(clock,[mate.name, req.user.username]);
+    db.prepare('INSERT INTO lg_matches (code,p1_user,p2_user,p1_name,p2_name,format,clock,state,status) VALUES (?,?,?,?,?,?,?,?,?)').run(code, mate.user_id, req.user.sub, mate.name, req.user.username, format, clock, JSON.stringify(s), 'playing');
+    return { matched:true, code, seat:1 }; }
+  db.prepare('INSERT INTO lg_queue (user_id,name,format,clock,since) VALUES (?,?,?,?,unixepoch()) ON CONFLICT(user_id) DO UPDATE SET format=excluded.format, clock=excluded.clock, since=unixepoch()').run(req.user.sub, req.user.username, format, clock);
+  return { queued:true };
+});
+app.get('/api/lg/queue', { preHandler:authenticate }, async (req)=>{
+  const q=db.prepare('SELECT 1 FROM lg_queue WHERE user_id=?').get(req.user.sub);
+  if(q) return { queued:true };
+  const m=db.prepare("SELECT code FROM lg_matches WHERE (p1_user=? OR p2_user=?) AND status='playing' AND created_at>=? ORDER BY created_at DESC LIMIT 1").get(req.user.sub, req.user.sub, Math.floor(Date.now()/1000)-90);
+  if(m) return { matched:true, code:m.code, seat:0 };
+  return { queued:false };
+});
+app.delete('/api/lg/queue', { preHandler:authenticate }, async (req)=>{ db.prepare('DELETE FROM lg_queue WHERE user_id=?').run(req.user.sub); return { ok:true }; });
+app.get('/api/lg/stats', { preHandler:authenticate }, async (req)=>{
+  const uid=req.user.sub;
+  const total=db.prepare('SELECT COUNT(*) c FROM lg_results WHERE p1_user=? OR p2_user=?').get(uid,uid).c;
+  const wins=db.prepare('SELECT COUNT(*) c FROM lg_results WHERE winner_user=?').get(uid).c;
+  return { total, wins, losses:Math.max(0,total-wins), winPct: total?Math.round(wins/total*100):0 };
+});
+app.get('/api/lg/history', { preHandler:authenticate }, async (req)=>{
+  const uid=req.user.sub;
+  const rows=db.prepare('SELECT * FROM lg_results WHERE p1_user=? OR p2_user=? ORDER BY ended_at DESC LIMIT 25').all(uid,uid);
+  return { history: rows.map(r=>{ const meP1=r.p1_user===uid; return { opp: meP1?r.p2_name:r.p1_name, result: r.winner_user==null?'draw':(r.winner_user===uid?'win':'loss'), reason:r.reason, clock:r.clock, at:r.ended_at }; }) };
+});
+app.get('/api/lg/:code', { preHandler:authenticate }, async (req,reply)=>{
+  const row=lgMatchGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const seat=lgMatchSeat(row, req.user.sub); if(seat<0) return reply.code(403).send({error:'Not your match.'});
+  if(row.status==='waiting'){ const st=JSON.parse(row.state); return { status:'waiting', code:row.code, seat, names:st.names, clock:row.clock }; }
+  const s=JSON.parse(row.state); if(lgLazyTimeout(s)){ lgRecord(row,s); lgMatchSave(row.code,s); }
+  return { status:'playing', code:row.code, seat, state:lgRedact(s,seat) };
+});
+app.post('/api/lg/:code/move', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const row=lgMatchGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const seat=lgMatchSeat(row, req.user.sub); if(seat<0) return reply.code(403).send({error:'Not your match.'});
+  if(row.status!=='playing') return reply.code(409).send({error:'Match not in play.'});
+  const s=JSON.parse(row.state); const mv=(req.body||{}).move||{};
+  if(lgLazyTimeout(s)){ lgRecord(row,s); lgMatchSave(row.code,s); return { code:row.code, seat, state:lgRedact(s,seat) }; }
+  if(mv.type!=='resign') lgClockTick(s,seat);
+  if(s.status!=='over'){ const r=lgsrvApply(s,seat,mv); if(r&&r.error) return reply.code(400).send({error:r.error}); }
+  lgRecord(row,s); lgMatchSave(row.code,s);
+  return { code:row.code, seat, state:lgRedact(s,seat) };
+});
+setInterval(()=>{ try{ const now=Math.floor(Date.now()/1000);
+  db.prepare("DELETE FROM lg_matches WHERE status='over' AND updated_at < ?").run(now-600);
+  db.prepare("DELETE FROM lg_matches WHERE status='waiting' AND updated_at < ?").run(now-1800);
+  db.prepare("DELETE FROM lg_matches WHERE status='playing' AND updated_at < ?").run(now-14*24*3600);
+  db.prepare('DELETE FROM lg_queue WHERE since < ?').run(now-120);
+}catch(_){} }, 5*60*1000);
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   if (err) { app.log.error(err); process.exit(1); }
