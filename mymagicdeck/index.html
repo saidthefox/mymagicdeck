@@ -1365,11 +1365,10 @@
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
     .lg-deckn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;color:#ffe9b8;text-shadow:0 1px 3px #000}
-    /* player's deck laid flat on the table — tipped forward so you mostly see the stacked side, angled toward the player */
-    .lg-mydeck{display:flex;align-items:flex-end;gap:6px}
-    .lg-deckcount{font-size:12px;font-weight:bold;color:#ffe9b8;text-shadow:0 1px 2px #000;margin-bottom:6px}
-    .lg-deck.mine{width:52px;height:70px;transform:perspective(170px) rotateX(78deg) rotateZ(7deg);transform-origin:center bottom;margin:0 0 6px 0;
-      box-shadow:0 1px 0 #2a3a78,0 3px 0 #233169,0 5px 0 #1c2a5a,0 7px 0 #16224a,0 9px 0 #101a3a,0 11px 0 #0b1328,0 13px 14px rgba(0,0,0,.6)}
+    /* player's deck — a stack of real card-back layers (depth), tilted up ~10° and angled to match the hand cards; count on the top card */
+    .lg-deck.mine{position:relative;width:50px;height:70px;background:none;border:none;box-shadow:none;transform:rotateX(10deg) rotateZ(8deg);transform-origin:center bottom;margin:0 10px 8px 0}
+    .lg-dl{position:absolute;inset:0;border-radius:6px;background:repeating-linear-gradient(48deg,#26356a 0 6px,#1e2c5a 6px 12px);border:1px solid #0c1430}
+    .lg-deck.mine .lg-deckn{position:absolute;inset:0;border-radius:6px;display:flex;align-items:center;justify-content:center;background:repeating-linear-gradient(48deg,#34468a 0 6px,#2a3a72 6px 12px);border:1px solid #0c1430;box-shadow:0 2px 5px rgba(0,0,0,.45);font-size:15px;font-weight:bold;color:#ffe9b8;text-shadow:0 1px 3px #000;z-index:8}
     /* opponent's deck: small, roughly hand-card size, beside their hand */
     .lg-deck.opp{width:22px;height:30px;box-shadow:1px 1px 0 #1b2856,2px 2px 0 #15203f,2px 3px 5px rgba(0,0,0,.5)}
     .lg-deck.opp .lg-deckn{font-size:11px}
@@ -6535,9 +6534,10 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pinfo"><div class="lg-pname">'+_mgEsc(p.name)+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div><div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div>'+(p.exile.length?('<div class="lg-meta">✦ exile '+p.exile.length+'</div>'):'')+'</div></div>'; };
   const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length; return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+'" data-h="'+i+'" data-t="'+t+'" style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
   const backsfan=pi=>{ const n=_lg.players[pi].hand.length, k=Math.min(n,7); return '<div class="lg-handfan tiny">'+Array.from({length:k}).map((_,i)=>'<div class="lg-bigcard back" style="transform:rotate('+((i-(k-1)/2)*4).toFixed(1)+'deg)"></div>').join('')+'</div><span class="lg-backs">×'+n+'</span>'; };
-  const deckPile=pi=>{ const n=_lg.players[pi].deck.length; return pi===_lg.view
-    ? '<div class="lg-mydeck"><div class="lg-deck mine" title="Your deck"></div><span class="lg-deckcount">▦ '+n+'</span></div>'
-    : '<div class="lg-deck opp" title="'+_mgEsc(_lg.players[pi].name)+' deck"><span class="lg-deckn">'+n+'</span></div>'; };
+  const deckPile=pi=>{ const n=_lg.players[pi].deck.length;
+    if(pi===_lg.view){ const depth=Math.min(8,Math.max(2,Math.round(n/4))); const layers=Array.from({length:depth}).map((_,i)=>'<i class="lg-dl" style="transform:translate('+(i*1.5).toFixed(1)+'px,'+(i*1.5).toFixed(1)+'px)"></i>').join('');
+      return '<div class="lg-deck mine" title="Your deck">'+layers+'<span class="lg-deckn">'+n+'</span></div>'; }
+    return '<div class="lg-deck opp" title="'+_mgEsc(_lg.players[pi].name)+' deck"><span class="lg-deckn">'+n+'</span></div>'; };
   const gyPile=pi=>{ const g=_lg.players[pi].gy, top=g[g.length-1]; return '<div class="lg-gy" title="'+_mgEsc(_lg.players[pi].name)+' graveyard">'+(top?('<span class="lg-gy-ic" style="color:'+LG_COL[top][0]+'">'+LG_ICO[top]+'</span>'):'<span class="lg-gy-ic empty">⚰</span>')+'<span class="lg-gy-n">'+g.length+'</span><span class="lg-gy-lbl">GY</span></div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
       ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
