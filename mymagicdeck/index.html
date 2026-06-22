@@ -1349,7 +1349,7 @@
     .lg-bigcard.back{background:repeating-linear-gradient(45deg,#2b3a6b 0 6px,#22305c 6px 12px);border-color:#0c1430}
     .lg-bigcard.playable{cursor:pointer;box-shadow:0 0 0 2px #7CFC00,0 3px 8px rgba(0,0,0,.5)}
     .lg-bigcard.playable:hover{transform:translateY(-16px) scale(1.08) !important;z-index:6;box-shadow:0 0 0 2px #aaff66,0 9px 18px rgba(0,0,0,.6)}
-    .lg-hand{display:flex;justify-content:center;align-items:flex-end;flex:1;transition:transform .25s ease;transform:translate(24%,42%) scale(.86);transform-origin:bottom right}
+    .lg-hand{display:flex;justify-content:center;align-items:flex-end;flex:1;transition:transform .25s ease;transform:translate(10%,36%) scale(.9);transform-origin:bottom right}
     .lg-hand.active{transform:none}
     .lg-ctrl{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%}
     .lg-ctrl .lg-banner{font-size:11px;padding:3px 9px}
@@ -1366,7 +1366,7 @@
     .lg-leftrail{position:absolute;left:8px;top:8px;bottom:8px;width:24%;display:flex;flex-direction:column;justify-content:space-between;gap:4px;z-index:3}
     .lg-leftrail .lg-plate{width:84%;max-width:160px}
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
-    .lg-topstrip{position:absolute;left:27%;right:21%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:2}
+    .lg-topstrip{position:absolute;left:26%;right:6px;top:8px;height:62px;display:flex;align-items:center;justify-content:flex-start;gap:12px;z-index:2}
     .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:3px;z-index:1}
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
@@ -1396,7 +1396,10 @@
     .lg-prompt{font-size:11px;color:#f0e6d2;margin:2px 0;text-align:center;max-width:94%}
     .lg-tap{font-size:10px;color:#9cff66}
     .lg-pdeck{position:absolute;left:25.5%;bottom:10px;z-index:4}
-    .lg-gyzone{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%}
+    .lg-gyzone{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.28);border:1px solid #b8932f;border-radius:6px;padding:2px 6px}
+    .lg-pgy{position:absolute;left:25%;bottom:90px;z-index:4}
+    .lg-rctrl{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:17%;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:3}
+    .lg-rctrl .lg-banner{font-size:11px;padding:3px 9px;text-align:center}
     .lg-zlbl{font-size:8px;color:#9b8e6f;letter-spacing:.4px;line-height:1.25}
     .lg-zonebox{width:94%;min-height:20px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;background:rgba(0,0,0,.22);border:none;border-radius:5px;padding:2px 1px;margin-bottom:2px}
     .lg-chip{display:inline-flex;align-items:center;gap:1px;font-size:13px;line-height:1}
@@ -6580,7 +6583,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   // graveyard + exile, fully public (type tallies); GY selectable when Forest targets your own
   const zoneBox=(arr,canForest)=>{ const m={}; arr.forEach((t,i)=>{ if(!m[t])m[t]={n:0,first:i}; m[t].n++; }); const keys=LG_TYPES.filter(t=>m[t]);
     return '<div class="lg-zonebox">'+(keys.length?keys.map(t=>{ return '<span class="lg-chip'+(canForest?' lg-sel':'')+'" style="color:'+LG_COL[t][0]+'"'+(canForest?(' data-pick="'+m[t].first+'"'):'')+' title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<b>'+m[t].n+'</b></span>'; }).join(''):'<span class="lg-zlbl">—</span>')+'</div>'; };
-  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
+  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><span class="lg-zlbl">⚰</span>'+zoneBox(p.gy,forestSel)+'<span class="lg-zlbl">✦</span>'+zoneBox(p.exile,false)+'</div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
       ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
       : '<div class="lg-bigcard mini" style="--c1:#c0392b;--c2:#641a12;--tx:#fff" title="counter"><div class="lg-bc-art"><span class="lg-bc-ic">🚫</span><span class="lg-bc-nm">Counter</span></div></div>' ).join('')+'</div>'; };
@@ -6595,9 +6598,10 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
-    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
-    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-cbanner">'+cBan+'</div><div class="lg-divider"></div><div class="lg-cbtns">'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+stackView()+'</div></div>'+playedRow(me)+'</div>'+
-    '<div class="lg-rightrail">'+gyZone(opp)+gyZone(me)+'</div>'+
+    '<div class="lg-topstrip">'+gyZone(opp)+backsfan(opp)+deckOpp()+'</div>'+
+    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div><div class="lg-cbtns">'+stackView()+'</div></div>'+playedRow(me)+'</div>'+
+    '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+'</div>'+
+    '<div class="lg-pgy">'+gyZone(me)+'</div>'+
     deckMine()+
     '<div class="lg-botstrip"><div class="lg-hand'+(handActive?' active':'')+'">'+fan(me,playable)+'</div></div>'+
     '</div></div>';
@@ -7027,7 +7031,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'documents', title:'Documents', icon:'📁', width:'460px', desktop:true, mount(body){ notesRenderApp(body); } }); // permanent folder of saved notes
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:MP_ICON, width:'620px', desktop:true, mount(body){ mpRender(body); } });
-  DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
+  DeckOS.registerProgram({ id:'landgame', title:'Basics — The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
