@@ -487,9 +487,6 @@
     @keyframes uqspin { to { transform: rotate(360deg); } }
     /* User Layout (free-drag) */
     .splash-free { position: relative; }
-    /* The fixed photo-frame canvas — visible borders so users know exactly what the render captures. */
-    .splash-free.framed { border: 2px dashed rgba(255,255,255,0.32); background: rgba(8,10,16,0.35); box-shadow: 0 0 0 2000px rgba(0,0,0,0.18); border-radius: 4px; overflow: hidden; }
-    .splash-frame-tag { position: absolute; top: 6px; left: 8px; z-index: 0; font-size: 16px; font-weight: 700; color: rgba(255,255,255,0.4); letter-spacing: 0.04em; pointer-events: none; }
     .splash-card.free { position: absolute; transition: none; }
     .splash-overlay.editing .splash-card.free { cursor: grab; box-shadow: 0 3px 12px rgba(0,0,0,0.65); }
     .splash-overlay.editing .splash-card.free:active { cursor: grabbing; }
@@ -2867,10 +2864,7 @@ function openSplash(deckObj,username,opts){
   _splashCommanderCard=getCommanderCard(deckObj);
   overlay._splashGroups={g,sbCards,allCards};
   // Default zoom: smaller on mobile
-  // In User Layout the slider sizes the cards on the fixed frame (persisted as layout.cardScale);
-  // in column modes it's the on-screen zoom default.
-  const savedCardScale=(deckObj.layout&&deckObj.layout.cardScale)?Math.round(deckObj.layout.cardScale*100):null;
-  const defaultZoom=(initSort==='user'&&savedCardScale)?savedCardScale:(window.innerWidth<=700?70:100);
+  const defaultZoom=window.innerWidth<=700?70:100;
   const zoomSlider=document.getElementById('splash-zoom');
   if(zoomSlider){zoomSlider.value=defaultZoom;const lbl=document.getElementById('splash-zoom-label');if(lbl)lbl.textContent=defaultZoom+'%';}
   const zoomPct=defaultZoom;
@@ -2898,9 +2892,8 @@ function openSplash(deckObj,username,opts){
     document.getElementById('splash-body').innerHTML=editHint+(_splashEdit?photoHtml:'')+statsHtml+barHtml+colsHtml;
     _attachCardHover(document.getElementById('splash-body'));
     if(sortMode==='user'&&_splashEdit&&typeof _splashAttachSelect==='function')_splashAttachSelect();
-    if(sortMode==='user')_splashFitFree();
   }
-  // Zoom sizes cards (column widths, or card size on the fixed frame in User Layout); only the pic view has no use for it.
+  // The pic view is just the image — no use for the zoom slider there.
   const zw0=document.querySelector('.splash-zoom-wrap'); if(zw0)zw0.style.display=(_splashView==='pic')?'none':'';
   // View toggle + owner "serve pic" setting in the header.
   const vt=document.getElementById('splash-view-toggle');
@@ -3069,13 +3062,12 @@ function _splashRebuildColumns(){
   else body.appendChild(newNode);
   if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
   if(sortMode==='user'&&_splashEdit)_splashAttachSelect();
-  if(sortMode==='user')_splashFitFree();
 }
 // Marquee multi-select wiring for the splash free layout (shared by openSplash + rebuild).
 function _splashAttachSelect(){
   const f=document.getElementById('splash-free'); if(!f)return; const deck=_splashDeck&&_splashDeck.deck;
   attachSelectable(f,{ itemSelector:'.splash-card.free,.splash-stat',
-    scale:()=>_freeFitScale||1, // on-screen scale = fit × zoom, so drag deltas convert to stage px
+    scale:()=>(parseInt(document.getElementById('splash-zoom')?.value||100))/100,
     snap:v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v,
     commit:el=>{ const k=el.dataset.key; if(!k||!deck)return; deck.layout=deck.layout||{}; deck.layout.positions=deck.layout.positions||{};
       const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1}; const sv=parseFloat(el.dataset.s); if(sv&&sv!==1)o.s=sv; deck.layout.positions[k]=o; },
@@ -3130,19 +3122,14 @@ async function _genBg(){
 function _chk(id){ const el=document.getElementById(id); return !!(el&&el.checked); }
 // Snapshot the currently-rendered card layout (works for columns or free) → rects relative to the layout container.
 function _snapshotLayout(){
-  // In User Layout the layout lives on the fixed photo frame (.splash-free, scaled by _freeFitScale);
-  // divide measured screen px back to STAGE coords and report a fixed canvas so the render captures
-  // exactly the visible frame (not an auto-crop of the content). Column modes keep content bounds.
-  const free=document.querySelector('#splash-body .splash-free');
-  const cont=free||document.querySelector('#splash-body .splash-columns'); if(!cont)return null;
-  const eff=free?(_freeFitScale||1):1;
+  const cont=document.querySelector('#splash-body .splash-columns'); if(!cont)return null;
   const cr=cont.getBoundingClientRect();
   const cards=[];
   cont.querySelectorAll('.splash-card, .splash-commander-card').forEach(el=>{
     const img=el.querySelector('img'); if(!img)return;
     const src=img.getAttribute('src'); if(!src)return;
     const r=el.getBoundingClientRect();
-    cards.push({ url:src, x:(r.left-cr.left)/eff, y:(r.top-cr.top)/eff, w:r.width/eff, h:r.height/eff, z:parseInt(getComputedStyle(el).zIndex)||0 });
+    cards.push({ url:src, x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height, z:parseInt(getComputedStyle(el).zIndex)||0 });
   });
   cards.sort((a,b)=>a.z-b.z);
   // Capture stat-widget positions (User Layout only) so the share image places
@@ -3151,9 +3138,9 @@ function _snapshotLayout(){
   cont.querySelectorAll('.splash-stat').forEach(el=>{
     const key=el.dataset.key; if(!key||key.indexOf('stat:')!==0)return;
     const r=el.getBoundingClientRect();
-    stats[key.slice(5)]={ x:(r.left-cr.left)/eff, y:(r.top-cr.top)/eff, w:r.width/eff, h:r.height/eff, s:parseFloat(el.dataset.s)||1 };
+    stats[key.slice(5)]={ x:r.left-cr.left, y:r.top-cr.top, w:r.width, h:r.height, s:parseFloat(el.dataset.s)||1 };
   });
-  return { width:free?SPLASH_STAGE_W:cr.width, height:free?SPLASH_STAGE_H:cr.height, cards, stats, fixed:!!free };
+  return { width:cr.width, height:cr.height, cards, stats };
 }
 function _shareMeta(deck, author){
   const cards=Object.values(deck.cards||{});
@@ -3178,21 +3165,15 @@ async function _genShareImage(){
   const snap=_snapshotLayout();
   if(!snap||!snap.cards.length){ toast('Nothing to render — open the splash with cards','error'); return; }
   const st=document.getElementById('si-status'); st.className='si-status loading'; st.textContent='Rendering…';
-  let ox,oy,cw,chh;
-  if(snap.fixed){
-    // User Layout: capture the fixed photo frame exactly — coords are already in stage space,
-    // so the pic is predictable (no auto-crop, no shifting position).
-    ox=0; oy=0; cw=snap.width; chh=snap.height;
-  } else {
-    // Column modes: bound the content + ~6% buffer so the deck sits centered, not flush.
-    let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
-    const acc=(x,y,w,h)=>{ minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x+w); maxY=Math.max(maxY,y+h); };
-    snap.cards.forEach(c=>acc(c.x,c.y,c.w,c.h));
-    if(snap.stats)for(const k in snap.stats){ const v=snap.stats[k]; acc(v.x,v.y,v.w,v.h); }
-    const contentW=Math.max(1,maxX-minX), contentH=Math.max(1,maxY-minY);
-    const margin=Math.round(Math.max(contentW,contentH)*0.06);
-    ox=margin-minX; oy=margin-minY; cw=contentW+margin*2; chh=contentH+margin*2;
-  }
+  // Center the layout in the pic with a uniform buffer: bound the content (cards + stat
+  // panels), then frame it in a slightly larger canvas so the deck sits centered, not flush.
+  let minX=Infinity,minY=Infinity,maxX=-Infinity,maxY=-Infinity;
+  const acc=(x,y,w,h)=>{ minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x+w); maxY=Math.max(maxY,y+h); };
+  snap.cards.forEach(c=>acc(c.x,c.y,c.w,c.h));
+  if(snap.stats)for(const k in snap.stats){ const v=snap.stats[k]; acc(v.x,v.y,v.w,v.h); }
+  const contentW=Math.max(1,maxX-minX), contentH=Math.max(1,maxY-minY);
+  const margin=Math.round(Math.max(contentW,contentH)*0.06); // ~6% breathing room all around
+  const ox=margin-minX, oy=margin-minY, cw=contentW+margin*2, chh=contentH+margin*2;
   // Upscale for a crisp image (cards' source art is higher-res than the on-screen size).
   const maxDim=Math.max(cw,chh)||1; const s=Math.min(2.5, 3500/maxDim);
   const sc=v=>Math.round(v*s);
@@ -3257,8 +3238,6 @@ function splashZoom(){
   const slider=document.getElementById('splash-zoom');
   const label=document.getElementById('splash-zoom-label');
   if(label)label.textContent=slider.value+'%';
-  // Rebuild: in User Layout this re-renders the cards at the new size (the slider sizes cards
-  // within the fixed frame); in column modes it re-lays the columns.
   _splashRebuildColumns();
 }
 function splashReorder(){
@@ -3333,39 +3312,15 @@ function _selContextMenu(x,y,selected,opts,clearSel){
   m.querySelector('[data-act="clear"]')?.addEventListener('click',()=>{ clearSel(); close(); });
   setTimeout(()=>document.addEventListener('pointerdown',close,true),0);
 }
-// User Layout is composed on ONE fixed-size canvas (the "photo area") that is identical in the
-// builder and the public page, and is exactly what the share render captures. The stage is
-// scaled-to-fit the available width (× the zoom slider) via a CSS transform; stored card/widget
-// positions stay in this fixed STAGE coordinate space, so what you build = what shows = what renders.
-const SPLASH_STAGE_W=1280, SPLASH_STAGE_H=800;
-let _freeFitScale=1;
-function _splashFitFree(){
-  const free=document.getElementById('splash-free'); if(!free)return;
-  const body=document.getElementById('splash-body');
-  const availW=Math.max(160,((body?body.clientWidth:free.parentElement.clientWidth)||SPLASH_STAGE_W)-40);
-  // The frame always fits the window; card size is controlled separately by the zoom slider
-  // (applied per-card in _buildSplashFree), so it doesn't rescale the whole canvas.
-  const eff=Math.max(0.05,availW/SPLASH_STAGE_W);
-  _freeFitScale=eff;
-  free.style.transform='scale('+eff+')';
-  free.style.transformOrigin='top left';
-  // The transform doesn't change layout box size, so reserve the scaled footprint on the
-  // wrapper (and center it) — otherwise the body won't scroll to the frame's true extent.
-  const wrap=free.parentElement;
-  if(wrap){ wrap.style.width=Math.ceil(SPLASH_STAGE_W*eff)+'px'; wrap.style.height=Math.ceil(SPLASH_STAGE_H*eff)+'px'; wrap.style.margin='0 auto'; }
-}
-window.addEventListener('resize',()=>{ if(document.getElementById('splash-free'))_splashFitFree(); });
 function _buildSplashFree(allCards,sbCards,zoomPct){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
-  // Slider sizes the cards within the fixed frame (this is what the render captures).
-  const cz=Math.max(0.3,(zoomPct||100)/100);
-  const CARD_W=Math.round(121*cz),CARD_H=Math.round(169*cz),GAP=Math.round(12*cz);
+  const CARD_W=121,CARD_H=169,GAP=12;
+  const scale=zoomPct/100;
   const ents=[];
   const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const entry=store&&store[cid]; const qty=entry?entry.qty:1; for(let k=0;k<qty;k++)ents.push({card,cid,entry,copyIdx:k,key:zone+cid+'_'+k}); } };
   collect(allCards,deck.cards,''); collect(sbCards,deck.sideboard,'sb_'); // zone-prefix so a card in both main+sideboard doesn't share a key (→ stacking)
   const positions=(deck.layout&&deck.layout.positions)||{};
-  // Seed unplaced cards in a grid that fits inside the fixed photo frame.
-  const perRow=Math.max(1,Math.floor((SPLASH_STAGE_W-40)/(CARD_W+GAP)));
+  const perRow=Math.max(1,Math.floor((Math.min(window.innerWidth,1400)-40)/(CARD_W+GAP)));
   let maxX=0,maxY=0;
   const placed=[];
   // Seed unplaced cards by their STABLE index in the entry list (not a packed
@@ -3382,9 +3337,8 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   const statsOn=(deck.layout&&deck.layout.statsOn)||{};
   const statPlaced=[]; let si=0;
   for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; let p=positions['stat:'+sd.id]; if(!p)p={x:16,y:16+si*84,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
-  // Fixed photo-frame canvas (scaled-to-fit later by _splashFitFree); the frame border makes
-  // the capture bounds visible so card sizing is no longer a guess.
-  let html=`<div class="splash-columns"><div class="splash-free framed${_snapOn?' snap':''}" id="splash-free" style="width:${SPLASH_STAGE_W}px;height:${SPLASH_STAGE_H}px;transform-origin:top left"><div class="splash-frame-tag">📷 Photo area · ${SPLASH_STAGE_W}×${SPLASH_STAGE_H}</div>`;
+  const W=Math.max(maxX+40,420),H=Math.max(maxY+40,320);
+  let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
   for(const{e,p}of placed){
     const ov=e.entry&&e.entry.arts&&e.entry.arts[e.copyIdx];
     const imgN=ov?(ov.normal||ov.small):getCardImage(e.card,'normal');
@@ -3554,8 +3508,6 @@ function saveUserLayout(){
   free.querySelectorAll('[data-key]').forEach(el=>{ const k=el.dataset.key; if(!k)return;
     const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1};
     const s=parseFloat(el.dataset.s); if(s&&s!==1)o.s=s; deck.layout.positions[k]=o; });
-  // Persist the card-size slider so the public view + render match what was composed.
-  deck.layout.cardScale=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
   saveToStorage(); syncDeckToApi(deck.id); toast('Layout saved 💾','success');
 }
 function setDefaultLayout(){

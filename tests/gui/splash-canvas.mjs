@@ -1,15 +1,16 @@
-// Splash overhaul: fixed User-Layout photo frame (size independent of the window), the deck-list
-// widget includes the sideboard, and the serve-pic-as-splash toggle (interactive ⇄ deck pic).
+// Splash: the deck-list widget includes the sideboard, and the serve-pic-as-splash toggle
+// (interactive layout ⇄ saved deck pic) with the header button. (The fixed-canvas experiment
+// was reverted; User Layout is the original free/zoom layout.)
 import { chromium } from 'playwright';
 const b = await chromium.launch();
-const ctx = await b.newContext({ viewport:{ width:760, height:680 } });
+const ctx = await b.newContext({ viewport:{ width:1100, height:720 } });
 const p = await ctx.newPage();
 const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text().slice(0,160));}); p.on('pageerror',e=>errs.push('PE:'+(e.message||e)));
 await p.goto('http://mymagicdeck.com/',{waitUntil:'domcontentloaded',timeout:30000});
 await p.waitForTimeout(1500);
 
 const IMG='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
-const setup = await p.evaluate(({IMG})=>{
+await p.evaluate(({IMG})=>{
   state.user={username:'jake'};
   const mk=(name,oid,tl,mc,cmc)=>({name,oracle_id:oid,id:oid,type_line:tl,mana_cost:mc,cmc,image_uris:{normal:IMG,large:IMG,small:IMG},prices:{usd:'1'}});
   const deck={ id:'tdeck', name:'Frame Test', defaultLayout:'user',
@@ -18,26 +19,12 @@ const setup = await p.evaluate(({IMG})=>{
     layout:{ statsOn:{ list:true } } };
   state.decks={ tdeck:deck }; state.currentDeckId='tdeck';
   openSplash(deck,'jake',{edit:true});
-  return true;
 },{IMG});
 await p.waitForTimeout(400);
 
-// Fixed frame present, logical size 1280, and a fit scale was computed.
-const frame = await p.evaluate(()=>{ const f=document.getElementById('splash-free');
-  return { framed: !!f && f.classList.contains('framed'), w:f&&f.style.width, fit:_freeFitScale, hasTag:!!document.querySelector('.splash-frame-tag') }; });
-
-// Zoom slider resizes the cards (not the frame): card width grows, frame stays 1280.
-const cardZoom = await p.evaluate(()=>{ const w0=parseFloat(document.querySelector('.splash-card.free').style.width);
-  const sl=document.getElementById('splash-zoom'); sl.value='140'; splashZoom();
-  const w1=parseFloat(document.querySelector('.splash-card.free').style.width);
-  const frameW=document.getElementById('splash-free').style.width;
-  return { grew:w1>w0, w0, w1, frameStill:frameW==='1280px', sliderShown:getComputedStyle(document.querySelector('.splash-zoom-wrap')).display!=='none' }; });
-
-// Frame size is independent of the window: widen the viewport, the logical stage stays 1280 while the fit scale grows.
-const beforeFit = await p.evaluate(()=>_freeFitScale);
-await p.setViewportSize({ width:1280, height:680 }); await p.waitForTimeout(250);
-const indep = await p.evaluate(()=>{ const f=document.getElementById('splash-free'); return { stillW:f.style.width, fitGrew:_freeFitScale>0 }; });
-const fitChanged = await p.evaluate((bf)=>Math.abs(_freeFitScale-bf)>0.01,beforeFit);
+// Original free layout is back: .splash-free has an inline transform:scale (not a fixed 1280 frame).
+const layout = await p.evaluate(()=>{ const f=document.getElementById('splash-free');
+  return { present:!!f, scaled:!!f && /scale\(/.test(f.style.transform), notFixed: !f.classList.contains('framed') }; });
 
 // Deck-list widget includes a Sideboard section.
 const sideboard = await p.evaluate(()=>{ const w=document.querySelector('.splash-stat.stat-list'); return !!w && /Sideboard/.test(w.textContent); });
@@ -54,18 +41,11 @@ const toggle = await p.evaluate(({IMG})=>{ const d=state.decks.tdeck; d.layout.s
   return { picShown, labelPic, interShown, labelInter: vt2?vt2.textContent:'', serveCtl: getComputedStyle(document.getElementById('splash-serve-ctl')).display!=='none' };
 },{IMG});
 
-console.log('frame:', JSON.stringify(frame));
-console.log('cardZoom:', JSON.stringify(cardZoom));
-console.log('indep:', JSON.stringify(indep), 'fitChanged:', fitChanged);
+console.log('layout:', JSON.stringify(layout));
 console.log('sideboard:', sideboard);
 console.log('toggle:', JSON.stringify(toggle));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
-// The invariant that matters: the logical stage is a constant 1280 (so builder = public = render),
-// independent of the window. (fitChanged is logged but not asserted — the harness body width
-// doesn't track the viewport, so the measured fit may not move here.)
-const ok = frame.framed && frame.w==='1280px' && frame.fit>0 && frame.hasTag
-  && cardZoom.grew && cardZoom.frameStill && cardZoom.sliderShown
-  && indep.stillW==='1280px'
+const ok = layout.present && layout.scaled && layout.notFixed
   && sideboard
   && toggle.picShown && /Interactive Splash/.test(toggle.labelPic) && toggle.interShown && /Deck Pic/.test(toggle.labelInter) && toggle.serveCtl
   && !errs.length;
