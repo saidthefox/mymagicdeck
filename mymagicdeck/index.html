@@ -1330,8 +1330,9 @@
     .lg-slot-n{font-weight:bold;font-size:16px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
     .lg-slot.near{box-shadow:0 0 0 2px #ffcf5a,0 0 10px rgba(255,207,90,.6)}
     .lg-slot.win{box-shadow:0 0 0 2px #7CFC00,0 0 14px rgba(124,252,0,.7);animation:lgpulse 1.2s infinite}
-    .lg-center{width:100%;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 0;min-height:30px}
-    .lg-divider{position:absolute;left:0;right:0;top:50%;border-top:2px solid rgba(184,147,47,.5);box-shadow:0 0 8px rgba(184,147,47,.25)}
+    .lg-center{width:100%;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px;padding:2px 0}
+    .lg-divider{width:100%;border-top:2px solid rgba(184,147,47,.5);box-shadow:0 0 8px rgba(184,147,47,.25)}
+    .lg-cbanner,.lg-cbtns{align-self:flex-start;display:flex;align-items:center;gap:8px;min-height:20px;padding-left:4px}
     .lg-stack{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
     .lg-stack-lbl{font-size:9px;color:#c9b88f;align-self:center}
     .lg-banner{font-weight:bold;padding:4px 12px;border-radius:14px;font-size:12px;color:#fff;background:linear-gradient(180deg,#2a3f86,#16224d);border:1px solid #5a73c0;text-shadow:0 1px 1px #000}
@@ -1365,9 +1366,9 @@
     .lg-leftrail{position:absolute;left:8px;top:8px;bottom:8px;width:24%;display:flex;flex-direction:column;justify-content:space-between;gap:4px;z-index:3}
     .lg-leftrail .lg-plate{width:84%;max-width:160px}
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
-    .lg-topstrip{position:absolute;left:27%;right:6px;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:2}
+    .lg-topstrip{position:absolute;left:27%;right:21%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:2}
     .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:3px;z-index:1}
-    .lg-rightrail{position:absolute;right:5px;top:74px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
+    .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
     .lg-deckn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;color:#ffe9b8;text-shadow:0 1px 3px #000}
@@ -6579,23 +6580,23 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   // graveyard + exile, fully public (type tallies); GY selectable when Forest targets your own
   const zoneBox=(arr,canForest)=>{ const m={}; arr.forEach((t,i)=>{ if(!m[t])m[t]={n:0,first:i}; m[t].n++; }); const keys=LG_TYPES.filter(t=>m[t]);
     return '<div class="lg-zonebox">'+(keys.length?keys.map(t=>{ return '<span class="lg-chip'+(canForest?' lg-sel':'')+'" style="color:'+LG_COL[t][0]+'"'+(canForest?(' data-pick="'+m[t].first+'"'):'')+' title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<b>'+m[t].n+'</b></span>'; }).join(''):'<span class="lg-zlbl">—</span>')+'</div>'; };
-  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-gyname">'+_mgEsc(p.name)+'</div><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
+  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
       ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
       : '<div class="lg-bigcard mini" style="--c1:#c0392b;--c2:#641a12;--tx:#fff" title="counter"><div class="lg-bc-art"><span class="lg-bc-ic">🚫</span><span class="lg-bc-nm">Counter</span></div></div>' ).join('')+'</div>'; };
   const playable=canAct&&_lg.mode==='turn'&&!_lg.castThisTurn;
   const handActive=playable||(!!choosing&&(choosing.kind==='discard'||choosing.kind==='swamp')); // raise the hand when you're playing or discarding; otherwise it tucks away
-  let ctrl='';
-  if(_lg.mode2==='cpu'&&actor===_lg.cpu){ ctrl='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
-  else if(_lg.mode==='turn'){ ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'+(canAct?'<div class="lg-bar"><button class="btn small" id="lg-end">End turn ▸</button></div>':''); }
-  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div>'+(canAct?'<div class="lg-bar">'+(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button></div>':''); }
-  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=c.options.find(o=>o.value==='__none__'); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div class="lg-prompt">'+_mgEsc(c.prompt)+'</div>'+(canAct?('<div class="lg-bar"><span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':'')+'</div>'):''); }
-  else if(_lg.mode==='over'){ ctrl='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div><div class="lg-bar"><button class="btn small primary" id="lg-again">Play again</button></div>'; }
+  let cBan='', cBtn=''; // banner sits above the centre divider; buttons go below it (player's side)
+  if(_lg.mode2==='cpu'&&actor===_lg.cpu){ cBan='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
+  else if(_lg.mode==='turn'){ cBan='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'; if(canAct)cBtn='<button class="btn small" id="lg-end">End turn ▸</button>'; }
+  else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); cBan='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div>'; if(canAct)cBtn=(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button>'; }
+  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=c.options.find(o=>o.value==='__none__'); cBan='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div class="lg-prompt">'+_mgEsc(c.prompt)+'</div>'; if(canAct)cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); }
+  else if(_lg.mode==='over'){ cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div>'; cBtn='<button class="btn small primary" id="lg-again">Play again</button>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
-    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div><div class="lg-ctrl">'+ctrl+'</div>'+plate(me)+'</div>'+
+    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
-    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+stackView()+'</div>'+playedRow(me)+'</div>'+
+    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-cbanner">'+cBan+'</div><div class="lg-divider"></div><div class="lg-cbtns">'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+stackView()+'</div></div>'+playedRow(me)+'</div>'+
     '<div class="lg-rightrail">'+gyZone(opp)+gyZone(me)+'</div>'+
     deckMine()+
     '<div class="lg-botstrip"><div class="lg-hand'+(handActive?' active':'')+'">'+fan(me,playable)+'</div></div>'+
