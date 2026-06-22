@@ -1366,8 +1366,8 @@
     .lg-leftrail{position:absolute;left:8px;top:8px;bottom:8px;width:24%;display:flex;flex-direction:column;justify-content:space-between;gap:4px;z-index:3}
     .lg-leftrail .lg-plate{width:84%;max-width:160px}
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
-    .lg-topstrip{position:absolute;left:25%;right:25%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:2}
-    .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:3px;z-index:1}
+    .lg-topstrip{position:absolute;left:24%;right:8%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:2}
+    .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:44px;z-index:1}
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
@@ -1389,8 +1389,8 @@
     .lg-pilegrp{border-radius:6px;padding:1px}
     .lg-pilegrp.max{box-shadow:0 0 0 2px #7CFC00,0 0 10px rgba(124,252,0,.55)}
     .lg-pilecards{display:flex;align-items:center}
-    .lg-pcard{width:42px;height:60px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--c1),var(--c2));color:var(--tx);border:1px solid rgba(0,0,0,.5);box-shadow:0 2px 4px rgba(0,0,0,.45)}
-    .lg-pcard .lg-bc-ic{font-size:22px}
+    .lg-pcard{width:55px;height:78px;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--c1),var(--c2));color:var(--tx);border:1px solid rgba(0,0,0,.5);box-shadow:0 2px 4px rgba(0,0,0,.45)}
+    .lg-pcard .lg-bc-ic{font-size:29px}
     .lg-handfan.flip{transform:rotate(180deg)}
     .lg-sel{cursor:pointer;box-shadow:0 0 0 2px #7CFC00 !important;animation:lgpulse 1.1s infinite}
     .lg-prompt{font-size:11px;color:#f0e6d2;margin:2px 0;text-align:center;max-width:94%}
@@ -6569,7 +6569,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   const playedRow=pi=>{ const f=_lg.players[pi].field;
     const selType = choosing && ((choosing.kind==='mountain'&&pi!==me)||(choosing.kind==='plains'&&pi===me)) ? optVals : null;
     const piles=LG_TYPES.filter(t=>f[t]>0).map(t=>{ const n=f[t], can=!!(selType&&selType.has(t));
-      const cards=Array.from({length:Math.min(n,5)}).map((_,k)=>'<div class="lg-pcard" style="'+cvars(t)+';margin-left:'+(k?-29:0)+'px;z-index:'+k+'"><span class="lg-bc-ic">'+LG_ICO[t]+'</span></div>').join('');
+      const cards=Array.from({length:Math.min(n,5)}).map((_,k)=>'<div class="lg-pcard" style="'+cvars(t)+';margin-left:'+(k?-38:0)+'px;z-index:'+k+'"><span class="lg-bc-ic">'+LG_ICO[t]+'</span></div>').join('');
       return '<div class="lg-pilegrp'+(can?' lg-sel':'')+(n>=5?' max':'')+'"'+(can?(' data-pick="'+t+'"'):'')+' title="'+LG_NAME[t]+' ×'+n+'"><div class="lg-pilecards">'+cards+'</div></div>'; });
     return '<div class="lg-played">'+piles.join('')+'</div>'; };
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
@@ -6599,9 +6599,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
-    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
-    '<div class="lg-ogy">'+gyZone(opp)+'</div>'+
-    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div><div class="lg-cbtns">'+stackView()+'</div></div>'+playedRow(me)+'</div>'+
+    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
+    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+playedRow(me)+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+'</div>'+
     '<div class="lg-pgy">'+gyZone(me)+'</div>'+
     deckMine()+
