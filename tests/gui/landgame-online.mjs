@@ -14,7 +14,7 @@ const menu = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-
   return { title:t?t.textContent.trim():null, fmtBtns:d.querySelectorAll('[data-fmt]').length, hasCpu:!!d.querySelector('#lg-cpu'), hasOnline:!!d.querySelector('#lg-online'), h3:d.querySelector('.lg-start h3')?.textContent }; });
 
 const testFmt = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); const tb=d&&d.querySelector('[data-fmt="test"]'); if(tb)tb.click();
-  return { clicked:!!tb, hasCpu:!!(d&&d.querySelector('#lg-cpu')), placeholder: !!(d&&/Not playable/i.test(d.querySelector('.lg-start')?.innerText||'')) }; });
+  return { clicked:!!tb, hasCpu:!!(d&&d.querySelector('#lg-cpu')), placeholder: !!(d&&/not playable|playable yet/i.test(d.querySelector('.lg-start')?.innerText||'')) }; });
 
 const titleGame = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); const lb=d&&d.querySelector('[data-fmt="land"]'); if(lb)lb.click(); const cpu=d&&d.querySelector('#lg-cpu'); if(cpu)cpu.click(); return document.querySelector('#modal-prog-landgame .mgw-ti')?.textContent.trim(); });
 await p.waitForTimeout(300);
