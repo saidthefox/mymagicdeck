@@ -50,6 +50,15 @@ const toggle = await p.evaluate(({IMG})=>{ const d=state.decks.tdeck; d.layout.s
   return { picShown, labelPic, interShown, labelInter: vt2?vt2.textContent:'', serveCtl: getComputedStyle(document.getElementById('splash-serve-ctl')).display!=='none' };
 },{IMG});
 
+// A signed-out visitor can spawn widgets locally (Widgets menu present; not an owner; no throw).
+const guest = await p.evaluate(()=>{ state.user=null; const d=state.decks.tdeck; d.layout.serveImage=false;
+  openSplash(d,'jake',{}); // visit as a guest
+  const wrap=document.getElementById('splash-stats-wrap');
+  const owner=_splashOwner();
+  let threw=false; try{ statsSet('curve',true); }catch(e){ threw=true; }
+  return { widgetsBtn: !!wrap && !!wrap.querySelector('button') && getComputedStyle(wrap).display!=='none', owner, threw, curve:!!document.querySelector('.splash-stat.stat-curve'), genBtn: (function(){ try{ statsSet('profile',true); }catch(e){} return !!document.querySelector('.stat-profile .ss-prof-empty .btn'); })() }; });
+
+console.log('guest:', JSON.stringify(guest));
 console.log('layout:', JSON.stringify(layout));
 console.log('sideboard:', sideboard);
 console.log('rail:', JSON.stringify(rail), 'resetGear:', resetGear);
@@ -59,6 +68,7 @@ const ok = layout.present && layout.scaled && layout.notFixed
   && sideboard
   && rail.present && rail.anchoredRight && rail.fullHeight && resetGear
   && toggle.picShown && /Interactive Splash/.test(toggle.labelPic) && toggle.interShown && /Deck Pic/.test(toggle.labelInter) && toggle.serveCtl
+  && guest.widgetsBtn && !guest.owner && !guest.threw && guest.curve && guest.genBtn
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

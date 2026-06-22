@@ -283,15 +283,17 @@ Engine runs server-side (hidden hands, clocks, results can't be faked). Tables: 
 `lg_results` (finished games → stats/history), `lg_queue` (matchmaking). Time controls: `1m` bullet / `5m`
 blitz (total per side, chess-clock) / `corr` correspondence (untimed).
 
-### Cardle — daily "Wordle for Magic cards" (server-authoritative)
+### Cardle — daily clue-reveal card guess (server-authoritative)
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| GET | `/api/cardle/state` | yes | today's game state: guesses + feedback so far, done/solved, your stats (answer only when done) |
-| POST | `/api/cardle/guess` | yes | guess `{name}` → per-attribute feedback (mana value / colors / type / rarity / power / toughness, hi-lo) vs the daily card; reveals the card only once the game is done |
-| GET | `/api/cardle/stats` | yes | your `{played, solved, solvePct, avgGuesses, streak, dist}` |
+| GET | `/api/cardle/state` | yes | today's game: `revealed` clue labels, `fill` (template fields revealed so far), guesses, `solved/done`, `startClues`, your stats (answer only when done) |
+| POST | `/api/cardle/guess` | yes | guess `{name}`; correct → solved + reveal answer; wrong → auto-reveals one more clue and fills more of the card |
+| GET | `/api/cardle/stats` | yes | your `{solved, avgClues, streak, dist}` |
 
-One global card per day (`cardle_daily`); per-account progress + history in `cardle_games`. 8 guesses; the
-answer is never sent until you solve it or use all guesses.
+One universal card per day (`cardle_daily`). Starts with a random **1–3** clues (universal per day); each
+wrong guess reveals one more (Wheel-of-Fortune style) and fills the on-screen card template. When all
+clues are out you keep guessing with a capped score. Score = clues showing when solved; the card name &
+art are never sent until you solve it. Per-account progress in `cardle_games`.
 
 ---
 

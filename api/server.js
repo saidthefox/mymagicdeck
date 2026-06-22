@@ -524,7 +524,8 @@ function parseScryfallQuery(q) {
     // it as a literal token and special chars (apostrophes, hyphens) don't
     // break the query syntax.
     const clean = tok.replace(/"/g, '').trim();
-    if (clean) ftsTerms.push(`"${clean}"`);
+    // Prefix match so partial typing finds cards: "Lightning B" → "lightning"* "b"* → Lightning Bolt.
+    if (clean) ftsTerms.push(`"${clean}"*`);
   }
 
   return { where, params, ftsTerms };
@@ -656,6 +657,19 @@ setInterval(() => {
   const cutoff = Date.now() - UPLOAD_WINDOW;
   for (const [k, b] of _uploadBuckets) if (b.start < cutoff) _uploadBuckets.delete(k);
 }, 30 * 60 * 1000);
+
+// AI deck analysis is open to guests but stingy for them: signed-in users get the normal upload
+// limiter; anonymous visitors get a strict per-IP cap (the LLM call is expensive).
+const ANALYZE_GUEST_WINDOW = 60 * 60 * 1000, ANALYZE_GUEST_MAX = 5; const _analyzeGuestBuckets = new Map();
+function rateLimitAnalyze(req, reply, done) {
+  if (req.user && req.user.sub) return rateLimitUpload(req, reply, done); // signed in → normal limiter
+  const ip = clientIp(req), now = Date.now();
+  let b = _analyzeGuestBuckets.get(ip);
+  if (!b || now - b.start > ANALYZE_GUEST_WINDOW) { b = { start: now, count: 0 }; _analyzeGuestBuckets.set(ip, b); }
+  if (++b.count > ANALYZE_GUEST_MAX) { reply.code(429).send({ error: 'Analysis limit reached — sign in or try again later.' }); return; }
+  done();
+}
+setInterval(() => { const cutoff = Date.now() - ANALYZE_GUEST_WINDOW; for (const [k, b] of _analyzeGuestBuckets) if (b.start < cutoff) _analyzeGuestBuckets.delete(k); }, 30 * 60 * 1000);
 
 // ── AI-background limiter (much stricter than uploads) ─────────────────────────
 // Diffusion runs on the 207 box, which brownout-crashes under heavy concurrent
@@ -2769,7 +2783,7 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
 // ── POST /api/splash/analyze — the blob LLM parses the decklist into an "infographic"
 // profile (archetype / tagline / strategy / key cards). Text only; no image generation. ──
 let _analyzeInFlight = 0; const ANALYZE_CONCURRENCY = 2;
-app.post('/api/splash/analyze', { preHandler: [softAuthenticate, rateLimitUpload] }, async (req, reply) => {
+app.post('/api/splash/analyze', { preHandler: [softAuthenticate, rateLimitAnalyze] }, async (req, reply) => {
   if (!VLM_ENABLED) return reply.code(503).send({ error: 'Deck analysis isn’t available right now.' });
   const b = req.body || {};
   const cards = Array.isArray(b.cards) ? b.cards.slice(0, 250) : [];
@@ -3155,15 +3169,18 @@ setInterval(()=>{ try{ const now=Math.floor(Date.now()/1000);
   db.prepare('DELETE FROM lg_queue WHERE since < ?').run(now-120);
 }catch(_){} }, 5*60*1000);
 
-// ===== Cardle — daily "Wordle for Magic cards" (global daily card, per-account stats) =====
+// ===== Cardle — daily clue-reveal card guess (one universal card a day; a card template fills in) =====
 db.exec(`CREATE TABLE IF NOT EXISTS cardle_daily ( day TEXT PRIMARY KEY, oracle_id TEXT NOT NULL )`);
+// The mechanic changed from a Wordle-style grid to clue-reveal — the old per-game columns (n, object
+// guesses) don't fit. Drop the legacy table once (data was days-old, low-stakes), then keep the new one.
+try{ const _cc=db.prepare("PRAGMA table_info(cardle_games)").all().map(c=>c.name);
+  if(_cc.length && _cc.includes('n') && !_cc.includes('clues_used')) db.exec('DROP TABLE cardle_games'); }catch(_){}
 db.exec(`CREATE TABLE IF NOT EXISTS cardle_games (
-  user_id INTEGER NOT NULL, day TEXT NOT NULL, guesses TEXT NOT NULL DEFAULT '[]',
-  n INTEGER NOT NULL DEFAULT 0, solved INTEGER NOT NULL DEFAULT 0, done INTEGER NOT NULL DEFAULT 0,
-  updated_at INTEGER NOT NULL DEFAULT (unixepoch()), PRIMARY KEY (user_id, day) )`);
-const CARDLE_MAX = 8;
-const CARDLE_RARITY = { common:0, uncommon:1, rare:2, mythic:3 };
+  user_id INTEGER NOT NULL, day TEXT NOT NULL, clues_used INTEGER NOT NULL DEFAULT 0,
+  guesses TEXT NOT NULL DEFAULT '[]', score INTEGER, solved INTEGER NOT NULL DEFAULT 0,
+  done INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL DEFAULT (unixepoch()), PRIMARY KEY (user_id, day) )`);
 function cardleDay(){ return new Date().toISOString().slice(0,10); }
+function cardleStartCount(day){ let h=0; for(const c of day) h=(h*31 + c.charCodeAt(0))>>>0; return 1 + (h % 3); } // universal 1–3 starting clues
 function cardlePickOracle(day){
   const have = db.prepare('SELECT oracle_id FROM cardle_daily WHERE day=?').get(day);
   if(have) return have.oracle_id;
@@ -3173,59 +3190,71 @@ function cardlePickOracle(day){
   try{ db.prepare('INSERT OR IGNORE INTO cardle_daily (day,oracle_id) VALUES (?,?)').run(day, oid); }catch(_){}
   return db.prepare('SELECT oracle_id FROM cardle_daily WHERE day=?').get(day).oracle_id;
 }
-function cardleCardByOracle(oid){ return db.prepare('SELECT oracle_id,name,cmc,colors,type_line,rarity,power,toughness,image_uris FROM cards WHERE oracle_id=?').get(oid); }
-function cardleCardByName(name){ return db.prepare('SELECT oracle_id,name,cmc,colors,type_line,rarity,power,toughness,image_uris FROM cards WHERE lower(name)=lower(?) ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 1').get((name||'').trim()); }
-function cardleTypes(tl){ const main=(tl||'').split('—')[0].toLowerCase(); return ['creature','planeswalker','instant','sorcery','artifact','enchantment','land','battle','tribal','kindred'].filter(t=>main.includes(t)); }
-function cardleNum(v){ if(v==null||v==='')return null; const n=parseInt(v,10); return Number.isFinite(n)?n:null; }
-function cardleFacts(row){ return { oracle:row.oracle_id, name:row.name, cmc:Math.round(row.cmc||0), colors:JSON.parse(row.colors||'[]'),
-  types:cardleTypes(row.type_line), typeLabel:((row.type_line||'').split('—')[0].trim()||'—'), rarity:row.rarity||'',
-  power:cardleNum(row.power), toughness:cardleNum(row.toughness) }; }
-function cardleSet(a){ return [...new Set(a)].sort().join(','); }
-function cardleCmpNum(g,a){ if(g==null||a==null)return 'na'; return g===a?'eq':(a>g?'hi':'lo'); }
-function cardleCompare(g,a){
-  const inter=g.colors.filter(c=>a.colors.includes(c)).length;
-  const tinter=g.types.filter(t=>a.types.includes(t)).length;
-  return {
-    cmc:{ v:g.cmc, cmp: g.cmc===a.cmc?'eq':(a.cmc>g.cmc?'hi':'lo') },
-    colors:{ v:g.colors, m: cardleSet(g.colors)===cardleSet(a.colors)?'exact':(inter?'partial':'none') },
-    type:{ v:g.typeLabel, m: cardleSet(g.types)===cardleSet(a.types)?'exact':(tinter?'partial':'none') },
-    rarity:{ v:g.rarity, cmp: g.rarity===a.rarity?'eq':((CARDLE_RARITY[a.rarity]>CARDLE_RARITY[g.rarity])?'hi':'lo') },
-    power:{ v:g.power, cmp: cardleCmpNum(g.power,a.power) },
-    toughness:{ v:g.toughness, cmp: cardleCmpNum(g.toughness,a.toughness) },
-  };
+function cardleCardByOracle(oid){ return db.prepare('SELECT oracle_id,name,cmc,colors,type_line,rarity,power,toughness,mana_cost,image_uris FROM cards WHERE oracle_id=?').get(oid); }
+function cardleCardByName(name){ return db.prepare('SELECT oracle_id FROM cards WHERE lower(name)=lower(?) ORDER BY edhrec_rank IS NULL, edhrec_rank LIMIT 1').get((name||'').trim()); }
+// Ordered, structured clue list. Each clue carries a human label AND `fill` fields that progressively
+// populate the on-screen card template (frame tint, pips, type, P/T, rarity, name blanks).
+function cardleClues(card){
+  const C={W:'White',U:'Blue',B:'Black',R:'Red',G:'Green'};
+  const cap=s=>s?s.charAt(0).toUpperCase()+s.slice(1):s;
+  const colors=JSON.parse(card.colors||'[]'); const cs=colors.map(c=>C[c]).filter(Boolean);
+  const typeMain=(card.type_line||'').split('//')[0].split('—')[0].trim()||'?';
+  const isCreature=/creature/i.test(card.type_line||'');
+  const n=card.name||'';
+  const cl=[];
+  cl.push({k:'color', label:'Color: '+(cs.length?cs.join(' / '):'Colorless'), fill:{colors}});
+  cl.push({k:'mv', label:'Mana value: '+(card.cmc!=null?card.cmc:'?'), fill:{cmc:Math.round(card.cmc||0)}});
+  cl.push({k:'type', label:'Type: '+typeMain, fill:{typeLine:typeMain}});
+  if(card.rarity) cl.push({k:'rarity', label:'Rarity: '+cap(card.rarity), fill:{rarity:card.rarity}});
+  if(card.mana_cost) cl.push({k:'cost', label:'Mana cost: '+card.mana_cost.replace(/[{}]/g,' ').trim(), fill:{manaCost:card.mana_cost}});
+  if(isCreature && card.power!=null && card.toughness!=null) cl.push({k:'pt', label:'Power / Toughness: '+card.power+' / '+card.toughness, fill:{power:String(card.power),toughness:String(card.toughness)}});
+  cl.push({k:'len', label:'Name length: '+n.replace(/[^A-Za-z]/g,'').length+' letters', fill:{nameLen:n.replace(/[^A-Za-z]/g,'').length}});
+  cl.push({k:'starts', label:'Starts with: '+n.charAt(0).toUpperCase(), fill:{first1:n.charAt(0)}});
+  if(n.length>2) cl.push({k:'first2', label:'First two letters: '+n.slice(0,2), fill:{first2:n.slice(0,2)}});
+  return cl;
 }
 function cardleGameRow(uid,day){ return db.prepare('SELECT * FROM cardle_games WHERE user_id=? AND day=?').get(uid,day); }
 function cardleAnswerCard(oid){ const c=cardleCardByOracle(oid); if(!c)return null; const img=JSON.parse(c.image_uris||'null'); return { name:c.name, type:c.type_line, image: img?(img.normal||img.large||img.small):null }; }
 function cardleStats(uid){
-  const done=db.prepare('SELECT day,n,solved FROM cardle_games WHERE user_id=? AND done=1').all(uid);
-  const played=done.length, solvedRows=done.filter(r=>r.solved), solved=solvedRows.length;
-  const avg = solved ? (solvedRows.reduce((s,r)=>s+r.n,0)/solved) : 0;
-  const dist={}; solvedRows.forEach(r=>{ dist[r.n]=(dist[r.n]||0)+1; });
-  // streak: consecutive days (ending today or yesterday) with a solve
+  const rows=db.prepare('SELECT day,score,solved FROM cardle_games WHERE user_id=? AND done=1').all(uid);
+  const solvedRows=rows.filter(r=>r.solved); const solved=solvedRows.length;
+  const avg = solved ? (solvedRows.reduce((s,r)=>s+(r.score||0),0)/solved) : 0;
+  const dist={}; solvedRows.forEach(r=>{ const k=r.score||0; dist[k]=(dist[k]||0)+1; });
   const solvedDays = new Set(solvedRows.map(r=>r.day)); let streak=0; const d=new Date();
-  if(!solvedDays.has(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()-1); // today not solved yet → count up to yesterday
+  if(!solvedDays.has(d.toISOString().slice(0,10))) d.setUTCDate(d.getUTCDate()-1);
   while(solvedDays.has(d.toISOString().slice(0,10))){ streak++; d.setUTCDate(d.getUTCDate()-1); }
-  return { played, solved, solvePct: played?Math.round(solved/played*100):0, avgGuesses: Math.round(avg*100)/100, streak, dist };
+  return { solved, avgClues: Math.round(avg*100)/100, streak, dist };
 }
-function cardleState(uid,day){ const row=cardleGameRow(uid,day);
-  const n=row?row.n:0, done=row?!!row.done:false, solved=row?!!row.solved:false, guesses=row?JSON.parse(row.guesses||'[]'):[];
-  return { day, max:CARDLE_MAX, n, done, solved, guesses, answer: done?cardleAnswerCard(cardlePickOracle(day)):null, stats:cardleStats(uid) };
+function cardleState(uid,day){
+  const oid=cardlePickOracle(day); if(!oid) return null;
+  const card=cardleCardByOracle(oid); const clues=cardleClues(card); const total=clues.length;
+  const start=Math.min(cardleStartCount(day), total);
+  const row=cardleGameRow(uid,day);
+  const used=row?row.clues_used:0, done=row?!!row.done:false, solved=row?!!row.solved:false;
+  const guesses=row?JSON.parse(row.guesses||'[]'):[];
+  const revealed=done?total:Math.min(total, start+used);
+  const fill={}; for(let i=0;i<revealed;i++) Object.assign(fill, clues[i].fill);
+  return { day, total, startClues:start, revealed, clues:clues.slice(0,revealed).map(c=>c.label),
+    guesses, solved, done, fill, answer: done?cardleAnswerCard(oid):null, stats:cardleStats(uid) };
 }
-app.get('/api/cardle/state', { preHandler:authenticate }, async (req)=>{ const day=cardleDay(); cardlePickOracle(day); return cardleState(req.user.sub, day); });
+app.get('/api/cardle/state', { preHandler:authenticate }, async (req,reply)=>{ const day=cardleDay(); const st=cardleState(req.user.sub, day); if(!st)return reply.code(503).send({error:'Card library not ready.'}); return st; });
 app.post('/api/cardle/guess', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
   const day=cardleDay(); const oid=cardlePickOracle(day); if(!oid) return reply.code(503).send({error:'Card library not ready.'});
   const uid=req.user.sub; let row=cardleGameRow(uid,day);
   if(row&&row.done) return cardleState(uid,day);
   const gName=((req.body||{}).name||'').trim(); if(!gName) return reply.code(400).send({error:'Name required.'});
-  const gCard=cardleCardByName(gName); if(!gCard) return reply.code(404).send({error:'No card with that exact name.'});
-  const ans=cardleFacts(cardleCardByOracle(oid)); const g=cardleFacts(gCard);
-  const correct = g.oracle===ans.oracle;
-  const fb={ name:g.name, correct, cmc:cardleCompare(g,ans).cmc, colors:cardleCompare(g,ans).colors, type:cardleCompare(g,ans).type, rarity:cardleCompare(g,ans).rarity, power:cardleCompare(g,ans).power, toughness:cardleCompare(g,ans).toughness };
-  const guesses = row?JSON.parse(row.guesses||'[]'):[]; guesses.push(fb); const n=guesses.length;
-  const solved = correct?1:0; const done = (correct || n>=CARDLE_MAX)?1:0;
-  db.prepare(`INSERT INTO cardle_games (user_id,day,guesses,n,solved,done,updated_at) VALUES (?,?,?,?,?,?,unixepoch())
-    ON CONFLICT(user_id,day) DO UPDATE SET guesses=excluded.guesses, n=excluded.n, solved=excluded.solved, done=excluded.done, updated_at=unixepoch()`)
-    .run(uid, day, JSON.stringify(guesses), n, solved, done);
+  const gCard=cardleCardByName(gName); if(!gCard) return reply.code(404).send({error:'No card with that name.'});
+  const card=cardleCardByOracle(oid); const clues=cardleClues(card); const total=clues.length;
+  const start=Math.min(cardleStartCount(day), total);
+  const correct = gCard.oracle_id===oid;
+  const guesses = row?JSON.parse(row.guesses||'[]'):[]; guesses.push(gName);
+  let used = row?row.clues_used:0;
+  let solved=0, done=0, score=null;
+  if(correct){ solved=1; done=1; score=Math.min(total, start+used); } // clues showing when solved
+  else { used = Math.min(total-start, used+1); } // auto-reveal one more clue
+  db.prepare(`INSERT INTO cardle_games (user_id,day,clues_used,guesses,score,solved,done,updated_at) VALUES (?,?,?,?,?,?,?,unixepoch())
+    ON CONFLICT(user_id,day) DO UPDATE SET clues_used=excluded.clues_used, guesses=excluded.guesses, score=excluded.score, solved=excluded.solved, done=excluded.done, updated_at=unixepoch()`)
+    .run(uid, day, used, JSON.stringify(guesses), score, solved, done);
   return cardleState(uid,day);
 });
 app.get('/api/cardle/stats', { preHandler:authenticate }, async (req)=> cardleStats(req.user.sub) );

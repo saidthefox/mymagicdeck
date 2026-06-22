@@ -1149,38 +1149,50 @@
     body.mtask-big .mg-barwin .bw-nm{display:none}
     body.mtask-big .mg-barwin .bw-ic{font-size:26px;line-height:1}
     body.mtask-big #mg-mtask .mt-start{font-size:11px;padding:0 10px}
-    /* ===== Cardle — daily Magic-card Wordle ===== */
+    /* ===== Cardle — daily clue-reveal card guess (a card template fills in) ===== */
     .cardle-wrap{font-family:'Trebuchet MS',Tahoma,sans-serif;color:#f0e6d2;background:radial-gradient(120% 80% at 50% 0%,#2a2f3a,#15171d);min-height:100%;padding:12px;box-sizing:border-box}
     .cd-title{font-size:18px;font-weight:bold;color:#fff;text-align:center;margin-bottom:10px}
     .cd-day{font-size:11px;color:#8896aa;font-weight:normal;margin-left:6px}
     .cardle-mid{text-align:center;padding:34px 14px;display:flex;flex-direction:column;align-items:center;gap:8px}
     .cardle-mid h3{margin:4px 0;color:#fff}
     .cd-logo{font-size:42px}
-    .cd-sub{color:#9aa6b6;font-size:12px;max-width:300px;line-height:1.5}
-    .cd-grid{display:flex;flex-direction:column;gap:4px;max-width:470px;margin:0 auto}
-    .cd-row{display:grid;grid-template-columns:1.7fr .75fr 1fr 1.4fr .7fr .55fr .55fr;gap:4px}
-    .cd-head .cd-cell,.cd-head .cd-name{background:none!important;color:#8896aa;font-size:9px;font-weight:bold;text-transform:uppercase;padding:2px;min-height:0;box-shadow:none}
-    .cd-name{display:flex;align-items:center;padding:4px 8px;background:#2a2e38;border-radius:5px;font-size:11px;font-weight:bold;color:#e7eef7;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .cd-cell{display:flex;align-items:center;justify-content:center;gap:3px;min-height:36px;border-radius:5px;background:#3a3f4a;font-size:12px;font-weight:bold;color:#fff;overflow:hidden;padding:0 2px}
-    .cd-cell.ok,.cd-name.ok{background:#2f9b54;color:#fff}
-    .cd-cell.near{background:#c8a13a;color:#241a0e}
-    .cd-cell.off{background:#454a55;color:#9aa6b6}
-    .cd-ar{font-size:11px}
-    .cd-tl{font-size:9.5px;line-height:1.1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
-    .cd-pip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;font-size:9px;font-weight:bold}
-    .cd-pip.W{background:#f8f6d8;color:#6b5a2a}.cd-pip.U{background:#aae0fa;color:#0a3a5a}.cd-pip.B{background:#5a5560;color:#eee}.cd-pip.R{background:#f6a98a;color:#5a1a0a}.cd-pip.G{background:#9bd6a0;color:#13491f}.cd-pip.C{background:#cfc6bd;color:#333}
+    .cd-sub{color:#9aa6b6;font-size:12px;max-width:320px;line-height:1.5}
+    .cd-stage{display:flex;gap:16px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:560px;margin:0 auto}
+    /* The fillable card template */
+    .cdc-card{width:230px;flex:0 0 230px;aspect-ratio:5/7;background:#3a3f4a;border-radius:11px;padding:8px;box-sizing:border-box;display:flex;flex-direction:column;gap:5px;box-shadow:0 8px 24px rgba(0,0,0,.5);border:1px solid rgba(0,0,0,.4);transition:background .4s}
+    .cdc-title{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.55);border-radius:5px;padding:4px 7px;min-height:24px}
+    .cdc-name{flex:1;min-width:0;font-weight:bold;color:#1a1a1a;font-size:12px;letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cdc-unk{color:#888;letter-spacing:2px}
+    .cdc-cost{display:flex;gap:2px;flex:0 0 auto}
+    .cdc-pip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;font-size:10px;font-weight:bold;background:#cfc6bd;color:#222}
+    .cdc-pip.W{background:#f8f6d8;color:#6b5a2a}.cdc-pip.U{background:#aae0fa;color:#0a3a5a}.cdc-pip.B{background:#5a5560;color:#eee}.cdc-pip.R{background:#f6a98a;color:#5a1a0a}.cdc-pip.G{background:#9bd6a0;color:#13491f}.cdc-pip.gen{background:#d8d2c8;color:#333}
+    .cdc-art{flex:1;min-height:90px;background:rgba(0,0,0,.32);border-radius:5px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .cdc-art img{width:100%;height:100%;object-fit:cover}
+    .cdc-q{font-size:54px;font-weight:bold;color:rgba(255,255,255,.25)}
+    .cdc-type{display:flex;align-items:center;gap:5px;background:rgba(255,255,255,.55);border-radius:5px;padding:3px 7px;font-size:10.5px;font-weight:bold;color:#1a1a1a;min-height:20px}
+    .cdc-type span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .cdc-rar{width:11px;height:11px;border-radius:50%;flex:0 0 auto;background:#000}
+    .cdc-rar.common{background:#15171d}.cdc-rar.uncommon{background:#b8c4cc}.cdc-rar.rare{background:#d8b24a}.cdc-rar.mythic{background:#e0622a}
+    .cdc-text{background:rgba(255,255,255,.42);border-radius:5px;min-height:30px;position:relative}
+    .cdc-pt{position:absolute;right:5px;bottom:4px;background:rgba(255,255,255,.85);border:1px solid rgba(0,0,0,.4);border-radius:5px;padding:1px 7px;font-weight:bold;font-size:12px;color:#1a1a1a}
+    .cd-side{flex:1;min-width:180px;max-width:280px}
+    .cd-clues{background:rgba(0,0,0,.3);border-radius:8px;padding:8px 10px}
+    .cd-cluehdr{font-size:10px;font-weight:bold;text-transform:uppercase;letter-spacing:.08em;color:#8896aa;margin-bottom:5px;display:flex;justify-content:space-between}
+    .cd-cluen{color:#c9d2dd}
+    .cd-clue{font-size:12.5px;color:#e8ebf2;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+    .cd-clue:last-child{border-bottom:none}
+    .cd-guesses{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;max-width:560px;margin:10px auto 0}
+    .cd-gchip{background:#454a55;color:#cdd5e0;border-radius:12px;padding:2px 9px;font-size:11px}
+    .cd-gchip.hit{background:#2f9b54;color:#fff;font-weight:bold}
     .cd-input{position:relative;display:flex;gap:6px;max-width:470px;margin:12px auto 0}
     .cd-input input{flex:1;min-width:0;background:#fff;border:1px solid #888;border-radius:6px;padding:8px 10px;font-size:13px;color:#111}
     .cd-sugg{position:absolute;left:0;right:64px;top:40px;background:#fff;border:1px solid #888;border-radius:6px;z-index:5;max-height:190px;overflow:auto;box-shadow:0 6px 16px rgba(0,0,0,.45)}
     .cd-sug{padding:7px 10px;font-size:12px;color:#111;cursor:pointer;border-bottom:1px solid #eee}
     .cd-sug:hover{background:#e8eef7}
-    .cd-result{text-align:center;margin:16px auto;max-width:300px}
+    .cd-hint{text-align:center;color:#8896aa;font-size:10px;margin:6px 0}
+    .cd-result{text-align:center;margin:14px auto;max-width:320px}
     .cd-win{color:#7CFC00;font-size:17px;font-weight:bold}
-    .cd-lose{color:#ff8a7a;font-size:14px;font-weight:bold;margin-bottom:4px}
-    .cd-answer img{max-width:190px;border-radius:9px;margin:8px auto;display:block;box-shadow:0 6px 18px rgba(0,0,0,.5)}
-    .cd-aname{font-weight:bold;color:#fff;font-size:14px}
-    .cd-legend{text-align:center;color:#8896aa;font-size:9.5px;margin:10px 0 4px}
-    .cd-stats{text-align:center;color:#c9d2dd;font-size:11px;background:rgba(0,0,0,.28);border-radius:6px;padding:7px;max-width:470px;margin:4px auto 0}
+    .cd-stats{text-align:center;color:#c9d2dd;font-size:11px;background:rgba(0,0,0,.28);border-radius:6px;padding:7px;max-width:470px;margin:10px auto 0}
     /* Mountable desktop widgets (HUD hub): small faded panels anchored on the desktop, under the windows */
     .os-widget{position:absolute;z-index:12;width:208px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.93;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 8px rgba(0,0,0,.4)}
     .os-widget .ow-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
@@ -2774,6 +2786,9 @@ function getCommanderCard(deckObj){
 
 let _splashEdit=false;
 let _splashView='interactive'; // 'interactive' | 'pic' — which face the splash shows
+// Owner = the builder, or a viewer signed in as the deck's author. Only owners persist changes;
+// any visitor can spawn/toggle widgets + run AI analysis locally for their own session.
+function _splashOwner(){ return !!(_splashEdit || (state.user && _splashDeck && _splashDeck.username && state.user.username===_splashDeck.username)); }
 // Toggle the splash between the interactive layout and the saved deck pic (per-viewer).
 function splashToggleView(){
   const d=_splashDeck&&_splashDeck.deck; if(!d)return;
@@ -2825,10 +2840,6 @@ function openSplash(deckObj,username,opts){
       <button class="btn small splash-user-ctl" id="splash-deckpic" onclick="deckPicLayout()" style="display:none" title="Auto-arrange into a tidy grid">🎴 Deck pic layout</button>
       <button class="btn small splash-user-ctl" id="splash-fanlayout" onclick="fanLayout()" style="display:none" title="Fan the cards so every name & mana cost stays visible">🃏 Fan layout</button>
       <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
-      <span class="splash-user-ctl" id="splash-stats-wrap" style="display:none;position:relative">
-        <button class="btn small" onclick="toggleStatsMenu(event)" title="Add draggable widgets onto the splash">🧩 Widgets ▾</button>
-        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-sep" style="border-top:1px solid var(--border);margin:4px 0"></div><label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" id="splash-listrail" ${(deckObj.layout&&deckObj.layout.listRail)?'checked':''} onchange="splashListRail(this.checked)"> ⫼ Deck list as right rail</label><div class="dv-pp-note">Drag each widget where you want it, then 💾 Save layout.</div></div>
-      </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
       <span class="splash-user-ctl-x" style="position:relative;display:inline-block">
         <button class="btn small primary" onclick="splashPublishMenu(event)" title="Publish this splash to a subdomain">🌐 Publish ▾</button>
@@ -2836,6 +2847,10 @@ function openSplash(deckObj,username,opts){
       </span>
       <button class="btn small" onclick="openUploads()">🖼 Gallery</button>
       <button class="btn small" onclick="openShareImage()">🖼 Share image</button>`:''}
+      <span id="splash-stats-wrap" style="position:relative">
+        <button class="btn small" onclick="toggleStatsMenu(event)" title="Spawn widgets onto the splash (deck list, mana curve, AI analysis…)">🧩 Widgets ▾</button>
+        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-sep" style="border-top:1px solid var(--border);margin:4px 0"></div><label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" id="splash-listrail" ${(deckObj.layout&&deckObj.layout.listRail)?'checked':''} onchange="splashListRail(this.checked)"> ⫼ Deck list as right rail</label><div class="dv-pp-note" id="splash-stats-note">Toggle widgets to explore. Sign in &amp; own this deck to save the layout.</div></div>
+      </span>
     </div>
     <div class="splash-zoom-wrap">
       <label for="splash-zoom" class="splash-zoom-lbl">🔍</label>
@@ -3433,10 +3448,10 @@ async function genInfographic(e){ if(e&&e.stopPropagation)e.stopPropagation();
     if(!r||!r.profile)throw new Error('no profile');
     deck.profile=r.profile;
     deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; deck.layout.statsOn.profile=true;
-    saveToStorage(); syncDeckToApi(deck.id);
+    if(_splashOwner()){ saveToStorage(); syncDeckToApi(deck.id); } // visitors: local session only
     const rad=document.querySelector('input[name="splash-sort"][value="user"]'); if(rad&&!rad.checked){ rad.checked=true; splashReorder(); } else _splashRebuildColumns();
     toast('Infographic ready 🧠','success');
-  }catch(err){ toast(err&&err.status===429?'The analyst is busy — try again shortly':(err&&err.status===503?'Deck analysis isn’t enabled yet':'Analysis failed'),'error'); }
+  }catch(err){ toast((err&&err.status===429)?(err.message||'Analysis limit reached — try later or sign in'):(err&&err.status===503?'Deck analysis isn’t enabled yet':'Analysis failed'),'error'); }
 }
 function freeStatDown(e,key){
   if(e.button!==undefined&&e.button!==0)return; e.preventDefault();
@@ -3494,7 +3509,7 @@ function toggleStatsMenu(e){ if(e)e.stopPropagation(); const pop=document.getEle
 function _statsOutside(ev){ const w=document.getElementById('splash-stats-wrap'); if(w&&!w.contains(ev.target)){ document.getElementById('splash-stats-pop')?.classList.remove('open'); document.removeEventListener('click',_statsOutside,true); } }
 function statsSet(id,on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; deck.layout.statsOn[id]=on;
-  saveToStorage(); syncDeckToApi(deck.id);
+  if(_splashOwner()){ saveToStorage(); syncDeckToApi(deck.id); } // visitors: local session only
   if((document.querySelector('input[name="splash-sort"]:checked')?.value)==='user')_splashRebuildColumns();
   else { const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true; splashReorder(); }
 }
@@ -3502,7 +3517,7 @@ function statsSet(id,on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)ret
 function splashListRail(on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{};
   deck.layout.listRail=!!on; if(on)deck.layout.statsOn.list=true;
-  saveToStorage(); syncDeckToApi(deck.id);
+  if(_splashOwner()){ saveToStorage(); syncDeckToApi(deck.id); }
   if((document.querySelector('input[name="splash-sort"]:checked')?.value)==='user')_splashRebuildColumns();
   else { const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true; splashReorder(); }
 }
@@ -7265,28 +7280,56 @@ function mpPlink(k,reverse){ const ac=mpAudio(); if(!ac)return; if(ac.state==='s
 // so no modulo bias; genuinely uniform, unlike Math.random). =====
 function _diceRand(n){ const max=Math.floor(0x100000000/n)*n; const a=new Uint32Array(1); let x; do{ (self.crypto||window.crypto).getRandomValues(a); x=a[0]; }while(x>=max); return x%n; }
 let _diceLog=[];
-// ===== Cardle — daily "Wordle for Magic cards" =====
+// ===== Cardle — daily clue-reveal card guess (a card template fills in as clues unlock) =====
 let _cardle={ st:null, busy:false, _sugTimer:null }, _cardleBody=null;
-function cardleArrow(cmp){ return cmp==='hi'?'▲':(cmp==='lo'?'▼':''); } // ▲ = the answer is higher than your guess
-function cardleCell(kind,d){
-  if(kind==='cmc'){ const cls=d.cmp==='eq'?'ok':'near'; return '<div class="cd-cell '+cls+'">'+d.v+(d.cmp!=='eq'?' <span class="cd-ar">'+cardleArrow(d.cmp)+'</span>':'')+'</div>'; }
-  if(kind==='colors'){ const cls=d.m==='exact'?'ok':(d.m==='partial'?'near':'off'); const pips=d.v.length?d.v.map(c=>'<span class="cd-pip '+c+'">'+c+'</span>').join(''):'<span class="cd-pip C">◇</span>'; return '<div class="cd-cell '+cls+'">'+pips+'</div>'; }
-  if(kind==='type'){ const cls=d.m==='exact'?'ok':(d.m==='partial'?'near':'off'); return '<div class="cd-cell '+cls+'" title="'+_mgEsc(d.v)+'"><span class="cd-tl">'+_mgEsc(d.v)+'</span></div>'; }
-  if(kind==='rarity'){ const cls=d.cmp==='eq'?'ok':'near'; const r=({common:'C',uncommon:'U',rare:'R',mythic:'M'})[d.v]||d.v; return '<div class="cd-cell '+cls+'">'+r+(d.cmp!=='eq'?' <span class="cd-ar">'+cardleArrow(d.cmp)+'</span>':'')+'</div>'; }
-  if(d.v==null) return '<div class="cd-cell off">—</div>';
-  const cls=d.cmp==='eq'?'ok':(d.cmp==='na'?'off':'near'); return '<div class="cd-cell '+cls+'">'+d.v+((d.cmp==='hi'||d.cmp==='lo')?' <span class="cd-ar">'+cardleArrow(d.cmp)+'</span>':'')+'</div>'; }
+const CDC_TINT={W:'#faf5dc',U:'#cfe6f7',B:'#c4b6cf',R:'#f7c9a6',G:'#b6d8a6'};
+function cardleTint(fill){ // card frame colour from the revealed colour clue
+  if(!fill||!fill.colors) return null; const c=fill.colors;
+  if(/\bLand\b/i.test(fill.typeLine||'')) return '#dcc898';
+  if(c.length===0) return '#dce0e8';            // colorless / artifact
+  if(c.length===1) return CDC_TINT[c[0]]||'#dce0e8';
+  return '#f0d878';                              // multicolor gold
+}
+function cardleCost(fill){
+  if(fill.manaCost){ const syms=(fill.manaCost.match(/\{([^}]+)\}/g)||[]).map(s=>s.replace(/[{}]/g,'')); return syms.map(s=>'<span class="cdc-pip '+(/^\d+$/.test(s)?'gen':_mgEsc(s))+'">'+_mgEsc(s)+'</span>').join(''); }
+  if(fill.cmc!=null) return '<span class="cdc-pip gen">'+fill.cmc+'</span>';
+  return '';
+}
+function cardleNameBlanks(fill){ // underscores ≈ letter count, with first letter(s) filled
+  if(fill.nameLen==null) return '<span class="cdc-unk">? ? ?</span>';
+  const first=fill.first2||fill.first1||''; let out='';
+  for(let i=0;i<fill.nameLen;i++) out+= (i<first.length? _mgEsc(first[i]) : '_')+' ';
+  return out.trim();
+}
+function cardleCardHtml(st){
+  const f=st.fill||{}; const done=st.done; const a=st.answer||{};
+  const tint=cardleTint(f); const tintStyle=tint?('background:'+tint):'';
+  const nameHtml=done?_mgEsc(a.name||''):cardleNameBlanks(f);
+  const cost=cardleCost(f);
+  const art = done&&a.image ? '<img src="'+_mgEsc(a.image)+'" alt="">' : '<div class="cdc-q">?</div>';
+  const typeTxt = done?_mgEsc(a.type||''):(f.typeLine?_mgEsc(f.typeLine):'—');
+  const rar = f.rarity?'<span class="cdc-rar '+_mgEsc(f.rarity)+'" title="'+_mgEsc(f.rarity)+'"></span>':'';
+  const pt = (f.power!=null&&f.toughness!=null)?'<span class="cdc-pt">'+_mgEsc(f.power)+' / '+_mgEsc(f.toughness)+'</span>':'';
+  return '<div class="cdc-card'+(done?' solved':'')+'" style="'+tintStyle+'">'+
+    '<div class="cdc-title"><span class="cdc-name">'+nameHtml+'</span><span class="cdc-cost">'+cost+'</span></div>'+
+    '<div class="cdc-art">'+art+'</div>'+
+    '<div class="cdc-type"><span>'+typeTxt+'</span>'+rar+'</div>'+
+    '<div class="cdc-text">'+pt+'</div></div>';
+}
 function cardleRender(body){ if(!body)return; _cardleBody=body; body.style.cssText='padding:0;height:100%;box-sizing:border-box;overflow:auto';
-  if(!(state.user&&apiToken())){ body.innerHTML='<div class="cardle-wrap"><div class="cardle-mid"><div class="cd-logo">🃏</div><h3>Cardle</h3><div class="cd-sub">The daily Magic card guessing game — one global card a day. Sign in to play and track your stats.</div><button class="btn small primary" id="cd-signin">Sign in</button></div></div>'; const s=body.querySelector('#cd-signin'); if(s)s.onclick=()=>{ if(typeof signInClick==='function')signInClick('login'); }; return; }
+  if(!(state.user&&apiToken())){ body.innerHTML='<div class="cardle-wrap"><div class="cardle-mid"><div class="cd-logo">🃏</div><h3>Cardle</h3><div class="cd-sub">The daily card mystery — one universal card a day. Clues reveal as you guess. Sign in to play and track your average.</div><button class="btn small primary" id="cd-signin">Sign in</button></div></div>'; const s=body.querySelector('#cd-signin'); if(s)s.onclick=()=>{ if(typeof signInClick==='function')signInClick('login'); }; return; }
   if(!_cardle.st){ body.innerHTML='<div class="cardle-wrap"><div class="cardle-mid"><div class="cd-logo">🃏</div><div class="cd-sub">Loading today’s card…</div></div></div>'; apiFetch('/cardle/state').then(s=>{ _cardle.st=s; cardleRender(body); }).catch(()=>{ body.innerHTML='<div class="cardle-wrap"><div class="cardle-mid"><div class="cd-sub">Couldn’t load Cardle.</div></div></div>'; }); return; }
   const st=_cardle.st, S=st.stats||{};
-  const head='<div class="cd-row cd-head"><div class="cd-name">Card</div><div class="cd-cell">MV</div><div class="cd-cell">Color</div><div class="cd-cell">Type</div><div class="cd-cell">Rar</div><div class="cd-cell">P</div><div class="cd-cell">T</div></div>';
-  const rows=st.guesses.map(g=>'<div class="cd-row"><div class="cd-name'+(g.correct?' ok':'')+'" title="'+_mgEsc(g.name)+'">'+_mgEsc(g.name)+'</div>'+cardleCell('cmc',g.cmc)+cardleCell('colors',g.colors)+cardleCell('type',g.type)+cardleCell('rarity',g.rarity)+cardleCell('pt',g.power)+cardleCell('pt',g.toughness)+'</div>').join('');
-  let foot='';
-  if(st.done){ const a=st.answer||{}; foot='<div class="cd-result">'+(st.solved?'<div class="cd-win">🎉 Solved in '+st.n+'!</div>':'<div class="cd-lose">Out of guesses — it was:</div>')+'<div class="cd-answer">'+(a.image?'<img src="'+_mgEsc(a.image)+'" alt="">':'')+'<div class="cd-aname">'+_mgEsc(a.name||'')+'</div></div><div class="cd-sub">A new card unlocks tomorrow.</div></div>'; }
-  else { foot='<div class="cd-input"><input id="cd-q" placeholder="Guess a card — '+(st.max-st.n)+' left" autocomplete="off" autocapitalize="off"><button class="btn small primary" id="cd-go">Guess</button><div class="cd-sugg" id="cd-sugg"></div></div>'; }
-  const legend='<div class="cd-legend">▲ answer is higher · ▼ lower · green = match · yellow = close</div>';
-  const stats='<div class="cd-stats">🏆 '+(S.played||0)+' played · '+(S.solvePct||0)+'% solved · avg '+(S.avgGuesses||0)+' guesses · streak '+(S.streak||0)+'</div>';
-  body.innerHTML='<div class="cardle-wrap"><div class="cd-title">🃏 Cardle <span class="cd-day">'+_mgEsc(st.day)+'</span></div><div class="cd-grid">'+head+rows+'</div>'+foot+legend+stats+'</div>';
+  const clues='<div class="cd-clues"><div class="cd-cluehdr">Clues <span class="cd-cluen">'+st.revealed+' / '+st.total+'</span></div>'+
+    (st.clues||[]).map(c=>'<div class="cd-clue">'+_mgEsc(c)+'</div>').join('')+'</div>';
+  const guesses=(st.guesses&&st.guesses.length)?'<div class="cd-guesses">'+st.guesses.map(g=>'<span class="cd-gchip'+(st.done&&st.solved&&g===st.guesses[st.guesses.length-1]?' hit':'')+'">'+_mgEsc(g)+'</span>').join('')+'</div>':'';
+  let foot;
+  if(st.done){ foot='<div class="cd-result"><div class="cd-win">🎉 Solved in '+st.revealed+' clue'+(st.revealed===1?'':'s')+'!</div><div class="cd-sub">A new card unlocks tomorrow.</div></div>'; }
+  else { foot='<div class="cd-input"><input id="cd-q" placeholder="Guess the card…" autocomplete="off" autocapitalize="off"><button class="btn small primary" id="cd-go">Guess</button><div class="cd-sugg" id="cd-sugg"></div></div>'+
+    '<div class="cd-hint">A wrong guess reveals another clue.</div>'; }
+  const stats='<div class="cd-stats">🏆 '+(S.solved||0)+' solved · avg '+(S.avgClues||0)+' clues · streak '+(S.streak||0)+'</div>';
+  body.innerHTML='<div class="cardle-wrap"><div class="cd-title">🃏 Cardle <span class="cd-day">'+_mgEsc(st.day)+'</span></div>'+
+    '<div class="cd-stage">'+cardleCardHtml(st)+'<div class="cd-side">'+clues+'</div></div>'+guesses+foot+stats+'</div>';
   if(!st.done){ const q=body.querySelector('#cd-q'), go=body.querySelector('#cd-go'), sug=body.querySelector('#cd-sugg');
     const submit=()=>{ const v=(q.value||'').trim(); if(v)cardleGuess(v); };
     if(go)go.onclick=submit;
@@ -7295,7 +7338,7 @@ function cardleRender(body){ if(!body)return; _cardleBody=body; body.style.cssTe
       setTimeout(()=>{ try{ q.focus(); }catch(e){} },0); } }
 }
 function cardleSuggest(q,sug){ apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=8').then(r=>{ const names=[...new Set((r.data||[]).map(c=>c.name))].slice(0,8); sug.innerHTML=names.map(n=>'<div class="cd-sug" data-nm="'+_mgEsc(n)+'">'+_mgEsc(n)+'</div>').join(''); sug.querySelectorAll('[data-nm]').forEach(el=>el.onclick=()=>cardleGuess(el.getAttribute('data-nm'))); }).catch(()=>{}); }
-function cardleGuess(name){ if(_cardle.busy)return; _cardle.busy=true; apiFetch('/cardle/guess',{method:'POST',body:JSON.stringify({name})}).then(s=>{ _cardle.busy=false; _cardle.st=s; if(_cardleBody)cardleRender(_cardleBody); }).catch(e=>{ _cardle.busy=false; if(window.DeckOS)DeckOS.ui.toast((e&&e.status===404)?'No card with that exact name.':'Guess failed.'); }); }
+function cardleGuess(name){ if(_cardle.busy)return; _cardle.busy=true; apiFetch('/cardle/guess',{method:'POST',body:JSON.stringify({name})}).then(s=>{ _cardle.busy=false; _cardle.st=s; if(_cardleBody)cardleRender(_cardleBody); }).catch(e=>{ _cardle.busy=false; if(window.DeckOS)DeckOS.ui.toast((e&&e.status===404)?'No card with that name.':'Guess failed.'); }); }
 function dbRender(body){ if(!body)return;
   const dice=[4,6,8,10,12,20,100];
   body.innerHTML='<div class="db-wrap">'+

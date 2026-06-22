@@ -23,6 +23,18 @@ try {
   const names = (s.body && s.body.data || []).map(c => c.name);
   assert(s.status === 200 && names.includes('Lightning Bolt'), 'GET /cards/search finds "Lightning Bolt"');
 
+  // Partial / prefix search: typing part of a name finds it.
+  const sp = await J('/cards/search?q=' + encodeURIComponent('Lightning B') + '&per_page=8');
+  assert(sp.status === 200 && (sp.body.data || []).some(c => c.name === 'Lightning Bolt'), 'partial search "Lightning B" finds Lightning Bolt');
+
+  // Guest AI analysis is open but strictly rate-limited (429 within a few calls).
+  let analyze429 = false;
+  for (let i = 0; i < 7; i++) {
+    const r = await J('/splash/analyze', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ deckName: 't', cards: [{ n: 'Forest', q: 1 }] }) });
+    if (r.status === 429) { analyze429 = true; break; }
+  }
+  assert(analyze429, 'guest /splash/analyze is strictly rate-limited (429)');
+
   const g = await J('/cards/guess', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ color: 'R', cmc: 1, type: 'Instant' }) });
   assert(g.status === 200 && Array.isArray(g.body.candidates) && g.body.candidates.length > 0, 'POST /cards/guess returns candidates');
 
@@ -99,16 +111,19 @@ try {
     await Ja('/lg/queue', { method:'DELETE' }, D);
 
     // --- Cardle (daily card guess) ---
-    const F = tok(990600 + Math.floor(Math.random() * 9000), 'smoke_F'); // unique each run → state.n===0 holds
+    const F = tok(990600 + Math.floor(Math.random() * 9000), 'smoke_F'); // unique each run → fresh game
     const cst = await Ja('/cardle/state', null, F);
-    assert(cst.status === 200 && cst.body.day && cst.body.max === 8 && cst.body.n === 0, 'GET /cardle/state → fresh daily game');
-    const cg = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'Llanowar Elves' }) }, F);
-    const last = cg.body && cg.body.guesses && cg.body.guesses[cg.body.guesses.length-1];
-    assert(cg.status === 200 && last && last.cmc && ['eq','hi','lo'].includes(last.cmc.cmp) && last.colors && last.type, 'POST /cardle/guess → per-attribute feedback');
+    assert(cst.status === 200 && cst.body.startClues >= 1 && cst.body.startClues <= 3 && cst.body.revealed === cst.body.startClues && !cst.body.answer, 'GET /cardle/state → 1–3 start clues, answer hidden');
+    const cw = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'Llanowar Elves' }) }, F);
+    assert(cw.status === 200 && cw.body.revealed > cst.body.revealed && cw.body.guesses.length === 1 && !cw.body.done, 'wrong guess → reveals one more clue');
     const cbad = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'zzzz not a card' }) }, F);
     assert(cbad.status === 404, 'cardle guess of unknown card → 404');
-    const csstats = await Ja('/cardle/stats', null, F);
-    assert(csstats.status === 200 && typeof csstats.body.played === 'number' && typeof csstats.body.avgGuesses === 'number', 'GET /cardle/stats → totals');
+    let cans = null; try { const cdb = require('better-sqlite3')(process.env.DB_PATH || '/data/mymagicdeck.db', { readonly:true }); const o = cdb.prepare('SELECT oracle_id FROM cardle_daily WHERE day=?').get(cst.body.day); cans = cdb.prepare('SELECT name FROM cards WHERE oracle_id=?').get(o.oracle_id).name; } catch (_) {}
+    if (cans) {
+      const cc = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name: cans }) }, F);
+      assert(cc.status === 200 && cc.body.solved && cc.body.done && cc.body.answer && cc.body.answer.name === cans, 'correct guess → solved + answer revealed');
+      assert(cc.body.stats && cc.body.stats.solved >= 1 && typeof cc.body.stats.avgClues === 'number', 'cardle stats track avgClues');
+    } else { console.log('  (skipped cardle correct-guess assert: no DB access)'); }
   } else { console.log('  (skipped lg online + cardle asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
