@@ -1366,7 +1366,7 @@
     .lg-leftrail{position:absolute;left:8px;top:8px;bottom:8px;width:24%;display:flex;flex-direction:column;justify-content:space-between;gap:4px;z-index:3}
     .lg-leftrail .lg-plate{width:84%;max-width:160px}
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
-    .lg-topstrip{position:absolute;left:26%;right:6px;top:8px;height:62px;display:flex;align-items:center;justify-content:flex-start;gap:12px;z-index:2}
+    .lg-topstrip{position:absolute;left:25%;right:25%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:2}
     .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:3px;z-index:1}
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
@@ -1396,14 +1396,15 @@
     .lg-prompt{font-size:11px;color:#f0e6d2;margin:2px 0;text-align:center;max-width:94%}
     .lg-tap{font-size:10px;color:#9cff66}
     .lg-pdeck{position:absolute;left:25.5%;bottom:10px;z-index:4}
-    .lg-gyzone{display:flex;align-items:center;gap:4px;background:rgba(0,0,0,.28);border:1px solid #b8932f;border-radius:6px;padding:2px 6px}
-    .lg-pgy{position:absolute;left:25%;bottom:90px;z-index:4}
+    .lg-gyzone{display:flex;align-items:center;gap:6px;background:none;border:none;padding:0}
+    .lg-ogy{position:absolute;left:26%;top:10px;z-index:3}
+    .lg-pgy{position:absolute;left:26%;bottom:110px;z-index:4}
     .lg-rctrl{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:17%;display:flex;flex-direction:column;align-items:center;gap:6px;z-index:3}
     .lg-rctrl .lg-banner{font-size:11px;padding:3px 9px;text-align:center}
-    .lg-zlbl{font-size:8px;color:#9b8e6f;letter-spacing:.4px;line-height:1.25}
-    .lg-zonebox{width:94%;min-height:20px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;background:rgba(0,0,0,.22);border:none;border-radius:5px;padding:2px 1px;margin-bottom:2px}
-    .lg-chip{display:inline-flex;align-items:center;gap:1px;font-size:13px;line-height:1}
-    .lg-chip b{font-size:9px;color:#e7dcc0;font-weight:bold}
+    .lg-zlbl{font-size:17px;color:#c9b88f;line-height:1}
+    .lg-zonebox{min-height:24px;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;align-items:center;background:none;border:none;padding:0}
+    .lg-chip{display:inline-flex;align-items:center;gap:2px;font-size:20px;line-height:1}
+    .lg-chip b{font-size:13px;color:#e7dcc0;font-weight:bold;text-shadow:0 1px 1px #000}
     .lg-board .btn,.lg-start .btn,.lg-curtain .btn{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e;border:1px solid #6b4f1a;border-radius:6px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.3);box-shadow:0 2px 3px rgba(0,0,0,.4)}
     .lg-board .btn:hover,.lg-start .btn:hover,.lg-curtain .btn:hover{background:linear-gradient(180deg,#e0b755,#9a7a26)}
     .lg-board .btn.primary,.lg-start .btn.primary{background:linear-gradient(180deg,#4aa0e0,#2060a0);color:#fff;border-color:#1b4d86;text-shadow:0 1px 1px #000}
@@ -6576,7 +6577,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length;
     const handSel = choosing && (choosing.kind==='discard'||choosing.kind==='swamp') && pi===me; // pick a card to discard
     return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+(handSel?' lg-sel':'')+'" data-h="'+i+'" data-t="'+t+'"'+(handSel?(' data-pick="'+i+'"'):'')+' style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
-  const backsfan=pi=>{ const n=_lg.players[pi].hand.length, k=Math.min(n,7); return '<div class="lg-handfan tiny flip">'+Array.from({length:k}).map((_,i)=>'<div class="lg-bigcard back" style="transform:rotate('+((i-(k-1)/2)*4).toFixed(1)+'deg)"></div>').join('')+'</div><span class="lg-backs">×'+n+'</span>'; };
+  const backsfan=pi=>{ const n=_lg.players[pi].hand.length, k=Math.min(n,7); return '<div class="lg-handfan tiny">'+Array.from({length:k}).map((_,i)=>'<div class="lg-bigcard back" style="transform:rotate('+((i-(k-1)/2)*4).toFixed(1)+'deg)"></div>').join('')+'</div><span class="lg-backs">×'+n+'</span>'; };
   const deckMine=()=>{ const n=_lg.players[me].deck.length, depth=Math.min(8,Math.max(2,Math.round(n/4))); const layers=Array.from({length:depth}).map((_,i)=>'<i class="lg-dl" style="transform:translate('+(i*1.5).toFixed(1)+'px,'+(i*1.5).toFixed(1)+'px)"></i>').join('');
     return '<div class="lg-pdeck"><div class="lg-deck mine" title="Your deck">'+layers+'<span class="lg-deckn">'+n+'</span></div></div>'; };
   const deckOpp=()=>'<div class="lg-deck opp" title="'+_mgEsc(_lg.players[opp].name)+' deck"><span class="lg-deckn">'+_lg.players[opp].deck.length+'</span></div>';
@@ -6598,7 +6599,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
-    '<div class="lg-topstrip">'+gyZone(opp)+backsfan(opp)+deckOpp()+'</div>'+
+    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
+    '<div class="lg-ogy">'+gyZone(opp)+'</div>'+
     '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div><div class="lg-cbtns">'+stackView()+'</div></div>'+playedRow(me)+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+'</div>'+
     '<div class="lg-pgy">'+gyZone(me)+'</div>'+
