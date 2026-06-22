@@ -1309,13 +1309,13 @@
     .lg-board::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(45deg,rgba(255,255,255,.014) 0 14px,transparent 14px 28px)}
     .lg-board>*{position:relative;z-index:1;flex-shrink:0}
     .lg-rotate{display:none;position:absolute;top:2px;left:50%;transform:translateX(-50%);z-index:7;font-size:10px;color:#ffd968;text-align:center;background:rgba(0,0,0,.45);border-radius:5px;padding:2px 8px;white-space:nowrap}
-    .lg-plate{display:flex;align-items:center;gap:8px;padding:4px 7px;border-radius:7px;background:linear-gradient(180deg,#3a2c18,#241a0e);border:1px solid #b8932f;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+    .lg-plate{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:6px 8px;min-height:62px;border-radius:7px;background:linear-gradient(180deg,#3a2c18,#241a0e);border:1px solid #b8932f;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+    .lg-phead{display:flex;align-items:center;gap:9px}
     .lg-plate.turn{box-shadow:0 0 0 2px #ffd968,0 0 14px rgba(255,217,104,.45)}
     .lg-portrait{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:radial-gradient(circle at 35% 30%,#6a5a3a,#241a0e);border:2px solid #b8932f}
-    .lg-pinfo{flex:1;min-width:0}
-    .lg-pname{font-weight:bold;font-size:12px;color:#ffe9b8;text-shadow:0 1px 1px #000;display:flex;align-items:center;gap:6px}
-    .lg-dot{color:#7CFC00;font-size:9px}
-    .lg-bars{display:flex;gap:6px;margin:3px 0 1px}
+    .lg-pname{flex:1;min-width:0;font-weight:bold;font-size:16px;color:#ffe9b8;text-shadow:0 1px 1px #000;display:flex;align-items:center;gap:7px}
+    .lg-dot{color:#7CFC00;font-size:12px;font-weight:bold;white-space:nowrap}
+    .lg-bars{display:flex;gap:6px;width:100%}
     .lg-bar5,.lg-bar6{position:relative;flex:1;height:13px;border-radius:7px;background:#0d0d0d;border:1px solid #000;overflow:hidden}
     .lg-bar5 i,.lg-bar6 i{display:block;height:100%;transition:width .3s ease}
     .lg-bar5 i{background:linear-gradient(90deg,#d9a441,#ffd968)} .lg-bar6 i{background:linear-gradient(90deg,#3f9bd9,#7ad0ff)}
@@ -1360,8 +1360,8 @@
     .lg-leftrail .lg-plate{width:84%;max-width:160px}
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
     .lg-topstrip{position:absolute;left:27%;right:6px;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:14px;z-index:2}
-    .lg-mid{position:absolute;left:27%;right:18%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:4px;z-index:1}
-    .lg-rightrail{position:absolute;right:6px;top:74px;bottom:106px;width:15%;display:flex;flex-direction:column;justify-content:space-around;align-items:center;z-index:2}
+    .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:space-between;align-items:center;gap:3px;z-index:1}
+    .lg-rightrail{position:absolute;right:5px;top:74px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
     .lg-deckn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:15px;color:#ffe9b8;text-shadow:0 1px 3px #000}
@@ -1377,6 +1377,23 @@
     .lg-gy-ic.empty{opacity:.4}
     .lg-gy-n{font-size:13px;font-weight:bold;color:#e7dcc0}
     .lg-gy-lbl{font-size:7px;color:#9b8e6f;letter-spacing:.5px}
+    /* played-land battlefield rows (actual cards), flipped opponent hand, selectable targets */
+    .lg-played{display:flex;gap:12px;justify-content:center;align-items:center;min-height:64px;flex-wrap:wrap}
+    .lg-pilegrp{border-radius:6px;padding:1px}
+    .lg-pilegrp.max{box-shadow:0 0 0 2px #7CFC00,0 0 10px rgba(124,252,0,.55)}
+    .lg-pilecards{display:flex;align-items:center}
+    .lg-pcard{width:42px;height:60px;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--c1),var(--c2));color:var(--tx);border:1px solid rgba(0,0,0,.5);box-shadow:0 2px 4px rgba(0,0,0,.45)}
+    .lg-pcard .lg-bc-ic{font-size:22px}
+    .lg-handfan.flip{transform:rotate(180deg)}
+    .lg-sel{cursor:pointer;box-shadow:0 0 0 2px #7CFC00 !important;animation:lgpulse 1.1s infinite}
+    .lg-prompt{font-size:11px;color:#f0e6d2;margin:2px 0;text-align:center;max-width:94%}
+    .lg-tap{font-size:10px;color:#9cff66}
+    .lg-pdeck{position:absolute;left:25.5%;bottom:118px;z-index:4}
+    .lg-gyzone{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%}
+    .lg-zlbl{font-size:8px;color:#9b8e6f;letter-spacing:.4px;line-height:1.25}
+    .lg-zonebox{width:94%;min-height:20px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;background:rgba(0,0,0,.3);border:1px dashed rgba(255,255,255,.18);border-radius:5px;padding:2px 1px;margin-bottom:2px}
+    .lg-chip{display:inline-flex;align-items:center;gap:1px;font-size:13px;line-height:1}
+    .lg-chip b{font-size:9px;color:#e7dcc0;font-weight:bold}
     .lg-board .btn,.lg-start .btn,.lg-curtain .btn{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e;border:1px solid #6b4f1a;border-radius:6px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.3);box-shadow:0 2px 3px rgba(0,0,0,.4)}
     .lg-board .btn:hover,.lg-start .btn:hover,.lg-curtain .btn:hover{background:linear-gradient(180deg,#e0b755,#9a7a26)}
     .lg-board .btn.primary,.lg-start .btn.primary{background:linear-gradient(180deg,#4aa0e0,#2060a0);color:#fff;border-color:#1b4d86;text-shadow:0 1px 1px #000}
@@ -6516,7 +6533,7 @@ function lgCpuChoose(c){ const opts=c.options, me=_lg.players[_lg.cpu], opp=_lg.
   // 'discard' (end-of-turn trim, or our own card to a human Swamp): ditch the least useful — spare Islands / already-owned types
   let v=opts[0].value, s=-1; for(const o of opts){ const t=me.hand[o.value]; let sc=(t==='island'?3:0)+(me.field[t]>=5?5:0)+me.field[t]; if(sc>s){s=sc;v=o.value;} } return v; }
 function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padding:6px;height:100%;box-sizing:border-box';
-  if(!_lg){ body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:40px">🏞️</div><h3>The Land Game</h3>'+
+  if(!_lg){ body.innerHTML='<div class="lg-wrap"><div class="lg-start"><div style="font-size:40px">🏞️</div><h3>Basics</h3>'+
       '<div class="sub">Each deck is 5 of every basic land. Play one land a turn to trigger its ability; Islands can counter (counter-wars allowed). First to <b>5 of a kind</b> or <b>6 different</b> lands in play wins.</div>'+
       '<div class="lg-bar"><button class="btn small primary" id="lg-cpu">🤖 vs Computer</button><button class="btn small" id="lg-hot">👥 Pass &amp; play</button></div>'+
       '<details class="lg-rules"><summary>How each land works</summary><div>'+LG_ICO.plains+' <b>Plains</b> — flicker one of your lands to re-trigger its ability.<br>'+LG_ICO.island+' <b>Island</b> — no enter ability; discard it (+ a copy) to counter a land.<br>'+LG_ICO.swamp+' <b>Swamp</b> — opponent discards a card.<br>'+LG_ICO.mountain+' <b>Mountain</b> — destroy an opponent’s land.<br>'+LG_ICO.forest+' <b>Forest</b> — return a land from your graveyard.<br>'+LG_ICO.wastes+' <b>Wastes</b> — draw a card.</div></details></div></div>';
@@ -6527,18 +6544,32 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     body.innerHTML='<div class="lg-wrap"><div class="lg-curtain"><div style="font-size:36px">📱</div><div class="lg-banner" style="margin:8px 0">Pass to '+_mgEsc(_lg.players[actor].name)+'</div><div style="font-size:11px;color:#d8cdae;margin:10px 0;max-width:300px">Hands are secret — tap when '+_mgEsc(_lg.players[actor].name)+' is holding the device.</div><button class="btn small primary" id="lg-reveal">I’m ready ▸</button></div></div>';
     const r=body.querySelector('#lg-reveal'); if(r)r.onclick=()=>{ _lg.view=actor; lgRerender(); }; return; }
   const me=_lg.view, opp=1-me, canAct=(actor===me); // the viewer is the one who acts (the CPU is never the viewer)
+  const choosing=(canAct&&_lg.mode==='choose'&&_lg.choice)?_lg.choice:null; // active board-targeting context
+  const optVals=choosing?new Set(choosing.options.map(o=>o.value)):null;
   const cvars=t=>{ const c=LG_COL[t]; return '--c1:'+c[0]+';--c2:'+c[1]+';--tx:'+c[2]; };
   const cardInner=t=>'<div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[t]+'</span><span class="lg-bc-nm">'+LG_NAME[t]+'</span></div><div class="lg-bc-rules">'+LG_RULE[t]+'</div>';
   const slots=pi=>{ const f=_lg.players[pi].field; return '<div class="lg-slots">'+LG_TYPES.map(t=>{ const c=LG_COL[t], n=f[t]; return '<div class="lg-slot'+(n>=5?' win':(n>=4?' near':''))+(n?'':' empty')+'" style="--c1:'+c[0]+';--c2:'+c[1]+';--tx:'+c[2]+'" title="'+LG_NAME[t]+'"><span class="lg-slot-ic">'+LG_ICO[t]+'</span><span class="lg-slot-n">'+n+'</span></div>'; }).join('')+'</div>'; };
+  // played lands as vertical stacks of actual cards on the battlefield; each card beneath shows ~30% under
+  // the one above it. Selectable when an ability targets them.
+  const playedRow=pi=>{ const f=_lg.players[pi].field;
+    const selType = choosing && ((choosing.kind==='mountain'&&pi!==me)||(choosing.kind==='plains'&&pi===me)) ? optVals : null;
+    const piles=LG_TYPES.filter(t=>f[t]>0).map(t=>{ const n=f[t], can=!!(selType&&selType.has(t));
+      const cards=Array.from({length:Math.min(n,5)}).map((_,k)=>'<div class="lg-pcard" style="'+cvars(t)+';margin-left:'+(k?-29:0)+'px;z-index:'+k+'"><span class="lg-bc-ic">'+LG_ICO[t]+'</span></div>').join('');
+      return '<div class="lg-pilegrp'+(can?' lg-sel':'')+(n>=5?' max':'')+'"'+(can?(' data-pick="'+t+'"'):'')+' title="'+LG_NAME[t]+' ×'+n+'"><div class="lg-pilecards">'+cards+'</div></div>'; });
+    return '<div class="lg-played">'+piles.join('')+'</div>'; };
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
-    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pinfo"><div class="lg-pname">'+_mgEsc(p.name)+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div><div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div>'+(p.exile.length?('<div class="lg-meta">✦ exile '+p.exile.length+'</div>'):'')+'</div></div>'; };
-  const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length; return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+'" data-h="'+i+'" data-t="'+t+'" style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
-  const backsfan=pi=>{ const n=_lg.players[pi].hand.length, k=Math.min(n,7); return '<div class="lg-handfan tiny">'+Array.from({length:k}).map((_,i)=>'<div class="lg-bigcard back" style="transform:rotate('+((i-(k-1)/2)*4).toFixed(1)+'deg)"></div>').join('')+'</div><span class="lg-backs">×'+n+'</span>'; };
-  const deckPile=pi=>{ const n=_lg.players[pi].deck.length;
-    if(pi===_lg.view){ const depth=Math.min(8,Math.max(2,Math.round(n/4))); const layers=Array.from({length:depth}).map((_,i)=>'<i class="lg-dl" style="transform:translate('+(i*1.5).toFixed(1)+'px,'+(i*1.5).toFixed(1)+'px)"></i>').join('');
-      return '<div class="lg-deck mine" title="Your deck">'+layers+'<span class="lg-deckn">'+n+'</span></div>'; }
-    return '<div class="lg-deck opp" title="'+_mgEsc(_lg.players[pi].name)+' deck"><span class="lg-deckn">'+n+'</span></div>'; };
-  const gyPile=pi=>{ const g=_lg.players[pi].gy, top=g[g.length-1]; return '<div class="lg-gy" title="'+_mgEsc(_lg.players[pi].name)+' graveyard">'+(top?('<span class="lg-gy-ic" style="color:'+LG_COL[top][0]+'">'+LG_ICO[top]+'</span>'):'<span class="lg-gy-ic empty">⚰</span>')+'<span class="lg-gy-n">'+g.length+'</span><span class="lg-gy-lbl">GY</span></div>'; };
+    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-phead"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pname">'+_mgEsc(p.name)+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div></div><div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div></div>'; };
+  const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length;
+    const handSel = choosing && (choosing.kind==='discard'||choosing.kind==='swamp') && pi===me; // pick a card to discard
+    return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+(handSel?' lg-sel':'')+'" data-h="'+i+'" data-t="'+t+'"'+(handSel?(' data-pick="'+i+'"'):'')+' style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
+  const backsfan=pi=>{ const n=_lg.players[pi].hand.length, k=Math.min(n,7); return '<div class="lg-handfan tiny flip">'+Array.from({length:k}).map((_,i)=>'<div class="lg-bigcard back" style="transform:rotate('+((i-(k-1)/2)*4).toFixed(1)+'deg)"></div>').join('')+'</div><span class="lg-backs">×'+n+'</span>'; };
+  const deckMine=()=>{ const n=_lg.players[me].deck.length, depth=Math.min(8,Math.max(2,Math.round(n/4))); const layers=Array.from({length:depth}).map((_,i)=>'<i class="lg-dl" style="transform:translate('+(i*1.5).toFixed(1)+'px,'+(i*1.5).toFixed(1)+'px)"></i>').join('');
+    return '<div class="lg-pdeck"><div class="lg-deck mine" title="Your deck">'+layers+'<span class="lg-deckn">'+n+'</span></div></div>'; };
+  const deckOpp=()=>'<div class="lg-deck opp" title="'+_mgEsc(_lg.players[opp].name)+' deck"><span class="lg-deckn">'+_lg.players[opp].deck.length+'</span></div>';
+  // graveyard + exile, fully public (type tallies); GY selectable when Forest targets your own
+  const zoneBox=(arr,canForest)=>{ const m={}; arr.forEach((t,i)=>{ if(!m[t])m[t]={n:0,first:i}; m[t].n++; }); const keys=LG_TYPES.filter(t=>m[t]);
+    return '<div class="lg-zonebox">'+(keys.length?keys.map(t=>{ return '<span class="lg-chip'+(canForest?' lg-sel':'')+'" style="color:'+LG_COL[t][0]+'"'+(canForest?(' data-pick="'+m[t].first+'"'):'')+' title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<b>'+m[t].n+'</b></span>'; }).join(''):'<span class="lg-zlbl">—</span>')+'</div>'; };
+  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-zlbl">'+_mgEsc(p.name)+'</div><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
       ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
       : '<div class="lg-bigcard mini" style="--c1:#c0392b;--c2:#641a12;--tx:#fff" title="counter"><div class="lg-bc-art"><span class="lg-bc-ic">🚫</span><span class="lg-bc-nm">Counter</span></div></div>' ).join('')+'</div>'; };
@@ -6547,17 +6578,18 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   if(_lg.mode2==='cpu'&&actor===_lg.cpu){ ctrl='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
   else if(_lg.mode==='turn'){ ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'+(canAct?'<div class="lg-bar"><button class="btn small" id="lg-end">End turn ▸</button></div>':''); }
   else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[pr].name)+' — respond?</div>'+(canAct?'<div class="lg-bar">'+(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button></div>':''); }
-  else if(_lg.mode==='choose'){ const c=_lg.choice; ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div style="font-size:11px;margin:2px 0;color:#f0e6d2">'+_mgEsc(c.prompt)+'</div>'+(canAct?'<div class="lg-bar">'+c.options.map(o=>'<button class="btn small" data-pick="'+o.value+'">'+o.label+'</button>').join('')+'</div>':''); }
+  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=c.options.find(o=>o.value==='__none__'); ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[c.who].name)+'</div><div class="lg-prompt">'+_mgEsc(c.prompt)+'</div>'+(canAct?('<div class="lg-bar"><span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':'')+'</div>'):''); }
   else if(_lg.mode==='over'){ ctrl='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div><div class="lg-bar"><button class="btn small primary" id="lg-again">Play again</button></div>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
-    '<div class="lg-topstrip">'+backsfan(opp)+deckPile(opp)+'</div>'+
-    '<div class="lg-mid">'+slots(opp)+'<div class="lg-center">'+stackView()+ctrl+'</div>'+slots(me)+'</div>'+
-    '<div class="lg-rightrail">'+gyPile(opp)+gyPile(me)+'</div>'+
-    '<div class="lg-botstrip">'+deckPile(me)+'<div class="lg-hand">'+fan(me,playable)+'</div></div>'+
+    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
+    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center">'+stackView()+ctrl+'</div>'+playedRow(me)+'</div>'+
+    '<div class="lg-rightrail">'+gyZone(opp)+gyZone(me)+'</div>'+
+    deckMine()+
+    '<div class="lg-botstrip"><div class="lg-hand">'+fan(me,playable)+'</div></div>'+
     '</div></div>';
-  if(playable)body.querySelectorAll('.lg-bigcard[data-h]').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
+  if(playable)body.querySelectorAll('.lg-bigcard[data-h]:not([data-pick])').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
   const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=lgEndTurn;
   const cb=body.querySelector('#lg-counter'); if(cb)cb.onclick=lgCounter;
   const pb=body.querySelector('#lg-pass'); if(pb)pb.onclick=lgPassPriority;
@@ -6983,7 +7015,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'documents', title:'Documents', icon:'📁', width:'460px', desktop:true, mount(body){ notesRenderApp(body); } }); // permanent folder of saved notes
   DeckOS.registerProgram({ id:'twentyfourty', title:'TWENTYFOURTY', icon:'🩸', width:'400px', mount(body){ lcRender(body); } });
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:MP_ICON, width:'620px', desktop:true, mount(body){ mpRender(body); } });
-  DeckOS.registerProgram({ id:'landgame', title:'The Land Game', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
+  DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
@@ -7279,7 +7311,7 @@ function mgRenderDesktop(){
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">The Land Game</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">Basics</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="manapool"><div class="mg-ico">'+MP_ICON+'</div><div class="mg-ilbl">Mana Pool</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="dicebag"><div class="mg-ico">🎲</div><div class="mg-ilbl">Dice Bag</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
