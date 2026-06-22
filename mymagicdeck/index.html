@@ -2897,6 +2897,8 @@ function openSplash(deckObj,username,opts){
     if(sortMode==='user'&&_splashEdit&&typeof _splashAttachSelect==='function')_splashAttachSelect();
     if(sortMode==='user')_splashFitFree();
   }
+  // Zoom sizes cards in the column modes; in User Layout the frame auto-fits, so hide it there.
+  const zw0=document.querySelector('.splash-zoom-wrap'); if(zw0)zw0.style.display=(_splashView==='pic'||sortMode==='user')?'none':'';
   // View toggle + owner "serve pic" setting in the header.
   const vt=document.getElementById('splash-view-toggle');
   if(vt){ if(splashPic){ vt.style.display=''; vt.textContent=_splashView==='pic'?'🃏 Interactive Splash':'🎴 Deck Pic'; } else vt.style.display='none'; }
@@ -3065,6 +3067,7 @@ function _splashRebuildColumns(){
   if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
   if(sortMode==='user'&&_splashEdit)_splashAttachSelect();
   if(sortMode==='user')_splashFitFree();
+  const zw=document.querySelector('.splash-zoom-wrap'); if(zw)zw.style.display=(sortMode==='user')?'none':'';
 }
 // Marquee multi-select wiring for the splash free layout (shared by openSplash + rebuild).
 function _splashAttachSelect(){
