@@ -1406,6 +1406,10 @@
     .lg-rules>div{font-size:10px;color:#d8cdae;line-height:1.7;margin-top:6px}
     @keyframes lgpulse{0%,100%{opacity:1}50%{opacity:.6}}
     @media (max-width:560px) and (orientation:portrait){ .lg-rotate{display:block} }
+    /* Basics: on mobile (no desktop window manager) fill the whole device — no centred window / inner scroll */
+    body:not(.wm-on) #modal-prog-landgame .modal{width:100vw !important;max-width:100vw !important;height:100vh !important;max-height:100vh !important;height:100dvh !important;max-height:100dvh !important;border-radius:0;display:flex;flex-direction:column}
+    body:not(.wm-on) #modal-prog-landgame .modal-body{flex:1 1 auto;min-height:0;padding:0;overflow:hidden}
+    body:not(.wm-on) #modal-prog-landgame .lg-wrap,body:not(.wm-on) #modal-prog-landgame .lg-board{height:100%;min-height:0}
     /* Embedded web-shortcut windows (load an external site in a Win95 frame) */
     .web-wrap{display:flex;flex-direction:column;height:100%;min-height:340px;background:#fff}
     .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
