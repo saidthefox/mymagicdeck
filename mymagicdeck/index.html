@@ -1309,6 +1309,13 @@
     .lg-board::before{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(45deg,rgba(255,255,255,.014) 0 14px,transparent 14px 28px)}
     .lg-board>*{position:relative;z-index:1;flex-shrink:0}
     .lg-rotate{display:none;position:absolute;top:2px;left:50%;transform:translateX(-50%);z-index:7;font-size:10px;color:#ffd968;text-align:center;background:rgba(0,0,0,.45);border-radius:5px;padding:2px 8px;white-space:nowrap}
+    .lg-gear{position:absolute;top:5px;right:6px;z-index:9;width:24px;height:24px;padding:0;border-radius:5px;border:1px solid #b8932f;background:linear-gradient(180deg,#3a2c18,#241a0e);color:#ffe9b8;font-size:14px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+    .lg-gear:hover{background:linear-gradient(180deg,#4a3a22,#2e2212)}
+    .lg-settings{position:absolute;top:33px;right:6px;z-index:10;width:208px;background:linear-gradient(180deg,#3a2c18,#241a0e);border:1px solid #b8932f;border-radius:7px;padding:8px 10px;box-shadow:0 6px 18px rgba(0,0,0,.6);color:#f0e6d2}
+    .lg-set-h{font-size:11px;font-weight:bold;color:#ffe9b8;margin-bottom:6px}
+    .lg-set-row{display:flex;align-items:flex-start;gap:7px;font-size:11px;line-height:1.3;cursor:pointer}
+    .lg-set-row input{margin-top:2px}
+    .lg-set-sub{display:block;color:#c9b88f;font-size:9px;margin-top:2px}
     .lg-plate{display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:6px 8px;min-height:62px;border-radius:7px;background:linear-gradient(180deg,#3a2c18,#241a0e);border:1px solid #b8932f;box-shadow:0 1px 3px rgba(0,0,0,.5)}
     .lg-phead{display:flex;align-items:center;gap:9px}
     .lg-plate.turn{box-shadow:0 0 0 2px #ffd968,0 0 14px rgba(255,217,104,.45)}
@@ -6464,21 +6471,23 @@ const LG_NAME={plains:'Plains',island:'Island',swamp:'Swamp',mountain:'Mountain'
 const LG_ICO={plains:'🌾',island:'🏝️',swamp:'💀',mountain:'⛰️',forest:'🌲',wastes:'◇'};
 const LG_COL={plains:['#efe2b3','#cdb15e','#3a2f12'],island:['#3f86c9','#1c4d86','#eaf4ff'],swamp:['#4a3d5e','#241a32','#e7dcf2'],mountain:['#c4543b','#7e2a1a','#ffe9e2'],forest:['#3a8f4d','#1c5128','#e6ffe9'],wastes:['#a6a6a6','#666','#f2f2f2']}; // [light, dark, text] per land
 const LG_RULE={plains:'Flicker one of your lands to re-trigger it.',island:'Discard + a copy to counter a land.',swamp:'Opponent discards a card.',mountain:'Destroy an opponent land.',forest:'Return a land from your graveyard.',wastes:'Draw a card.'};
-let _lg=null, _lgBody=null;
+let _lg=null, _lgBody=null, _lgSet=false; // _lgSet: settings panel open
 function lgRerender(){ if(_lgBody)lgRender(_lgBody); lgMaybeCpu(); }
+function lgOptsGet(){ try{ const o=DeckOS.store.get('lg:opts'); return { stopAll:!!(o&&o.stopAll) }; }catch(e){ return { stopAll:false }; } }
+function lgOptsSet(o){ try{ DeckOS.store.set('lg:opts',o); }catch(e){} if(_lg)_lg.opts=o; }
 function lgShuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
 function lgMakePlayer(name){ const deck=[]; LG_TYPES.forEach(t=>{ for(let i=0;i<5;i++)deck.push(t); }); lgShuffle(deck); return { name, deck, hand:deck.splice(0,5), gy:[], exile:[], field:{plains:0,island:0,swamp:0,mountain:0,forest:0,wastes:0} }; }
 function lgStackTopType(){ const t=_lg.stack[_lg.stack.length-1]; return t ? (t.kind==='land'?t.type:'island') : null; } // a counter on the stack is itself "Island"
 function lgCanCounter(pi){ const t=lgStackTopType(); if(!t)return false; const h=_lg.players[pi].hand; const isl=h.filter(x=>x==='island').length; return t==='island' ? isl>=2 : (isl>=1 && h.includes(t)); } // discard Island + exile a copy of the type being countered
 function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode==='cpu'?1:-1;
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
-  _lg={ players:[lgMakePlayer(names[0]),lgMakePlayer(names[1])], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'] }; lgRerender(); }
+  _lg={ players:[lgMakePlayer(names[0]),lgMakePlayer(names[1])], active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'] }; lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
 function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond')return _lg.priority; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
 function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ _lg.log.push(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); _lg.log.push(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
 function lgWinner(){ for(let i=0;i<2;i++){ const f=_lg.players[i].field; if(LG_TYPES.some(t=>f[t]>=5)||LG_TYPES.filter(t=>f[t]>0).length>=6)return i; } return null; }
 function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; _lg.log.push('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
-function lgCast(type){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active))lgGivePriority(1-_lg.active); else lgResolveTop(); }
+function lgCast(type){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
 function lgGivePriority(who){ const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===who){ lgResolveTop(); return; } // you don't respond to your own top-of-stack object — resolve it
   _lg.mode='respond'; _lg.priority=who; _lg.lastPass=null; lgRerender(); }
 function lgCounter(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(!lgCanCounter(me))return; const p=_lg.players[me]; const t=lgStackTopType();
@@ -6493,7 +6502,9 @@ function lgResolveTop(){ const item=_lg.stack.pop(); if(!item){ lgAfterResolve()
   else { _lg.players[item.ctrl].field[item.type]++; _lg.log.push(LG_NAME[item.type]+' enters play.'); if(lgCheckWin())return; lgETB(item.type,item.ctrl); }
   lgContinue(); }
 function lgContinue(){ if(_lg.winner!=null)return; if(lgCheckWin())return; if(_lg.choice){ _lg.mode='choose'; lgRerender(); return; } lgAfterResolve(); }
-function lgAfterResolve(){ if(_lg.stack.length)lgGivePriority(_lg.active); else { _lg.mode='turn'; _lg.priority=_lg.active; lgRerender(); } }
+function lgAfterResolve(){ if(_lg.stack.length){ lgGivePriority(_lg.active); return; } _lg.mode='turn'; _lg.priority=_lg.active;
+  if(_lg.castThisTurn){ lgEndTurn(); return; } // your land has resolved and there's nothing else to do — end the turn automatically
+  lgRerender(); }
 function lgChoose(who,prompt,options,onPick,kind){ _lg.choice={who,prompt,options,onPick,kind}; }
 function lgPick(v){ const c=_lg.choice; if(!c)return; _lg.choice=null; c.onPick(v); lgContinue(); }
 function lgETB(type,ctrl){ const me=_lg.players[ctrl], opp=_lg.players[1-ctrl];
@@ -6598,6 +6609,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   else if(_lg.mode==='over'){ cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div>'; cBtn='<button class="btn small primary" id="lg-again">Play again</button>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
+    '<button class="lg-gear" id="lg-gear" title="Settings">⚙</button>'+
+    (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div><label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label></div>'):'')+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
     '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+playedRow(me)+'</div>'+
@@ -6612,6 +6625,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   const pb=body.querySelector('#lg-pass'); if(pb)pb.onclick=lgPassPriority;
   body.querySelectorAll('[data-pick]').forEach(el=>el.addEventListener('click',()=>{ const v=el.getAttribute('data-pick'); lgPick(isNaN(+v)?v:+v); }));
   const ab=body.querySelector('#lg-again'); if(ab)ab.onclick=()=>lgStart(_lg.mode2);
+  const gr=body.querySelector('#lg-gear'); if(gr)gr.onclick=()=>{ _lgSet=!_lgSet; lgRerender(); };
+  const sa=body.querySelector('#lg-opt-stopall'); if(sa)sa.onchange=()=>{ lgOptsSet({stopAll:sa.checked}); lgRerender(); };
 }
 // ===== Mail — async inbox: subscription/system mail + admin messages (no user→user yet) =====
 let _mailUnread=0;
