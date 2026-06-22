@@ -283,6 +283,16 @@ Engine runs server-side (hidden hands, clocks, results can't be faked). Tables: 
 `lg_results` (finished games → stats/history), `lg_queue` (matchmaking). Time controls: `1m` bullet / `5m`
 blitz (total per side, chess-clock) / `corr` correspondence (untimed).
 
+### Cardle — daily "Wordle for Magic cards" (server-authoritative)
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/cardle/state` | yes | today's game state: guesses + feedback so far, done/solved, your stats (answer only when done) |
+| POST | `/api/cardle/guess` | yes | guess `{name}` → per-attribute feedback (mana value / colors / type / rarity / power / toughness, hi-lo) vs the daily card; reveals the card only once the game is done |
+| GET | `/api/cardle/stats` | yes | your `{played, solved, solvePct, avgGuesses, streak, dist}` |
+
+One global card per day (`cardle_daily`); per-account progress + history in `cardle_games`. 8 guesses; the
+answer is never sent until you solve it or use all guesses.
+
 ---
 
 ## Frontend ("Deck OS")

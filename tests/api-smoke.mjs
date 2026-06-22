@@ -97,7 +97,19 @@ try {
     const q2 = await Ja('/lg/queue', { method:'POST', body: JSON.stringify({ format:'land', clock:'1m' }) }, E);
     assert(q1.body.queued === true && q2.body.matched === true && q2.body.code, 'matchmaking: second player pairs with the first');
     await Ja('/lg/queue', { method:'DELETE' }, D);
-  } else { console.log('  (skipped lg online asserts: no JWT_SECRET)'); }
+
+    // --- Cardle (daily card guess) ---
+    const F = tok(990006, 'smoke_F');
+    const cst = await Ja('/cardle/state', null, F);
+    assert(cst.status === 200 && cst.body.day && cst.body.max === 8 && cst.body.n === 0, 'GET /cardle/state → fresh daily game');
+    const cg = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'Llanowar Elves' }) }, F);
+    const last = cg.body && cg.body.guesses && cg.body.guesses[cg.body.guesses.length-1];
+    assert(cg.status === 200 && last && last.cmc && ['eq','hi','lo'].includes(last.cmc.cmp) && last.colors && last.type, 'POST /cardle/guess → per-attribute feedback');
+    const cbad = await Ja('/cardle/guess', { method:'POST', body: JSON.stringify({ name:'zzzz not a card' }) }, F);
+    assert(cbad.status === 404, 'cardle guess of unknown card → 404');
+    const csstats = await Ja('/cardle/stats', null, F);
+    assert(csstats.status === 200 && typeof csstats.body.played === 'number' && typeof csstats.body.avgGuesses === 'number', 'GET /cardle/stats → totals');
+  } else { console.log('  (skipped lg online + cardle asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
 }
