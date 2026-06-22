@@ -511,6 +511,9 @@
     .splash-stat .ss-tseg span { font-size:0.8em; color:#fff; }
     /* Hearthstone-style deck list: mana cost · name · count */
     .splash-stat .ss-list { max-height:34em; overflow:auto; min-width:12em; }
+    /* Right-anchored full-height deck-list rail (scrolls if longer than the pic). */
+    .splash-stat.rail { overflow:auto; }
+    .splash-stat.rail .ss-list { max-height:none; overflow:visible; }
     .splash-stat .ss-lcat { color:#9aa3b5; font-weight:700; margin-top:0.5em; text-transform:uppercase; font-size:0.66em; letter-spacing:0.06em; }
     .splash-stat .ss-row { display:flex; align-items:center; gap:0.4em; font-size:0.98em; line-height:1.5; color:#e8ebf2; }
     .splash-stat .ss-cost { display:inline-flex; gap:0.12em; flex:0 0 auto; }
@@ -2824,7 +2827,7 @@ function openSplash(deckObj,username,opts){
       <button class="btn small splash-user-ctl" id="splash-undo" onclick="splashUndoLayout()" disabled style="display:none" title="Undo the last layout change (this session)">↶ Undo</button>
       <span class="splash-user-ctl" id="splash-stats-wrap" style="display:none;position:relative">
         <button class="btn small" onclick="toggleStatsMenu(event)" title="Add draggable widgets onto the splash">🧩 Widgets ▾</button>
-        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-note">Drag each widget where you want it, then 💾 Save layout.</div></div>
+        <div id="splash-stats-pop" class="dv-prints-pop">${STAT_DEFS.map(s=>'<label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" '+(((deckObj.layout&&deckObj.layout.statsOn)||{})[s.id]?'checked':'')+' onchange="statsSet(\''+s.id+'\',this.checked)"> '+s.label+'</label>').join('')}<div class="dv-pp-sep" style="border-top:1px solid var(--border);margin:4px 0"></div><label class="dv-pp-row" style="justify-content:flex-start;cursor:pointer"><input type="checkbox" id="splash-listrail" ${(deckObj.layout&&deckObj.layout.listRail)?'checked':''} onchange="splashListRail(this.checked)"> ⫼ Deck list as right rail</label><div class="dv-pp-note">Drag each widget where you want it, then 💾 Save layout.</div></div>
       </span>
       <button class="btn small" onclick="setDefaultLayout()" title="Make the current order the default for this splash">⭐ Set default</button>
       <span class="splash-user-ctl-x" style="position:relative;display:inline-block">
@@ -3335,9 +3338,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   });
   // Stat widgets (deck name / mana curve / type breakdown / price / deck list) — drag like cards.
   const statsOn=(deck.layout&&deck.layout.statsOn)||{};
+  const RAIL_W=240; const railOn=!!(deck.layout&&deck.layout.listRail&&statsOn.list); // deck list docked as a right-side full-height rail
   const statPlaced=[]; let si=0;
-  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; let p=positions['stat:'+sd.id]; if(!p)p={x:16,y:16+si*84,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
-  const W=Math.max(maxX+40,420),H=Math.max(maxY+40,320);
+  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; if(sd.id==='list'&&railOn)continue; /* rail is rendered separately */ let p=positions['stat:'+sd.id]; if(!p)p={x:16,y:16+si*84,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
+  const W=Math.max(maxX+40,420)+(railOn?RAIL_W+12:0),H=Math.max(maxY+40,320);
   let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
   for(const{e,p}of placed){
     const ov=e.entry&&e.entry.arts&&e.entry.arts[e.copyIdx];
@@ -3358,6 +3362,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
     const tf=sS!==1?`;font-size:${(13*sS).toFixed(2)}px`:''; // scale via font-size (crisp), not transform
     const grip=_splashEdit?`<div class="splash-stat-rsz" onpointerdown="freeStatResize(event,'stat:${id}')"></div>`:'';
     html+=`<div class="splash-stat stat-${id}" data-key="stat:${id}" data-s="${sS}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||900}${tf}" ${handler}>`+_statWidgetInner(id,deck,_splashDeck.username)+grip+`</div>`;
+  }
+  if(railOn){ // full-height deck list docked to the right edge (not draggable; the rail IS the anchor)
+    const rp=positions['stat:list']||{}; const sS=rp.s||1; const tf=sS!==1?`;font-size:${(13*sS).toFixed(2)}px`:'';
+    html+=`<div class="splash-stat stat-list rail" data-key="stat:list" data-s="${sS}" style="right:0;top:0;width:${RAIL_W}px;height:${H}px;z-index:905${tf}">`+_statWidgetInner('list',deck,_splashDeck.username)+`</div>`;
   }
   html+=`</div></div>`;
   return html;
@@ -3486,6 +3494,14 @@ function toggleStatsMenu(e){ if(e)e.stopPropagation(); const pop=document.getEle
 function _statsOutside(ev){ const w=document.getElementById('splash-stats-wrap'); if(w&&!w.contains(ev.target)){ document.getElementById('splash-stats-pop')?.classList.remove('open'); document.removeEventListener('click',_statsOutside,true); } }
 function statsSet(id,on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
   deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{}; deck.layout.statsOn[id]=on;
+  saveToStorage(); syncDeckToApi(deck.id);
+  if((document.querySelector('input[name="splash-sort"]:checked')?.value)==='user')_splashRebuildColumns();
+  else { const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true; splashReorder(); }
+}
+// Dock the deck-list widget to the right edge as a full-height rail (turns the list stat on too).
+function splashListRail(on){ const deck=_splashDeck&&_splashDeck.deck; if(!deck)return;
+  deck.layout=deck.layout||{}; deck.layout.statsOn=deck.layout.statsOn||{};
+  deck.layout.listRail=!!on; if(on)deck.layout.statsOn.list=true;
   saveToStorage(); syncDeckToApi(deck.id);
   if((document.querySelector('input[name="splash-sort"]:checked')?.value)==='user')_splashRebuildColumns();
   else { const r=document.querySelector('input[name="splash-sort"][value="user"]'); if(r)r.checked=true; splashReorder(); }
@@ -6101,12 +6117,21 @@ function mgwOpenKeys(){return Object.keys(mgwState).filter(k=>mgwState[k]&&mgwSt
 function mgwInjectBar(key){
   const a=MGW_APPS[key], win=mgwWin(key); if(!win||win._mgwBar)return; win._mgwBar=1;
   const bar=document.createElement('div'); bar.className='mgw-bar';
-  bar.innerHTML='<span class="mgw-ti"><span class="mgw-ic">'+a.icon+'</span>'+a.title+'</span><button class="mg-winctl" data-w="min">_</button><button class="mg-winctl" data-w="max">❐</button><button class="mg-winctl" data-w="close">✕</button>';
+  bar.innerHTML='<span class="mgw-ti"><span class="mgw-ic">'+a.icon+'</span>'+a.title+'</span><button class="mg-winctl" data-w="reset" title="Reset this window to its default size &amp; position">⚙</button><button class="mg-winctl" data-w="min">_</button><button class="mg-winctl" data-w="max">❐</button><button class="mg-winctl" data-w="close">✕</button>';
   win.insertBefore(bar, win.firstChild);
   if(a.frame!==false)win.classList.add('mgw-win');
-  bar.addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;e.stopPropagation();const act=b.getAttribute('data-w');if(act==='min')mgwMin(key);else if(act==='max')mgwToggleMini(key);else mgwClose(key);});
+  bar.addEventListener('click',e=>{const b=e.target.closest('[data-w]');if(!b)return;e.stopPropagation();const act=b.getAttribute('data-w');if(act==='min')mgwMin(key);else if(act==='max')mgwToggleMini(key);else if(act==='reset')mgwResetWindow(key);else mgwClose(key);});
 }
 function mgwLaunch(key){const a=MGW_APPS[key]; if(!a)return; mgwState[key]=mgwState[key]||{s:'closed',pos:null}; a.open(); mgwInjectBar(key); mgwToFull(key);}
+// Reset a window to how it looks for a first-time visitor: drop its saved size/position and
+// re-apply the program's default (desktop WM) or re-center full (mobile shell).
+function mgwResetWindow(key){
+  try{ if(window.DeckOS)DeckOS.store.remove('wm:rect:'+key); }catch(e){}
+  if(typeof wmEligible==='function'&&wmEligible(key)&&wmWins[key]){
+    wmWins[key].state='normal'; wmWins[key].rect=wmDefaultRect(key); wmApply(key); if(typeof wmFocus==='function')wmFocus(key);
+  } else if(mgwState[key]){ mgwState[key].pos=null; mgwToFull(key); }
+  toast('Window reset to default','success');
+}
 function mgwHome(){return document.getElementById('app');}
 function mgwToFull(key){
   if(wmEligible(key)){ wmOpen(key); if(mgwState[key])mgwState[key].s='full'; return; }

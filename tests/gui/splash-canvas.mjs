@@ -29,6 +29,15 @@ const layout = await p.evaluate(()=>{ const f=document.getElementById('splash-fr
 // Deck-list widget includes a Sideboard section.
 const sideboard = await p.evaluate(()=>{ const w=document.querySelector('.splash-stat.stat-list'); return !!w && /Sideboard/.test(w.textContent); });
 
+// Right-anchored full-height deck-list rail.
+const rail = await p.evaluate(()=>{ splashListRail(true);
+  const r=document.querySelector('.splash-stat.stat-list.rail');
+  return { present:!!r, anchoredRight: !!r && r.style.right==='0px', fullHeight: !!r && parseFloat(r.style.height)>0 }; });
+
+// Every window gets a reset gear in its title bar.
+const resetGear = await p.evaluate(()=>{ if(typeof mgLaunchApp==='function')mgLaunchApp('manapool');
+  const bars=[...document.querySelectorAll('.mgw-bar')]; return bars.some(b=>b.querySelector('[data-w="reset"]')); });
+
 // Serve-pic toggle: turn on serveImage with a saved pic → pic view + "Interactive Splash" button; toggle back.
 const toggle = await p.evaluate(({IMG})=>{ const d=state.decks.tdeck; d.layout.splashImage=IMG; d.layout.serveImage=true;
   openSplash(d,'jake',{edit:true});
@@ -43,10 +52,12 @@ const toggle = await p.evaluate(({IMG})=>{ const d=state.decks.tdeck; d.layout.s
 
 console.log('layout:', JSON.stringify(layout));
 console.log('sideboard:', sideboard);
+console.log('rail:', JSON.stringify(rail), 'resetGear:', resetGear);
 console.log('toggle:', JSON.stringify(toggle));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = layout.present && layout.scaled && layout.notFixed
   && sideboard
+  && rail.present && rail.anchoredRight && rail.fullHeight && resetGear
   && toggle.picShown && /Interactive Splash/.test(toggle.labelPic) && toggle.interShown && /Deck Pic/.test(toggle.labelInter) && toggle.serveCtl
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');

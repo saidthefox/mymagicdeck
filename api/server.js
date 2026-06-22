@@ -2639,12 +2639,13 @@ function buildOverlaySVGPositioned(W, H, overlays, meta, sp) {
   const parts = [];
   const E = _xmlEsc;
   if (overlays.name && meta.deckName && sp.name) {
-    const p = sp.name, fs = Math.max(16, Math.min(Math.round(p.h * 0.5), 60));
+    // No upper clamp — the name should render at whatever size it is in the builder (p.h tracks it).
+    const p = sp.name, fs = Math.max(16, Math.round(p.h * 0.5));
     parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs)}" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="#ffffff" stroke="#000000" stroke-width="${Math.max(2, Math.round(fs / 16))}" paint-order="stroke">${E(meta.deckName)}</text>`);
     if (meta.author) parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs + Math.round(fs * 0.55))}" font-family="${FONT}" font-size="${Math.max(11, Math.round(fs * 0.38))}" fill="#c4ccda" stroke="#000000" stroke-width="2" paint-order="stroke">by ${E(meta.author)}</text>`);
   }
   if (overlays.price && meta.priceText && sp.price) {
-    const p = sp.price, fs = Math.max(16, Math.min(Math.round(p.h * 0.6), 52));
+    const p = sp.price, fs = Math.max(16, Math.round(p.h * 0.6));
     parts.push(`<text x="${Math.round(p.x)}" y="${Math.round(p.y + fs)}" font-family="${FONT}" font-size="${fs}" font-weight="bold" fill="#7de0a0" stroke="#000000" stroke-width="3" paint-order="stroke">${E(meta.priceText)}</text>`);
   }
   if (overlays.cmcCurve && Array.isArray(meta.curve) && meta.curve.length && sp.curve) {
