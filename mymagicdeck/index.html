@@ -1330,7 +1330,8 @@
     .lg-slot-n{font-weight:bold;font-size:16px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
     .lg-slot.near{box-shadow:0 0 0 2px #ffcf5a,0 0 10px rgba(255,207,90,.6)}
     .lg-slot.win{box-shadow:0 0 0 2px #7CFC00,0 0 14px rgba(124,252,0,.7);animation:lgpulse 1.2s infinite}
-    .lg-center{display:flex;flex-direction:column;align-items:center;gap:5px;padding:4px 0;border-top:1px solid rgba(184,147,47,.4);border-bottom:1px solid rgba(184,147,47,.4)}
+    .lg-center{width:100%;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 0;min-height:30px}
+    .lg-divider{position:absolute;left:0;right:0;top:50%;border-top:2px solid rgba(184,147,47,.5);box-shadow:0 0 8px rgba(184,147,47,.25)}
     .lg-stack{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}
     .lg-stack-lbl{font-size:9px;color:#c9b88f;align-self:center}
     .lg-banner{font-weight:bold;padding:4px 12px;border-radius:14px;font-size:12px;color:#fff;background:linear-gradient(180deg,#2a3f86,#16224d);border:1px solid #5a73c0;text-shadow:0 1px 1px #000}
@@ -1347,7 +1348,12 @@
     .lg-bigcard.back{background:repeating-linear-gradient(45deg,#2b3a6b 0 6px,#22305c 6px 12px);border-color:#0c1430}
     .lg-bigcard.playable{cursor:pointer;box-shadow:0 0 0 2px #7CFC00,0 3px 8px rgba(0,0,0,.5)}
     .lg-bigcard.playable:hover{transform:translateY(-16px) scale(1.08) !important;z-index:6;box-shadow:0 0 0 2px #aaff66,0 9px 18px rgba(0,0,0,.6)}
-    .lg-hand{display:flex;justify-content:center;align-items:flex-end;flex:1}
+    .lg-hand{display:flex;justify-content:center;align-items:flex-end;flex:1;transition:transform .25s ease;transform:translate(24%,42%) scale(.86);transform-origin:bottom right}
+    .lg-hand.active{transform:none}
+    .lg-ctrl{display:flex;flex-direction:column;align-items:flex-start;gap:4px;width:100%}
+    .lg-ctrl .lg-banner{font-size:11px;padding:3px 9px}
+    .lg-ctrl .lg-bar{justify-content:flex-start;width:100%}
+    .lg-gyname{align-self:stretch;text-align:center;background:linear-gradient(180deg,#3a2c18,#241a0e);border:1px solid #b8932f;border-radius:5px;padding:2px 6px;font-size:10px;font-weight:bold;color:#ffe9b8;text-shadow:0 1px 1px #000;margin-bottom:2px}
     .lg-handfan{display:flex;justify-content:center;align-items:flex-end}
     .lg-handfan .lg-bigcard{margin:0 -8px;transform-origin:bottom center}
     .lg-handfan.tiny{display:inline-flex}
@@ -1391,7 +1397,7 @@
     .lg-pdeck{position:absolute;left:25.5%;bottom:10px;z-index:4}
     .lg-gyzone{display:flex;flex-direction:column;align-items:center;gap:1px;width:100%}
     .lg-zlbl{font-size:8px;color:#9b8e6f;letter-spacing:.4px;line-height:1.25}
-    .lg-zonebox{width:94%;min-height:20px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;background:rgba(0,0,0,.3);border:1px dashed rgba(255,255,255,.18);border-radius:5px;padding:2px 1px;margin-bottom:2px}
+    .lg-zonebox{width:94%;min-height:20px;display:flex;flex-wrap:wrap;gap:3px;justify-content:center;align-items:center;background:rgba(0,0,0,.22);border:none;border-radius:5px;padding:2px 1px;margin-bottom:2px}
     .lg-chip{display:inline-flex;align-items:center;gap:1px;font-size:13px;line-height:1}
     .lg-chip b{font-size:9px;color:#e7dcc0;font-weight:bold}
     .lg-board .btn,.lg-start .btn,.lg-curtain .btn{background:linear-gradient(180deg,#caa242,#8a6a1e);color:#241a0e;border:1px solid #6b4f1a;border-radius:6px;font-weight:bold;text-shadow:0 1px 0 rgba(255,255,255,.3);box-shadow:0 2px 3px rgba(0,0,0,.4)}
@@ -6573,11 +6579,12 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   // graveyard + exile, fully public (type tallies); GY selectable when Forest targets your own
   const zoneBox=(arr,canForest)=>{ const m={}; arr.forEach((t,i)=>{ if(!m[t])m[t]={n:0,first:i}; m[t].n++; }); const keys=LG_TYPES.filter(t=>m[t]);
     return '<div class="lg-zonebox">'+(keys.length?keys.map(t=>{ return '<span class="lg-chip'+(canForest?' lg-sel':'')+'" style="color:'+LG_COL[t][0]+'"'+(canForest?(' data-pick="'+m[t].first+'"'):'')+' title="'+LG_NAME[t]+'">'+LG_ICO[t]+'<b>'+m[t].n+'</b></span>'; }).join(''):'<span class="lg-zlbl">—</span>')+'</div>'; };
-  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-zlbl">'+_mgEsc(p.name)+'</div><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
+  const gyZone=pi=>{ const p=_lg.players[pi], forestSel=!!(choosing&&choosing.kind==='forest'&&pi===me); return '<div class="lg-gyzone"><div class="lg-gyname">'+_mgEsc(p.name)+'</div><div class="lg-zlbl">⚰ GY</div>'+zoneBox(p.gy,forestSel)+'<div class="lg-zlbl">✦ Exile</div>'+zoneBox(p.exile,false)+'</div>'; };
   const stackView=()=>{ if(!_lg.stack.length)return ''; return '<div class="lg-stack"><span class="lg-stack-lbl">Stack ▸</span>'+_lg.stack.map(s=> s.kind==='land'
       ? '<div class="lg-bigcard mini" style="'+cvars(s.type)+'" title="'+_mgEsc(_lg.players[s.ctrl].name)+'"><div class="lg-bc-art"><span class="lg-bc-ic">'+LG_ICO[s.type]+'</span><span class="lg-bc-nm">'+LG_NAME[s.type]+'</span></div></div>'
       : '<div class="lg-bigcard mini" style="--c1:#c0392b;--c2:#641a12;--tx:#fff" title="counter"><div class="lg-bc-art"><span class="lg-bc-ic">🚫</span><span class="lg-bc-nm">Counter</span></div></div>' ).join('')+'</div>'; };
   const playable=canAct&&_lg.mode==='turn'&&!_lg.castThisTurn;
+  const handActive=playable||(!!choosing&&(choosing.kind==='discard'||choosing.kind==='swamp')); // raise the hand when you're playing or discarding; otherwise it tucks away
   let ctrl='';
   if(_lg.mode2==='cpu'&&actor===_lg.cpu){ ctrl='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
   else if(_lg.mode==='turn'){ ctrl='<div class="lg-banner">'+_mgEsc(_lg.players[me].name)+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'+(canAct?'<div class="lg-bar"><button class="btn small" id="lg-end">End turn ▸</button></div>':''); }
@@ -6586,12 +6593,12 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   else if(_lg.mode==='over'){ ctrl='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(_lg.players[_lg.winner].name)+' wins!</div><div class="lg-bar"><button class="btn small primary" id="lg-again">Play again</button></div>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
-    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
+    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div><div class="lg-ctrl">'+ctrl+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+'</div>'+
-    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center">'+stackView()+ctrl+'</div>'+playedRow(me)+'</div>'+
+    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+stackView()+'</div>'+playedRow(me)+'</div>'+
     '<div class="lg-rightrail">'+gyZone(opp)+gyZone(me)+'</div>'+
     deckMine()+
-    '<div class="lg-botstrip"><div class="lg-hand">'+fan(me,playable)+'</div></div>'+
+    '<div class="lg-botstrip"><div class="lg-hand'+(handActive?' active':'')+'">'+fan(me,playable)+'</div></div>'+
     '</div></div>';
   if(playable)body.querySelectorAll('.lg-bigcard[data-h]:not([data-pick])').forEach(el=>el.addEventListener('click',()=>lgCast(el.getAttribute('data-t'))));
   const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=lgEndTurn;
