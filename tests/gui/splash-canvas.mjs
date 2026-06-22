@@ -26,6 +26,13 @@ await p.waitForTimeout(400);
 const frame = await p.evaluate(()=>{ const f=document.getElementById('splash-free');
   return { framed: !!f && f.classList.contains('framed'), w:f&&f.style.width, fit:_freeFitScale, hasTag:!!document.querySelector('.splash-frame-tag') }; });
 
+// Zoom slider resizes the cards (not the frame): card width grows, frame stays 1280.
+const cardZoom = await p.evaluate(()=>{ const w0=parseFloat(document.querySelector('.splash-card.free').style.width);
+  const sl=document.getElementById('splash-zoom'); sl.value='140'; splashZoom();
+  const w1=parseFloat(document.querySelector('.splash-card.free').style.width);
+  const frameW=document.getElementById('splash-free').style.width;
+  return { grew:w1>w0, w0, w1, frameStill:frameW==='1280px', sliderShown:getComputedStyle(document.querySelector('.splash-zoom-wrap')).display!=='none' }; });
+
 // Frame size is independent of the window: widen the viewport, the logical stage stays 1280 while the fit scale grows.
 const beforeFit = await p.evaluate(()=>_freeFitScale);
 await p.setViewportSize({ width:1280, height:680 }); await p.waitForTimeout(250);
@@ -48,6 +55,7 @@ const toggle = await p.evaluate(({IMG})=>{ const d=state.decks.tdeck; d.layout.s
 },{IMG});
 
 console.log('frame:', JSON.stringify(frame));
+console.log('cardZoom:', JSON.stringify(cardZoom));
 console.log('indep:', JSON.stringify(indep), 'fitChanged:', fitChanged);
 console.log('sideboard:', sideboard);
 console.log('toggle:', JSON.stringify(toggle));
@@ -56,6 +64,7 @@ console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 // independent of the window. (fitChanged is logged but not asserted — the harness body width
 // doesn't track the viewport, so the measured fit may not move here.)
 const ok = frame.framed && frame.w==='1280px' && frame.fit>0 && frame.hasTag
+  && cardZoom.grew && cardZoom.frameStill && cardZoom.sliderShown
   && indep.stillW==='1280px'
   && sideboard
   && toggle.picShown && /Interactive Splash/.test(toggle.labelPic) && toggle.interShown && /Deck Pic/.test(toggle.labelInter) && toggle.serveCtl

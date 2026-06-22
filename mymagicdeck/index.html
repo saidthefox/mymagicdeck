@@ -2867,7 +2867,10 @@ function openSplash(deckObj,username,opts){
   _splashCommanderCard=getCommanderCard(deckObj);
   overlay._splashGroups={g,sbCards,allCards};
   // Default zoom: smaller on mobile
-  const defaultZoom=window.innerWidth<=700?70:100;
+  // In User Layout the slider sizes the cards on the fixed frame (persisted as layout.cardScale);
+  // in column modes it's the on-screen zoom default.
+  const savedCardScale=(deckObj.layout&&deckObj.layout.cardScale)?Math.round(deckObj.layout.cardScale*100):null;
+  const defaultZoom=(initSort==='user'&&savedCardScale)?savedCardScale:(window.innerWidth<=700?70:100);
   const zoomSlider=document.getElementById('splash-zoom');
   if(zoomSlider){zoomSlider.value=defaultZoom;const lbl=document.getElementById('splash-zoom-label');if(lbl)lbl.textContent=defaultZoom+'%';}
   const zoomPct=defaultZoom;
@@ -2897,8 +2900,8 @@ function openSplash(deckObj,username,opts){
     if(sortMode==='user'&&_splashEdit&&typeof _splashAttachSelect==='function')_splashAttachSelect();
     if(sortMode==='user')_splashFitFree();
   }
-  // Zoom sizes cards in the column modes; in User Layout the frame auto-fits, so hide it there.
-  const zw0=document.querySelector('.splash-zoom-wrap'); if(zw0)zw0.style.display=(_splashView==='pic'||sortMode==='user')?'none':'';
+  // Zoom sizes cards (column widths, or card size on the fixed frame in User Layout); only the pic view has no use for it.
+  const zw0=document.querySelector('.splash-zoom-wrap'); if(zw0)zw0.style.display=(_splashView==='pic')?'none':'';
   // View toggle + owner "serve pic" setting in the header.
   const vt=document.getElementById('splash-view-toggle');
   if(vt){ if(splashPic){ vt.style.display=''; vt.textContent=_splashView==='pic'?'🃏 Interactive Splash':'🎴 Deck Pic'; } else vt.style.display='none'; }
@@ -3067,7 +3070,6 @@ function _splashRebuildColumns(){
   if(!(sortMode==='user'&&_splashEdit))_attachCardHover(body); // hover-zoom off while free-dragging
   if(sortMode==='user'&&_splashEdit)_splashAttachSelect();
   if(sortMode==='user')_splashFitFree();
-  const zw=document.querySelector('.splash-zoom-wrap'); if(zw)zw.style.display=(sortMode==='user')?'none':'';
 }
 // Marquee multi-select wiring for the splash free layout (shared by openSplash + rebuild).
 function _splashAttachSelect(){
@@ -3255,9 +3257,9 @@ function splashZoom(){
   const slider=document.getElementById('splash-zoom');
   const label=document.getElementById('splash-zoom-label');
   if(label)label.textContent=slider.value+'%';
-  // In User Layout, zoom is just a transform on the fixed frame — re-fit (cheap, no re-seed).
-  if(document.getElementById('splash-free'))_splashFitFree();
-  else _splashRebuildColumns();
+  // Rebuild: in User Layout this re-renders the cards at the new size (the slider sizes cards
+  // within the fixed frame); in column modes it re-lays the columns.
+  _splashRebuildColumns();
 }
 function splashReorder(){
   const mode=(document.querySelector('input[name="splash-sort"]:checked')?.value)||'cmc';
@@ -3341,9 +3343,9 @@ function _splashFitFree(){
   const free=document.getElementById('splash-free'); if(!free)return;
   const body=document.getElementById('splash-body');
   const availW=Math.max(160,((body?body.clientWidth:free.parentElement.clientWidth)||SPLASH_STAGE_W)-40);
-  const zoom=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
-  const fit=availW/SPLASH_STAGE_W;
-  const eff=Math.max(0.05,fit*zoom);
+  // The frame always fits the window; card size is controlled separately by the zoom slider
+  // (applied per-card in _buildSplashFree), so it doesn't rescale the whole canvas.
+  const eff=Math.max(0.05,availW/SPLASH_STAGE_W);
   _freeFitScale=eff;
   free.style.transform='scale('+eff+')';
   free.style.transformOrigin='top left';
@@ -3355,7 +3357,9 @@ function _splashFitFree(){
 window.addEventListener('resize',()=>{ if(document.getElementById('splash-free'))_splashFitFree(); });
 function _buildSplashFree(allCards,sbCards,zoomPct){
   const deck=_splashDeck&&_splashDeck.deck; if(!deck)return '<div class="splash-columns"></div>';
-  const CARD_W=121,CARD_H=169,GAP=12;
+  // Slider sizes the cards within the fixed frame (this is what the render captures).
+  const cz=Math.max(0.3,(zoomPct||100)/100);
+  const CARD_W=Math.round(121*cz),CARD_H=Math.round(169*cz),GAP=Math.round(12*cz);
   const ents=[];
   const collect=(list,store,zone)=>{ for(const{card}of list){ const cid=getCardId(card); const entry=store&&store[cid]; const qty=entry?entry.qty:1; for(let k=0;k<qty;k++)ents.push({card,cid,entry,copyIdx:k,key:zone+cid+'_'+k}); } };
   collect(allCards,deck.cards,''); collect(sbCards,deck.sideboard,'sb_'); // zone-prefix so a card in both main+sideboard doesn't share a key (→ stacking)
@@ -3550,6 +3554,8 @@ function saveUserLayout(){
   free.querySelectorAll('[data-key]').forEach(el=>{ const k=el.dataset.key; if(!k)return;
     const o={x:parseFloat(el.style.left)||0,y:parseFloat(el.style.top)||0,z:parseInt(el.style.zIndex)||1};
     const s=parseFloat(el.dataset.s); if(s&&s!==1)o.s=s; deck.layout.positions[k]=o; });
+  // Persist the card-size slider so the public view + render match what was composed.
+  deck.layout.cardScale=(parseInt(document.getElementById('splash-zoom')?.value||100))/100;
   saveToStorage(); syncDeckToApi(deck.id); toast('Layout saved 💾','success');
 }
 function setDefaultLayout(){
