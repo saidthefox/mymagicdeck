@@ -6992,8 +6992,14 @@ function lgBeginTurn(){ const A=_lg.active, e=_lg.players[A].ele; if(e)e.tapped=
   if(_lg.turn>1) lgLog('— '+_lg.players[A].name+'’s turn —'); lgEnterPhase('draw'); }
 function lgEnterPhase(id){ if(!_lg||_lg.winner!=null)return; _lg.phase=id; _lg.pendingSpell=null;
   if((id==='block'||id==='damage') && !_lg.atk) return lgAdvance();          // no combat this turn → skip
-  const D=1-_lg.active;
-  if((_lg.stops[D]||{})[id] && lgEligibleStop(D)){ _lg.cont='phaseact:'+id; _lg.mode='respond'; _lg.priority=D; lgRerender(); return; } // opponent's stop fires before the phase
+  _lg._served={}; lgPhasePriority(id);
+}
+// Hand out stop-windows for this phase: the non-active player first, then the ACTIVE player (Block/Damage
+// only — they already act in their own Main/Attack phases). Each fires once, only while that player still
+// holds their one spell. This is what lets the attacker pump after seeing blocks (a stop on Damage), etc.
+function lgPhasePriority(id){ const A=_lg.active, D=1-A, sv=_lg._served||(_lg._served={});
+  if(!sv.D && (_lg.stops[D]||{})[id] && lgEligibleStop(D)){ sv.D=1; _lg.cont='phasepri:'+id; _lg.mode='respond'; _lg.priority=D; lgRerender(); return; }
+  if(!sv.A && (id==='block'||id==='damage') && (_lg.stops[A]||{})[id] && lgEligibleStop(A)){ sv.A=1; _lg.cont='phasepri:'+id; _lg.mode='respond'; _lg.priority=A; lgRerender(); return; }
   lgPhaseAct(id);
 }
 function lgPhaseAct(id){ if(!_lg||_lg.winner!=null)return; const A=_lg.active; _lg.pendingSpell=null;
@@ -7011,7 +7017,7 @@ function lgEndPhase(){ // end of turn: buffs wear off, exiled elephants return (
   if(_lg.winner!=null)return; _lg.active=1-_lg.active; _lg.turn++; lgBeginTurn(); }
 function lgOfferStop(pi){ if(_lg.winner!=null)return; if(lgEligibleStop(pi)){ _lg.mode='respond'; _lg.priority=pi; _lg.pendingSpell=null; lgRerender(); } else lgCombatNext(_lg.cont); }
 function lgCombatNext(tag){ if(!_lg||_lg.winner!=null)return;
-  if(typeof tag==='string' && tag.indexOf('phaseact:')===0){ _lg.cont=null; lgPhaseAct(tag.slice(9)); return; } // resume the stopped phase's action
+  if(typeof tag==='string' && tag.indexOf('phasepri:')===0){ _lg.cont=null; lgPhasePriority(tag.slice(9)); return; } // continue the phase's stop-windows, then its action
   _lg.cont=null; _lg.mode='turn'; _lg.priority=_lg.active; _lg.pendingSpell=null; lgRerender(); }            // 'resume'/null → hand control back to the active player
 function lgPassCombat(){ if(_lg.mode!=='respond')return; lgCombatNext(_lg.cont); }
 function lgToggleStop(id){ if(!_lg||!_lg.combat)return; const me=_lg.view; if(!_lg.stops)_lg.stops=[{},{}]; const s=_lg.stops[me]||(_lg.stops[me]={}); s[id]=!s[id]; lgRerender(); }

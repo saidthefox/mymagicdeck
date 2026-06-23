@@ -31,6 +31,11 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   fresh(); _lg.players[1].hand=['swamp']; _lg.stops[1]={block:true}; _lg.players[0].hand=[];
   lgAdvance(); lgAttack(); out.stopFires=(_lg.mode==='respond'&&_lg.priority===1);
   lgDoCast('swamp',0); out.afterStopTrick=(_lg.mode==='block'); lgDoBlock(true); out.stopLife=_lg.players[1].life;
+  // Active player's own stop: attack → they block → I get a window at Damage to pump for trample
+  fresh(); _lg.stops[0]={damage:true}; _lg.players[0].hand=['mountain']; _lg.players[1].hand=[];
+  lgAdvance(); lgAttack(); out.oppBlockMode=(_lg.mode==='block'); lgDoBlock(true); // cpu blocks
+  out.myDamageStop=(_lg.mode==='respond' && _lg.priority===0); // I get priority before my own combat damage
+  lgDoCast('mountain',0); out.pumpTrample=_lg.players[1].life; // 6/3 over 3/3 → 3 tramples → 17
   // Win by life (unblocked lethal)
   fresh(); _lg.players[1].life=2; _lg.players[1].ele.tapped=true; _lg.players[0].hand=[]; _lg.players[1].hand=[];
   lgAdvance(); lgAttack(); out.winner=_lg.winner; out.over=_lg.mode;
@@ -51,6 +56,7 @@ const ok = r.fmtCard && r.hasCpu && r.noOnline
   && r.phaseCells===7 && r.oneOn===1 && r.stopSet && r.stopShown
   && r.atkPhase && r.blockMode && r.dmgLife===20
   && r.stopFires && r.afterStopTrick && r.stopLife===20
+  && r.oppBlockMode && r.myDamageStop && r.pumpTrample===17
   && r.winner===0 && r.over==='over'
   && r.armed && r.clickCast && r.fullLog && r.timestamped
   && !errs.length;
