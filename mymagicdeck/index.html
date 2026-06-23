@@ -1347,6 +1347,10 @@
     @keyframes dicey-roll{0%{transform:rotate(0) scale(1)}25%{transform:rotate(160deg) scale(1.12)}50%{transform:rotate(300deg) scale(.95)}75%{transform:rotate(430deg) scale(1.08)}100%{transform:rotate(540deg) scale(1)}}
     .dicey-bubble{position:absolute;bottom:72px;right:0;width:242px;background:#2a2e36;border:1px solid #4a505c;border-radius:10px;padding:10px;color:#eee;font-family:Tahoma,sans-serif;font-size:12px;box-shadow:0 12px 34px rgba(0,0,0,.6)}
     .dicey-bubble:after{content:'';position:absolute;bottom:-8px;right:26px;border:8px solid transparent;border-top-color:#2a2e36;border-bottom:0}
+    .dicey-bubble.below{bottom:auto;top:72px}                                  /* flip below when Dicey is near the top */
+    .dicey-bubble.below:after{top:-8px;bottom:auto;border-top:0;border-bottom:8px solid #2a2e36}
+    .dicey-bubble.bleft{right:auto;left:0}                                     /* flip to the right when he's near the left edge */
+    .dicey-bubble.bleft:after{right:auto;left:26px}
     .dicey-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
     .dicey-hd b{color:#fff;font-size:13px}
     .dicey-x{background:none;border:none;color:#9aa6b6;cursor:pointer;font-size:14px;line-height:1}
@@ -6376,15 +6380,19 @@ function wmStartMenu(){
 }
 // The sensible per-program open size (what fits its content).
 function wmDefaultRect(key){
-  const n=Object.keys(wmWins).length, x=Math.max(8,Math.min(60+n*30, innerWidth-380)), y=Math.max(8,Math.min(48+n*26, innerHeight-340));
-  if(key==='cgg'){ const h=Math.min(560, innerHeight-120); return { x, y, w:Math.round(h*0.7), h }; } // CGG opens at a Magic-card ratio
-  if(key==='account'){ const w=Math.min(380, innerWidth-24), h=Math.min(440, innerHeight-60); // Account opens centered
-    return { x:Math.max(8,Math.round((innerWidth-w)/2)), y:Math.max(8,Math.round((innerHeight-h)/2)-16), w, h }; }
-  if(key==='manapool'){ return { x, y, w:Math.min(620, innerWidth-40), h:Math.min(600, innerHeight-60) }; } // tall enough to show the whole pool
-  if(key==='dicebag'){ return { x, y, w:Math.min(440, innerWidth-40), h:Math.min(560, innerHeight-60) }; } // show the whole dice tray on open
-  if(key==='twentyfourty'){ return { x, y, w:Math.min(560, innerWidth-40), h:Math.min(640, innerHeight-40) }; } // both seats fully visible
-  if(key==='landgame'){ return { x, y, w:Math.min(760, innerWidth-40), h:Math.min(560, innerHeight-40) }; } // landscape board (Hearthstone-style)
-  return { x, y, w:Math.min(620, innerWidth-80), h:Math.min(460, innerHeight-120) };
+  // Windows open CENTERED by default, with a gentle cascade so a stack doesn't perfectly overlap.
+  const n=Object.keys(wmWins).length, j=Math.min(n*18, 90);
+  let w,h;
+  if(key==='cgg'){ h=Math.min(560, innerHeight-120); w=Math.round(h*0.7); }       // Magic-card ratio
+  else if(key==='account'){ w=Math.min(380, innerWidth-24); h=Math.min(440, innerHeight-60); }
+  else if(key==='manapool'){ w=Math.min(620, innerWidth-40); h=Math.min(600, innerHeight-60); }
+  else if(key==='dicebag'){ w=Math.min(440, innerWidth-40); h=Math.min(560, innerHeight-60); }
+  else if(key==='twentyfourty'){ w=Math.min(560, innerWidth-40); h=Math.min(640, innerHeight-40); }
+  else if(key==='landgame'){ w=Math.min(760, innerWidth-40); h=Math.min(560, innerHeight-40); }
+  else { w=Math.min(620, innerWidth-80); h=Math.min(460, innerHeight-120); }
+  const x=Math.max(8, Math.min(Math.round((innerWidth-w)/2)+j, innerWidth-w-8));
+  const y=Math.max(8, Math.min(Math.round((innerHeight-h)/2)-20+j, innerHeight-h-8));
+  return { x, y, w, h };
 }
 function wmRect(key){
   const def=wmDefaultRect(key);
@@ -8254,6 +8262,7 @@ function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math
   _diceyEl.style.transition='left '+ms+'ms ease-in-out, top '+ms+'ms ease-in-out';
   if(die){ die.style.transition='transform '+ms+'ms ease-in-out'; die.style.transform='rotate('+Math.round(_diceyRot)+'deg)'; }
   _diceyEl.style.left=x+'px'; _diceyEl.style.top=y+'px';
+  const b=_diceyEl.querySelector('.dicey-bubble'); if(b){ b.classList.toggle('below', y<window.innerHeight*0.42); b.classList.toggle('bleft', x<250); } // keep his speech on-screen
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.transition=''; }, ms+30);
 }
 function diceyWhirl(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'); if(!die)return; die.classList.remove('dicey-whirling'); void die.offsetWidth; die.classList.add('dicey-whirling'); setTimeout(()=>die&&die.classList.remove('dicey-whirling'),700); }
@@ -8285,7 +8294,7 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
     '<div class="dicey-foot" style="margin-top:6px"><button class="dicey-app" style="flex:1;text-align:center" data-tour="1">▶ Replay the tour</button></div>'+
     '<label class="dicey-modeopt"><input type="checkbox" id="dicey-allmode"'+(diceyState().mode==='all'?' checked':'')+'> Follow me onto the classic site too</label>'+
     '<div class="dicey-foot"><button class="dicey-roll">🎲 Roll for me!</button><button class="dicey-hide" title="Hide Dicey">🫥</button></div>';
-  _diceyEl.appendChild(bub);
+  _diceyEl.appendChild(bub); diceyPlaceBubble();
   bub.querySelector('.dicey-x').onclick=diceyClosePanel;
   bub.querySelector('[data-tour]').onclick=()=>diceyTour(1);
   const am=bub.querySelector('#dicey-allmode'); if(am)am.onchange=()=>{ const s=diceyState(); s.mode=am.checked?'all':'os'; diceySave(s); if(typeof toast==='function')toast(am.checked?'I’ll tag along everywhere! 🐾':'Back to Deck OS only.'); };
@@ -8305,7 +8314,9 @@ function diceyOutcome(roll){ const fun=['cardle','manapool','dicebag','twentyfou
   else if(roll>=15){ const k=fun[(Math.random()*fun.length)|0]; const a=(MGW_APPS[k]||{icon:'🎲',title:k}); diceySetTip('Rolled <b>'+roll+'</b> — strong! Opening '+a.icon+' '+_mgEsc(a.title)+'.'); setTimeout(()=>open(k),750); }
   else { diceySetTip('Rolled <b>'+roll+'</b>. '+_mgEsc(DICEY_TIPS[(Math.random()*DICEY_TIPS.length)|0])); } }
 // ---- Dicey onboarding: greet a brand-new browser, branch new vs returning, then a guided tour ----
-function diceyMakeBubble(){ if(!_diceyEl)return null; const old=_diceyEl.querySelector('.dicey-bubble'); if(old)old.remove(); const b=document.createElement('div'); b.className='dicey-bubble'; _diceyEl.appendChild(b); _diceyOpen=true; return b; }
+function diceyPlaceBubble(){ const b=_diceyEl&&_diceyEl.querySelector('.dicey-bubble'); if(!b||!_diceyEl)return; const r=_diceyEl.getBoundingClientRect(); b.classList.toggle('below', r.top<window.innerHeight*0.42); b.classList.toggle('bleft', r.left<250); }
+function diceyCorner(){ const m=14, sz=66; const xs=[m, window.innerWidth-sz-m], ys=[m, window.innerHeight-sz-m]; return { x:xs[(Math.random()*2)|0], y:ys[(Math.random()*2)|0] }; }
+function diceyMakeBubble(){ if(!_diceyEl)return null; const old=_diceyEl.querySelector('.dicey-bubble'); if(old)old.remove(); const b=document.createElement('div'); b.className='dicey-bubble'; _diceyEl.appendChild(b); _diceyOpen=true; diceyPlaceBubble(); return b; }
 function diceyIntro(){ if(!_diceyEl)return; try{ DeckOS.store.set('dicey_seen',1); }catch(e){} diceyWhirl(); clearTimeout(_diceyTimer);
   const b=diceyMakeBubble(); if(!b)return;
   b.innerHTML='<div class="dicey-hd"><b>🎲 Dicey</b><button class="dicey-x" title="Close">✕</button></div>'+
@@ -8371,6 +8382,8 @@ const DICEY_TOUR=[
 function diceyTour(speed){ if(!_diceyEl)return; speed=speed||1; clearTimeout(_diceyTourT); clearTimeout(_diceyTimer); _diceyOpen=true; let i=0;
   const run=()=>{ if(!_diceyEl||i>=DICEY_TOUR.length){ diceyTourFinish(speed); return; } const s=DICEY_TOUR[i++]; try{ s.run&&s.run(); }catch(e){} diceyTourSay(s.say,false);
     if(s.near)setTimeout(()=>{ if(!_diceyEl)return; let el=null; try{ el=s.near(); }catch(e){} if(el)diceyJumpToEl(el); }, 420);
+    // zoomies! ~40% of the time he randomly bounces to a corner of the screen mid-explanation
+    if(Math.random()<0.4){ const dwell=(s.ms||3200)/speed; setTimeout(()=>{ if(_diceyEl&&_diceyOpen){ const c=diceyCorner(); diceyMoveTo(c.x,c.y,560); setTimeout(()=>{ if(_diceyEl)diceyWhirl(); },580); } }, Math.min(dwell*0.6, 2800)); }
     _diceyTourT=setTimeout(run,(s.ms||3200)/speed); };
   diceyWhirl(); run();
 }
