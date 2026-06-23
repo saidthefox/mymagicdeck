@@ -1369,6 +1369,15 @@
     .mp-pool canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
     .mp-poollbl{position:absolute;left:10px;top:6px;font-size:.6rem;letter-spacing:.14em;color:rgba(255,255,255,.22);text-transform:uppercase;z-index:1;pointer-events:none}
     .mp-clear{position:absolute;right:8px;top:6px;z-index:3;font-size:.66rem;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#ccc;border-radius:5px;padding:3px 9px;cursor:pointer}
+    /* Floating storm-count cloud: tap the cloud to add, reset button above it. */
+    .mp-storm{position:absolute;right:12px;top:34px;z-index:4;display:flex;flex-direction:column;align-items:center;gap:2px}
+    .mp-storm button{background:none;border:none;cursor:pointer;padding:0;line-height:1}
+    .mp-storm-reset{font-size:18px;opacity:.65;filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));transition:opacity .12s,transform .12s}
+    .mp-storm-reset:hover{opacity:1}
+    .mp-storm-reset:active{transform:rotate(-90deg)}
+    .mp-storm-cloud{position:relative;font-size:62px;filter:drop-shadow(0 4px 7px rgba(0,0,0,.55));transition:transform .08s;-webkit-user-select:none;user-select:none}
+    .mp-storm-cloud:active{transform:scale(.9)}
+    .mp-storm-n{position:absolute;left:0;right:0;top:56%;transform:translateY(-50%);text-align:center;font-size:24px;font-weight:bold;color:#1b2330;text-shadow:0 1px 0 rgba(255,255,255,.55);font-family:Tahoma,sans-serif;pointer-events:none}
     .mp-clear:hover{background:rgba(255,255,255,.18)}
     /* The Land Game */
     /* ===== The Land Game — Hearthstone/Arena-style board ===== */
@@ -7270,8 +7279,8 @@ function mpGargSvg(hex,k,name){
     +'<path d="M17 46 Q32 43 47 46 Q45 60 32 60 Q19 60 17 46 Z" fill="'+hex+'" opacity="0.32"/>'
     +'<path d="M22 46 L24 53 L26 46 Z" fill="#ece6d4"/><path d="M38 46 L40 53 L42 46 Z" fill="#ece6d4"/></g></svg>';
 }
-function mpLoad(){ try{ const s=DeckOS.store.get('manapool'); if(s&&s.counts)return {counts:Object.assign({W:0,U:0,B:0,R:0,G:0,C:0},s.counts)}; }catch(e){} return {counts:{W:0,U:0,B:0,R:0,G:0,C:0}}; }
-function mpSave(st){ try{ DeckOS.store.set('manapool',{counts:st.counts}); }catch(e){} }
+function mpLoad(){ try{ const s=DeckOS.store.get('manapool'); if(s&&s.counts)return {counts:Object.assign({W:0,U:0,B:0,R:0,G:0,C:0},s.counts), storm:s.storm||0}; }catch(e){} return {counts:{W:0,U:0,B:0,R:0,G:0,C:0}, storm:0}; }
+function mpSave(st){ try{ DeckOS.store.set('manapool',{counts:st.counts, storm:st.storm||0}); }catch(e){} }
 let _mpAC=null;
 function mpAudio(){ if(_mpAC)return _mpAC; try{ _mpAC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ _mpAC=null; } return _mpAC; }
 function mpPlink(k,reverse){ const ac=mpAudio(); if(!ac)return; if(ac.state==='suspended'){try{ac.resume();}catch(e){}} const base={W:660,U:523,B:392,R:494,G:440,C:587}[k]||500; const t=ac.currentTime;
@@ -7371,7 +7380,10 @@ function mpRender(body){
     +mpGargSvg(c.hex,c.k,c.name)
     +'<div class="mp-count" data-count="'+c.k+'">'+(st.counts[c.k]||0)+'</div></div>'; });
   body.innerHTML='<div class="mp-wrap"><div class="mp-bar">'+bar+'</div>'
-    +'<div class="mp-pool"><span class="mp-poollbl">Mana Pool</span><button class="mp-clear">Empty</button><canvas></canvas></div></div>';
+    +'<div class="mp-pool"><span class="mp-poollbl">Mana Pool</span><button class="mp-clear">Empty</button><canvas></canvas>'
+    +'<div class="mp-storm"><button class="mp-storm-reset" title="Reset storm count">♻️</button>'
+    +'<button class="mp-storm-cloud" title="Storm count — tap to add">☁️<span class="mp-storm-n">'+(st.storm||0)+'</span></button></div>'
+    +'</div></div>';
   const poolEl=body.querySelector('.mp-pool'), canvas=body.querySelector('canvas'), ctx=canvas.getContext('2d');
   const colOf={}; MP_COLORS.forEach(c=>colOf[c.k]=c.hex);
   const orbs=[],ripples=[]; let W=1,H=1; const dpr=Math.min(window.devicePixelRatio||1,2);
@@ -7387,6 +7399,10 @@ function mpRender(body){
   body.querySelectorAll('[data-add]').forEach(el=>el.addEventListener('click',()=>add(el.getAttribute('data-add'))));
   body.querySelectorAll('[data-slurp]').forEach(el=>el.addEventListener('click',()=>slurp(el.getAttribute('data-slurp'))));
   body.querySelector('.mp-clear').addEventListener('click',()=>{ MP_COLORS.forEach(c=>st.counts[c.k]=0); mpSave(st); MP_COLORS.forEach(c=>setCount(c.k)); orbs.length=0; });
+  // Floating storm-count cloud: tap to increment, reset button zeroes it.
+  const stormN=body.querySelector('.mp-storm-n'); const setStorm=()=>{ if(stormN)stormN.textContent=st.storm||0; };
+  body.querySelector('.mp-storm-cloud').addEventListener('click',()=>{ st.storm=(st.storm||0)+1; mpSave(st); setStorm(); mpPlink('U',false); });
+  body.querySelector('.mp-storm-reset').addEventListener('click',()=>{ st.storm=0; mpSave(st); setStorm(); });
   resize(); seed();
   let ro=null; try{ ro=new ResizeObserver(()=>resize()); ro.observe(poolEl); }catch(e){}
   function step(){
