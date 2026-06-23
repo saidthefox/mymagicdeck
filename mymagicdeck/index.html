@@ -1542,6 +1542,7 @@
     .lg-ec-hd{display:flex;align-items:center;justify-content:space-between;gap:3px;background:linear-gradient(180deg,#e9ecf1,#c3c8d0);border:1px solid #6f747c;border-radius:4px;padding:1px 4px}
     .lg-ec-nm{font-size:7.5px;font-weight:bold;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .lg-ec-cost{font-size:9px;font-weight:bold;background:#1c1f24;color:#e8ebf0;border-radius:50%;width:13px;height:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lg-ec-cost:empty{display:none} /* 0-cost: leave the pip empty so the name gets the full width */
     .lg-ec-art{flex:0 0 32px;margin:3px 0 2px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 38%,#727781,#34373d);border:1px solid #6f747c;border-radius:4px;overflow:hidden}
     .lg-ec-art span{font-size:24px;line-height:1;filter:grayscale(.4) drop-shadow(0 2px 2px rgba(0,0,0,.55))}
     .lg-ec-tl{font-size:7px;font-weight:bold;background:linear-gradient(180deg,#e9ecf1,#c3c8d0);border:1px solid #6f747c;border-radius:3px;padding:1px 3px;line-height:1.1}
@@ -6879,6 +6880,8 @@ const LG_ICO={plains:'🌾',island:'🏝️',swamp:'💀',mountain:'⛰️',fore
 const LG_COL={plains:['#efe2b3','#cdb15e','#3a2f12'],island:['#3f86c9','#1c4d86','#eaf4ff'],swamp:['#4a3d5e','#241a32','#e7dcf2'],mountain:['#c4543b','#7e2a1a','#ffe9e2'],forest:['#3a8f4d','#1c5128','#e6ffe9'],wastes:['#a6a6a6','#666','#f2f2f2']}; // [light, dark, text] per land
 const LG_RULE={plains:'Flicker one of your lands to re-trigger it.',island:'Discard + a copy to counter a land.',swamp:'Opponent discards a card.',mountain:'Destroy an opponent land.',forest:'Return a land from your graveyard.',wastes:'Draw a card.'};
 const LG_ELE_RULE={plains:'Exile target creature; it returns at end of turn.',island:'Target creature gains flying until end of turn. Scry 1.',swamp:'Target creature gets -0/-2 until end of turn.',mountain:'Target creature gets +3/+0 until end of turn.',forest:'Target creature gets +1/+2 until end of turn and untaps.',wastes:'Target creature gets +1/+1 until end of turn. Draw a card.'};
+function lgClock(){ try{ return new Date().toLocaleTimeString([], {hour12:false}); }catch(e){ return ''; } } // HH:MM:SS
+function lgLog(m){ if(_lg&&_lg.log)_lg.log.push(lgClock()+'  '+m); }
 let _lg=null, _lgBody=null, _lgSet=false; // _lgSet: settings panel open
 function lgRerender(){ if(_lgBody)lgRender(_lgBody); lgMaybeCpu(); }
 function lgOptsGet(){ try{ const o=DeckOS.store.get('lg:opts'); return { stopAll:!!(o&&o.stopAll) }; }catch(e){ return { stopAll:false }; } }
@@ -6946,11 +6949,11 @@ function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode=
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
   const players=[lgMakePlayer(names[0]),lgMakePlayer(names[1])];
   if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ dp:0, dt:0, flying:false, tapped:false, sick:false, exiled:false }; }); // 3/3 base; haste — both can swing turn 1
-  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, spent:[false,false], atk:null, cont:null, pendingSpell:null, cscry:null, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Both elephants have haste — swing away!':'')] };
+  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, spent:[false,false], atk:null, cont:null, pendingSpell:null, cscry:null, log:[lgClock()+'  '+names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Both elephants have haste — swing away!':'')] };
   lgSetTitle('Basics — '+fd.name); lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
 function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond'||_lg.mode==='block')return _lg.priority; if(_lg.mode==='cscry')return _lg.cscry?_lg.cscry.ci:_lg.active; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
-function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ _lg.log.push(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); _lg.log.push(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
+function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ lgLog(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); lgLog(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
 function lgWinner(){ for(let i=0;i<2;i++){ const f=_lg.players[i].field; if(LG_TYPES.some(t=>f[t]>=5)||LG_TYPES.filter(t=>f[t]>0).length>=6)return i; }
   if(_lg.combat){ for(let i=0;i<2;i++){ if((_lg.players[i].life||0)<=0)return 1-i; } } // dropped to 0 life
   return null; }
@@ -6959,12 +6962,12 @@ function lgWinner(){ for(let i=0;i<2;i++){ const f=_lg.players[i].field; if(LG_T
 function lgElePow(e){ return 3+(e.dp||0); }
 function lgEleTou(e){ return 3+(e.dt||0); }
 function lgSpellEffect(type,te,nm){
-  if(type==='mountain'){ te.dp+=3; _lg.log.push('+3/+0 to '+nm+'.'); }
-  else if(type==='forest'){ te.dp+=1; te.dt+=2; te.tapped=false; _lg.log.push('+1/+2 and untap '+nm+'.'); }
-  else if(type==='wastes'){ te.dp+=1; te.dt+=1; _lg.log.push('+1/+1 to '+nm+'.'); }
-  else if(type==='swamp'){ te.dt-=2; _lg.log.push('-0/-2 to '+nm+'.'); }
-  else if(type==='island'){ te.flying=true; _lg.log.push(nm+' gains flying.'); }
-  else if(type==='plains'){ te.exiled=true; _lg.log.push(nm+' is exiled — returns at end of turn.'); }
+  if(type==='mountain'){ te.dp+=3; lgLog('+3/+0 to '+nm+'.'); }
+  else if(type==='forest'){ te.dp+=1; te.dt+=2; te.tapped=false; lgLog('+1/+2 and untap '+nm+'.'); }
+  else if(type==='wastes'){ te.dp+=1; te.dt+=1; lgLog('+1/+1 to '+nm+'.'); }
+  else if(type==='swamp'){ te.dt-=2; lgLog('-0/-2 to '+nm+'.'); }
+  else if(type==='island'){ te.flying=true; lgLog(nm+' gains flying.'); }
+  else if(type==='plains'){ te.exiled=true; lgLog(nm+' is exiled — returns at end of turn.'); }
 }
 // ── Shortened-Magic priority for combat tricks. Each player may cast ONE spell per turn; a "stop" is
 // offered to a player only if they still have that spell (else we skip straight ahead). Spell effects
@@ -6991,45 +6994,45 @@ function lgDoCast(type, tpi){ const ci=lgActor(); if(ci==null||(_lg.spent&&_lg.s
   if(hi<0||!te||te.exiled){ _lg.pendingSpell=null; lgRerender(); return; }
   me.hand.splice(hi,1); me.gy.push(type); _lg.spent[ci]=true; _lg.pendingSpell=null;
   const nm = tpi===ci ? 'their elephant' : 'the opposing elephant';
-  _lg.log.push(me.name+' casts '+LG_NAME[type]+' on '+nm+'.'); lgSpellEffect(type, te, nm);
-  if(type==='wastes'){ lgDraw(ci); _lg.log.push(me.name+' draws (Wastes).'); }
+  lgLog(me.name+' casts '+LG_NAME[type]+' on '+nm+'.'); lgSpellEffect(type, te, nm);
+  if(type==='wastes'){ lgDraw(ci); lgLog(me.name+' draws (Wastes).'); }
   if(lgCheckWin())return;
   if(type==='island' && me.deck.length){ _lg.cscry={ ci }; _lg.mode='cscry'; lgRerender(); }   // scry, then the response window
   else lgOfferStop(1-ci);
 }
 function lgScryPick(v){ const sc=_lg.cscry; if(!sc)return; _lg.cscry=null; const me=_lg.players[sc.ci];
-  if(v==='bot'&&me.deck.length){ me.deck.push(me.deck.shift()); _lg.log.push(me.name+' scries the top card to the bottom.'); } else _lg.log.push(me.name+' keeps the top card.');
+  if(v==='bot'&&me.deck.length){ me.deck.push(me.deck.shift()); lgLog(me.name+' scries the top card to the bottom.'); } else lgLog(me.name+' keeps the top card.');
   lgOfferStop(1-sc.ci); }
 function lgAttack(){ if(!_lg||!_lg.combat||_lg.mode!=='turn'||_lg.attackedThisTurn||_lg.winner!=null)return;
   const ci=_lg.active, e=_lg.players[ci].ele; if(!e||e.tapped||e.exiled)return;
   e.tapped=true; _lg.attackedThisTurn=true; _lg.atk={by:ci, blocked:null};
-  _lg.log.push(_lg.players[ci].name+'’s elephant ('+lgElePow(e)+'/'+lgEleTou(e)+') attacks.');
+  lgLog(_lg.players[ci].name+'’s elephant ('+lgElePow(e)+'/'+lgEleTou(e)+') attacks.');
   _lg.cont='block'; lgOfferStop(1-ci); }                                              // defender may respond before blocking
 function lgDoBlock(blocked){ if(_lg.mode!=='block'||!_lg.atk)return; _lg.atk.blocked=!!blocked;
-  _lg.log.push(blocked?(_lg.players[1-_lg.atk.by].name+' blocks.'):(_lg.players[1-_lg.atk.by].name+' takes the hit.')); lgCombatNext('blkresp'); }
+  lgLog(blocked?(_lg.players[1-_lg.atk.by].name+' blocks.'):(_lg.players[1-_lg.atk.by].name+' takes the hit.')); lgCombatNext('blkresp'); }
 function lgResolveCombat(ci, blocked){ const me=_lg.players[ci], opp=_lg.players[1-ci], e=me.ele, de=opp.ele;
-  if(blocked){ const tramp=Math.max(0, lgElePow(e)-lgEleTou(de)); opp.life-=tramp; _lg.log.push(tramp>0?('Blocked — '+tramp+' tramples over → '+opp.name+' '+Math.max(0,opp.life)+'.'):'Blocked — nothing tramples over.'); }
-  else { opp.life-=lgElePow(e); _lg.log.push('Unblocked — '+lgElePow(e)+' to '+opp.name+' → '+Math.max(0,opp.life)+'.'); }
+  if(blocked){ const tramp=Math.max(0, lgElePow(e)-lgEleTou(de)); opp.life-=tramp; lgLog(tramp>0?('Blocked — '+tramp+' tramples over → '+opp.name+' '+Math.max(0,opp.life)+'.'):'Blocked — nothing tramples over.'); }
+  else { opp.life-=lgElePow(e); lgLog('Unblocked — '+lgElePow(e)+' to '+opp.name+' → '+Math.max(0,opp.life)+'.'); }
   if(lgCheckWin())return; _lg.mode='turn'; _lg.priority=_lg.active; lgRerender(); }
 // Clicking an elephant: target a pending spell, attack with your own, or block with your own.
 function lgClickEle(pi){ if(!_lg||!_lg.combat)return; const act=lgActor(); if(act==null||act!==_lg.view)return; const e=_lg.players[pi]&&_lg.players[pi].ele; if(!e)return;
   if(_lg.pendingSpell!=null){ if(!e.exiled)lgCommitSpell(pi); return; }
   if(_lg.mode==='turn' && _lg.view===_lg.active && pi===_lg.view && !e.tapped && !e.exiled && !_lg.attackedThisTurn){ lgAttack(); return; }
   if(_lg.mode==='block' && pi===_lg.view && !e.tapped && !e.exiled){ lgDoBlock(true); return; } }
-function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; _lg.log.push('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
-function lgCast(type){ if(_lg.combat){ lgBeginCast(type); return; } if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
+function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; lgLog('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
+function lgCast(type){ if(_lg.combat){ lgBeginCast(type); return; } if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; lgLog(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
 function lgGivePriority(who){ const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===who){ lgResolveTop(); return; } // you don't respond to your own top-of-stack object — resolve it
   _lg.mode='respond'; _lg.priority=who; _lg.lastPass=null; lgRerender(); }
 function lgCounter(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(!lgCanCounter(me))return; const p=_lg.players[me]; const t=lgStackTopType();
   p.hand.splice(p.hand.indexOf('island'),1); p.gy.push('island');   // discard the Island (the "Force of Will")
   p.hand.splice(p.hand.indexOf(t),1); p.exile.push(t);              // exile a card matching the type being countered
-  _lg.stack.push({kind:'counter',ctrl:me}); _lg.log.push(p.name+' counters with Island + '+LG_NAME[t]+'.'); _lg.lastPass=null; _lg.priority=1-me; lgRerender(); }
+  _lg.stack.push({kind:'counter',ctrl:me}); lgLog(p.name+' counters with Island + '+LG_NAME[t]+'.'); _lg.lastPass=null; _lg.priority=1-me; lgRerender(); }
 function lgPassPriority(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(_lg.lastPass!=null&&_lg.lastPass!==me){ _lg.lastPass=null; lgResolveTop(); return; } _lg.lastPass=me; _lg.priority=1-me;
   const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===_lg.priority){ _lg.lastPass=null; lgResolveTop(); return; } // ceremony pass: the controller won't counter their own object
   lgRerender(); }
 function lgResolveTop(){ const item=_lg.stack.pop(); if(!item){ lgAfterResolve(); return; }
-  if(item.kind==='counter'){ const below=_lg.stack.pop(); if(below){ if(below.kind==='land'){ _lg.players[below.ctrl].gy.push(below.type); _lg.log.push(LG_NAME[below.type]+' is countered.'); } else _lg.log.push('The counter is countered.'); } }
-  else { _lg.players[item.ctrl].field[item.type]++; _lg.log.push(LG_NAME[item.type]+' enters play.'); if(lgCheckWin())return; lgETB(item.type,item.ctrl); }
+  if(item.kind==='counter'){ const below=_lg.stack.pop(); if(below){ if(below.kind==='land'){ _lg.players[below.ctrl].gy.push(below.type); lgLog(LG_NAME[below.type]+' is countered.'); } else lgLog('The counter is countered.'); } }
+  else { _lg.players[item.ctrl].field[item.type]++; lgLog(LG_NAME[item.type]+' enters play.'); if(lgCheckWin())return; lgETB(item.type,item.ctrl); }
   lgContinue(); }
 function lgContinue(){ if(_lg.winner!=null)return; if(lgCheckWin())return; if(_lg.choice){ _lg.mode='choose'; lgRerender(); return; } lgAfterResolve(); }
 function lgAfterResolve(){ if(_lg.stack.length){ lgGivePriority(_lg.active); return; } _lg.mode='turn'; _lg.priority=_lg.active;
@@ -7038,19 +7041,19 @@ function lgAfterResolve(){ if(_lg.stack.length){ lgGivePriority(_lg.active); ret
 function lgChoose(who,prompt,options,onPick,kind){ _lg.choice={who,prompt,options,onPick,kind}; }
 function lgPick(v){ const c=_lg.choice; if(!c)return; _lg.choice=null; c.onPick(v); lgContinue(); }
 function lgETB(type,ctrl){ const me=_lg.players[ctrl], opp=_lg.players[1-ctrl];
-  if(type==='wastes'){ lgDraw(ctrl); _lg.log.push(me.name+' draws (Wastes).'); }
-  else if(type==='forest'){ if(me.gy.length)lgChoose(ctrl,'Forest — return a land from your graveyard:', me.gy.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=me.gy.splice(v,1)[0]; me.hand.push(t); _lg.log.push(me.name+' returns '+LG_NAME[t]+' to hand.'); }, 'forest'); else _lg.log.push('Forest fizzles (empty graveyard).'); }
-  else if(type==='plains'){ const opts=LG_TYPES.filter(t=>me.field[t]>0 && t!=='plains' && t!=='island'); /* Plains/Island ETBs are no-ops/recursive — not worth flickering */ if(opts.length)lgChoose(ctrl,'Plains — flicker one of your lands to re-trigger its ETB (optional):', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})).concat([{label:'⊘ Don’t flicker',value:'__none__'}]), v=>{ if(v==='__none__'){ _lg.log.push(me.name+' declines to flicker.'); return; } _lg.log.push(me.name+' flickers '+LG_NAME[v]+'.'); lgETB(v,ctrl); }, 'plains'); else _lg.log.push('Plains fizzles (nothing useful to flicker).'); }
-  else if(type==='mountain'){ const opts=LG_TYPES.filter(t=>opp.field[t]>0); if(opts.length)lgChoose(ctrl,'Mountain — destroy an opponent land:', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})), v=>{ opp.field[v]--; opp.gy.push(v); _lg.log.push(me.name+' destroys opponent '+LG_NAME[v]+'.'); }, 'mountain'); else _lg.log.push('Mountain fizzles (no opponent lands).'); }
-  else if(type==='swamp'){ if(opp.hand.length)lgChoose(1-ctrl,'Swamp — '+opp.name+', discard a card:', opp.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=opp.hand.splice(v,1)[0]; opp.gy.push(t); _lg.log.push(opp.name+' discards '+LG_NAME[t]+'.'); }, 'discard'); else _lg.log.push('Swamp fizzles (empty hand).'); }
+  if(type==='wastes'){ lgDraw(ctrl); lgLog(me.name+' draws (Wastes).'); }
+  else if(type==='forest'){ if(me.gy.length)lgChoose(ctrl,'Forest — return a land from your graveyard:', me.gy.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=me.gy.splice(v,1)[0]; me.hand.push(t); lgLog(me.name+' returns '+LG_NAME[t]+' to hand.'); }, 'forest'); else lgLog('Forest fizzles (empty graveyard).'); }
+  else if(type==='plains'){ const opts=LG_TYPES.filter(t=>me.field[t]>0 && t!=='plains' && t!=='island'); /* Plains/Island ETBs are no-ops/recursive — not worth flickering */ if(opts.length)lgChoose(ctrl,'Plains — flicker one of your lands to re-trigger its ETB (optional):', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})).concat([{label:'⊘ Don’t flicker',value:'__none__'}]), v=>{ if(v==='__none__'){ lgLog(me.name+' declines to flicker.'); return; } lgLog(me.name+' flickers '+LG_NAME[v]+'.'); lgETB(v,ctrl); }, 'plains'); else lgLog('Plains fizzles (nothing useful to flicker).'); }
+  else if(type==='mountain'){ const opts=LG_TYPES.filter(t=>opp.field[t]>0); if(opts.length)lgChoose(ctrl,'Mountain — destroy an opponent land:', opts.map(t=>({label:LG_ICO[t]+' '+LG_NAME[t],value:t})), v=>{ opp.field[v]--; opp.gy.push(v); lgLog(me.name+' destroys opponent '+LG_NAME[v]+'.'); }, 'mountain'); else lgLog('Mountain fizzles (no opponent lands).'); }
+  else if(type==='swamp'){ if(opp.hand.length)lgChoose(1-ctrl,'Swamp — '+opp.name+', discard a card:', opp.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=opp.hand.splice(v,1)[0]; opp.gy.push(t); lgLog(opp.name+' discards '+LG_NAME[t]+'.'); }, 'discard'); else lgLog('Swamp fizzles (empty hand).'); }
 }
 function lgEndTurn(){ if(_lg.mode!=='turn')return; const a=_lg.players[_lg.active];
-  if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); _lg.log.push(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }, 'discard'); _lg.mode='choose'; lgRerender(); return; }
+  if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); lgLog(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }, 'discard'); _lg.mode='choose'; lgRerender(); return; }
   if(_lg.combat){ _lg.players.forEach(p=>{ const e=p.ele; if(!e)return; e.dp=0; e.dt=0; e.flying=false; if(e.exiled){ e.exiled=false; e.tapped=false; e.sick=false; } }); } // end-of-turn: buffs wear off; exiled elephants return (haste, ready to swing)
   _lg.active=1-_lg.active; _lg.turn++; _lg.castThisTurn=false; _lg.attackedThisTurn=false;
   if(_lg.combat){ _lg.spent=[false,false]; _lg.atk=null; _lg.cont=null; _lg.pendingSpell=null; _lg.cscry=null; const e=_lg.players[_lg.active].ele; if(e){ e.tapped=false; e.sick=false; } } // each player gets a fresh spell each turn; untap step
   lgDraw(_lg.active); // every turn after P1's first draws (P1 skipped its turn-1 draw at game start)
-  _lg.mode='turn'; _lg.priority=_lg.active; _lg.log.push('— '+_lg.players[_lg.active].name+"'s turn —"); lgRerender(); }
+  _lg.mode='turn'; _lg.priority=_lg.active; lgLog('— '+_lg.players[_lg.active].name+"'s turn —"); lgRerender(); }
 // ── Computer opponent ("Normal" heuristic). Drives the same transitions a human would. ──
 function lgTypesInPlay(f){ return LG_TYPES.filter(t=>f[t]>0).length; }
 function lgMaybeCpu(){ if(!_lg||_lg.mode2!=='cpu'||_lg.winner!=null)return; if(lgActor()!==_lg.cpu)return; if(_lg._cpuPending)return;
@@ -7064,6 +7067,7 @@ function lgCpuCombat(){ const cpu=_lg.cpu;
   if(_lg.mode==='cscry'){ lgScryPick('top'); return; }
   if(_lg.mode==='block'){ lgDoBlock(true); return; }                                   // a free block always reduces damage
   if(_lg.mode==='respond'){ const pick=lgEligibleStop(cpu)?lgCpuPickSpell():null; if(pick)lgDoCast(pick.type,pick.tpi); else lgPassCombat(); return; }
+  if(_lg.mode==='choose'){ lgPick(lgCpuChoose(_lg.choice)); return; } // e.g. the end-of-turn discard-to-5 choice (this was the hang)
   if(_lg.mode==='turn'){
     if(lgEligibleStop(cpu)){ const pick=lgCpuPickSpell(); if(pick){ lgDoCast(pick.type,pick.tpi); return; } }
     const e=_lg.players[cpu].ele; if(!_lg.attackedThisTurn && e && !e.tapped && !e.exiled){ lgAttack(); return; }
@@ -7184,7 +7188,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     const pow=lgElePow(e), tou=lgEleTou(e), st=[]; if(e.flying)st.push('🪶 flying'); if(e.tapped)st.push('↻ tapped');
     const ck=eleClick(pi), tip=ck==='attack'?'Click to attack':ck==='block'?'Click to block':ck==='target'?'Click to target':'';
     return '<div class="lg-elerow"><div class="lg-ecard'+(e.tapped?' tapped':'')+(pi===_lg.active?' mine':'')+(ck?' lg-ec-can ck-'+ck:'')+'"'+(ck?(' data-ele="'+pi+'" title="'+tip+'"'):'')+'>'
-      +'<div class="lg-ec-hd"><span class="lg-ec-nm">Darksteel War Elephant</span><span class="lg-ec-cost">0</span></div>'
+      +'<div class="lg-ec-hd"><span class="lg-ec-nm">Darksteel War Elephant</span><span class="lg-ec-cost"></span></div>'
       +'<div class="lg-ec-art"><span>🐘</span></div>'
       +'<div class="lg-ec-tl">Artifact Creature — Elephant</div>'
       +'<div class="lg-ec-tx">Indestructible, trample, haste'+(st.length?'<span class="lg-ec-st">'+st.join(' · ')+'</span>':'')+'</div>'

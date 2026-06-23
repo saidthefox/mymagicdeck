@@ -37,7 +37,7 @@ await settleToHumanTurn();                                                      
 await p.evaluate(()=>{ document.getElementById('lgtest').querySelector('#lg-end')?.click(); });          // end turn → hand to CPU
 await p.waitForTimeout(800);
 const afterCpu = await settleToHumanTurn();                                                              // wait out the CPU's whole turn
-const cpuState = await p.evaluate(()=>({ active:_lg.active, turn:_lg.turn, logHasCpu:_lg.log.some(l=>/^Computer\b/.test(l)) }));
+const cpuState = await p.evaluate(()=>({ active:_lg.active, turn:_lg.turn, logHasCpu:_lg.log.some(l=>/\bComputer\b/.test(l)) }));
 
 // Force a winning play for the human and confirm the game-over banner renders.
 const win = await p.evaluate(()=>{
