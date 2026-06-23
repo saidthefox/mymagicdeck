@@ -1,55 +1,56 @@
-// Elephants (Land Game shell + combat, local-only): lands are one-per-turn instant-style spells that
-// target a creature; the 3/3 indestructible elephants attack the face, the defender may block, and
-// trample carries the excess. P1 is summoning-sick turn 1; win by dropping the opponent to 0 life.
+// Elephants (Land Game shell + shortened-Magic combat, local-only): haste 3/3 Darksteel War Elephants,
+// lands are one-per-turn instant-style combat tricks, attack/target/block by clicking creatures, and a
+// bounded priority system (a "stop" is offered only while a player still has their one spell).
 import { chromium } from 'playwright';
 const b = await chromium.launch();
-const p = await (await b.newContext({ viewport:{ width:900, height:700 } })).newPage();
+const p = await (await b.newContext({ viewport:{ width:900, height:720 } })).newPage();
 const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text().slice(0,160));}); p.on('pageerror',e=>errs.push('PE:'+(e.message||e)));
 await p.goto('http://mymagicdeck.com/',{waitUntil:'domcontentloaded',timeout:30000});
 await p.waitForTimeout(1500);
 const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-overlay'); if(cg){cg.classList.remove('open');cg.style.display='none';}
   mgLaunchApp('landgame'); await new Promise(r=>setTimeout(r,300));
-  const out={}; const $=s=>document.querySelector(s);
-  // Menu: Elephants is playable, Online hidden (local-only).
-  _lg=null; _lgM.fmt='elephants'; lgRender(_lgBody); await new Promise(r=>setTimeout(r,60));
+  const out={}, $=s=>document.querySelector(s);
+  const fresh=()=>{ _lgM.fmt='elephants'; lgStart('cpu'); _lg.view=0; }; // you=0, cpu=1, your turn
+  // Menu
+  _lg=null; _lgM.fmt='elephants'; lgRender(_lgBody); await new Promise(r=>setTimeout(r,40));
   out.fmtCard=!!$('[data-fmt="elephants"]'); out.hasCpu=!!$('#lg-cpu'); out.noOnline=!$('#lg-online');
-  // Start a local game (CPU is P2; it's P1's turn, so the CPU stays idle while we drive P1).
-  lgStart('cpu'); await new Promise(r=>setTimeout(r,80));
-  out.combat=_lg.combat===true; out.life=[_lg.players[0].life,_lg.players[1].life];
-  out.sick=[_lg.players[0].ele.sick,_lg.players[1].ele.sick];          // haste: neither is summoning-sick
-  out.t1CanAttack=!!$('#lg-attack');                                   // P1 can swing turn 1 (haste)
-  out.cardName=!!($('.lg-ec-nm')&&/Darksteel War Elephant/.test($('.lg-ec-nm').textContent)); // rendered as a named card
+  // Base state: haste, 20 life, named card with keywords
+  fresh(); await new Promise(r=>setTimeout(r,40));
+  out.combat=_lg.combat===true; out.life=[_lg.players[0].life,_lg.players[1].life]; out.sick=[_lg.players[0].ele.sick,_lg.players[1].ele.sick];
+  out.cardName=!!($('.lg-ec-nm')&&/Darksteel War Elephant/.test($('.lg-ec-nm').textContent));
   out.cardKeywords=!!($('.lg-ec-tx')&&/Indestructible.*trample.*haste/i.test($('.lg-ec-tx').textContent));
-  // Cast a "land" (Mountain) as an instant — it should ask for a target, then pump +3/+0.
-  _lg.players[0].hand=['mountain','island','wastes','swamp','plains']; _lg.castThisTurn=false;
-  lgCast('mountain');
-  out.targetPrompt=(_lg.mode==='choose' && _lg.choice && _lg.choice.kind==='target');
-  lgPick('me');
-  out.pump={ dp:_lg.players[0].ele.dp, pow:lgElePow(_lg.players[0].ele), cast:_lg.castThisTurn, gy:_lg.players[0].gy.includes('mountain') };
-  // Attack into a possible block: 6/3 attacker, blocker 3/3 → 3 tramples over.
-  _lg.players[0].ele.sick=false; _lg.players[0].ele.tapped=false; _lg.attackedThisTurn=false;
-  lgAttack();
-  out.blockPrompt=(_lg.mode==='choose' && _lg.choice && _lg.choice.kind==='block');
-  lgPick('block'); out.trample=_lg.players[1].life;                    // 20 - (6-3) = 17
-  // Unblocked: tap the defender so it can't block → full 6 to the face.
-  _lg.players[1].ele.tapped=true; _lg.players[0].ele.tapped=false; _lg.attackedThisTurn=false;
-  lgAttack(); out.unblocked=_lg.players[1].life;                       // 17 - 6 = 11 (resolves immediately, no prompt)
-  // Flying is unblockable by a grounded elephant.
-  _lg.players[1].ele.tapped=false; _lg.players[0].ele.tapped=false; _lg.players[0].ele.flying=true; _lg.attackedThisTurn=false;
-  lgAttack(); out.flyingThrough=(_lg.players[1].life===5 && _lg.mode!=='choose'); // 11 - 6 = 5, no block prompt
-  // End of turn: the +3/+0 (and flying) wear off.
-  lgEndTurn(); out.buffWoreOff=(_lg.players[0].ele.dp===0 && _lg.players[0].ele.flying===false);
-  // Win by life: drop the opponent to 0.
-  _lg.active=0; _lg.players[0].ele={dp:0,dt:0,flying:false,tapped:false,sick:false,exiled:false}; _lg.players[1].life=2; _lg.attackedThisTurn=false;
-  lgResolveCombat(0,false); out.winner=_lg.winner; out.over=_lg.mode;
+  out.landText=!!($('.lg-bc-rules')&&/until end of turn|returns at end of turn|Draw a card/i.test([...document.querySelectorAll('.lg-bc-rules')].map(e=>e.textContent).join(' ')));
+  // Click your elephant to attack (no Attack button)
+  out.noAttackBtn=!$('#lg-attack');
+  _lg.players[1].hand=[]; lgClickEle(0); out.clickAttacked=(!!_lg.atk && _lg.atk.by===0 && _lg.mode==='block'); // defender has no trick → straight to block
+  // Defender gets a stop BEFORE blocking (combat trick), then blocks
+  fresh(); _lg.players[1].hand=['swamp']; _lg.players[0].hand=[]; lgAttack();
+  out.defenderStop=(_lg.mode==='respond' && _lg.priority===1);
+  lgDoCast('swamp',0); out.afterDefTrick=(_lg.mode==='block'); // their trick resolved, I had no response → block step
+  lgDoBlock(true); out.defBlockedLife=_lg.players[1].life;
+  // Attacker gets a stop AFTER the block is declared
+  fresh(); _lg.players[0].hand=['mountain']; _lg.players[1].hand=[]; lgAttack();
+  out.noDefenderStop=(_lg.mode==='block'); // defender has no spell → no stop, straight to block
+  lgDoBlock(true); out.attackerStop=(_lg.mode==='respond' && _lg.priority===0);
+  lgDoCast('mountain',0); out.trample=_lg.players[1].life; // 6/3 over a 3/3 → 3 tramples → 17
+  // No stop once a player has spent their one spell
+  fresh(); _lg.players[1].hand=['swamp']; _lg.spent[1]=true; lgAttack(); out.spentNoStop=(_lg.mode==='block');
+  // Cast by arming a hand card then clicking a creature
+  fresh(); _lg.players[0].hand=['mountain']; lgBeginCast('mountain'); out.armed=(_lg.pendingSpell==='mountain');
+  lgClickEle(0); out.clickTargeted=(_lg.players[0].ele.dp===3 && _lg.spent[0]===true);
+  // Win by life (unblocked swing for lethal)
+  fresh(); _lg.players[1].life=2; _lg.players[1].ele.tapped=true; _lg.players[0].hand=[]; _lg.players[1].hand=[]; lgAttack();
+  out.winner=_lg.winner; out.over=_lg.mode;
   return out; });
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.fmtCard && r.hasCpu && r.noOnline
-  && r.combat && r.life[0]===20 && r.life[1]===20 && r.sick[0]===false && r.sick[1]===false && r.t1CanAttack && r.cardName && r.cardKeywords
-  && r.targetPrompt && r.pump.dp===3 && r.pump.pow===6 && r.pump.cast===true && r.pump.gy
-  && r.blockPrompt && r.trample===17 && r.unblocked===11 && r.flyingThrough
-  && r.buffWoreOff && r.winner===0 && r.over==='over'
+  && r.combat && r.life[0]===20 && r.life[1]===20 && r.sick[0]===false && r.sick[1]===false
+  && r.cardName && r.cardKeywords && r.landText && r.noAttackBtn && r.clickAttacked
+  && r.defenderStop && r.afterDefTrick && r.defBlockedLife===20
+  && r.noDefenderStop && r.attackerStop && r.trample===17
+  && r.spentNoStop && r.armed && r.clickTargeted
+  && r.winner===0 && r.over==='over'
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
