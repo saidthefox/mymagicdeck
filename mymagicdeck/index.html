@@ -8319,7 +8319,27 @@ function diceyIntroAskTour(){ const b=diceyMakeBubble(); if(!b)return;
 }
 // The guided tour: each step says a line and DOES something (open apps, pin widgets, record a game,
 // change the bg, make mana, peek the Land Game + splash). Replayable at any speed.
-let _diceyTourT=null, _diceyTourApp=null;
+let _diceyTourT=null, _diceyTourApp=null, _diceyNoteId=null;
+// Dicey leaves their mark: a pinned sticky "init.note" with a cave-wall-style shaded d20 stencil.
+function diceyLeaveNote(){ if(typeof notesCreate!=='function')return null;
+  const existing=(typeof notesList==='function'?notesList():[]).find(n=>n.title==='init.note');
+  if(existing){ _diceyNoteId=existing.id; if(typeof notesSetPlaced==='function')notesSetPlaced(existing.id,true); return existing.id; }
+  const art=[
+    '░░░░░░░░░░░░░',
+    '░░░._______.░',
+    '░░./\\  |  /\\░',
+    '░./  \\ | /  \\',
+    '░|----\\|/----|',
+    '░.\\   /|\\   /░',
+    '░░\\ /  |  \\ /░',
+    '░░░\\___|___/░░',
+    '░░░░░░░░░░░░░',
+  ].join('\n');
+  const id=notesCreate(); notesUpdate(id,{ title:'init.note', body:'Dicey was here\n\n'+art, pinned:true });
+  const n=notesGet(id); if(n&&typeof noteRender==='function')noteRender(n);
+  const bo=document.querySelector('#note-'+id+' .on-body'); if(bo){ bo.style.fontFamily='"Courier New",monospace'; bo.style.fontSize='11px'; bo.style.lineHeight='1.05'; bo.style.whiteSpace='pre'; bo.style.minHeight='148px'; }
+  _diceyNoteId=id; return id;
+}
 function diceyOpenApp(key){ if(_diceyTourApp&&_diceyTourApp!==key){ try{ mgwClose(_diceyTourApp); }catch(e){} _diceyTourApp=null; } if(key){ _diceyTourApp=key; try{ mgLaunchApp(key); }catch(e){} } }
 function diceyClick(sel,times){ const els=document.querySelectorAll(sel); const n=Math.min(times||1, els.length); for(let i=0;i<n;i++){ (function(el,d){ setTimeout(()=>{ try{ el.click(); }catch(e){} }, d); })(els[i], i*200); } }
 // Roll Dicey up beside an element he's explaining (left of it if there's room, else just inside),
@@ -8331,6 +8351,7 @@ function diceyJumpToEl(el){ if(!_diceyEl||!el)return; const r=el.getBoundingClie
 const _tWin=()=>(typeof mgwWin==='function'?mgwWin(_diceyTourApp):null);
 const DICEY_TOUR=[
   { say:"This is your card workbench — search any card (even partial, like “Lightning B”) and click to add it to a deck.", ms:3600, run:()=>diceyOpenApp(null), near:()=>document.querySelector('.search-input-wrap')||document.getElementById('search-input') },
+  { say:"First — every good dog leaves their mark. ✍️ A little cave painting, just for you!", ms:3600, run:()=>{ diceyOpenApp(null); diceyLeaveNote(); }, near:()=>document.getElementById('note-'+_diceyNoteId) },
   { say:"All your saved decks live in here. 📂", ms:2800, run:()=>diceyOpenApp('decks'), near:_tWin },
   { say:"Pin handy widgets to your desktop — watch, here’s a deck list!", ms:3200, run:()=>{ diceyOpenApp(null); try{ widgetMount('decklist'); }catch(e){} }, near:()=>document.querySelector('#pc-desktop .os-widget:last-of-type') },
   { say:"Pool your mana when you’re playing in paper — tap to add!", ms:3400, run:()=>{ diceyOpenApp('manapool'); setTimeout(()=>diceyClick('#modal-prog-manapool .mp-dot',3),600); }, near:_tWin },

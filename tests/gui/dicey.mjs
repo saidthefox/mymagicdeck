@@ -18,6 +18,10 @@ const intro = await p.evaluate(async()=>{ const cg=document.getElementById('mgue
   document.querySelector('[data-t="go"]').click(); await new Promise(r=>setTimeout(r,250));
   out.tourBubble=!!document.querySelector('.dicey-bubble [data-skip]'); out.tourActed=!!document.querySelector('.dicey-tip');
   diceyTourEnd(); await new Promise(r=>setTimeout(r,60)); out.tourStopped=!document.querySelector('.dicey-bubble');
+  // Dicey leaves a pinned "init.note" with the cave-wall d20 + "Dicey was here".
+  try{ DeckOS.store.set('notes',[]); }catch(e){} diceyLeaveNote();
+  const notes=(DeckOS.store.get('notes')||[]); const nn=notes.find(n=>n.title==='init.note');
+  out.note = !!nn && /Dicey was here/.test(nn.body||'') && /░/.test(nn.body||'') && nn.pinned===true;
   return out; });
 
 // Help panel + roll + toggle (returning visitor: seen set, no intro).
@@ -37,7 +41,7 @@ const r = await p.evaluate(async()=>{ try{ DeckOS.store.set('dicey_seen',1); }ca
 console.log('intro:', JSON.stringify(intro));
 console.log('panel:', JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
-const ok = intro.noNumber && intro.introNew && intro.introRet && intro.askTour && intro.tourBubble && intro.tourStopped
+const ok = intro.noNumber && intro.introNew && intro.introRet && intro.askTour && intro.tourBubble && intro.tourStopped && intro.note
   && r.present && r.panel && r.apps>=8 && r.roll && r.replay && r.filtered===1 && r.face>=1 && r.face<=20 && r.faceShown && r.gone && r.back
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
