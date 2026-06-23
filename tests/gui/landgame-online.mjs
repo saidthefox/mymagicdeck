@@ -13,8 +13,8 @@ await p.waitForTimeout(700);
 const menu = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); if(!d)return {missing:true}; const t=document.querySelector('#modal-prog-landgame .mgw-ti');
   return { title:t?t.textContent.trim():null, fmtBtns:d.querySelectorAll('[data-fmt]').length, hasCpu:!!d.querySelector('#lg-cpu'), hasOnline:!!d.querySelector('#lg-online'), h3:d.querySelector('.lg-start h3')?.textContent }; });
 
-const testFmt = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); const tb=d&&d.querySelector('[data-fmt="test"]'); if(tb)tb.click();
-  return { clicked:!!tb, hasCpu:!!(d&&d.querySelector('#lg-cpu')), placeholder: !!(d&&/not playable|playable yet/i.test(d.querySelector('.lg-start')?.innerText||'')) }; });
+const eleFmt = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); const tb=d&&d.querySelector('[data-fmt="elephants"]'); if(tb)tb.click();
+  return { clicked:!!tb, hasCpu:!!(d&&d.querySelector('#lg-cpu')), noOnline:!(d&&d.querySelector('#lg-online')) }; }); // Elephants: playable, local-only
 
 const titleGame = await p.evaluate(()=>{ const d=document.querySelector('#modal-prog-landgame'); const lb=d&&d.querySelector('[data-fmt="land"]'); if(lb)lb.click(); const cpu=d&&d.querySelector('#lg-cpu'); if(cpu)cpu.click(); return document.querySelector('#modal-prog-landgame .mgw-ti')?.textContent.trim(); });
 await p.waitForTimeout(300);
@@ -30,12 +30,12 @@ const online = await p.evaluate(()=>{
     oppLeak: /Swamp|Forest|Island|Mountain|Plains|Wastes/.test(d.querySelector('.lg-handfan.tiny')?.textContent||'') }; });
 
 console.log('menu:', JSON.stringify(menu));
-console.log('testFmt:', JSON.stringify(testFmt));
+console.log('eleFmt:', JSON.stringify(eleFmt));
 console.log('titleGame:', JSON.stringify(titleGame));
 console.log('online:', JSON.stringify(online));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = menu.title==='🏞️Basics' && menu.fmtBtns===2 && menu.hasCpu && menu.hasOnline && menu.h3==='Basics'
-  && !testFmt.hasCpu && testFmt.placeholder
+  && eleFmt.clicked && eleFmt.hasCpu && eleFmt.noOnline
   && titleGame==='🏞️Basics — The Land Game'
   && online.myHand===5 && online.oppBacks===5 && online.clocks===2 && online.divider && online.mode2==='online' && !online.oppLeak
   && !errs.length;
