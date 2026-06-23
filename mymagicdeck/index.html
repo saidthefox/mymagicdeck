@@ -1378,6 +1378,19 @@
     .mp-storm-cloud{position:relative;font-size:62px;filter:drop-shadow(0 4px 7px rgba(0,0,0,.55));transition:transform .08s;-webkit-user-select:none;user-select:none}
     .mp-storm-cloud:active{transform:scale(.9)}
     .mp-storm-n{position:absolute;left:0;right:0;top:56%;transform:translateY(-50%);text-align:center;font-size:24px;font-weight:bold;color:#1b2330;text-shadow:0 1px 0 rgba(255,255,255,.55);font-family:Tahoma,sans-serif;pointer-events:none}
+    /* Lightning bolt shot out the bottom of a storm cloud on each tap (shared by the app + widget). */
+    .storm-bolt{position:absolute;left:50%;top:74%;width:0.42em;height:0.85em;margin-left:-0.21em;pointer-events:none;z-index:6;animation:storm-bolt .42s ease-out forwards;filter:drop-shadow(0 0 4px #ffe34d)}
+    .storm-bolt svg{width:100%;height:100%;display:block}
+    @keyframes storm-bolt{0%{opacity:0;transform:translateY(-20%) scaleY(.5)}22%{opacity:1}60%{opacity:1;transform:translateY(40%) scaleY(1)}100%{opacity:0;transform:translateY(85%) scaleY(1)}}
+    @keyframes storm-flash{0%,100%{filter:none}40%{filter:brightness(1.7) drop-shadow(0 0 6px #fff6c0)}}
+    .storm-cloud-em.flash{animation:storm-flash .3s ease-out}
+    /* Storm-count desktop widget */
+    .sw{display:flex;flex-direction:column;align-items:center;gap:2px;padding:2px}
+    .sw button{background:none;border:none;cursor:pointer;padding:0;line-height:1}
+    .sw-reset{font-size:15px;opacity:.6}.sw-reset:hover{opacity:1}.sw-reset:active{transform:rotate(-90deg)}
+    .sw-cloud{position:relative;font-size:52px;filter:drop-shadow(0 3px 5px rgba(0,0,0,.45));transition:transform .08s}
+    .sw-cloud:active{transform:scale(.9)}
+    .sw-n{position:absolute;left:0;right:0;top:56%;transform:translateY(-50%);text-align:center;font-size:20px;font-weight:bold;color:#1b2330;text-shadow:0 1px 0 rgba(255,255,255,.55);pointer-events:none}
     .mp-clear:hover{background:rgba(255,255,255,.18)}
     /* The Land Game */
     /* ===== The Land Game — Hearthstone/Arena-style board ===== */
@@ -6455,6 +6468,15 @@ widgetRegister('dice', { title:'Dice', icon:'🎲', render(b, inst){
     b.querySelectorAll('[data-s]').forEach(x=>x.classList.toggle('on',+x.dataset.s===inst.sides)); pop(_diceRand(inst.sides)+1); }));
   b.querySelector('[data-coin]').addEventListener('click',e=>{ e.stopPropagation(); pop(_diceRand(2)?'H':'T'); });
 }});
+widgetRegister('storm', { title:'Storm Count', icon:'☁️', render(b, inst){
+  if(inst.count==null)inst.count=0;
+  b.innerHTML='<div class="sw"><button class="sw-reset" title="Reset storm count">♻️</button>'+
+    '<button class="sw-cloud" title="Tap to add a storm count"><span class="storm-cloud-em">☁️</span><span class="sw-n">'+inst.count+'</span></button></div>';
+  const nEl=b.querySelector('.sw-n'), cloud=b.querySelector('.sw-cloud');
+  const save=()=>{ const list=widgetList(), w=list.find(x=>x.id===inst.id); if(w){ w.count=inst.count; widgetSave(list); } };
+  cloud.addEventListener('click',e=>{ e.stopPropagation(); inst.count++; nEl.textContent=inst.count; save(); stormBolt(cloud); });
+  b.querySelector('.sw-reset').addEventListener('click',e=>{ e.stopPropagation(); inst.count=0; nEl.textContent=0; save(); });
+}});
 // (DeckOS.widgets is attached after window.DeckOS is defined — see below — so the mod API exists.)
 
 // ===== Notes: little text notes that live on the desktop. Each note is a saved file
@@ -7281,6 +7303,11 @@ function mpGargSvg(hex,k,name){
 }
 function mpLoad(){ try{ const s=DeckOS.store.get('manapool'); if(s&&s.counts)return {counts:Object.assign({W:0,U:0,B:0,R:0,G:0,C:0},s.counts), storm:s.storm||0}; }catch(e){} return {counts:{W:0,U:0,B:0,R:0,G:0,C:0}, storm:0}; }
 function mpSave(st){ try{ DeckOS.store.set('manapool',{counts:st.counts, storm:st.storm||0}); }catch(e){} }
+// Shoot a lightning bolt out the bottom of a storm-cloud element (cloud must be position:relative).
+function stormBolt(cloud){ if(!cloud)return; const b=document.createElement('span'); b.className='storm-bolt';
+  b.innerHTML='<svg viewBox="0 0 24 48" xmlns="http://www.w3.org/2000/svg"><polygon points="14,0 3,27 11,27 8,48 22,17 13,17" fill="#ffe34d" stroke="#ffcf00" stroke-width="1.2" stroke-linejoin="round"/></svg>';
+  cloud.appendChild(b); const em=cloud.querySelector('.storm-cloud-em'); if(em){ em.classList.remove('flash'); void em.offsetWidth; em.classList.add('flash'); }
+  setTimeout(()=>b.remove(),440); try{ if(typeof mpPlink==='function')mpPlink('U',false); }catch(e){} }
 let _mpAC=null;
 function mpAudio(){ if(_mpAC)return _mpAC; try{ _mpAC=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ _mpAC=null; } return _mpAC; }
 function mpPlink(k,reverse){ const ac=mpAudio(); if(!ac)return; if(ac.state==='suspended'){try{ac.resume();}catch(e){}} const base={W:660,U:523,B:392,R:494,G:440,C:587}[k]||500; const t=ac.currentTime;
@@ -7382,7 +7409,7 @@ function mpRender(body){
   body.innerHTML='<div class="mp-wrap"><div class="mp-bar">'+bar+'</div>'
     +'<div class="mp-pool"><span class="mp-poollbl">Mana Pool</span><button class="mp-clear">Empty</button><canvas></canvas>'
     +'<div class="mp-storm"><button class="mp-storm-reset" title="Reset storm count">♻️</button>'
-    +'<button class="mp-storm-cloud" title="Storm count — tap to add">☁️<span class="mp-storm-n">'+(st.storm||0)+'</span></button></div>'
+    +'<button class="mp-storm-cloud" title="Storm count — tap to add"><span class="storm-cloud-em">☁️</span><span class="mp-storm-n">'+(st.storm||0)+'</span></button></div>'
     +'</div></div>';
   const poolEl=body.querySelector('.mp-pool'), canvas=body.querySelector('canvas'), ctx=canvas.getContext('2d');
   const colOf={}; MP_COLORS.forEach(c=>colOf[c.k]=c.hex);
@@ -7400,8 +7427,8 @@ function mpRender(body){
   body.querySelectorAll('[data-slurp]').forEach(el=>el.addEventListener('click',()=>slurp(el.getAttribute('data-slurp'))));
   body.querySelector('.mp-clear').addEventListener('click',()=>{ MP_COLORS.forEach(c=>st.counts[c.k]=0); mpSave(st); MP_COLORS.forEach(c=>setCount(c.k)); orbs.length=0; });
   // Floating storm-count cloud: tap to increment, reset button zeroes it.
-  const stormN=body.querySelector('.mp-storm-n'); const setStorm=()=>{ if(stormN)stormN.textContent=st.storm||0; };
-  body.querySelector('.mp-storm-cloud').addEventListener('click',()=>{ st.storm=(st.storm||0)+1; mpSave(st); setStorm(); mpPlink('U',false); });
+  const stormN=body.querySelector('.mp-storm-n'); const stormCloud=body.querySelector('.mp-storm-cloud'); const setStorm=()=>{ if(stormN)stormN.textContent=st.storm||0; };
+  stormCloud.addEventListener('click',()=>{ st.storm=(st.storm||0)+1; mpSave(st); setStorm(); stormBolt(stormCloud); });
   body.querySelector('.mp-storm-reset').addEventListener('click',()=>{ st.storm=0; mpSave(st); setStorm(); });
   resize(); seed();
   let ro=null; try{ ro=new ResizeObserver(()=>resize()); ro.observe(poolEl); }catch(e){}
