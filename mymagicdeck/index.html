@@ -8315,27 +8315,36 @@ function diceyIntroAskTour(){ const b=diceyMakeBubble(); if(!b)return;
     '<div class="dicey-foot"><button class="dicey-roll" data-t="go">Show me! 🎲</button><button class="dicey-hide" data-t="no">I’ll explore</button></div>';
   b.querySelector('.dicey-x').onclick=()=>{ diceyClosePanel(); diceyScheduleIdle(); };
   b.querySelector('[data-t="no"]').onclick=()=>{ diceyClosePanel(); diceySay('You got it! Click me anytime — I’ll help you find anything.',3000); diceyScheduleIdle(); };
-  b.querySelector('[data-t="go"]').onclick=()=>diceyTour(1);
+  b.querySelector('[data-t="go"]').onclick=()=>diceyTour(0.5); // first watch plays at half speed
 }
 // The guided tour: each step says a line and DOES something (open apps, pin widgets, record a game,
 // change the bg, make mana, peek the Land Game + splash). Replayable at any speed.
 let _diceyTourT=null, _diceyTourApp=null;
 function diceyOpenApp(key){ if(_diceyTourApp&&_diceyTourApp!==key){ try{ mgwClose(_diceyTourApp); }catch(e){} _diceyTourApp=null; } if(key){ _diceyTourApp=key; try{ mgLaunchApp(key); }catch(e){} } }
 function diceyClick(sel,times){ const els=document.querySelectorAll(sel); const n=Math.min(times||1, els.length); for(let i=0;i<n;i++){ (function(el,d){ setTimeout(()=>{ try{ el.click(); }catch(e){} }, d); })(els[i], i*200); } }
+// Roll Dicey up beside an element he's explaining (left of it if there's room, else just inside),
+// then a happy whirl — "here it is!".
+function diceyJumpToEl(el){ if(!_diceyEl||!el)return; const r=el.getBoundingClientRect(); if(r.width<2&&r.height<2)return;
+  const x = r.left>80 ? r.left-70 : Math.min(r.left+10, window.innerWidth-66);
+  const y = Math.max(6, Math.min(r.top+8, window.innerHeight-74));
+  diceyMoveTo(x,y,520); setTimeout(()=>{ if(_diceyEl)diceyWhirl(); }, 560); }
+const _tWin=()=>(typeof mgwWin==='function'?mgwWin(_diceyTourApp):null);
 const DICEY_TOUR=[
-  { say:"This is your card workbench — search any card (even partial, like “Lightning B”) and click to add it to a deck.", ms:3600, run:()=>diceyOpenApp(null) },
-  { say:"All your saved decks live in here. 📂", ms:2800, run:()=>diceyOpenApp('decks') },
-  { say:"Pin handy widgets to your desktop — watch, here’s a deck list!", ms:3200, run:()=>{ diceyOpenApp(null); try{ widgetMount('decklist'); }catch(e){} } },
-  { say:"Pool your mana when you’re playing in paper — tap to add!", ms:3400, run:()=>{ diceyOpenApp('manapool'); setTimeout(()=>diceyClick('#modal-prog-manapool .mp-dot',3),550); } },
-  { say:"Track your matches in 2040 — Start Match, then log each game. Look, I’ll start one!", ms:3800, run:()=>{ diceyOpenApp('twentyfourty'); setTimeout(()=>{ diceyClick('[data-tf="start"]',1); setTimeout(()=>diceyClick('[data-tf="mull"]',1),500); },550); } },
-  { say:"See tournaments happening near you with this widget. 🏆", ms:3000, run:()=>{ diceyOpenApp(null); try{ widgetMount('tournaments'); }catch(e){} } },
+  { say:"This is your card workbench — search any card (even partial, like “Lightning B”) and click to add it to a deck.", ms:3600, run:()=>diceyOpenApp(null), near:()=>document.querySelector('.search-input-wrap')||document.getElementById('search-input') },
+  { say:"All your saved decks live in here. 📂", ms:2800, run:()=>diceyOpenApp('decks'), near:_tWin },
+  { say:"Pin handy widgets to your desktop — watch, here’s a deck list!", ms:3200, run:()=>{ diceyOpenApp(null); try{ widgetMount('decklist'); }catch(e){} }, near:()=>document.querySelector('#pc-desktop .os-widget:last-of-type') },
+  { say:"Pool your mana when you’re playing in paper — tap to add!", ms:3400, run:()=>{ diceyOpenApp('manapool'); setTimeout(()=>diceyClick('#modal-prog-manapool .mp-dot',3),600); }, near:_tWin },
+  { say:"Track your matches in 2040 — Start Match, then log each game. Look, I’ll start one!", ms:3800, run:()=>{ diceyOpenApp('twentyfourty'); setTimeout(()=>{ diceyClick('[data-tf="start"]',1); setTimeout(()=>diceyClick('[data-tf="mull"]',1),500); },600); }, near:_tWin },
+  { say:"See tournaments happening near you with this widget. 🏆", ms:3000, run:()=>{ diceyOpenApp(null); try{ widgetMount('tournaments'); }catch(e){} }, near:()=>document.querySelector('#pc-desktop .os-widget:last-of-type') },
   { say:"Make it yours — fresh desktop color! ✨", ms:2600, run:()=>{ try{ deskBgSet('#21323f'); }catch(e){} } },
-  { say:"The Land Game! …I’d CRUSH the computer every time, if only they’d let ME play. 😤", ms:3800, run:()=>diceyOpenApp('landgame') },
-  { say:"Cardle’s the daily card mystery — guess the card from clues. 🃏", ms:3200, run:()=>diceyOpenApp('cardle') },
-  { say:"And your Splash page shows a deck off in style.", ms:3200, run:()=>diceyOpenApp('splash') },
+  { say:"The Land Game! …I’d CRUSH the computer every time, if only they’d let ME play. 😤", ms:3800, run:()=>diceyOpenApp('landgame'), near:_tWin },
+  { say:"Cardle’s the daily card mystery — guess the card from clues. 🃏", ms:3200, run:()=>diceyOpenApp('cardle'), near:_tWin },
+  { say:"And your Splash page shows a deck off in style.", ms:3200, run:()=>diceyOpenApp('splash'), near:()=>document.getElementById('splash-overlay') },
 ];
 function diceyTour(speed){ if(!_diceyEl)return; speed=speed||1; clearTimeout(_diceyTourT); clearTimeout(_diceyTimer); _diceyOpen=true; let i=0;
-  const run=()=>{ if(!_diceyEl||i>=DICEY_TOUR.length){ diceyTourFinish(speed); return; } const s=DICEY_TOUR[i++]; try{ s.run&&s.run(); }catch(e){} diceyTourSay(s.say,false); _diceyTourT=setTimeout(run,(s.ms||3200)/speed); };
+  const run=()=>{ if(!_diceyEl||i>=DICEY_TOUR.length){ diceyTourFinish(speed); return; } const s=DICEY_TOUR[i++]; try{ s.run&&s.run(); }catch(e){} diceyTourSay(s.say,false);
+    if(s.near)setTimeout(()=>{ if(!_diceyEl)return; let el=null; try{ el=s.near(); }catch(e){} if(el)diceyJumpToEl(el); }, 420);
+    _diceyTourT=setTimeout(run,(s.ms||3200)/speed); };
   diceyWhirl(); run();
 }
 function diceyTourSay(text,finalReplay){ const b=diceyMakeBubble(); if(!b)return;
