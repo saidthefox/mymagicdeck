@@ -18,7 +18,7 @@ const intro = await p.evaluate(async()=>{ const cg=document.getElementById('mgue
   const out={ noNumber:(getComputedStyle(document.querySelector('.dicey-face')).opacity==='0'), introNew:!!document.querySelector('[data-i="new"]'), introRet:!!document.querySelector('[data-i="ret"]') };
   document.querySelector('[data-i="new"]').click(); await new Promise(r=>setTimeout(r,60));
   out.askTour=!!document.querySelector('[data-t="go"]');
-  document.querySelector('[data-t="go"]').click(); await new Promise(r=>setTimeout(r,250));
+  document.querySelector('[data-t="go"]').click(); await new Promise(r=>setTimeout(r,1150)); // open→position→synced speak
   out.tourBubble=!!document.querySelector('.dicey-bubble [data-skip]'); out.tourActed=!!document.querySelector('.dicey-tip');
   diceyTourEnd(); await new Promise(r=>setTimeout(r,60)); out.tourStopped=!document.querySelector('.dicey-bubble');
   // Dicey leaves a pinned "init.note" with the cave-wall d20 + "Dicey was here".
