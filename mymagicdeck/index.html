@@ -8195,33 +8195,43 @@ const DICEY_TIPS=[
 ];
 function diceyState(){ try{ const s=DeckOS.store.get('dicey'); if(s&&typeof s==='object')return s; }catch(e){} return {on:true,x:null,y:null}; }
 function diceySave(s){ try{ DeckOS.store.set('dicey', s); }catch(e){} }
-function diceyD20Svg(face){ return '<svg viewBox="0 0 100 100" class="dicey-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
-  '<polygon points="50,4 91,28 91,72 50,96 9,72 9,28" fill="#b33a44" stroke="#5a141b" stroke-width="3" stroke-linejoin="round"/>'+
-  '<polygon points="50,4 91,28 50,42 9,28" fill="#d24f5a" opacity=".55"/>'+
-  '<polygon points="50,96 91,72 50,58 9,72" fill="#7a1f27" opacity=".55"/>'+
-  '<polygon points="50,20 77,35 67,64 33,64 23,35" fill="#e6ebf2" stroke="#5a141b" stroke-width="2.4" stroke-linejoin="round"/>'+
-  '<circle cx="42" cy="33" r="3" fill="#1a1a1a"/><circle cx="58" cy="33" r="3" fill="#1a1a1a"/>'+
-  '<circle cx="43" cy="32" r="1" fill="#fff"/><circle cx="59" cy="32" r="1" fill="#fff"/>'+
-  '<text x="50" y="58" text-anchor="middle" font-family="Tahoma,sans-serif" font-weight="bold" font-size="20" fill="#3a1014" class="dicey-face">'+face+'</text>'+
-  '</svg>'; }
+// A faceted icosahedron (real d20 look): shaded triangular facets, crisp silhouette, no number
+// shown by default — a value fades in on the front facet only when Dicey actually rolls.
+function diceyD20Svg(){
+  const T='50,5',UR='87,28',LR='87,72',B='50,95',LL='13,72',UL='13,28',cT='50,33',cR='71,60',cL='29,60';
+  const tri=(p,f)=>'<polygon points="'+p+'" fill="'+f+'"/>';
+  return '<svg viewBox="0 0 100 100" class="dicey-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+    '<g stroke="#4a1016" stroke-width="1.3" stroke-linejoin="round">'+
+      tri(UL+' '+T+' '+cT,'#d97f87')+ tri(T+' '+UR+' '+cT,'#e08891')+
+      tri(UL+' '+cL+' '+cT,'#c66a72')+ tri(UR+' '+cT+' '+cR,'#cc7079')+
+      tri(UL+' '+LL+' '+cL,'#a8505a')+ tri(UR+' '+cR+' '+LR,'#ad5560')+
+      tri(LL+' '+B+' '+cL,'#8f3f49')+ tri(cL+' '+B+' '+cR,'#863b44')+ tri(cR+' '+B+' '+LR,'#8f3f49')+
+      tri(cT+' '+cR+' '+cL,'#eca0a6')+  // front facet (lightest)
+      '<polygon points="'+T+' '+UR+' '+LR+' '+B+' '+LL+' '+UL+'" fill="none" stroke="#4a1016" stroke-width="3"/>'+
+    '</g>'+
+    '<text x="50" y="55" text-anchor="middle" font-family="Tahoma,sans-serif" font-weight="bold" font-size="19" fill="#fff" class="dicey-face" style="opacity:0">20</text>'+
+    '</svg>'; }
+function diceyShowFace(n){ const f=_diceyEl&&_diceyEl.querySelector('.dicey-face'); if(!f)return; f.textContent=n; f.style.transition='opacity .15s'; f.style.opacity='1'; clearTimeout(_diceyEl._faceT); _diceyEl._faceT=setTimeout(()=>{ if(f){ f.style.transition='opacity .6s'; f.style.opacity='0'; } }, 1700); }
 function diceyApps(){ const order=['cgg','cardle','manapool','dicebag','twentyfourty','landgame','splash','decks','storage','widgets','calendar','battle','sysset','about'];
   const out=[]; order.forEach(k=>{ if(k==='cgg'){ out.push({k,icon:'🗃️',title:'Card Guesser'}); return; } const a=(typeof MGW_APPS!=='undefined')&&MGW_APPS[k]; if(a)out.push({k,icon:a.icon,title:a.title}); }); return out; }
 function diceyInit(){ const s=diceyState();
   if(!s.on){ if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
   if(_diceyEl)return;
   const el=document.createElement('div'); el.id='dicey'; _diceyEl=el;
-  el.innerHTML='<button class="dicey-die" title="Dicey — click for help, drag to move, roll for luck">'+diceyD20Svg(20)+'</button>';
+  el.innerHTML='<button class="dicey-die" title="Dicey — click for help, drag to move, roll for luck">'+diceyD20Svg()+'</button>';
   document.body.appendChild(el);
   const x=(s.x!=null)?s.x:(window.innerWidth-94), y=(s.y!=null)?s.y:(window.innerHeight-160);
   el.style.left=Math.max(2,Math.min(x,window.innerWidth-66))+'px'; el.style.top=Math.max(2,Math.min(y,window.innerHeight-66))+'px';
   diceyDrag(el);
   el.querySelector('.dicey-die').addEventListener('click',()=>{ if(el._moved){ el._moved=false; return; } _diceyOpen?diceyClosePanel():diceyOpenPanel(); });
   try{ _diceyReduced=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
-  if(!_diceyGreeted){ _diceyGreeted=true; setTimeout(()=>{ diceySay(state.user?('Oh boy, '+state.user.username+'! Wanna play?'):'Oh boy! A new friend! 🐾'); diceyWhirl(); }, 600); }
+  if(!_diceyGreeted){ _diceyGreeted=true; setTimeout(()=>{ if(!diceySeen())diceyIntro(); else diceyGreet(); }, 700); }
   diceyScheduleIdle();
 }
+function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
+function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Oh boy, '+state.user.username+'! Wanna play?'):'Oh boy! Welcome back! 🐾', 2600); }
 function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
-  if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
+  if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
   if(typeof toast==='function')toast(s.on?'Oh boy! Dicey is out! 🎲🐾':'Dicey curled up in the bag.'); }
 // ---- Dicey personality: rolls to move, whirls when excited, greets, and builds card platforms to hop onto ----
 function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 5000+Math.random()*7000); }
@@ -8236,11 +8246,10 @@ function diceyIdleTick(){ if(!_diceyEl){ return; }
 }
 function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math.min(x,window.innerWidth-66)); y=Math.max(2,Math.min(y,window.innerHeight-66));
   const r=_diceyEl.getBoundingClientRect(), dx=x-r.left; _diceyRot+= dx/66*180; // a body-width ≈ half a tumble → looks like it's rolling
-  const die=_diceyEl.querySelector('.dicey-die'), faceEl=_diceyEl.querySelector('.dicey-face');
+  const die=_diceyEl.querySelector('.dicey-die');
   _diceyEl.style.transition='left '+ms+'ms ease-in-out, top '+ms+'ms ease-in-out';
   if(die){ die.style.transition='transform '+ms+'ms ease-in-out'; die.style.transform='rotate('+Math.round(_diceyRot)+'deg)'; }
   _diceyEl.style.left=x+'px'; _diceyEl.style.top=y+'px';
-  if(faceEl){ const fl=setInterval(()=>{ faceEl.textContent=(typeof _diceRand==='function'?_diceRand(20):0)+1; },90); setTimeout(()=>{ clearInterval(fl); faceEl.textContent=(typeof _diceRand==='function'?_diceRand(20):0)+1; }, ms); }
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.transition=''; }, ms+30);
 }
 function diceyWhirl(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'); if(!die)return; die.classList.remove('dicey-whirling'); void die.offsetWidth; die.classList.add('dicey-whirling'); setTimeout(()=>die&&die.classList.remove('dicey-whirling'),700); }
@@ -8269,25 +8278,76 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
     '<div class="dicey-tip">'+_mgEsc(tip)+'</div>'+
     '<input class="dicey-search" placeholder="Find an app…" autocomplete="off">'+
     '<div class="dicey-apps">'+apps.map(a=>'<button class="dicey-app" data-dapp="'+a.k+'">'+a.icon+' '+_mgEsc(a.title)+'</button>').join('')+'</div>'+
+    '<div class="dicey-foot" style="margin-top:6px"><button class="dicey-app" style="flex:1;text-align:center" data-tour="1">▶ Replay the tour</button></div>'+
     '<div class="dicey-foot"><button class="dicey-roll">🎲 Roll for me!</button><button class="dicey-hide" title="Hide Dicey">🫥</button></div>';
   _diceyEl.appendChild(bub);
   bub.querySelector('.dicey-x').onclick=diceyClosePanel;
+  bub.querySelector('[data-tour]').onclick=()=>diceyTour(1);
   bub.querySelector('.dicey-hide').onclick=()=>{ diceyClosePanel(); diceyToggle(); };
   bub.querySelector('.dicey-roll').onclick=diceyRoll;
   bub.querySelectorAll('.dicey-app').forEach(b=>b.onclick=()=>{ const k=b.getAttribute('data-dapp'); diceyClosePanel(); try{ mgLaunchApp(k); }catch(e){} });
   const q=bub.querySelector('.dicey-search'); q.addEventListener('input',()=>{ const v=q.value.toLowerCase(); bub.querySelectorAll('.dicey-app').forEach(b=>{ b.style.display=b.textContent.toLowerCase().includes(v)?'':'none'; }); });
 }
-function diceyRoll(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'), faceEl=_diceyEl&&_diceyEl.querySelector('.dicey-face'); if(!faceEl)return;
+function diceyRoll(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'); if(!die)return;
   const rnd=()=>(typeof _diceRand==='function'?_diceRand(20):((Math.random()*20)|0))+1;
-  if(die){ die.classList.remove('dicey-rolling'); void die.offsetWidth; die.classList.add('dicey-rolling'); }
-  const iv=setInterval(()=>{ faceEl.textContent=rnd(); },60);
-  setTimeout(()=>{ clearInterval(iv); const roll=rnd(); faceEl.textContent=roll; diceyOutcome(roll); }, 700); }
+  die.classList.remove('dicey-rolling'); void die.offsetWidth; die.classList.add('dicey-rolling');
+  setTimeout(()=>{ const roll=rnd(); diceyShowFace(roll); diceyOutcome(roll); }, 700); }
 function diceyOutcome(roll){ const fun=['cardle','manapool','dicebag','twentyfourty','landgame','battle'];
   const open=k=>{ try{ mgLaunchApp(k); }catch(e){} diceyClosePanel(); };
   if(roll===20){ diceySetTip('<b>NATURAL 20!</b> 🎉 The dice gods smile — here, try today’s Cardle.'); setTimeout(()=>open('cardle'),750); }
   else if(roll===1){ diceySetTip('<b>Natural 1…</b> 😬 I fumble! Have a consolation roll in the Dice Bag.'); setTimeout(()=>open('dicebag'),750); }
   else if(roll>=15){ const k=fun[(Math.random()*fun.length)|0]; const a=(MGW_APPS[k]||{icon:'🎲',title:k}); diceySetTip('Rolled <b>'+roll+'</b> — strong! Opening '+a.icon+' '+_mgEsc(a.title)+'.'); setTimeout(()=>open(k),750); }
   else { diceySetTip('Rolled <b>'+roll+'</b>. '+_mgEsc(DICEY_TIPS[(Math.random()*DICEY_TIPS.length)|0])); } }
+// ---- Dicey onboarding: greet a brand-new browser, branch new vs returning, then a guided tour ----
+function diceyMakeBubble(){ if(!_diceyEl)return null; const old=_diceyEl.querySelector('.dicey-bubble'); if(old)old.remove(); const b=document.createElement('div'); b.className='dicey-bubble'; _diceyEl.appendChild(b); _diceyOpen=true; return b; }
+function diceyIntro(){ if(!_diceyEl)return; try{ DeckOS.store.set('dicey_seen',1); }catch(e){} diceyWhirl(); clearTimeout(_diceyTimer);
+  const b=diceyMakeBubble(); if(!b)return;
+  b.innerHTML='<div class="dicey-hd"><b>🎲 Dicey</b><button class="dicey-x" title="Close">✕</button></div>'+
+    '<div class="dicey-tip"><b>Oh boy, a player!</b> 🐾 Are you new here, or a returning planeswalker?</div>'+
+    '<div class="dicey-foot"><button class="dicey-roll" data-i="new">✨ I’m new!</button><button class="dicey-hide" data-i="ret">Returning</button></div>';
+  b.querySelector('.dicey-x').onclick=()=>{ diceyClosePanel(); diceyScheduleIdle(); };
+  b.querySelector('[data-i="ret"]').onclick=()=>{ diceyClosePanel(); diceySay('Welcome back! Let’s get you signed in.',2400); setTimeout(()=>{ try{ mgLaunchApp('account'); }catch(e){} diceyScheduleIdle(); }, 600); };
+  b.querySelector('[data-i="new"]').onclick=()=>{ diceyIntroAskTour(); };
+}
+function diceyIntroAskTour(){ const b=diceyMakeBubble(); if(!b)return;
+  b.innerHTML='<div class="dicey-hd"><b>🎲 Dicey</b><button class="dicey-x" title="Close">✕</button></div>'+
+    '<div class="dicey-tip">Welcome! 🎉 Want the grand tour? I’ll zip through everything and even show you how it works!</div>'+
+    '<div class="dicey-foot"><button class="dicey-roll" data-t="go">Show me! 🎲</button><button class="dicey-hide" data-t="no">I’ll explore</button></div>';
+  b.querySelector('.dicey-x').onclick=()=>{ diceyClosePanel(); diceyScheduleIdle(); };
+  b.querySelector('[data-t="no"]').onclick=()=>{ diceyClosePanel(); diceySay('You got it! Click me anytime — I’ll help you find anything.',3000); diceyScheduleIdle(); };
+  b.querySelector('[data-t="go"]').onclick=()=>diceyTour(1);
+}
+// The guided tour: each step says a line and DOES something (open apps, pin widgets, record a game,
+// change the bg, make mana, peek the Land Game + splash). Replayable at any speed.
+let _diceyTourT=null, _diceyTourApp=null;
+function diceyOpenApp(key){ if(_diceyTourApp&&_diceyTourApp!==key){ try{ mgwClose(_diceyTourApp); }catch(e){} _diceyTourApp=null; } if(key){ _diceyTourApp=key; try{ mgLaunchApp(key); }catch(e){} } }
+function diceyClick(sel,times){ const els=document.querySelectorAll(sel); const n=Math.min(times||1, els.length); for(let i=0;i<n;i++){ (function(el,d){ setTimeout(()=>{ try{ el.click(); }catch(e){} }, d); })(els[i], i*200); } }
+const DICEY_TOUR=[
+  { say:"This is your card workbench — search any card (even partial, like “Lightning B”) and click to add it to a deck.", ms:3600, run:()=>diceyOpenApp(null) },
+  { say:"All your saved decks live in here. 📂", ms:2800, run:()=>diceyOpenApp('decks') },
+  { say:"Pin handy widgets to your desktop — watch, here’s a deck list!", ms:3200, run:()=>{ diceyOpenApp(null); try{ widgetMount('decklist'); }catch(e){} } },
+  { say:"Pool your mana when you’re playing in paper — tap to add!", ms:3400, run:()=>{ diceyOpenApp('manapool'); setTimeout(()=>diceyClick('#modal-prog-manapool .mp-dot',3),550); } },
+  { say:"Track your matches in 2040 — Start Match, then log each game. Look, I’ll start one!", ms:3800, run:()=>{ diceyOpenApp('twentyfourty'); setTimeout(()=>{ diceyClick('[data-tf="start"]',1); setTimeout(()=>diceyClick('[data-tf="mull"]',1),500); },550); } },
+  { say:"See tournaments happening near you with this widget. 🏆", ms:3000, run:()=>{ diceyOpenApp(null); try{ widgetMount('tournaments'); }catch(e){} } },
+  { say:"Make it yours — fresh desktop color! ✨", ms:2600, run:()=>{ try{ deskBgSet('#21323f'); }catch(e){} } },
+  { say:"The Land Game! …I’d CRUSH the computer every time, if only they’d let ME play. 😤", ms:3800, run:()=>diceyOpenApp('landgame') },
+  { say:"Cardle’s the daily card mystery — guess the card from clues. 🃏", ms:3200, run:()=>diceyOpenApp('cardle') },
+  { say:"And your Splash page shows a deck off in style.", ms:3200, run:()=>diceyOpenApp('splash') },
+];
+function diceyTour(speed){ if(!_diceyEl)return; speed=speed||1; clearTimeout(_diceyTourT); clearTimeout(_diceyTimer); _diceyOpen=true; let i=0;
+  const run=()=>{ if(!_diceyEl||i>=DICEY_TOUR.length){ diceyTourFinish(speed); return; } const s=DICEY_TOUR[i++]; try{ s.run&&s.run(); }catch(e){} diceyTourSay(s.say,false); _diceyTourT=setTimeout(run,(s.ms||3200)/speed); };
+  diceyWhirl(); run();
+}
+function diceyTourSay(text,finalReplay){ const b=diceyMakeBubble(); if(!b)return;
+  b.innerHTML='<div class="dicey-hd"><b>🎲 Dicey’s tour</b><button class="dicey-x" title="Skip">✕</button></div>'+
+    '<div class="dicey-tip">'+_mgEsc(text)+'</div>'+
+    (finalReplay?'<div class="dicey-foot"><button class="dicey-roll" data-sp="1">▶ Replay</button><button class="dicey-hide" data-sp="0.5">0.5×</button><button class="dicey-hide" data-sp="2">2×</button></div>':'<div class="dicey-foot"><button class="dicey-hide" data-skip="1">Skip ⏭</button></div>');
+  b.querySelector('.dicey-x').onclick=diceyTourEnd;
+  const sk=b.querySelector('[data-skip]'); if(sk)sk.onclick=diceyTourEnd;
+  b.querySelectorAll('[data-sp]').forEach(x=>x.onclick=()=>diceyTour(parseFloat(x.getAttribute('data-sp'))));
+}
+function diceyTourFinish(speed){ if(_diceyTourApp){ try{ mgwClose(_diceyTourApp); }catch(e){} _diceyTourApp=null; } diceyWhirl(); diceyTourSay("That’s the grand tour! 🎉 Click me anytime to find a feature — or replay.",true); }
+function diceyTourEnd(){ clearTimeout(_diceyTourT); _diceyTourT=null; if(_diceyTourApp){ try{ mgwClose(_diceyTourApp); }catch(e){} _diceyTourApp=null; } diceyClosePanel(); _diceyOpen=false; diceyScheduleIdle(); }
 window.addEventListener('resize',()=>{ if(_diceyEl){ const r=_diceyEl.getBoundingClientRect(); _diceyEl.style.left=Math.max(2,Math.min(r.left,window.innerWidth-66))+'px'; _diceyEl.style.top=Math.max(2,Math.min(r.top,window.innerHeight-66))+'px'; } });
 function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();siteRestore();if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('deck');}
 async function mgAddGuessToDeck(c){
