@@ -1518,6 +1518,15 @@
     @keyframes lg-lifelow{50%{opacity:.5}}
     .lg-ele{font-size:12px;font-weight:bold;color:#cdeacd;background:rgba(40,90,50,.5);border:1px solid #3a7d4c;border-radius:5px;padding:1px 6px}
     .lg-ele.sick{color:#9aa6b6;background:rgba(60,64,72,.5);border-color:#4a505c}
+    /* the elephant as a creature on the battlefield */
+    .lg-elerow{display:flex;justify-content:center;align-items:center;min-height:64px}
+    .lg-elecard{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:74px;height:58px;border-radius:8px;background:radial-gradient(circle at 50% 35%,#3f6b46,#22351f);border:2px solid #5aa86a;box-shadow:0 2px 5px rgba(0,0,0,.5);transition:transform .15s}
+    .lg-elecard.mine{border-color:#ffd700;box-shadow:0 0 10px rgba(255,215,0,.4)}
+    .lg-elecard.tapped{transform:rotate(18deg);filter:saturate(.6) brightness(.85)}
+    .lg-elecard.exiled{background:repeating-linear-gradient(45deg,#2a2230,#2a2230 5px,#352a3e 5px,#352a3e 10px);border-color:#6a5a7c;border-style:dashed;color:#b8a8cc;font-size:10px;line-height:1.1;text-align:center}
+    .lg-ele-em{font-size:22px;line-height:1}
+    .lg-ele-pt{position:absolute;top:2px;right:5px;font-size:12px;font-weight:bold;color:#fff;text-shadow:0 1px 2px #000}
+    .lg-ele-tags{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:10px}
     .lg-bars{display:flex;gap:6px;width:100%}
     .lg-bar5,.lg-bar6{position:relative;flex:1;height:13px;border-radius:7px;background:#0d0d0d;border:1px solid #000;overflow:hidden}
     .lg-bar5 i,.lg-bar6 i{display:block;height:100%;transition:width .3s ease}
@@ -6857,14 +6866,14 @@ const LG_FMT_DATA={
             ['🌲','Forest','When it enters, return one land from your graveyard to your hand.'],
             ['◇','Wastes','When it enters, draw a card.'] ] },
   elephants:{ icon:'🐘', name:'Elephants', play:true, combat:true, startLife:20,
-    blurb:'The Land Game — same decks, same land abilities — but each player also fields a <b>3/3 indestructible elephant with trample</b>. Tap <b>⚔️ Attack</b> on your turn to swing for 3. The player on the play can’t attack turn one (summoning sickness) and skips their first draw; the player on the draw swings freely and draws. Win by lands (five-of-a-kind or six types) <b>or</b> by dropping your opponent to 0 life. Local play for now.',
-    lands:[ ['🌾','Plains','When it enters, you may flicker one of your other lands to re-trigger its enter ability.'],
-            ['🏝️','Island','No enter ability; discard an Island + exile a matching card to counter a land on the stack.'],
-            ['💀','Swamp','When it enters, the opponent discards a card of their choice.'],
-            ['⛰️','Mountain','When it enters, destroy one land an opponent controls.'],
-            ['🌲','Forest','When it enters, return a land from your graveyard to hand.'],
-            ['◇','Wastes','When it enters, draw a card.'],
-            ['🐘','Elephant','You start with one — a 3/3 indestructible with trample. ⚔️ Attack for 3 on your turn (not turn one if you’re on the play).'] ] }
+    blurb:'Each player has a <b>3/3 indestructible elephant with trample</b> and 20 life. Here the lands aren’t permanents — each is a <b>one-per-turn instant-style spell that targets a creature</b>. ⚔️ Attack with your elephant: the defender may block with their untapped elephant, and trample carries the leftover (power − blocker toughness) to the face. The player on the play is summoning-sick turn one and skips their first draw; the player on the draw swings and draws. <b>Win by dropping your opponent to 0 life.</b> Local play.',
+    lands:[ ['🌾','Plains','Exile target creature; it returns at the end of turn (summoning sick) — blink your own, or remove a blocker.'],
+            ['🏝️','Island','Target creature gains flying until end of turn (unblockable by a grounded elephant); scry 1.'],
+            ['💀','Swamp','Target creature gets -0/-2 until end of turn — shrink a blocker so more tramples through.'],
+            ['⛰️','Mountain','Target creature gets +3/+0 until end of turn — the alpha-strike pump.'],
+            ['🌲','Forest','Target creature gets +1/+2 until end of turn and untaps — swing again or set up a block.'],
+            ['◇','Wastes','Target creature gets +1/+1 until end of turn and you draw a card.'],
+            ['🐘','Elephant','You start with one — a 3/3 indestructible with trample. Attack for its power on your turn (not turn one if you’re on the play).'] ] }
 };
 function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
   document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
@@ -6906,7 +6915,7 @@ function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode=
   const fmt=_lgM.fmt; const fd=LG_FMT_DATA[fmt]||LG_FMT_DATA.land; const combat=!!fd.combat;
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
   const players=[lgMakePlayer(names[0]),lgMakePlayer(names[1])];
-  if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ p:3, t:3, sick:i===0 }; }); // P1 (on the play) is summoning-sick turn 1
+  if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ dp:0, dt:0, flying:false, tapped:false, sick:i===0, exiled:false }; }); // 3/3 base; P1 (on the play) is summoning-sick turn 1
   _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Their elephant has summoning sickness.':'')] };
   lgSetTitle('Basics — '+fd.name); lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
@@ -6915,14 +6924,45 @@ function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.lengt
 function lgWinner(){ for(let i=0;i<2;i++){ const f=_lg.players[i].field; if(LG_TYPES.some(t=>f[t]>=5)||LG_TYPES.filter(t=>f[t]>0).length>=6)return i; }
   if(_lg.combat){ for(let i=0;i<2;i++){ if((_lg.players[i].life||0)<=0)return 1-i; } } // dropped to 0 life
   return null; }
-// Elephant swings for 3 (trample, indestructible). Only on your turn, once, and not while sick.
+// ── Elephants combat: lands are one-per-turn instant-style spells that target a creature; the 3/3
+// indestructible elephants attack the face, the defender may block, and trample carries the excess. ──
+function lgElePow(e){ return 3+(e.dp||0); }
+function lgEleTou(e){ return 3+(e.dt||0); }
+function lgSpellEffect(type,tgtKey,te,nm){
+  if(type==='mountain'){ te.dp+=3; _lg.log.push('+3/+0 to '+nm+'.'); }
+  else if(type==='forest'){ te.dp+=1; te.dt+=2; te.tapped=false; _lg.log.push('+1/+2 and untap '+nm+'.'); }
+  else if(type==='wastes'){ te.dp+=1; te.dt+=1; _lg.log.push('+1/+1 to '+nm+'.'); }
+  else if(type==='swamp'){ te.dt-=2; _lg.log.push('-0/-2 to '+nm+'.'); }
+  else if(type==='island'){ te.flying=true; _lg.log.push(nm+' gains flying.'); }
+  else if(type==='plains'){ te.exiled=true; _lg.log.push(nm+' is exiled — returns at end of turn (summoning sick).'); }
+}
+function lgSpellAfter(type,ci){ const me=_lg.players[ci];
+  if(type==='wastes'){ lgDraw(ci); _lg.log.push(me.name+' draws (Wastes).'); }
+  else if(type==='island' && me.deck.length){ const top=me.deck[0];
+    lgChoose(ci,'Scry 1 — '+LG_NAME[top]+' on top. Keep it or bottom?',[{label:'Keep on top',value:'top'},{label:'To bottom',value:'bot'}], v=>{ if(v==='bot'){ me.deck.push(me.deck.shift()); _lg.log.push(me.name+' scries the top card to the bottom.'); } else _lg.log.push(me.name+' keeps the top card.'); },'scry'); }
+}
+function lgCastSpell(type,tgtOverride){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; const ci=_lg.active, me=_lg.players[ci], opp=_lg.players[1-ci];
+  const hi=me.hand.indexOf(type); if(hi<0)return;
+  const tgts=[]; if(me.ele&&!me.ele.exiled)tgts.push({label:'🐘 Your elephant',value:'me'}); if(opp.ele&&!opp.ele.exiled)tgts.push({label:'🐘 '+opp.name+'’s elephant',value:'opp'});
+  if(!tgts.length){ _lg.log.push('No legal target for '+LG_NAME[type]+'.'); return; }
+  me.hand.splice(hi,1); me.gy.push(type); _lg.castThisTurn=true; _lg.log.push(me.name+' casts '+LG_NAME[type]+'.');
+  const apply=v=>{ const te=(v==='me'?me:opp).ele; lgSpellEffect(type,v,te, v==='me'?'their elephant':'the opposing elephant'); lgSpellAfter(type,ci); };
+  const choice = tgtOverride || (tgts.length===1 ? tgts[0].value : null);
+  if(choice){ apply(choice); lgRerender(); }
+  else { lgChoose(ci,'Choose a target for '+LG_NAME[type]+':', tgts, apply, 'target'); _lg.mode='choose'; lgRerender(); }
+}
 function lgAttack(){ if(!_lg||!_lg.combat||_lg.mode!=='turn'||_lg.attackedThisTurn||_lg.winner!=null)return;
-  const me=_lg.players[_lg.active], e=me.ele; if(!e||e.sick)return; const opp=_lg.players[1-_lg.active];
-  opp.life-=e.p; _lg.attackedThisTurn=true;
-  _lg.log.push(me.name+'’s elephant tramples for '+e.p+' — '+opp.name+' → '+Math.max(0,opp.life)+' life.');
-  if(lgCheckWin())return; lgRerender(); }
+  const ci=_lg.active, me=_lg.players[ci], e=me.ele; if(!e||e.sick||e.tapped||e.exiled)return; const de=_lg.players[1-ci].ele;
+  e.tapped=true; _lg.attackedThisTurn=true; _lg.log.push(me.name+'’s elephant ('+lgElePow(e)+'/'+lgEleTou(e)+') attacks.');
+  const canBlock = de && !de.tapped && !de.exiled && (!e.flying || de.flying);
+  if(canBlock){ lgChoose(1-ci,'Block the '+lgElePow(e)+'/'+lgEleTou(e)+' attacker?',[{label:'🛡 Block',value:'block'},{label:'🚫 Take '+lgElePow(e),value:'no'}], v=>lgResolveCombat(ci, v==='block'), 'block'); _lg.mode='choose'; lgRerender(); }
+  else lgResolveCombat(ci, false); }
+function lgResolveCombat(ci, blocked){ const me=_lg.players[ci], opp=_lg.players[1-ci], e=me.ele, de=opp.ele;
+  if(blocked){ const tramp=Math.max(0, lgElePow(e)-lgEleTou(de)); opp.life-=tramp; _lg.log.push(tramp>0?('Blocked — '+tramp+' tramples over → '+opp.name+' '+Math.max(0,opp.life)+'.'):'Blocked — nothing tramples over.'); }
+  else { opp.life-=lgElePow(e); _lg.log.push('Unblocked — '+lgElePow(e)+' to '+opp.name+' → '+Math.max(0,opp.life)+'.'); }
+  if(lgCheckWin())return; _lg.mode='turn'; lgRerender(); }
 function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; _lg.log.push('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
-function lgCast(type){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
+function lgCast(type){ if(_lg.mode!=='turn'||_lg.castThisTurn)return; if(_lg.combat){ lgCastSpell(type); return; } const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; _lg.log.push(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
 function lgGivePriority(who){ const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===who){ lgResolveTop(); return; } // you don't respond to your own top-of-stack object — resolve it
   _lg.mode='respond'; _lg.priority=who; _lg.lastPass=null; lgRerender(); }
 function lgCounter(){ if(_lg.mode!=='respond')return; const me=_lg.priority; if(!lgCanCounter(me))return; const p=_lg.players[me]; const t=lgStackTopType();
@@ -6938,7 +6978,7 @@ function lgResolveTop(){ const item=_lg.stack.pop(); if(!item){ lgAfterResolve()
   lgContinue(); }
 function lgContinue(){ if(_lg.winner!=null)return; if(lgCheckWin())return; if(_lg.choice){ _lg.mode='choose'; lgRerender(); return; } lgAfterResolve(); }
 function lgAfterResolve(){ if(_lg.stack.length){ lgGivePriority(_lg.active); return; } _lg.mode='turn'; _lg.priority=_lg.active;
-  if(_lg.castThisTurn){ lgEndTurn(); return; } // your land has resolved and there's nothing else to do — end the turn automatically
+  if(_lg.castThisTurn && !_lg.combat){ lgEndTurn(); return; } // Land Game: land resolved, nothing else to do — auto-end. (Elephants: you may still attack, so don't.)
   lgRerender(); }
 function lgChoose(who,prompt,options,onPick,kind){ _lg.choice={who,prompt,options,onPick,kind}; }
 function lgPick(v){ const c=_lg.choice; if(!c)return; _lg.choice=null; c.onPick(v); lgContinue(); }
@@ -6951,8 +6991,9 @@ function lgETB(type,ctrl){ const me=_lg.players[ctrl], opp=_lg.players[1-ctrl];
 }
 function lgEndTurn(){ if(_lg.mode!=='turn')return; const a=_lg.players[_lg.active];
   if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); _lg.log.push(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }, 'discard'); _lg.mode='choose'; lgRerender(); return; }
+  if(_lg.combat){ _lg.players.forEach(p=>{ const e=p.ele; if(!e)return; e.dp=0; e.dt=0; e.flying=false; if(e.exiled){ e.exiled=false; e.tapped=false; e.sick=true; } }); } // end-of-turn: buffs wear off; exiled elephants return (summoning-sick)
   _lg.active=1-_lg.active; _lg.turn++; _lg.castThisTurn=false; _lg.attackedThisTurn=false;
-  if(_lg.combat){ const e=_lg.players[_lg.active].ele; if(e)e.sick=false; } // summoning sickness wears off as your turn begins
+  if(_lg.combat){ const e=_lg.players[_lg.active].ele; if(e){ e.tapped=false; e.sick=false; } } // untap step + summoning sickness wears off at your turn start
   lgDraw(_lg.active); // every turn after P1's first draws (P1 skipped its turn-1 draw at game start)
   _lg.mode='turn'; _lg.priority=_lg.active; _lg.log.push('— '+_lg.players[_lg.active].name+"'s turn —"); lgRerender(); }
 // ── Computer opponent ("Normal" heuristic). Drives the same transitions a human would. ──
@@ -6960,7 +7001,11 @@ function lgTypesInPlay(f){ return LG_TYPES.filter(t=>f[t]>0).length; }
 function lgMaybeCpu(){ if(!_lg||_lg.mode2!=='cpu'||_lg.winner!=null)return; if(lgActor()!==_lg.cpu)return; if(_lg._cpuPending)return;
   _lg._cpuPending=true; setTimeout(()=>{ if(!_lg)return; _lg._cpuPending=false; lgCpuAct(); }, 700); }
 function lgCpuAct(){ if(!_lg||_lg.winner!=null||lgActor()!==_lg.cpu)return;
-  if(_lg.mode==='turn'){ if(_lg.combat && !_lg.attackedThisTurn){ const e=_lg.players[_lg.cpu].ele; if(e&&!e.sick){ lgAttack(); return; } } const t=(!_lg.castThisTurn)?lgCpuPickPlay():null; if(t)lgCast(t); else lgEndTurn(); return; }
+  if(_lg.mode==='turn'){
+    if(_lg.combat){ if(!_lg.castThisTurn){ const pick=lgCpuPickSpell(); if(pick){ lgCastSpell(pick.type,pick.tgt); return; } }
+      const e=_lg.players[_lg.cpu].ele; if(!_lg.attackedThisTurn && e && !e.sick && !e.tapped && !e.exiled){ lgAttack(); return; }
+      lgEndTurn(); return; }
+    const t=(!_lg.castThisTurn)?lgCpuPickPlay():null; if(t)lgCast(t); else lgEndTurn(); return; }
   if(_lg.mode==='respond'){ if(lgCanCounter(_lg.cpu)&&lgCpuShouldCounter())lgCounter(); else lgPassPriority(); return; }
   if(_lg.mode==='choose'){ lgPick(lgCpuChoose(_lg.choice)); return; } }
 function lgCpuPickPlay(){ const me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu], mf=me.field, of=opp.field;
@@ -6988,7 +7033,22 @@ function lgCpuShouldCounter(){ const top=_lg.stack[_lg.stack.length-1]; if(!top|
   if(t==='mountain'){ const myMax=Math.max(0,...LG_TYPES.map(x=>mf[x])); if(myMax>=4)return true; if(myMax>=3&&myIsl>=2)return true; }
   if(of[t]===0 && lgTypesInPlay(of)+1>=5 && myIsl>=2)return true;  // getting dangerously broad — spare an Island
   return false; }
+// Elephants: pick a spell (and its target) — pump the attacker, deny a blocker, or grab value.
+function lgCpuPickSpell(){ const me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu], h=new Set(me.hand);
+  if(!h.size)return null; const e=me.ele, oe=opp.ele;
+  const canAtk = e && !e.sick && !e.tapped && !e.exiled;
+  const oppBlocks = oe && !oe.tapped && !oe.exiled;
+  if(canAtk && oppBlocks && h.has('island'))return {type:'island',tgt:'me'};      // flying = unblockable swing
+  if(canAtk && oppBlocks && h.has('plains'))return {type:'plains',tgt:'opp'};      // exile the blocker, swing free
+  if(canAtk && h.has('mountain'))return {type:'mountain',tgt:'me'};                // +3/+0 alpha strike
+  if(canAtk && oppBlocks && h.has('swamp'))return {type:'swamp',tgt:'opp'};        // shrink blocker → more trample
+  if(h.has('wastes'))return {type:'wastes',tgt:'me'};                              // +1/+1 and draw
+  if(canAtk && h.has('forest'))return {type:'forest',tgt:'me'};                    // +1/+2 (untap is moot when fresh)
+  return null; }
 function lgCpuChoose(c){ const opts=c.options, me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu];
+  if(c.kind==='block')return 'block';   // blocking only reduces damage (indestructible) — always do it
+  if(c.kind==='scry')return 'top';      // keep the top card (it's a fresh draw toward more spells)
+  if(c.kind==='target')return opts[0].value; // CPU casts with an explicit target, so this rarely fires
   if(c.kind==='mountain'){ let v=opts[0].value, n=-1; for(const o of opts){ const k=opp.field[o.value]||0; if(k>n){n=k;v=o.value;} } return v; } // smash their tallest
   if(c.kind==='forest'){ const rank={mountain:5,wastes:4,swamp:3,forest:2,plains:1,island:0}; let v=opts[0].value, r=-1; for(const o of opts){ const k=rank[me.gy[o.value]]||0; if(k>r){r=k;v=o.value;} } return v; }
   if(c.kind==='plains'){ if(opts.some(o=>o.value==='mountain')&&LG_TYPES.some(t=>opp.field[t]>0))return 'mountain'; if(opts.some(o=>o.value==='wastes'))return 'wastes'; const real=opts.filter(o=>o.value!=='__none__'); return real.length?real[0].value:'__none__'; }
@@ -7050,11 +7110,17 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
       return '<div class="lg-pilegrp'+(can?' lg-sel':'')+(n>=5?' max':'')+'"'+(can?(' data-pick="'+t+'"'):'')+' title="'+LG_NAME[t]+' ×'+n+'"><div class="lg-pilecards">'+cards+'</div></div>'; });
     return '<div class="lg-played">'+piles.join('')+'</div>'; };
   const pname=pi=>(_lg.names&&_lg.names[pi])||(_lg.players[pi]&&_lg.players[pi].name)||('Player '+(pi+1));
-  const combatStrip=pi=>{ const p=_lg.players[pi], e=p.ele, sick=!!(e&&e.sick);
-    return '<div class="lg-combat"><span class="lg-life'+((p.life||0)<=5?' low':'')+'">❤ '+Math.max(0,p.life||0)+'</span>'+(e?'<span class="lg-ele'+(sick?' sick':'')+'" title="3/3 indestructible · trample'+(sick?' · summoning sick this turn':'')+'">🐘 '+e.p+'/'+e.t+(sick?' 💤':'')+'</span>':'')+'</div>'; };
+  const combatStrip=pi=>{ const p=_lg.players[pi];
+    return '<div class="lg-combat"><span class="lg-life'+((p.life||0)<=5?' low':'')+'">❤ '+Math.max(0,p.life||0)+'</span></div>'; };
+  // The elephant as a creature on the battlefield: live P/T + flying / tapped / sick / exiled status.
+  const eleRow=pi=>{ const e=_lg.players[pi].ele; if(!e)return '<div class="lg-elerow"></div>';
+    if(e.exiled)return '<div class="lg-elerow"><div class="lg-elecard exiled">✦<br>exiled</div></div>';
+    const pow=lgElePow(e), tou=lgEleTou(e), tags=[]; if(e.flying)tags.push('🪶'); if(e.sick)tags.push('💤'); if(e.tapped)tags.push('↻');
+    return '<div class="lg-elerow"><div class="lg-elecard'+(e.tapped?' tapped':'')+(pi===_lg.active?' mine':'')+'"><span class="lg-ele-pt">'+pow+'/'+tou+'</span><span class="lg-ele-em">🐘</span>'+(tags.length?'<span class="lg-ele-tags">'+tags.join(' ')+'</span>':'')+'</div></div>'; };
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
     const clk=_lg.clocks?('<span class="lg-clock" data-clk="'+pi+'">'+lgFmtTime(_lg.clocks[pi])+'</span>'):'';
-    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-phead"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pname">'+_mgEsc(pname(pi))+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div>'+clk+'</div>'+(_lg.combat?combatStrip(pi):'')+'<div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div></div>'; };
+    const bars=_lg.combat?'':'<div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div>';
+    return '<div class="lg-plate'+(pi===_lg.active?' turn':'')+'"><div class="lg-phead"><div class="lg-portrait">'+(pi===_lg.cpu?'🤖':'🧙')+'</div><div class="lg-pname">'+_mgEsc(pname(pi))+(pi===_lg.active?'<span class="lg-dot">● turn</span>':'')+'</div>'+clk+'</div>'+(_lg.combat?combatStrip(pi):'')+bars+'</div>'; };
   const fan=(pi,click)=>{ const h=_lg.players[pi].hand; if(!h.length)return '<div class="lg-handfan"><span class="lg-handlbl">(empty hand)</span></div>'; const n=h.length;
     const handSel = choosing && (choosing.kind==='discard'||choosing.kind==='swamp') && pi===me; // pick a card to discard
     return '<div class="lg-handfan">'+h.map((t,i)=>{ const rot=((i-(n-1)/2)*4).toFixed(1), dy=(Math.abs(i-(n-1)/2)*5).toFixed(0); return '<div class="lg-bigcard'+(click?' playable':'')+(handSel?' lg-sel':'')+'" data-h="'+i+'" data-t="'+t+'"'+(handSel?(' data-pick="'+i+'"'):'')+' style="'+cvars(t)+';transform:rotate('+rot+'deg) translateY('+dy+'px)">'+cardInner(t)+'</div>'; }).join('')+'</div>'; };
@@ -7074,9 +7140,11 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   let cBan='', cBtn=''; // banner sits above the centre divider; buttons go below it (player's side)
   if(_lg.mode2==='cpu'&&actor===_lg.cpu){ cBan='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
   else if(_lg.mode2==='online'&&actor!=null&&actor!==me&&_lg.mode!=='over'){ cBan='<div class="lg-banner lg-think">⏳ '+_mgEsc(pname(actor))+'…</div>'; }
-  else if(_lg.mode==='turn'){ cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'; if(canAct){ const e=_lg.combat&&_lg.players[me].ele, canAtk=e&&!e.sick&&!_lg.attackedThisTurn; cBtn=(canAtk?'<button class="btn small primary" id="lg-attack">⚔️ Attack for '+e.p+'</button>':'')+'<button class="btn small" id="lg-end">End turn ▸</button>'; } }
+  else if(_lg.mode==='turn'){ cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — your turn'+(_lg.combat?(_lg.castThisTurn?' · spell cast':''):(_lg.castThisTurn?' · land played':''))+'</div>'; if(canAct){ const e=_lg.combat&&_lg.players[me].ele, canAtk=e&&!e.sick&&!e.tapped&&!e.exiled&&!_lg.attackedThisTurn; cBtn=(canAtk?'<button class="btn small primary" id="lg-attack">⚔️ Attack for '+lgElePow(e)+'</button>':'')+'<button class="btn small" id="lg-end">End turn ▸</button>'; } }
   else if(_lg.mode==='respond'){ const pr=_lg.priority, tt=lgStackTopType(); cBan='<div class="lg-banner">'+_mgEsc(pname(pr))+' — respond?</div>'; if(canAct)cBtn=(lgCanCounter(pr)?'<button class="btn small primary" id="lg-counter">🏝️ Counter ('+LG_NAME[tt]+')</button>':'')+'<button class="btn small" id="lg-pass">Pass</button>'; }
-  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=(c.options||[]).find(o=>o.value==='__none__'); cBan='<div class="lg-banner">'+_mgEsc(pname(c.who))+'</div><div class="lg-prompt">'+_mgEsc(c.prompt||'')+'</div>'; if(canAct)cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); }
+  else if(_lg.mode==='choose'){ const c=_lg.choice; const skip=(c.options||[]).find(o=>o.value==='__none__'); cBan='<div class="lg-banner">'+_mgEsc(pname(c.who))+'</div><div class="lg-prompt">'+_mgEsc(c.prompt||'')+'</div>';
+    if(canAct){ if(c.kind==='block'||c.kind==='target'||c.kind==='scry'){ cBtn=(c.options||[]).map(o=>'<button class="btn small'+(o.value==='block'||o.value==='top'||o.value==='me'?' primary':'')+'" data-pick="'+o.value+'">'+_mgEsc(o.label)+'</button>').join(''); } // Elephants choices use buttons, not card-tapping
+      else cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); } }
   else if(_lg.mode==='over'){ const r=_lg.reason==='time'?' (on time)':(_lg.reason==='resign'?' (resign)':''); cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(pname(_lg.winner))+' wins!'+r+'</div>'; cBtn='<button class="btn small primary" id="lg-again">'+(_lg.mode2==='online'?'↩ Menu':'Play again')+'</button>'; }
   body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
@@ -7084,7 +7152,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div>'+(_lg.mode2!=='online'?'<label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label>':'')+'<button class="btn small" id="lg-quit" style="margin-top:8px;width:100%">⮐ End game · back to menu</button></div>'):'')+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
-    '<div class="lg-mid">'+playedRow(opp)+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+playedRow(me)+'</div>'+
+    '<div class="lg-mid">'+(_lg.combat?eleRow(opp):playedRow(opp))+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+(_lg.combat?eleRow(me):playedRow(me))+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+(_lg.mode2==='online'&&_lg.mode!=='over'?'<div class="lg-bar" style="margin-top:10px"><button class="btn small" id="lg-resign">🏳 Resign</button></div>':'')+'</div>'+
     '<div class="lg-pgy">'+gyZone(me)+'</div>'+
     deckMine()+
