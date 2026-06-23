@@ -124,7 +124,24 @@ try {
       assert(cc.status === 200 && cc.body.solved && cc.body.done && cc.body.answer && cc.body.answer.name === cans, 'correct guess → solved + answer revealed');
       assert(cc.body.stats && cc.body.stats.solved >= 1 && typeof cc.body.stats.avgClues === 'number', 'cardle stats track avgClues');
     } else { console.log('  (skipped cardle correct-guess assert: no DB access)'); }
-  } else { console.log('  (skipped lg online + cardle asserts: no JWT_SECRET)'); }
+
+    // --- 2040 match history (server sync) ---
+    const G = tok(990700 + Math.floor(Math.random()*9000), 'smoke_G'), H2 = tok(990800 + Math.floor(Math.random()*9000), 'smoke_H');
+    const tfm = { ts: Date.now(), opponent:'Bob', myDeck:'Mono-U', theirDeck:'Mono-R', notes:'gg', games:[{result:'W',mulligans:1},{result:'L',mulligans:0},{result:'W',mulligans:2}], result:'W' };
+    const tfAdd = await Ja('/tf/match', { method:'POST', body: JSON.stringify(tfm) }, G);
+    assert(tfAdd.status === 200 && tfAdd.body.id, 'POST /tf/match → id');
+    const tfList = await Ja('/tf/matches', null, G);
+    assert(tfList.status === 200 && tfList.body.matches.length >= 1 && tfList.body.matches[0].opponent === 'Bob' && tfList.body.matches[0].games.length === 3, 'GET /tf/matches → my match');
+    const tfOther = await Ja('/tf/matches', null, H2);
+    assert(tfOther.status === 200 && tfOther.body.matches.length === 0, 'tf history is per-account (isolated)');
+    const tfBad = await Ja('/tf/match', { method:'POST', body: JSON.stringify({ games:[] }) }, G);
+    assert(tfBad.status === 400, 'POST /tf/match with no games → 400');
+    const tfDel = await Ja('/tf/match/' + tfAdd.body.id, { method:'DELETE' }, G);
+    const tfAfter = await Ja('/tf/matches', null, G);
+    assert(tfDel.status === 200 && tfAfter.body.matches.length === 0, 'DELETE /tf/match removes it');
+    const tfNoAuth = await Ja('/tf/matches', null, null);
+    assert(tfNoAuth.status === 401, 'GET /tf/matches without auth → 401');
+  } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
 }

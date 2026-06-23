@@ -3259,6 +3259,34 @@ app.post('/api/cardle/guess', { preHandler:[authenticate, rateLimitLg] }, async 
 });
 app.get('/api/cardle/stats', { preHandler:authenticate }, async (req)=> cardleStats(req.user.sub) );
 
+// ===== 2040 match tracker — server-synced match history (per account) =====
+db.exec(`CREATE TABLE IF NOT EXISTS tf_matches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, ts INTEGER NOT NULL,
+  opponent TEXT, my_deck TEXT, their_deck TEXT, notes TEXT, games TEXT NOT NULL DEFAULT '[]',
+  result TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch()) )`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_tf_user ON tf_matches(user_id, ts DESC)`);
+const _tfClip=(s,n)=>(typeof s==='string'?s.trim().slice(0,n):'');
+function tfRowOut(r){ let games=[]; try{ games=JSON.parse(r.games||'[]'); }catch(_){}
+  return { id:'s'+r.id, ts:r.ts, opponent:r.opponent||'', myDeck:r.my_deck||'', theirDeck:r.their_deck||'', notes:r.notes||'', games, result:r.result||'' }; }
+function tfValidGames(g){ if(!Array.isArray(g))return []; return g.slice(0,11).map(x=>({ result:(x&&['W','L','D'].includes(x.result))?x.result:'D', mulligans:Math.max(0,Math.min(9,parseInt(x&&x.mulligans)||0)) })); }
+app.get('/api/tf/matches', { preHandler:authenticate }, async (req)=>{
+  const rows=db.prepare('SELECT * FROM tf_matches WHERE user_id=? ORDER BY ts DESC LIMIT 400').all(req.user.sub);
+  return { matches: rows.map(tfRowOut) };
+});
+app.post('/api/tf/match', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const b=req.body||{}; const games=tfValidGames(b.games); if(!games.length) return reply.code(400).send({error:'No games in match.'});
+  const ts=Number.isFinite(+b.ts)?+b.ts:Date.now();
+  const result=['W','L','D'].includes(b.result)?b.result:'D';
+  const info=db.prepare(`INSERT INTO tf_matches (user_id,ts,opponent,my_deck,their_deck,notes,games,result) VALUES (?,?,?,?,?,?,?,?)`)
+    .run(req.user.sub, ts, _tfClip(b.opponent,80), _tfClip(b.myDeck,80), _tfClip(b.theirDeck,80), _tfClip(b.notes,500), JSON.stringify(games), result);
+  return { id:'s'+info.lastInsertRowid };
+});
+app.delete('/api/tf/match/:id', { preHandler:authenticate }, async (req)=>{
+  const id=parseInt(String(req.params.id).replace(/^s/,''),10);
+  if(Number.isFinite(id)) db.prepare('DELETE FROM tf_matches WHERE id=? AND user_id=?').run(id, req.user.sub);
+  return { ok:true };
+});
+
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
   if (err) { app.log.error(err); process.exit(1); }

@@ -1337,6 +1337,29 @@
     .tf-histlist{max-height:280px;overflow:auto}
     .tf-hist-row{display:flex;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid #3a404a;font-size:12px}
     .tf-rW{color:#7CFC00}.tf-rL{color:#ff8a7a}.tf-rD{color:#bcd}
+    /* Match History program */
+    .mh-wrap{font-family:Tahoma,sans-serif;color:#e7eef7;background:#1b1f27;min-height:100%;padding:14px;box-sizing:border-box}
+    .mh-load{color:#9aa6b6;padding:20px;text-align:center}
+    .mh-hd h3{margin:0;font-size:17px;color:#fff}
+    .mh-sub{font-size:11px;color:#8896aa;margin-top:2px}
+    .mh-stats{display:flex;align-items:baseline;gap:14px;background:#232934;border-radius:8px;padding:10px 12px;margin:10px 0}
+    .mh-rec{font-size:22px;font-weight:bold;color:#fff}.mh-rec b{color:#fff}
+    .mh-pct{font-size:18px;font-weight:bold;color:#7de0a0}
+    .mh-meta{font-size:11px;color:#9aa6b6;margin-left:auto}
+    .mh-section{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#8896aa;font-weight:bold;margin:12px 0 5px}
+    .mh-deckrow{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:4px 2px;border-bottom:1px solid #2a313c}
+    .mh-dn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mh-dr{flex:0 0 auto;font-weight:bold;color:#cdd5e0}.mh-dp{color:#7de0a0;font-weight:normal}
+    .mh-list{display:flex;flex-direction:column}
+    .mh-row{display:flex;align-items:center;gap:8px;font-size:12px;padding:6px 2px;border-bottom:1px solid #2a313c}
+    .mh-res{flex:0 0 auto;width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff;font-size:11px}
+    .mh-res.mh-W{background:#2f9b54}.mh-res.mh-L{background:#b33a44}.mh-res.mh-D{background:#7889a0}
+    .mh-sc{flex:0 0 auto;font-weight:bold;color:#cdd5e0;width:40px}
+    .mh-vs{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#dde}
+    .mh-my{color:#8896aa}
+    .mh-dt{flex:0 0 auto;color:#8896aa;font-size:11px}
+    .mh-del{flex:0 0 auto;background:none;border:none;color:#8896aa;cursor:pointer;font-size:13px}.mh-del:hover{color:#ff8a7a}
+    .mh-empty{color:#9aa6b6;font-size:12px;padding:10px 2px}
     .tf-hd{color:#8896aa;flex:0 0 auto}
     /* ===== Dicey — friendly d20 desktop helper ===== */
     #dicey{position:fixed;z-index:6200;width:64px;touch-action:none}
@@ -5651,7 +5674,7 @@ function init(){
   const authBtn=document.querySelector('#modal-auth .btn.primary');
   if(authBtn)authBtn.id='auth-submit-btn';
   // If we have a saved token, pull the latest decks from the server
-  if(state.user&&apiToken())pullDecksFromApi();
+  if(state.user&&apiToken()){ pullDecksFromApi(); if(typeof tfSync==='function')tfSync(); }
   // Load the desktop filesystem (folders + which decks live in them) — this was only ever
   // loaded on the mobile path, so on desktop folders kept resetting. Re-render once it's in.
   if(typeof mgLoadFs==='function')mgLoadFs().then(()=>{ if(typeof mgRenderDesktop==='function'&&document.body.classList.contains('deckos'))mgRenderDesktop(); });
@@ -7117,12 +7140,45 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     else if(a==='mull'){ if(s.tr){ s.tr.curMull=(s.tr.curMull||0)+1; lcSave(); lcRender(body); } }
     else if(a==='next'){ tfResultPrompt(body,'next'); }
     else if(a==='finish'){ tfResultPrompt(body,'finish'); }
-    else if(a==='history'){ tfHistory(body); } }));
+    else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); } }));
 }
 // ---- 2040 match tracker ----
 const TF_WIN_GAMES=2; // best-of-3: a player who reaches 2 game wins has clinched the match
 function tfMatches(){ try{ return DeckOS.store.get('tf_matches')||[]; }catch(e){ return []; } }
 function tfSaveMatches(l){ try{ DeckOS.store.set('tf_matches', l); }catch(e){} }
+// Save a match locally (works offline/guest); when signed in, push it to the server and adopt its id.
+function tfRecord(m){ const list=tfMatches(); list.unshift(m); if(list.length>300)list.length=300; tfSaveMatches(list);
+  if(state.user&&apiToken()){ apiFetch('/tf/match',{method:'POST',body:JSON.stringify(m)}).then(r=>{ if(r&&r.id){ m.id=r.id; tfSaveMatches(tfMatches()); } }).catch(()=>{}); } }
+// Pull server history + push any local-only (offline) matches, then merge → local store.
+async function tfSync(){ if(!(state.user&&apiToken()))return tfMatches();
+  try{ const r=await apiFetch('/tf/matches'); let server=(r&&r.matches)||[];
+    const unsynced=tfMatches().filter(m=>!String(m.id||'').startsWith('s'));
+    for(const m of unsynced){ try{ const res=await apiFetch('/tf/match',{method:'POST',body:JSON.stringify(m)}); if(res&&res.id){ m.id=res.id; server.unshift(m); } }catch(e){} }
+    const seen={}, merged=[]; server.forEach(m=>{ if(m&&!seen[m.id]){ seen[m.id]=1; merged.push(m); } }); merged.sort((a,b)=>(b.ts||0)-(a.ts||0));
+    tfSaveMatches(merged.slice(0,300)); return merged;
+  }catch(e){ return tfMatches(); } }
+// ===== Match History program (stats + per-archetype record) =====
+function mhStats(list){ let w=0,l=0,d=0,mull=0,games=0; const byDeck={};
+  list.forEach(m=>{ if(m.result==='W')w++; else if(m.result==='L')l++; else d++; (m.games||[]).forEach(g=>{ games++; mull+=g.mulligans||0; });
+    const k=(m.theirDeck||'').trim()||'Unknown'; const b=byDeck[k]||(byDeck[k]={w:0,l:0,d:0,n:0}); b.n++; if(m.result==='W')b.w++; else if(m.result==='L')b.l++; else b.d++; });
+  return { total:list.length, w,l,d, winPct:(w+l)?Math.round(w/(w+l)*100):0, avgMull:games?Math.round(mull/games*100)/100:0, byDeck }; }
+function mhRender(body){ if(!body)return; body.style.cssText='padding:0;height:100%;box-sizing:border-box;overflow:auto';
+  body.innerHTML='<div class="mh-wrap"><div class="mh-load">Loading match history…</div></div>';
+  Promise.resolve(tfSync()).then(()=>{ if(body.isConnected)mhPaint(body); }).catch(()=>mhPaint(body)); }
+function mhPaint(body){ const list=tfMatches(), st=mhStats(list), signed=!!(state.user&&apiToken());
+  const decks=Object.entries(st.byDeck).sort((a,b)=>b[1].n-a[1].n).slice(0,8)
+    .map(([k,v])=>'<div class="mh-deckrow"><span class="mh-dn">'+_mgEsc(k)+'</span><span class="mh-dr">'+v.w+'–'+v.l+(v.d?'–'+v.d:'')+' <span class="mh-dp">'+((v.w+v.l)?Math.round(v.w/(v.w+v.l)*100):0)+'%</span></span></div>').join('');
+  const rows=list.length? list.map(m=>{ const ta=tfTally(m.games);
+    return '<div class="mh-row"><span class="mh-res mh-'+(m.result||'D')+'">'+(m.result||'D')+'</span><span class="mh-sc">'+ta.w+'–'+ta.l+(ta.d?'–'+ta.d:'')+'</span><span class="mh-vs">vs '+_mgEsc(m.opponent||'—')+(m.theirDeck?' · '+_mgEsc(m.theirDeck):'')+(m.myDeck?'<span class="mh-my"> ('+_mgEsc(m.myDeck)+')</span>':'')+'</span><span class="mh-dt">'+new Date(m.ts).toLocaleDateString()+'</span><button class="mh-del" data-del="'+_mgEsc(m.id)+'" title="Delete">🗑</button></div>'; }).join('')
+    : '<div class="mh-empty">No matches yet. Open 2040, hit ▶ Start Match, then 🏁 Finish to log one.</div>';
+  body.innerHTML='<div class="mh-wrap">'+
+    '<div class="mh-hd"><h3>🏆 Match History</h3><div class="mh-sub">'+(signed?'Synced to your account':'Local only — sign in to sync across devices')+'</div></div>'+
+    '<div class="mh-stats"><div class="mh-rec"><b>'+st.w+'</b> – <b>'+st.l+'</b>'+(st.d?' – '+st.d:'')+'</div><div class="mh-pct">'+st.winPct+'%</div><div class="mh-meta">'+st.total+' matches · avg '+st.avgMull+' mulligans/game</div></div>'+
+    (decks?'<div class="mh-section">By opponent archetype</div>'+decks:'')+
+    '<div class="mh-section">Matches</div><div class="mh-list">'+rows+'</div></div>';
+  body.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>mhDelete(b.getAttribute('data-del'),body)); }
+function mhDelete(id,body){ if(!confirm('Delete this match?'))return; tfSaveMatches(tfMatches().filter(m=>String(m.id)!==String(id)));
+  if(state.user&&apiToken()&&String(id).startsWith('s'))apiFetch('/tf/match/'+id,{method:'DELETE'}).catch(()=>{}); mhPaint(body); }
 function tfTally(games){ let w=0,l=0,d=0; (games||[]).forEach(g=>{ if(g.result==='W')w++; else if(g.result==='L')l++; else d++; }); return { w,l,d, res: w>l?'W':(l>w?'L':'D') }; }
 function tfResLabel(r){ return r==='W'?'Win':r==='L'?'Loss':'Draw'; }
 function lcTrackerHtml(s){ const t=s.tr||{};
@@ -7160,7 +7216,7 @@ function tfEndScreen(body){ const s=lcLoad(); const t=s.tr; if(!t)return; const 
   ov.querySelector('[data-x]').onclick=()=>{ if(confirm('Discard this match?')){ s.tr={active:false}; lcSave(); ov.remove(); lcRender(body); } };
   ov.querySelector('[data-save]').onclick=()=>{ ov.querySelectorAll('[data-mi]').forEach(inp=>{ t.games[+inp.getAttribute('data-mi')].mulligans=Math.max(0,Math.min(9,parseInt(inp.value)||0)); });
     const m={ id:'m'+Date.now().toString(36), ts:Date.now(), opponent:val('tf-opp'), myDeck:val('tf-mydeck'), theirDeck:val('tf-theirdeck'), notes:val('tf-notes'), games:t.games.slice(), result:tfTally(t.games).res };
-    const list=tfMatches(); list.unshift(m); if(list.length>200)list.length=200; tfSaveMatches(list);
+    tfRecord(m); // local + server sync
     s.tr={active:false}; lcSave(); ov.remove(); lcRender(body); if(typeof toast==='function')toast('Match saved 🏁','success'); };
 }
 function tfHistory(body){ const ov=tfOverlay(body); if(!ov)return; const list=tfMatches();
@@ -7593,6 +7649,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'480px', category:'games', mount(body){ cardleRender(body); } });
+  DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts

@@ -295,6 +295,16 @@ wrong guess reveals one more (Wheel-of-Fortune style) and fills the on-screen ca
 clues are out you keep guessing with a capped score. Score = clues showing when solved; the card name &
 art are never sent until you solve it. Per-account progress in `cardle_games`.
 
+### 2040 match tracker — server-synced match history
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/tf/matches` | yes | your recent matches (most recent first) |
+| POST | `/api/tf/match` | yes | save a match `{ts,opponent,myDeck,theirDeck,notes,games:[{result,mulligans}],result}` → `{id}` |
+| DELETE | `/api/tf/match/:id` | yes | delete one of your matches |
+
+Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to
+`tf_matches` (per account) so history + win-rate stats follow you across devices.
+
 ---
 
 ## Frontend ("Deck OS")

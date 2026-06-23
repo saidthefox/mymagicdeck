@@ -31,8 +31,7 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   out.clinch={ endAutoOpen:!!$('#tf-opp'), mrows:document.querySelectorAll('.tf-mrow').length };
   $('#tf-opp').value='Al'; $('[data-save]').click(); await wait();
   const l2=DeckOS.store.get('tf_matches')||[]; out.clinchSaved={ n:l2.length, res:l2[0]&&l2[0].result, games:l2[0]&&(l2[0].games||[]).length };
-  $('[data-tf="history"]').click(); await wait(); out.hist=document.querySelectorAll('.tf-hist-row').length;
-  return out; });
+  return out; }); // (history viewing now lives in the Match History program — see matchhistory.mjs)
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.idleStart && r.afterStart.mull && r.afterStart.next && r.afterStart.finishHidden && r.mull2
@@ -40,7 +39,7 @@ const ok = r.idleStart && r.afterStart.mull && r.afterStart.next && r.afterStart
   && r.endScreen.opp && r.endScreen.mrows===2
   && r.saved.n===1 && r.saved.opp==='Bob' && r.saved.theirDeck==='Mono-Red' && r.saved.res==='D' && r.saved.g1mull===2 && r.saved.games===2
   && r.afterWin1.game2 && r.afterWin1.noEndYet && r.clinch.endAutoOpen && r.clinch.mrows===2 && r.clinchSaved.n===2 && r.clinchSaved.res==='W' && r.clinchSaved.games===2
-  && r.hist===2 && !errs.length;
+  && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);
