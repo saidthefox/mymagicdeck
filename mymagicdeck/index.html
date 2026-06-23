@@ -1603,6 +1603,12 @@
     .lg-topstrip{position:absolute;left:24%;right:8%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:2}
     .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:44px;z-index:1}
     .lg-combatboard .lg-mid{gap:22px} /* Elephants: pull each elephant 50% closer to the centre line */
+    /* phase bar on the centre line — thin coloured cells; click to set a stop */
+    .lg-phasebar{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:3px;width:100%}
+    .lg-ph{font-family:Tahoma,sans-serif;font-size:8px;font-weight:bold;line-height:1;padding:2px 4px;border:1px solid var(--pc);color:var(--pc);background:rgba(0,0,0,.4);border-radius:3px;cursor:pointer;opacity:.5;white-space:nowrap}
+    .lg-ph.on{opacity:1;background:var(--pc);color:#0d0f13}
+    .lg-ph.stop{opacity:1;box-shadow:0 0 0 2px #ffd700}
+    .lg-ph.ostop{border-style:dashed}
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
@@ -6882,6 +6888,11 @@ const LG_RULE={plains:'Flicker one of your lands to re-trigger it.',island:'Disc
 const LG_ELE_RULE={plains:'Exile target creature; it returns at end of turn.',island:'Target creature gains flying until end of turn. Scry 1.',swamp:'Target creature gets -0/-2 until end of turn.',mountain:'Target creature gets +3/+0 until end of turn.',forest:'Target creature gets +1/+2 until end of turn and untaps.',wastes:'Target creature gets +1/+1 until end of turn. Draw a card.'};
 function lgClock(){ try{ return new Date().toLocaleTimeString([], {hour12:false}); }catch(e){ return ''; } } // HH:MM:SS
 function lgLog(m){ if(_lg&&_lg.log)_lg.log.push(lgClock()+'  '+m); }
+// Elephants turn = a subset of Magic's phases (each a thin coloured cell on the centre line). Auto-advances,
+// pausing only for a play (cast/attack/block) or a stop a player has flagged on the phase being entered.
+const LG_PHASES=[ {id:'draw',n:'Draw',c:'#5b8def'},{id:'main1',n:'Main 1',c:'#d39a2d'},{id:'attack',n:'Attack',c:'#c0392b'},{id:'block',n:'Block',c:'#2bb6a8'},{id:'damage',n:'Damage',c:'#e0556b'},{id:'main2',n:'Main 2',c:'#d3b02d'},{id:'end',n:'End',c:'#5aa86a'} ];
+const LG_PHASE_ORDER=LG_PHASES.map(p=>p.id); const LG_PHASE_NAME={}; LG_PHASES.forEach(p=>LG_PHASE_NAME[p.id]=p.n);
+function lgPhaseAfter(id){ return LG_PHASE_ORDER[LG_PHASE_ORDER.indexOf(id)+1]||null; }
 let _lg=null, _lgBody=null, _lgSet=false; // _lgSet: settings panel open
 function lgRerender(){ if(_lgBody)lgRender(_lgBody); lgMaybeCpu(); }
 function lgOptsGet(){ try{ const o=DeckOS.store.get('lg:opts'); return { stopAll:!!(o&&o.stopAll) }; }catch(e){ return { stopAll:false }; } }
@@ -6949,8 +6960,8 @@ function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode=
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
   const players=[lgMakePlayer(names[0]),lgMakePlayer(names[1])];
   if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ dp:0, dt:0, flying:false, tapped:false, sick:false, exiled:false }; }); // 3/3 base; haste — both can swing turn 1
-  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, spent:[false,false], atk:null, cont:null, pendingSpell:null, cscry:null, log:[lgClock()+'  '+names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Both elephants have haste — swing away!':'')] };
-  lgSetTitle('Basics — '+fd.name); lgRerender(); }
+  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, spent:[false,false], atk:null, cont:null, pendingSpell:null, cscry:null, phase:'draw', stops:[{},{}], log:[lgClock()+'  '+names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Both elephants have haste — swing away!':'')] };
+  lgSetTitle('Basics — '+fd.name); if(combat) lgBeginTurn(); else lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
 function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond'||_lg.mode==='block')return _lg.priority; if(_lg.mode==='cscry')return _lg.cscry?_lg.cscry.ci:_lg.active; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
 function lgDraw(pi){ const p=_lg.players[pi]; if(!p.deck.length){ if(!p.gy.length){ lgLog(p.name+' has no cards to draw.'); return; } p.deck=p.gy.splice(0); lgShuffle(p.deck); lgLog(p.name+' shuffles graveyard into deck.'); } const c=p.deck.shift(); if(c)p.hand.push(c); }
@@ -6973,25 +6984,45 @@ function lgSpellEffect(type,te,nm){
 // offered to a player only if they still have that spell (else we skip straight ahead). Spell effects
 // apply on cast; after any cast the other player gets a stop to respond. Combat is: attack → defender
 // stop → block → attacker stop → damage. (All gated on _lg.combat; the Land Game path is untouched.) ──
-function lgEligibleStop(pi){ return !!(_lg.combat && _lg.spent && !_lg.spent[pi] && _lg.players[pi].hand.length); }
-function lgOfferStop(pi){ if(_lg.winner!=null)return; if(lgEligibleStop(pi)){ _lg.mode='respond'; _lg.priority=pi; _lg.pendingSpell=null; lgRerender(); } else lgCombatNext(_lg.cont); }
-function lgCombatNext(tag){ if(_lg.winner!=null)return;
-  if(tag==='block'){ const a=_lg.atk, de=_lg.players[1-a.by].ele, ae=_lg.players[a.by].ele;
-    const canBlock = de && !de.tapped && !de.exiled && (!ae.flying || de.flying);
-    if(canBlock){ _lg.mode='block'; _lg.priority=1-a.by; _lg.pendingSpell=null; lgRerender(); }
-    else { a.blocked=false; lgCombatNext('blkresp'); } }
-  else if(tag==='blkresp'){ _lg.cont='damage'; lgOfferStop(_lg.atk.by); }            // attacker may respond to the block
-  else if(tag==='damage'){ const a=_lg.atk; _lg.atk=null; _lg.cont=null; lgResolveCombat(a.by, a.blocked); }
-  else { _lg.cont=null; _lg.atk=null; _lg.mode='turn'; _lg.priority=_lg.active; _lg.pendingSpell=null; lgRerender(); } // back to the active player's main
+function lgEligibleStop(pi){ return !!(_lg.combat && _lg.spent && !_lg.spent[pi] && _lg.players[pi].hand.length); } // can still cast their one spell
+function lgEleReady(e){ return !!(e && !e.tapped && !e.exiled); }
+// Begin a turn: untap, refresh each player's single spell, then walk from the Draw phase.
+function lgBeginTurn(){ const A=_lg.active, e=_lg.players[A].ele; if(e)e.tapped=false;
+  _lg.spent=[false,false]; _lg.atk=null; _lg.attackedThisTurn=false; _lg.pendingSpell=null; _lg.cont=null;
+  if(_lg.turn>1) lgLog('— '+_lg.players[A].name+'’s turn —'); lgEnterPhase('draw'); }
+function lgEnterPhase(id){ if(!_lg||_lg.winner!=null)return; _lg.phase=id; _lg.pendingSpell=null;
+  if((id==='block'||id==='damage') && !_lg.atk) return lgAdvance();          // no combat this turn → skip
+  const D=1-_lg.active;
+  if((_lg.stops[D]||{})[id] && lgEligibleStop(D)){ _lg.cont='phaseact:'+id; _lg.mode='respond'; _lg.priority=D; lgRerender(); return; } // opponent's stop fires before the phase
+  lgPhaseAct(id);
 }
-function lgPassCombat(){ if(_lg.mode!=='respond')return; lgCombatNext(_lg.cont); } // the player with priority declines to respond
-// Tap a hand card → arms a pending spell; then a creature is clicked to target it.
-function lgBeginCast(type){ const ci=lgActor(); if(ci==null||(_lg.spent&&_lg.spent[ci]))return; if((_lg.mode!=='turn'&&_lg.mode!=='respond'))return; if(_lg.players[ci].hand.indexOf(type)<0)return;
+function lgPhaseAct(id){ if(!_lg||_lg.winner!=null)return; const A=_lg.active; _lg.pendingSpell=null;
+  if(id==='draw'){ if(!(_lg.turn===1 && A===0)) lgDraw(A); return lgAdvance(); }    // player on the play skips the turn-1 draw
+  if(id==='main1'||id==='main2'){ if(lgEligibleStop(A)){ _lg.mode='turn'; _lg.priority=A; lgRerender(); } else lgAdvance(); return; }
+  if(id==='attack'){ if(lgEleReady(_lg.players[A].ele) || lgEligibleStop(A)){ _lg.mode='turn'; _lg.priority=A; lgRerender(); } else lgAdvance(); return; }
+  if(id==='block'){ const D=1-A, de=_lg.players[D].ele, ae=_lg.players[A].ele; const canBlock=lgEleReady(de)&&(!ae.flying||de.flying);
+    if(canBlock){ _lg.mode='block'; _lg.priority=D; lgRerender(); } else { if(_lg.atk)_lg.atk.blocked=false; lgAdvance(); } return; }
+  if(id==='damage'){ if(_lg.atk){ lgResolveCombat(_lg.atk.by, _lg.atk.blocked); if(_lg.winner!=null)return; } return lgAdvance(); }
+  if(id==='end'){ lgEndPhase(); return; }
+}
+function lgAdvance(){ if(!_lg||_lg.winner!=null)return; const nx=lgPhaseAfter(_lg.phase); if(nx) lgEnterPhase(nx); else lgEndPhase(); }
+function lgEndPhase(){ // end of turn: buffs wear off, exiled elephants return (haste), then pass the turn
+  _lg.players.forEach(p=>{ const e=p.ele; if(!e)return; e.dp=0; e.dt=0; e.flying=false; if(e.exiled){ e.exiled=false; e.tapped=false; e.sick=false; } });
+  if(_lg.winner!=null)return; _lg.active=1-_lg.active; _lg.turn++; lgBeginTurn(); }
+function lgOfferStop(pi){ if(_lg.winner!=null)return; if(lgEligibleStop(pi)){ _lg.mode='respond'; _lg.priority=pi; _lg.pendingSpell=null; lgRerender(); } else lgCombatNext(_lg.cont); }
+function lgCombatNext(tag){ if(!_lg||_lg.winner!=null)return;
+  if(typeof tag==='string' && tag.indexOf('phaseact:')===0){ _lg.cont=null; lgPhaseAct(tag.slice(9)); return; } // resume the stopped phase's action
+  _lg.cont=null; _lg.mode='turn'; _lg.priority=_lg.active; _lg.pendingSpell=null; lgRerender(); }            // 'resume'/null → hand control back to the active player
+function lgPassCombat(){ if(_lg.mode!=='respond')return; lgCombatNext(_lg.cont); }
+function lgToggleStop(id){ if(!_lg||!_lg.combat)return; const me=_lg.view; if(!_lg.stops)_lg.stops=[{},{}]; const s=_lg.stops[me]||(_lg.stops[me]={}); s[id]=!s[id]; lgRerender(); }
+// Arm a hand card, then click a creature to target it.
+function lgBeginCast(type){ const ci=lgActor(); if(ci==null||(_lg.spent&&_lg.spent[ci]))return; if(_lg.mode!=='turn'&&_lg.mode!=='respond')return; if(_lg.players[ci].hand.indexOf(type)<0)return;
   _lg.pendingSpell=(_lg.pendingSpell===type?null:type); lgRerender(); }
 function lgCommitSpell(tpi){ if(_lg.pendingSpell==null)return; lgDoCast(_lg.pendingSpell, tpi); }
 function lgDoCast(type, tpi){ const ci=lgActor(); if(ci==null||(_lg.spent&&_lg.spent[ci]))return;
   const me=_lg.players[ci], te=_lg.players[tpi]&&_lg.players[tpi].ele, hi=me.hand.indexOf(type);
   if(hi<0||!te||te.exiled){ _lg.pendingSpell=null; lgRerender(); return; }
+  if(_lg.mode==='turn') _lg.cont='resume';                 // active casting in their own phase → return control to them after
   me.hand.splice(hi,1); me.gy.push(type); _lg.spent[ci]=true; _lg.pendingSpell=null;
   const nm = tpi===ci ? 'their elephant' : 'the opposing elephant';
   lgLog(me.name+' casts '+LG_NAME[type]+' on '+nm+'.'); lgSpellEffect(type, te, nm);
@@ -7003,22 +7034,21 @@ function lgDoCast(type, tpi){ const ci=lgActor(); if(ci==null||(_lg.spent&&_lg.s
 function lgScryPick(v){ const sc=_lg.cscry; if(!sc)return; _lg.cscry=null; const me=_lg.players[sc.ci];
   if(v==='bot'&&me.deck.length){ me.deck.push(me.deck.shift()); lgLog(me.name+' scries the top card to the bottom.'); } else lgLog(me.name+' keeps the top card.');
   lgOfferStop(1-sc.ci); }
-function lgAttack(){ if(!_lg||!_lg.combat||_lg.mode!=='turn'||_lg.attackedThisTurn||_lg.winner!=null)return;
-  const ci=_lg.active, e=_lg.players[ci].ele; if(!e||e.tapped||e.exiled)return;
+function lgAttack(){ if(!_lg||!_lg.combat||_lg.mode!=='turn'||_lg.phase!=='attack'||_lg.attackedThisTurn||_lg.winner!=null)return;
+  const ci=_lg.active, e=_lg.players[ci].ele; if(!lgEleReady(e))return;
   e.tapped=true; _lg.attackedThisTurn=true; _lg.atk={by:ci, blocked:null};
-  lgLog(_lg.players[ci].name+'’s elephant ('+lgElePow(e)+'/'+lgEleTou(e)+') attacks.');
-  _lg.cont='block'; lgOfferStop(1-ci); }                                              // defender may respond before blocking
+  lgLog(_lg.players[ci].name+'’s elephant ('+lgElePow(e)+'/'+lgEleTou(e)+') attacks.'); lgAdvance(); }   // → Block phase
 function lgDoBlock(blocked){ if(_lg.mode!=='block'||!_lg.atk)return; _lg.atk.blocked=!!blocked;
-  lgLog(blocked?(_lg.players[1-_lg.atk.by].name+' blocks.'):(_lg.players[1-_lg.atk.by].name+' takes the hit.')); lgCombatNext('blkresp'); }
+  lgLog(blocked?(_lg.players[1-_lg.atk.by].name+' blocks.'):(_lg.players[1-_lg.atk.by].name+' takes the hit.')); lgAdvance(); }   // → Damage phase
 function lgResolveCombat(ci, blocked){ const me=_lg.players[ci], opp=_lg.players[1-ci], e=me.ele, de=opp.ele;
   if(blocked){ const tramp=Math.max(0, lgElePow(e)-lgEleTou(de)); opp.life-=tramp; lgLog(tramp>0?('Blocked — '+tramp+' tramples over → '+opp.name+' '+Math.max(0,opp.life)+'.'):'Blocked — nothing tramples over.'); }
   else { opp.life-=lgElePow(e); lgLog('Unblocked — '+lgElePow(e)+' to '+opp.name+' → '+Math.max(0,opp.life)+'.'); }
-  if(lgCheckWin())return; _lg.mode='turn'; _lg.priority=_lg.active; lgRerender(); }
-// Clicking an elephant: target a pending spell, attack with your own, or block with your own.
+  lgCheckWin(); }
+// Clicking an elephant: target a pending spell, attack with your own (Attack phase), or block with your own.
 function lgClickEle(pi){ if(!_lg||!_lg.combat)return; const act=lgActor(); if(act==null||act!==_lg.view)return; const e=_lg.players[pi]&&_lg.players[pi].ele; if(!e)return;
   if(_lg.pendingSpell!=null){ if(!e.exiled)lgCommitSpell(pi); return; }
-  if(_lg.mode==='turn' && _lg.view===_lg.active && pi===_lg.view && !e.tapped && !e.exiled && !_lg.attackedThisTurn){ lgAttack(); return; }
-  if(_lg.mode==='block' && pi===_lg.view && !e.tapped && !e.exiled){ lgDoBlock(true); return; } }
+  if(_lg.mode==='turn' && _lg.phase==='attack' && pi===_lg.active && pi===_lg.view && lgEleReady(e) && !_lg.attackedThisTurn){ lgAttack(); return; }
+  if(_lg.mode==='block' && pi===_lg.view && lgEleReady(e)){ lgDoBlock(true); return; } }
 function lgCheckWin(){ const w=lgWinner(); if(w!=null && _lg.winner==null){ _lg.winner=w; _lg.mode='over'; lgLog('🏆 '+_lg.players[w].name+' wins!'); lgRerender(); return true; } return _lg.winner!=null; }
 function lgCast(type){ if(_lg.combat){ lgBeginCast(type); return; } if(_lg.mode!=='turn'||_lg.castThisTurn)return; const p=_lg.players[_lg.active]; const i=p.hand.indexOf(type); if(i<0)return; p.hand.splice(i,1); _lg.stack.push({kind:'land',type,ctrl:_lg.active}); _lg.castThisTurn=true; lgLog(p.name+' plays '+LG_NAME[type]+'.'); if(lgCanCounter(1-_lg.active)||(_lg.opts&&_lg.opts.stopAll))lgGivePriority(1-_lg.active); else lgResolveTop(); }
 function lgGivePriority(who){ const top=_lg.stack[_lg.stack.length-1]; if(top&&top.ctrl===who){ lgResolveTop(); return; } // you don't respond to your own top-of-stack object — resolve it
@@ -7067,11 +7097,14 @@ function lgCpuCombat(){ const cpu=_lg.cpu;
   if(_lg.mode==='cscry'){ lgScryPick('top'); return; }
   if(_lg.mode==='block'){ lgDoBlock(true); return; }                                   // a free block always reduces damage
   if(_lg.mode==='respond'){ const pick=lgEligibleStop(cpu)?lgCpuPickSpell():null; if(pick)lgDoCast(pick.type,pick.tpi); else lgPassCombat(); return; }
-  if(_lg.mode==='choose'){ lgPick(lgCpuChoose(_lg.choice)); return; } // e.g. the end-of-turn discard-to-5 choice (this was the hang)
-  if(_lg.mode==='turn'){
-    if(lgEligibleStop(cpu)){ const pick=lgCpuPickSpell(); if(pick){ lgDoCast(pick.type,pick.tpi); return; } }
-    const e=_lg.players[cpu].ele; if(!_lg.attackedThisTurn && e && !e.tapped && !e.exiled){ lgAttack(); return; }
-    lgEndTurn(); return; } }
+  if(_lg.mode==='choose'){ lgPick(lgCpuChoose(_lg.choice)); return; }                   // defensive (combat no longer opens 'choose')
+  if(_lg.mode==='turn'){                                                               // the CPU is the active player at a Main/Attack phase
+    if(_lg.phase==='attack'){ const e=_lg.players[cpu].ele;
+      if(lgEligibleStop(cpu)){ const pick=lgCpuPickSpell(); if(pick){ lgDoCast(pick.type,pick.tpi); return; } } // pump/trick, then swing
+      if(!_lg.attackedThisTurn && lgEleReady(e)){ lgAttack(); return; }
+      lgAdvance(); return; }
+    if(lgEligibleStop(cpu)){ const pick=lgCpuPickSpell(); if(pick){ lgDoCast(pick.type,pick.tpi); return; } } // a Main-phase play
+    lgAdvance(); return; } }
 function lgCpuPickPlay(){ const me=_lg.players[_lg.cpu], opp=_lg.players[1-_lg.cpu], mf=me.field, of=opp.field;
   const types=[...new Set(me.hand)]; if(!types.length)return null;
   const myTypes=lgTypesInPlay(mf), oppMax=Math.max(0,...LG_TYPES.map(t=>of[t]));
@@ -7179,8 +7212,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   // Which click action (if any) this elephant offers the viewer right now.
   const eleClick=pi=>{ if(!canAct)return ''; const e=_lg.players[pi].ele; if(!e)return '';
     if(_lg.pendingSpell!=null)return e.exiled?'':'target';
-    if(_lg.mode==='turn' && me===_lg.active && pi===me && !e.tapped && !e.exiled && !_lg.attackedThisTurn)return 'attack';
-    if(_lg.mode==='block' && pi===me && !e.tapped && !e.exiled)return 'block';
+    if(_lg.mode==='turn' && _lg.phase==='attack' && me===_lg.active && pi===me && lgEleReady(e) && !_lg.attackedThisTurn)return 'attack';
+    if(_lg.mode==='block' && pi===me && lgEleReady(e))return 'block';
     return ''; };
   // The elephant as a clickable creature card on the battlefield (attack / target / block by clicking it).
   const eleRow=pi=>{ const e=_lg.players[pi].ele; if(!e)return '<div class="lg-elerow"></div>';
@@ -7193,6 +7226,10 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
       +'<div class="lg-ec-tl">Artifact Creature — Elephant</div>'
       +'<div class="lg-ec-tx">Indestructible, trample, haste'+(st.length?'<span class="lg-ec-st">'+st.join(' · ')+'</span>':'')+'</div>'
       +'<div class="lg-ec-pt">'+pow+'/'+tou+'</div></div></div>'; };
+  // Phase bar across the centre line — thin coloured cells; click one to set a stop (gold ring) so you get
+  // priority when your opponent enters that phase. Current phase is filled; opponent's stops show dashed.
+  const phaseBar=()=>{ const cur=_lg.phase, myS=(_lg.stops&&_lg.stops[me])||{}, opS=(_lg.stops&&_lg.stops[opp])||{};
+    return '<div class="lg-phasebar">'+LG_PHASES.map(p=>'<button class="lg-ph'+(p.id===cur?' on':'')+(myS[p.id]?' stop':'')+(opS[p.id]?' ostop':'')+'" data-ph="'+p.id+'" style="--pc:'+p.c+'" title="'+p.n+(myS[p.id]?' — you stop here':'')+(opS[p.id]?' · opponent stops here':'')+'">'+p.n+'</button>').join('')+'</div>'; };
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
     const clk=_lg.clocks?('<span class="lg-clock" data-clk="'+pi+'">'+lgFmtTime(_lg.clocks[pi])+'</span>'):'';
     const bars=_lg.combat?'':'<div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div>';
@@ -7217,11 +7254,12 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   let cBan='', cBtn=''; // banner sits above the centre divider; buttons go below it (player's side)
   if(_lg.mode2==='cpu'&&actor===_lg.cpu){ cBan='<div class="lg-banner lg-think">🤖 Computer is thinking…</div>'; }
   else if(_lg.mode2==='online'&&actor!=null&&actor!==me&&_lg.mode!=='over'){ cBan='<div class="lg-banner lg-think">⏳ '+_mgEsc(pname(actor))+'…</div>'; }
-  else if(_lg.mode==='turn'){ const cast=_lg.combat?_lg.spent[me]:_lg.castThisTurn; cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — your turn'+(cast?(_lg.combat?' · spell cast':' · land played'):'')+'</div>';
-    if(canAct){ if(_lg.combat){ const e=_lg.players[me].ele, canAtk=e&&!e.tapped&&!e.exiled&&!_lg.attackedThisTurn;
+  else if(_lg.mode==='turn'){
+    if(_lg.combat){ cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — '+(LG_PHASE_NAME[_lg.phase]||'your turn')+(_lg.spent[me]?' · spell cast':'')+'</div>';
+      if(canAct){ const e=_lg.players[me].ele, canAtk=_lg.phase==='attack'&&lgEleReady(e)&&!_lg.attackedThisTurn;
         const hint=_lg.pendingSpell!=null?'<span class="lg-tap">⤴ click a creature to target with '+LG_NAME[_lg.pendingSpell]+'</span>':(canAtk?'<span class="lg-tap">⤴ click your elephant to attack</span>':'');
-        cBtn=hint+(_lg.pendingSpell!=null?'<button class="btn small" id="lg-cancelcast">✕ Cancel</button>':'')+'<button class="btn small" id="lg-end">End turn ▸</button>'; }
-      else cBtn='<button class="btn small" id="lg-end">End turn ▸</button>'; } }
+        cBtn=hint+(_lg.pendingSpell!=null?'<button class="btn small" id="lg-cancelcast">✕ Cancel</button>':'')+'<button class="btn small" id="lg-next">'+(_lg.phase==='main2'?'End turn ▸':'Next ▸')+'</button>'; } }
+    else { cBan='<div class="lg-banner">'+_mgEsc(pname(me))+' — your turn'+(_lg.castThisTurn?' · land played':'')+'</div>'; if(canAct)cBtn='<button class="btn small" id="lg-end">End turn ▸</button>'; } }
   else if(_lg.mode==='block'){ const def=_lg.priority, ae=_lg.players[_lg.atk.by].ele; cBan='<div class="lg-banner">'+_mgEsc(pname(def))+' — block the '+lgElePow(ae)+'/'+lgEleTou(ae)+' attacker?</div>'; if(canAct)cBtn='<span class="lg-tap">⤴ click your elephant to block</span><button class="btn small" id="lg-noblock">🚫 Take the hit</button>'; }
   else if(_lg.mode==='cscry'){ const ci=_lg.cscry?_lg.cscry.ci:me, top=_lg.players[ci].deck[0]; cBan='<div class="lg-banner">'+_mgEsc(pname(ci))+' — Scry 1</div><div class="lg-prompt">Top card: '+(top?LG_NAME[top]:'—')+'</div>'; if(canAct)cBtn='<button class="btn small primary" id="lg-scry-top">Keep on top</button><button class="btn small" id="lg-scry-bot">To bottom</button>'; }
   else if(_lg.mode==='respond'){ const pr=_lg.priority;
@@ -7237,7 +7275,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div>'+(_lg.mode2!=='online'?'<label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label>':'')+'<button class="btn small" id="lg-quit" style="margin-top:8px;width:100%">⮐ End game · back to menu</button></div>'):'')+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice().reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+(_lg.combat?'':gyZone(opp))+'</div>'+
-    '<div class="lg-mid">'+(_lg.combat?eleRow(opp):playedRow(opp))+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+(_lg.combat?eleRow(me):playedRow(me))+'</div>'+
+    '<div class="lg-mid">'+(_lg.combat?eleRow(opp):playedRow(opp))+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.combat?phaseBar():'')+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+(_lg.combat?eleRow(me):playedRow(me))+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+(_lg.mode2==='online'&&_lg.mode!=='over'?'<div class="lg-bar" style="margin-top:10px"><button class="btn small" id="lg-resign">🏳 Resign</button></div>':'')+'</div>'+
     (_lg.combat?'':'<div class="lg-pgy">'+gyZone(me)+'</div>')+
     deckMine()+
@@ -7246,6 +7284,8 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
   const onl=_lg.mode2==='online';
   if(playable)body.querySelectorAll('.lg-bigcard[data-h]:not([data-pick])').forEach(el=>el.addEventListener('click',()=>{ const t=el.getAttribute('data-t'); onl?lgoMove({type:'play',value:t}):lgCast(t); }));
   const eb=body.querySelector('#lg-end'); if(eb)eb.onclick=()=>{ onl?lgoMove({type:'endturn'}):lgEndTurn(); };
+  const nx=body.querySelector('#lg-next'); if(nx)nx.onclick=lgAdvance;                 // Elephants: advance to the next phase
+  body.querySelectorAll('[data-ph]').forEach(el=>el.addEventListener('click',()=>lgToggleStop(el.getAttribute('data-ph')))); // flag/unflag a stop on a phase
   body.querySelectorAll('[data-ele]').forEach(el=>el.addEventListener('click',()=>lgClickEle(+el.getAttribute('data-ele')))); // attack / target / block by clicking the creature
   const nb=body.querySelector('#lg-noblock'); if(nb)nb.onclick=()=>lgDoBlock(false);
   const sct=body.querySelector('#lg-scry-top'); if(sct)sct.onclick=()=>lgScryPick('top');
