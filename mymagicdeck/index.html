@@ -8365,12 +8365,13 @@ function diceyJumpToEl(el){ if(!_diceyEl||!el)return; const r=el.getBoundingClie
   const x = r.left>80 ? r.left-70 : Math.min(r.left+10, window.innerWidth-66);
   const y = Math.max(6, Math.min(r.top+8, window.innerHeight-74));
   diceyMoveTo(x,y,520); setTimeout(()=>{ if(_diceyEl)diceyWhirl(); }, 560); }
-// A tour slot beside the centered MMD window (alternating sides), sized to fit.
-function diceySlot(kind,side){ const W=window.innerWidth,H=window.innerHeight;
-  if(kind==='widget'||kind==='note'){ const w=212; return { x: side==='left'?Math.round(W*0.06):Math.round(W-w-W*0.06), y:Math.round(H*0.22), w, h:172 }; }
-  const w=Math.min(Math.round(W*0.40),520), h=Math.min(Math.round(H*0.62),560);
-  return { x: side==='left'?Math.round(W*0.05):Math.round(W-w-W*0.05), y:Math.round(H*0.15), w, h };
-}
+// Programs get explained in the MIDDLE (dragged there from a random spawn point); widgets/notes
+// get tucked into distinct corner slots so a second one never lands on the first.
+let _diceySideN=0;
+function diceyCenterSlot(){ const W=window.innerWidth,H=window.innerHeight; const w=Math.min(Math.round(W*0.48),560), h=Math.min(Math.round(H*0.64),580); return { x:Math.round((W-w)/2), y:Math.max(8,Math.round((H-h)/2)-10), w, h }; }
+function diceyRandomSpawn(w,h){ const W=window.innerWidth,H=window.innerHeight; const c=[{x:24,y:54},{x:W-w-24,y:54},{x:24,y:H-h-24},{x:W-w-24,y:H-h-24}]; return c[(Math.random()*c.length)|0]; }
+function diceyWidgetSlot(){ const W=window.innerWidth,H=window.innerHeight,w=212,h=172,mx=Math.round(W*0.06),my=Math.round(H*0.15),ly=Math.round(H*0.52);
+  const slots=[{x:mx,y:my},{x:W-w-mx,y:my},{x:mx,y:ly},{x:W-w-mx,y:ly}]; const s=slots[_diceySideN%slots.length]; _diceySideN++; return {x:s.x,y:s.y,w,h}; }
 function diceyJumpToSlot(slot){ if(!_diceyEl||!slot)return; const x = slot.x>80 ? slot.x-70 : Math.min(slot.x+(slot.w||120)+6, window.innerWidth-66); const y=Math.max(6,Math.min(slot.y+8, window.innerHeight-74)); diceyMoveTo(x,y,560); setTimeout(()=>{ if(_diceyEl)diceyWhirl(); },580); }
 const DICEY_TOUR=[
   { say:"This is your card workbench — search any card (even partial, like “Lightning B”) and click to add it. Everything orbits around here!", ms:4400, kind:'none', open:()=>diceyOpenApp(null), el:()=>document.getElementById('site-window') },
@@ -8385,20 +8386,22 @@ const DICEY_TOUR=[
   { say:"Cardle’s the daily card mystery — guess the card from clues. 🃏", ms:4200, kind:'app', side:'left', open:()=>diceyOpenApp('cardle') },
   { say:"And your Splash page shows a deck off in style. That’s the grand tour!", ms:4400, kind:'app', side:'right', open:()=>diceyOpenApp('splash') },
 ];
-function diceyTour(speed){ if(!_diceyEl)return; speed=speed||1; clearTimeout(_diceyTourT); clearTimeout(_diceyTimer); _diceyOpen=true; let i=0;
+function diceyTour(speed){ if(!_diceyEl)return; speed=speed||1; clearTimeout(_diceyTourT); clearTimeout(_diceyTimer); _diceyOpen=true; _diceySideN=0; let i=0;
   const run=()=>{ if(!_diceyEl||i>=DICEY_TOUR.length){ diceyTourFinish(speed); return; }
     const s=DICEY_TOUR[i++]; try{ s.open&&s.open(); }catch(e){}
-    // Give the window a beat to render, then Dicey drags/resizes it into its slot and only THEN
-    // speaks — so the narration is synced to what's actually on screen.
-    setTimeout(()=>{ if(!_diceyEl)return; const wm=document.body.classList.contains('wm-on'); let slot=null, jumpEl=null;
+    const speak=()=>{ if(_diceyEl&&_diceyOpen)diceyTourSay(s.say,false); };
+    setTimeout(()=>{ if(!_diceyEl)return; const wm=document.body.classList.contains('wm-on');
       if(s.kind==='app' && wm && _diceyTourApp && typeof wmWins!=='undefined' && wmWins[_diceyTourApp]){
-        slot=diceySlot('app',s.side); const w=wmWins[_diceyTourApp], el=w.el||(typeof wmEls!=='undefined'&&wmEls[_diceyTourApp]);
-        if(el){ el.style.transition='left .55s ease, top .55s ease, width .55s ease, height .55s ease'; w.state='normal'; w.rect={x:slot.x,y:slot.y,w:slot.w,h:slot.h}; try{ wmApply(_diceyTourApp); }catch(e){} setTimeout(()=>{ if(el)el.style.transition=''; },640); }
+        // Program appears at a random spot; Dicey dashes over, hauls it to the MIDDLE, then explains.
+        const w=wmWins[_diceyTourApp], el=w.el||(typeof wmEls!=='undefined'&&wmEls[_diceyTourApp]), c=diceyCenterSlot();
+        if(el){ const sp=diceyRandomSpawn(c.w,c.h); el.style.transition=''; w.state='normal'; w.rect={x:sp.x,y:sp.y,w:c.w,h:c.h}; try{ wmApply(_diceyTourApp); }catch(e){}
+          diceyMoveTo(Math.max(2,sp.x-40), sp.y+20, 360);
+          setTimeout(()=>{ if(!_diceyEl||!el)return; el.style.transition='left .6s ease, top .6s ease, width .6s ease, height .6s ease'; w.rect={x:c.x,y:c.y,w:c.w,h:c.h}; try{ wmApply(_diceyTourApp); }catch(e){} setTimeout(()=>{ if(el)el.style.transition=''; },660); diceyJumpToSlot(c); setTimeout(speak,680); }, 440);
+        } else setTimeout(speak,200);
       } else if(s.kind==='widget'||s.kind==='note'){ let el=null; try{ el=s.el&&s.el(); }catch(e){}
-        if(el){ slot=diceySlot(s.kind,s.side); if(wm){ el.style.transition='left .5s ease, top .5s ease'; el.style.left=slot.x+'px'; el.style.top=slot.y+'px'; setTimeout(()=>{ if(el)el.style.transition=''; },520); } else { jumpEl=el; slot=null; } }
-      } else { try{ jumpEl=s.el&&s.el(); }catch(e){} }
-      if(slot)diceyJumpToSlot(slot); else if(jumpEl)diceyJumpToEl(jumpEl);
-      setTimeout(()=>{ if(_diceyEl&&_diceyOpen)diceyTourSay(s.say,false); }, 640); // synced narration
+        if(el && wm){ const slot=diceyWidgetSlot(); el.style.transition='left .5s ease, top .5s ease'; el.style.left=slot.x+'px'; el.style.top=slot.y+'px'; setTimeout(()=>{ if(el)el.style.transition=''; },520); diceyJumpToSlot(slot); setTimeout(speak,640); }
+        else { if(el)diceyJumpToEl(el); setTimeout(speak,640); }
+      } else { let el=null; try{ el=s.el&&s.el(); }catch(e){} if(el)diceyJumpToEl(el); setTimeout(speak,640); }
     }, 300);
     _diceyTourT=setTimeout(run,(s.ms||4200)/speed);
   };
