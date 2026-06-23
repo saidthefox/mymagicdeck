@@ -8,7 +8,10 @@ await p.goto('http://mymagicdeck.com/',{waitUntil:'domcontentloaded',timeout:300
 await p.waitForTimeout(1800);
 
 // First-visit intro: fresh browser (no dicey_seen) → intro asks new vs returning.
+// Dicey only lives in Deck OS — enter the shell first, and confirm he's absent in classic mode.
+const classicAbsent = await p.evaluate(async()=>{ document.body.classList.remove('deckos'); try{ DeckOS.store.set('dicey',{on:true}); }catch(e){} if(_diceyEl){_diceyEl.remove();_diceyEl=null;} diceyInit(); return !document.getElementById('dicey'); });
 const intro = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-overlay'); if(cg){cg.classList.remove('open');cg.style.display='none';}
+  document.body.classList.add('deckos'); // Dicey is a Deck OS citizen
   try{ DeckOS.store.set('dicey',{on:true,x:240,y:240}); DeckOS.store.remove('dicey_seen'); }catch(e){}
   if(_diceyEl){_diceyEl.remove();_diceyEl=null;} _diceyOpen=false; _diceyGreeted=false;
   diceyInit(); await new Promise(r=>setTimeout(r,850));
@@ -38,10 +41,11 @@ const r = await p.evaluate(async()=>{ try{ DeckOS.store.set('dicey_seen',1); }ca
   diceyToggle(); out.gone=!$('#dicey'); diceyToggle(); out.back=!!$('#dicey .dicey-die');
   return out; });
 
+console.log('classicAbsent:', classicAbsent);
 console.log('intro:', JSON.stringify(intro));
 console.log('panel:', JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
-const ok = intro.noNumber && intro.introNew && intro.introRet && intro.askTour && intro.tourBubble && intro.tourStopped && intro.note
+const ok = classicAbsent && intro.noNumber && intro.introNew && intro.introRet && intro.askTour && intro.tourBubble && intro.tourStopped && intro.note
   && r.present && r.panel && r.apps>=8 && r.roll && r.replay && r.filtered===1 && r.face>=1 && r.face<=20 && r.faceShown && r.gone && r.back
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');

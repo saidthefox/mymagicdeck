@@ -1359,6 +1359,7 @@
     .dicey-foot button{flex:1;border:2px solid;border-radius:6px;cursor:pointer;font-weight:bold;font-size:12px;padding:6px;font-family:Tahoma,sans-serif}
     .dicey-roll{background:#b33a44;border-color:#fca #402 #402 #fca;color:#fff}
     .dicey-hide{background:#c0c0c0;border-color:#fff #808080 #808080 #fff;color:#000;flex:0 0 auto}
+    .dicey-modeopt{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#aab4c2;cursor:pointer}
     /* Dicey personality: excited whirl, speech bark, and card-shaped jump platforms */
     @keyframes dicey-whirl{0%{transform:translateY(0) rotate(0)}20%{transform:translateY(-11px) rotate(90deg)}45%{transform:translateY(0) rotate(190deg)}65%{transform:translateY(-7px) rotate(280deg)}100%{transform:translateY(0) rotate(360deg)}}
     .dicey-die.dicey-whirling{animation:dicey-whirl .7s ease-in-out}
@@ -5611,6 +5612,7 @@ function deckosToggle(){
   if(typeof taskbarApply==='function')taskbarApply();
   if(document.body.classList.contains('wm-on')){ wmEnsureTaskbar(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); wmOpenSite(); }
   else if(typeof wmReleaseSite==='function')wmReleaseSite();
+  if(typeof diceyInit==='function')diceyInit(); // Dicey lives in Deck OS — appear/leave with the shell
 }
 // MyMagicDeck wing state — declared before the boot shell-init runs (which can call mmdApply).
 const MMD_WINGS=[{key:'deck',panel:'panel-deck',title:'Deck list',icon:'🗃️'},{key:'card',panel:'panel-detail',title:'Card / Stats',icon:'🃏'}];
@@ -8195,6 +8197,8 @@ const DICEY_TIPS=[
 ];
 function diceyState(){ try{ const s=DeckOS.store.get('dicey'); if(s&&typeof s==='object')return s; }catch(e){} return {on:true,x:null,y:null}; }
 function diceySave(s){ try{ DeckOS.store.set('dicey', s); }catch(e){} }
+// Dicey is a Deck OS (Win95) citizen — only present in the shell, unless you opt him into 'all' mode.
+function diceyHere(s){ s=s||diceyState(); return s.mode==='all' || document.body.classList.contains('deckos'); }
 // A faceted icosahedron (real d20 look): shaded triangular facets, crisp silhouette, no number
 // shown by default — a value fades in on the front facet only when Dicey actually rolls.
 function diceyD20Svg(){
@@ -8215,7 +8219,7 @@ function diceyShowFace(n){ const f=_diceyEl&&_diceyEl.querySelector('.dicey-face
 function diceyApps(){ const order=['cgg','cardle','manapool','dicebag','twentyfourty','landgame','splash','decks','storage','widgets','calendar','battle','sysset','about'];
   const out=[]; order.forEach(k=>{ if(k==='cgg'){ out.push({k,icon:'🗃️',title:'Card Guesser'}); return; } const a=(typeof MGW_APPS!=='undefined')&&MGW_APPS[k]; if(a)out.push({k,icon:a.icon,title:a.title}); }); return out; }
 function diceyInit(){ const s=diceyState();
-  if(!s.on){ if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
+  if(!s.on || !diceyHere(s)){ _diceyOpen=false; clearTimeout(_diceyTimer); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
   if(_diceyEl)return;
   const el=document.createElement('div'); el.id='dicey'; _diceyEl=el;
   el.innerHTML='<button class="dicey-die" title="Dicey — click for help, drag to move, roll for luck">'+diceyD20Svg()+'</button>';
@@ -8279,10 +8283,12 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
     '<input class="dicey-search" placeholder="Find an app…" autocomplete="off">'+
     '<div class="dicey-apps">'+apps.map(a=>'<button class="dicey-app" data-dapp="'+a.k+'">'+a.icon+' '+_mgEsc(a.title)+'</button>').join('')+'</div>'+
     '<div class="dicey-foot" style="margin-top:6px"><button class="dicey-app" style="flex:1;text-align:center" data-tour="1">▶ Replay the tour</button></div>'+
+    '<label class="dicey-modeopt"><input type="checkbox" id="dicey-allmode"'+(diceyState().mode==='all'?' checked':'')+'> Follow me onto the classic site too</label>'+
     '<div class="dicey-foot"><button class="dicey-roll">🎲 Roll for me!</button><button class="dicey-hide" title="Hide Dicey">🫥</button></div>';
   _diceyEl.appendChild(bub);
   bub.querySelector('.dicey-x').onclick=diceyClosePanel;
   bub.querySelector('[data-tour]').onclick=()=>diceyTour(1);
+  const am=bub.querySelector('#dicey-allmode'); if(am)am.onchange=()=>{ const s=diceyState(); s.mode=am.checked?'all':'os'; diceySave(s); if(typeof toast==='function')toast(am.checked?'I’ll tag along everywhere! 🐾':'Back to Deck OS only.'); };
   bub.querySelector('.dicey-hide').onclick=()=>{ diceyClosePanel(); diceyToggle(); };
   bub.querySelector('.dicey-roll').onclick=diceyRoll;
   bub.querySelectorAll('.dicey-app').forEach(b=>b.onclick=()=>{ const k=b.getAttribute('data-dapp'); diceyClosePanel(); try{ mgLaunchApp(k); }catch(e){} });
