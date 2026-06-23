@@ -204,6 +204,8 @@ multicolor), `t:`/`type:`, `o:`/`oracle:`, `f:`/`format:`, `cmc`/`mv` with `= > 
 | POST | `/api/uploads/:id/save` | JWT | keep a deck photo in the Gallery (kind `deck`→`deck_saved`); counts toward the limit |
 | POST | `/api/uploads/:id/unsave` | JWT | release a saved deck photo (`deck_saved`→`deck`); frees a quota slot |
 | POST | `/api/uploads/:id/report` · `/api/uploads/report` | soft | moderation report (by id or by image URL) |
+| POST | `/api/uploads/accept-terms` | JWT | record one-time acceptance of the upload rules → `{accepted_at}` |
+| POST | `/api/admin/users/:id/uploads` | admin | enable/disable a user's upload access `{disabled}` (repeat-infringer) |
 | GET | `/api/admin/reports` | admin | reported uploads, most-reported first |
 | POST | `/api/admin/uploads/:id/takedown` | admin | purge an upload (any owner) + revert decks |
 

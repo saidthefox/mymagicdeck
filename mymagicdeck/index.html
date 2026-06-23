@@ -917,6 +917,7 @@
     .splash-card.hovered { box-shadow:0 16px 48px rgba(0,0,0,0.85); z-index:200!important; }
     .splash-card img { width:100%; display:block; border-radius:5px; }
     .splash-card .splash-qty { position:absolute; bottom:4px; right:4px; background:rgba(0,0,0,0.75); color:#fff; font-size:0.62rem; font-weight:700; border-radius:4px; padding:1px 5px; }
+    .splash-card .upl-tag { position:absolute; top:4px; left:4px; background:rgba(0,0,0,0.7); color:#ffd27a; font-size:0.55rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; border-radius:4px; padding:1px 5px; pointer-events:none; }
     .splash-card .no-img-ph { aspect-ratio:488/680; display:flex; align-items:center; justify-content:center; font-size:0.6rem; color:var(--text-dim); text-align:center; padding:6px; }
     .splash-deck-manager-badge { display:inline-flex; align-items:center; gap:4px; background:var(--accent-dim); color:var(--accent); border-radius:10px; padding:1px 8px; font-size:0.65rem; font-weight:700; }
     /* Commander slot */
@@ -1530,7 +1531,7 @@
     @keyframes lg-lifelow{50%{opacity:.5}}
     .lg-ele{font-size:12px;font-weight:bold;color:#cdeacd;background:rgba(40,90,50,.5);border:1px solid #3a7d4c;border-radius:5px;padding:1px 6px}
     .lg-ele.sick{color:#9aa6b6;background:rgba(60,64,72,.5);border-color:#4a505c}
-    /* the elephant rendered as an actual (Darksteel/artifact-framed) Magic card on the battlefield */
+    /* the elephant rendered as an actual (Brightsteel/artifact-framed) Magic card on the battlefield */
     .lg-elerow{display:flex;justify-content:center;align-items:center;min-height:136px;padding:2px}
     .lg-ecard{position:relative;width:117px;height:131px;display:flex;flex-direction:column;padding:4px;box-sizing:border-box;border-radius:8px;background:linear-gradient(155deg,#8b8f96,#5a5e66 55%,#3c3f45);border:2px solid #cfd4db;box-shadow:0 3px 9px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.12);font-family:'MS Sans Serif',Tahoma,sans-serif;color:#16181c;transition:transform .15s,filter .15s}
     .lg-ecard.mine{border-color:#ffd700;box-shadow:0 0 11px rgba(255,215,0,.45),inset 0 0 0 1px rgba(255,255,255,.14)}
@@ -1609,6 +1610,11 @@
     .lg-ph.on{opacity:1;background:var(--pc);color:#0d0f13}
     .lg-ph.stop{opacity:1;box-shadow:0 0 0 2px #ffd700}
     .lg-ph.ostop{border-style:dashed}
+    /* persistent fan-content footer (classic site; Deck OS uses the About program, splash has its own line) */
+    #mmd-foot{position:fixed;left:0;right:0;bottom:0;z-index:30;background:rgba(10,12,16,.85);border-top:1px solid var(--border,#2c303a);color:var(--text-dim,#9aa0aa);font-size:10px;line-height:1.35;text-align:center;padding:3px 10px;backdrop-filter:blur(2px)}
+    #mmd-foot a{color:var(--accent,#7db8ff);text-decoration:none}
+    body.deckos #mmd-foot{display:none}
+    @media (max-width:700px){ #mmd-foot{font-size:9px;padding:2px 6px} }
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
@@ -2197,7 +2203,7 @@
     <div class="modal-body">
       <div class="uploads-toolbar">
         <label class="btn primary">＋ Upload cards<input type="file" accept="image/*" multiple id="uploads-file" style="display:none" onchange="doDirectUpload(this)"></label>
-        <span class="uploads-hint">Add photos of your cards — each is auto-detected, cropped, and tagged. Queue several; keep adding while they process.</span>
+        <span class="uploads-hint">Add photos of your cards — each is auto-detected, cropped, and tagged. Queue several; keep adding while they process. <b>Your own alters / art only — no card scans</b> (<a href="/dmca.html" target="_blank" rel="noopener">rules</a>).</span>
       </div>
       <div id="uploads-tray" class="uploads-tray"></div>
       <div id="uploads-status" class="uploads-status"></div>
@@ -2287,6 +2293,7 @@
     </div>
   </div>
   <div class="splash-body" id="splash-body"></div>
+  <div class="splash-foot" style="text-align:center;font-size:10px;line-height:1.4;color:rgba(255,255,255,.55);padding:8px 12px">Unofficial Fan Content per the Wizards of the Coast Fan Content Policy — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via Scryfall. · <a href="/terms.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">DMCA</a></div>
 </div>
 
 <div id="printings-popover">
@@ -3221,6 +3228,7 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
       html+=imgNormal
         ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${it.card.name}"/>`
         :`<div class="no-img-ph">${_mgEsc(it.card.name)}</div>`;
+      if(imgNormal&&imgNormal.indexOf('/u/')!==-1)html+=`<div class="upl-tag" title="User upload / alter — not an official card image">alter</div>`;
       if(_splashEdit&&i===flat.length-1)html+=`<div class="splash-edit-badge">✎</div>`;
       html+=`</div>`;
     });
@@ -3534,7 +3542,8 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
       ? `onpointerdown="freeCardDown(event,'${e.key}','${e.cid}',${e.copyIdx})"`
       : `onclick="showCardDetail(${esc})" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()"`;
     html+=`<div class="splash-card free" data-key="${e.key}" style="left:${p.x}px;top:${p.y}px;z-index:${p.z||1};width:${CARD_W}px" ${handler}>`;
-    html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${e.card.name}" draggable="false"/>`:`<div class="no-img-ph">${e.card.name}</div>`;
+    html+=imgN?`<img src="${imgN}" data-normal="${imgN}" data-large="${imgL||imgN}" alt="${_mgEsc(e.card.name)}" draggable="false"/>`:`<div class="no-img-ph">${_mgEsc(e.card.name)}</div>`;
+    if(imgN&&imgN.indexOf('/u/')!==-1)html+=`<div class="upl-tag" title="User upload / alter — not an official card image">alter</div>`;
     if(_splashEdit)html+=`<div class="splash-edit-badge">✎</div>`;
     html+=`</div>`;
   }
@@ -4296,6 +4305,7 @@ function _renderUploadTab(){
     <div class="pup">
       <label class="pup-drop"><input type="file" accept="image/*" onchange="doCardUpload(this)">📷 Choose a photo of your card</label>
       <div class="pup-hint">Next you’ll drag the corners to straighten &amp; crop it — it becomes this card’s art on your splash page.</div>
+      <div class="pup-hint" style="color:var(--dim,#9aa6b6)">Your own alters / art only — no card scans. <a href="/dmca.html" target="_blank" rel="noopener" style="color:inherit">Rules</a>.</div>
       <div class="pup-status" id="pup-status"></div>
       ${hasCustom?`<button class="btn small" onclick="revertArt()">↩ Revert to original art</button>`:''}
     </div>`;
@@ -4400,6 +4410,36 @@ async function applyPrintPrefFromUI(){
   }catch(e){ toast('Could not update printings','error'); }
   finally{ if(btn)btn.disabled=false; }
 }
+// ── Upload rules: a one-time acceptance gate shown before a user's first upload ──
+function uploadsAcceptedLocal(){ return !!(state.user && state.user.uploads_accepted); }
+function ensureUploadTerms(proceed){
+  if(!state.user||!apiToken()){ toast('Sign in to upload','error'); return; }
+  if(state.user.uploads_disabled){ toast('Uploads are disabled on your account.','error'); return; }
+  if(uploadsAcceptedLocal()){ proceed(); return; }
+  showUploadRules(proceed);
+}
+function showUploadRules(proceed){
+  let ov=document.getElementById('upload-rules-ov'); if(ov)ov.remove();
+  ov=document.createElement('div'); ov.id='upload-rules-ov'; ov.className='modal-overlay open'; ov.style.zIndex='6300';
+  ov.innerHTML='<div class="modal" style="max-width:440px"><div class="modal-header"><div class="modal-title">📋 Upload rules</div></div>'+
+    '<div class="modal-body" style="font-size:13px;line-height:1.5">'+
+    '<p>By uploading an image you confirm:</p>'+
+    '<ul style="margin:6px 0 10px;padding-left:18px">'+
+      '<li>You own it or have the rights — your own alter, your own art, a photo you took.</li>'+
+      '<li><b>No</b> verbatim scans or clean reproductions of real Magic cards.</li>'+
+      '<li><b>No</b> third-party art, logos, or trademarks you don’t have rights to.</li>'+
+      '<li>No NSFW, hateful, or illegal content.</li>'+
+    '</ul>'+
+    '<p style="color:var(--dim,#9aa6b6)">Uploads that break these rules may be removed and repeat violators can lose upload access. We respond to valid copyright takedowns — see <a href="/dmca.html" target="_blank" rel="noopener">/dmca</a>.</p>'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-top:8px;cursor:pointer"><input type="checkbox" id="ur-ck"> I understand and agree.</label>'+
+    '<div class="tf-acts" style="margin-top:12px"><button class="tf-cancel" id="ur-cancel">Cancel</button><button class="tf-save" id="ur-accept" disabled>Accept &amp; continue</button></div>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  const ck=ov.querySelector('#ur-ck'), acc=ov.querySelector('#ur-accept');
+  ck.onchange=()=>{ acc.disabled=!ck.checked; };
+  ov.querySelector('#ur-cancel').onclick=()=>ov.remove();
+  acc.onclick=()=>{ acc.disabled=true; apiFetch('/uploads/accept-terms',{method:'POST',body:'{}'}).then(r=>{ if(state.user){ state.user.uploads_accepted=(r&&r.accepted_at)||Date.now(); try{ localStorage.setItem('mmd_user',JSON.stringify(state.user)); }catch(e){} } ov.remove(); proceed(); }).catch(()=>{ acc.disabled=false; toast('Could not record acceptance — try again','error'); }); };
+}
 function doCardUpload(input){
   const f=input.files&&input.files[0]; if(!f)return; input.value='';
   if(!state.user||!apiToken()){toast('Sign in to upload art','error');return;}
@@ -4407,11 +4447,11 @@ function doCardUpload(input){
   const ctx=_printingsCtx;
   const scope=_artScope();
   const card=ctx&&ctx.card;
-  openCropper(f, {
+  ensureUploadTerms(()=>openCropper(f, {
     expectedName: card?card.name:null,
     expectedOracle: card?card.oracle_id:null,
     onDone: (j)=>_applyArtToEntry(ctx, scope, j.image_uris),
-  });
+  }));
 }
 function revertArt(){
   const ctx=_printingsCtx; if(!ctx||!ctx.entry)return;
@@ -4457,6 +4497,7 @@ function _photoProgress(box){
 function doDeckPhotoUpload(input){
   const f=input.files&&input.files[0]; if(!f)return;
   const deck=_splashDeck?.deck; if(!deck)return;
+  if(!uploadsAcceptedLocal()||(state.user&&state.user.uploads_disabled)){ ensureUploadTerms(()=>doDeckPhotoUpload(input)); return; }
   const box=document.querySelector('.splash-deckphoto');
   const prog=_photoProgress(box); if(prog)prog.set(0,'Uploading 0%');
   // XHR (not fetch) so we can report real upload progress; after 100% the server still
@@ -4586,6 +4627,8 @@ let _uplJobs=[], _uplRunning=false, _uplSeq=0; const UPL_MAX=15;
 function doDirectUpload(input){ const files=[...(input.files||[])]; input.value=''; addUplJobs(files); }
 function addUplJobs(files){
   if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
+  if(state.user.uploads_disabled){toast('Uploads are disabled on your account.','error');return;}
+  if(!uploadsAcceptedLocal()){ showUploadRules(()=>addUplJobs(files)); return; }
   let space=UPL_MAX - _uplJobs.filter(j=>j.state==='queued'||j.state==='working').length, added=0;
   for(const f of files){
     if(space<=0){ toast('Upload queue is full ('+UPL_MAX+') — let some finish first.','info'); break; }
@@ -6038,7 +6081,7 @@ function renderAbout(){
       '<a href="https://github.com/saidthefox/mymagicbot" target="_blank" rel="noopener" style="color:var(--accent)">🤖 MyMagicBot on GitHub</a>'+
     '</div>'+
     '<div style="margin-top:16px"><button class="btn small" onclick="aboutFeedback()">💬 Submit feedback / request a feature</button></div>'+
-    '<div style="color:var(--text-dim);font-size:.76rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MTG content © Wizards of the Coast. Card data via Scryfall. Not affiliated with Wizards.</div>'+
+    '<div style="color:var(--text-dim);font-size:.72rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MyMagicDeck is unofficial Fan Content permitted under the Wizards of the Coast Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card data via Scryfall.<br><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:var(--accent)">Copyright / DMCA</a></div>'+
     '</div>';
 }
 function aboutFeedback(){
@@ -6910,14 +6953,14 @@ const LG_FMT_DATA={
             ['🌲','Forest','When it enters, return one land from your graveyard to your hand.'],
             ['◇','Wastes','When it enters, draw a card.'] ] },
   elephants:{ icon:'🐘', name:'Elephants', play:true, combat:true, startLife:20,
-    blurb:'Each player starts with a <b>Darksteel War Elephant</b> — a 0-cost 3/3 with indestructible, trample, and haste — and 20 life. Here the lands aren’t permanents — each is a <b>one-per-turn instant-style spell that targets a creature</b>. ⚔️ Attack with your elephant; the defender may block with their untapped elephant, and trample carries the leftover to the face. Both players can swing from turn one. <b>Win by dropping your opponent to 0 life.</b> Local play.',
+    blurb:'Each player starts with a <b>Brightsteel War Elephant</b> — a 0-cost 3/3 with indestructible, trample, and haste — and 20 life. Here the lands aren’t permanents — each is a <b>one-per-turn instant-style spell that targets a creature</b>. ⚔️ Attack with your elephant; the defender may block with their untapped elephant, and trample carries the leftover to the face. Both players can swing from turn one. <b>Win by dropping your opponent to 0 life.</b> Local play.',
     lands:[ ['🌾','Plains','Exile target creature; it returns at the end of turn.'],
             ['🏝️','Island','Target creature gains flying until end of turn. Scry 1.'],
             ['💀','Swamp','Target creature gets -0/-2 until end of turn.'],
             ['⛰️','Mountain','Target creature gets +3/+0 until end of turn.'],
             ['🌲','Forest','Target creature gets +1/+2 until end of turn and untaps.'],
             ['◇','Wastes','Target creature gets +1/+1 until end of turn. Draw a card.'],
-            ['🐘','Darksteel War Elephant','0-mana 3/3 artifact creature: indestructible, trample, haste. You start with one.'] ] }
+            ['🐘','Brightsteel War Elephant','0-mana 3/3 artifact creature: indestructible, trample, haste. You start with one.'] ] }
 };
 function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
   document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
@@ -7227,7 +7270,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     const pow=lgElePow(e), tou=lgEleTou(e), st=[]; if(e.flying)st.push('🪶 flying'); if(e.tapped)st.push('↻ tapped');
     const ck=eleClick(pi), tip=ck==='attack'?'Click to attack':ck==='block'?'Click to block':ck==='target'?'Click to target':'';
     return '<div class="lg-elerow"><div class="lg-ecard'+(e.tapped?' tapped':'')+(pi===_lg.active?' mine':'')+(ck?' lg-ec-can ck-'+ck:'')+'"'+(ck?(' data-ele="'+pi+'" title="'+tip+'"'):'')+'>'
-      +'<div class="lg-ec-hd"><span class="lg-ec-nm">Darksteel War Elephant</span><span class="lg-ec-cost"></span></div>'
+      +'<div class="lg-ec-hd"><span class="lg-ec-nm">Brightsteel War Elephant</span><span class="lg-ec-cost"></span></div>'
       +'<div class="lg-ec-art"><span>🐘</span></div>'
       +'<div class="lg-ec-tl">Artifact Creature — Elephant</div>'
       +'<div class="lg-ec-tx">Indestructible, trample, haste'+(st.length?'<span class="lg-ec-st">'+st.join(' · ')+'</span>':'')+'</div>'
@@ -9122,5 +9165,6 @@ fwInitSearchResize();
   ro.observe(panel);
 })();
 </script>
+<footer id="mmd-foot">Unofficial Fan Content per the Wizards of the Coast Fan Content Policy — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="/dmca.html">DMCA</a></footer>
 </body>
 </html>

@@ -1,4 +1,4 @@
-// Elephants (Land Game shell + Magic-style phases with player-set stops, local-only): haste 3/3 Darksteel
+// Elephants (Land Game shell + Magic-style phases with player-set stops, local-only): haste 3/3 Brightsteel
 // War Elephants, lands are one-per-turn instant tricks, attack/target/block by clicking creatures, a phase
 // bar on the centre line, and per-phase stops that give the opponent priority before that phase.
 import { chromium } from 'playwright';
@@ -18,7 +18,7 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   fresh(); await new Promise(r=>setTimeout(r,40));
   out.combat=_lg.combat===true; out.life=[_lg.players[0].life,_lg.players[1].life]; out.sick=[_lg.players[0].ele.sick,_lg.players[1].ele.sick];
   out.startPhase=_lg.phase; out.startMode=_lg.mode;
-  out.cardName=!!($('.lg-ec-nm')&&/Darksteel War Elephant/.test($('.lg-ec-nm').textContent));
+  out.cardName=!!($('.lg-ec-nm')&&/Brightsteel War Elephant/.test($('.lg-ec-nm').textContent));
   out.cardKeywords=!!($('.lg-ec-tx')&&/Indestructible.*trample.*haste/i.test($('.lg-ec-tx').textContent));
   out.landText=!!($('.lg-bc-rules')&&/until end of turn|returns at end of turn|Draw a card/i.test([...$$('.lg-bc-rules')].map(e=>e.textContent).join(' ')));
   out.costEmpty=(($('.lg-ec-cost')||{}).textContent||'')==='';

@@ -167,6 +167,27 @@ try {
     assert(gm.body.matches[0].opponent === 'live_host' && gm.body.matches[0].result === 'L', 'same match mirrored into guest history (vs host, L)');
     const e404 = await Ja('/tf/live/ZZZZZ', null, LH);
     assert(e404.status === 404, 'GET unknown live code → 404');
+
+    // --- Upload rules gate + per-user upload disable (IP/compliance hardening) ---
+    const ru = 'smoke_up_' + Math.floor(Math.random() * 1e6);
+    const reg = await J('/auth/register', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username: ru, email: ru + '@example.com', password: 'smoketest123' }) });
+    if (reg.status === 200 && reg.body && reg.body.token) {
+      const UT = reg.body.token;
+      assert(reg.body.user && reg.body.user.uploads_accepted === null, 'new user starts with upload terms not accepted');
+      const pre = await Ja('/uploads/card-art', { method:'POST' }, UT);
+      assert(pre.status === 412 && pre.body && pre.body.needTerms, 'card-art before accepting rules → 412 needTerms');
+      const acc = await Ja('/uploads/accept-terms', { method:'POST', body: JSON.stringify({}) }, UT);
+      assert(acc.status === 200 && acc.body.accepted_at, 'POST /uploads/accept-terms → accepted_at');
+      const post = await Ja('/uploads/card-art', { method:'POST' }, UT);
+      assert(post.status === 400, 'after accepting, card-art passes the rules gate (400 no-file, not 412)');
+      try {
+        const udb = require('better-sqlite3')(process.env.DB_PATH || '/data/mymagicdeck.db');
+        udb.prepare('UPDATE users SET uploads_disabled = 1 WHERE username = ?').run(ru);
+        udb.close();
+        const dis = await Ja('/uploads/card-art', { method:'POST' }, UT);
+        assert(dis.status === 403, 'uploads_disabled account → card-art 403');
+      } catch (_) { console.log('  (skipped uploads_disabled assert: no DB write access)'); }
+    } else { console.log('  (skipped upload-gate asserts: register returned ' + reg.status + ')'); }
   } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));

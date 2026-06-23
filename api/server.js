@@ -301,7 +301,17 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_mail_user ON mail(user_id, is_read)');
 try { db.exec('ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0'); } catch (_) { /* exists */ }
 try { db.prepare('UPDATE users SET is_admin = 1 WHERE username = ?').run(process.env.ADMIN_USERNAME || 'jake'); } catch (_) {}
 try { db.exec('ALTER TABLE mail ADD COLUMN from_user INTEGER'); } catch (_) { /* exists */ } // sender id → enables replies
+try { db.exec('ALTER TABLE users ADD COLUMN uploads_disabled INTEGER DEFAULT 0'); } catch (_) { /* exists */ }          // repeat-infringer enforcement
+try { db.exec('ALTER TABLE users ADD COLUMN accepted_upload_terms_at INTEGER'); } catch (_) { /* exists */ }            // first-upload rules acceptance
 function isAdminUser(id) { try { const r = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(id); return !!(r && r.is_admin); } catch (_) { return false; } }
+function uploadsDisabled(id) { try { const r = db.prepare('SELECT uploads_disabled FROM users WHERE id = ?').get(id); return !!(r && r.uploads_disabled); } catch (_) { return false; } }
+function uploadsAccepted(id) { try { const r = db.prepare('SELECT accepted_upload_terms_at FROM users WHERE id = ?').get(id); return (r && r.accepted_upload_terms_at) || null; } catch (_) { return null; } }
+// Gate every upload route: blocked accounts get 403; first-time uploaders must accept the upload rules (412).
+function uploadGate(req, reply) {
+  if (uploadsDisabled(req.user.sub)) { reply.code(403).send({ error: 'Uploads are disabled on your account.' }); return true; }
+  if (!uploadsAccepted(req.user.sub)) { reply.code(412).send({ error: 'terms', needTerms: true }); return true; }
+  return false;
+}
 function mailSend(userId, { from_kind = 'system', from_label = '', subject, body = '', link = '', from_user = null }) {
   try { db.prepare('INSERT INTO mail (user_id, from_kind, from_label, subject, body, link, from_user) VALUES (?,?,?,?,?,?,?)')
     .run(userId, from_kind, String(from_label).slice(0, 60), String(subject).slice(0, 160), String(body).slice(0, 4000), String(link).slice(0, 200), from_user || null); } catch (_) {}
@@ -1798,7 +1808,7 @@ app.post('/api/auth/register', {
 
   const user = { id: result.lastInsertRowid, username, email };
   const token = app.jwt.sign({ sub: user.id, username: user.username });
-  return { token, user: { username, email, is_admin: isAdminUser(user.id) } };
+  return { token, user: { username, email, is_admin: isAdminUser(user.id), uploads_accepted: null, uploads_disabled: false } };
 });
 
 // ── POST /api/auth/login ──────────────────────────────────────────────────────
@@ -1820,7 +1830,7 @@ app.post('/api/auth/login', {
   if (loginLocked(lkey)) return reply.code(429).send({ error: 'Too many failed logins. Please wait a few minutes and try again.' });
 
   const record = db.prepare(
-    'SELECT id, username, email, password, is_admin FROM users WHERE username = ?'
+    'SELECT id, username, email, password, is_admin, uploads_disabled, accepted_upload_terms_at FROM users WHERE username = ?'
   ).get(username);
 
   if (!record) {
@@ -1836,7 +1846,7 @@ app.post('/api/auth/login', {
 
   loginOk(lkey);
   const token = app.jwt.sign({ sub: record.id, username: record.username });
-  return { token, user: { username: record.username, email: record.email, is_admin: !!record.is_admin } };
+  return { token, user: { username: record.username, email: record.email, is_admin: !!record.is_admin, uploads_accepted: record.accepted_upload_terms_at || null, uploads_disabled: !!record.uploads_disabled } };
 });
 
 // ── Password reset ────────────────────────────────────────────────────────────
@@ -2324,6 +2334,7 @@ app.put('/api/desktop', { preHandler: authenticate }, async (req, reply) => {
 // auto-crops to the card, and stores small/normal/large WebP. Returns an
 // image_uris override the client merges onto the stored card.
 app.post('/api/uploads/card-art', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+  if (uploadGate(req, reply)) return;
   const userId = req.user.sub;
   // Quota: count only card-art uploads.
   const cardCount = db.prepare("SELECT COUNT(*) n FROM uploads WHERE user_id = ? AND kind IN ('card','deck_saved')").get(userId).n;
@@ -2397,6 +2408,7 @@ app.post('/api/uploads/card-art', { preHandler: [authenticate, rateLimitUpload] 
 // name, and the is-card check. The actual crop happens later via /card-art with
 // the user-adjusted corners.
 app.post('/api/uploads/analyze', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+  if (uploadGate(req, reply)) return;
   const expectedName = (req.query.name || '').toString().trim() || null;
   const expectedOracle = (req.query.oracle || '').toString().trim() || null;
   let data;
@@ -2429,6 +2441,7 @@ app.post('/api/uploads/analyze', { preHandler: [authenticate, rateLimitUpload] }
 
 // ── POST /api/uploads/deck-photo  (full-deck photo for the splash header) ──────
 app.post('/api/uploads/deck-photo', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+  if (uploadGate(req, reply)) return;
   let data;
   try { data = await req.file(); } catch (e) { return reply.code(400).send({ error: 'Upload failed: ' + e.message }); }
   if (!data) return reply.code(400).send({ error: 'No file uploaded.' });
@@ -2522,6 +2535,13 @@ app.post('/api/uploads/:id/unsave', { preHandler: authenticate }, async (req, re
   return { ok: true, saved: false };
 });
 
+// ── Accept the upload rules (one-time, before the first upload) ───────────────
+app.post('/api/uploads/accept-terms', { preHandler: authenticate }, async (req) => {
+  let at = uploadsAccepted(req.user.sub);
+  if (!at) { at = Date.now(); db.prepare('UPDATE users SET accepted_upload_terms_at = ? WHERE id = ?').run(at, req.user.sub); }
+  return { accepted_at: at };
+});
+
 // ── Moderation: report an uploaded image (anyone; rate-limited per IP) ─────────
 app.post('/api/uploads/:id/report', { preHandler: [softAuthenticate, rateLimitReport] }, async (req, reply) => {
   const id = parseInt(req.params.id, 10);
@@ -2572,6 +2592,16 @@ app.post('/api/admin/uploads/:id/takedown', { preHandler: adminOnly }, async (re
   db.prepare('DELETE FROM upload_reports WHERE upload_id = ?').run(id);
   app.log.warn(`admin takedown: upload ${id} (user ${row.user_id}, key ${row.key}), reverted ${revertedDecks} decks`);
   return { ok: true, revertedDecks };
+});
+
+// ── Admin: enable/disable a user's upload access (repeat-infringer enforcement) ─
+app.post('/api/admin/users/:id/uploads', { preHandler: adminOnly }, async (req, reply) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return reply.code(400).send({ error: 'Bad user id.' });
+  const disabled = (req.body || {}).disabled ? 1 : 0;
+  db.prepare('UPDATE users SET uploads_disabled = ? WHERE id = ?').run(disabled, id);
+  app.log.warn(`admin: user ${id} uploads_disabled=${disabled}`);
+  return { ok: true, id, uploads_disabled: !!disabled };
 });
 
 // ── Shareable deck-sheet renderer ─────────────────────────────────────────────
