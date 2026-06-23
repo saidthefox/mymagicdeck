@@ -1308,6 +1308,36 @@
     .lc-side{position:absolute;left:0;top:0;bottom:0;width:64px;display:flex;align-items:center;justify-content:center;z-index:5;pointer-events:none}
     .lc-side-inner{display:flex;align-items:center;gap:28px;transform:rotate(-90deg);white-space:nowrap;pointer-events:auto}
     .lc-side-inner .lc-ctl button{white-space:nowrap}
+    /* 2040 match tracker — bottom-left, upright (faces the bottom player) */
+    .tf-track{position:absolute;left:6px;bottom:8px;z-index:6;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+    .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
+    .tf-btn:active{border-color:#808080 #fff #fff #808080}
+    .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
+    .tf-fin{background:#a53a3a;border-color:#fca #402 #402 #fca;color:#fff}
+    .tf-mull{background:#caa94a;border-color:#fe9 #640 #640 #fe9}
+    .tf-game{font-size:11px;color:#cbd3e0;font-weight:bold;padding:0 2px;text-shadow:0 1px 2px #000}
+    .tf-hist{padding:5px 8px}
+    .tf-overlay{position:absolute;inset:0;z-index:20;background:rgba(0,0,0,.8);display:flex;align-items:center;justify-content:center;padding:14px;overflow:auto}
+    .tf-panel{background:#2a2e36;border:1px solid #4a505c;border-radius:10px;padding:16px;max-width:340px;width:100%;color:#eee;font-family:Tahoma,sans-serif;font-size:13px;box-shadow:0 12px 40px rgba(0,0,0,.6)}
+    .tf-panel h3{margin:0 0 8px;font-size:15px;color:#fff}
+    .tf-panel label{display:block;font-size:10px;color:#9aa6b6;margin:9px 0 3px;text-transform:uppercase;letter-spacing:.06em}
+    .tf-panel input,.tf-panel textarea{width:100%;box-sizing:border-box;background:#fff;border:1px solid #888;border-radius:5px;padding:6px 8px;font-size:13px;color:#111}
+    .tf-wld{display:flex;gap:8px;margin-top:4px}
+    .tf-wld button{flex:1;padding:12px 6px;font-size:14px;font-weight:bold;border-radius:6px;border:2px solid;cursor:pointer}
+    .tf-w{background:#2f9b54;border-color:#9f9 #042 #042 #9f9;color:#fff}
+    .tf-l{background:#b33a44;border-color:#fbb #401 #401 #fbb;color:#fff}
+    .tf-d{background:#7889a0;border-color:#cde #234 #234 #cde;color:#fff}
+    .tf-mulls{display:flex;flex-direction:column;gap:4px}
+    .tf-mrow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;color:#dde}
+    .tf-mrow input{width:56px;flex:0 0 auto}
+    .tf-acts{display:flex;gap:8px;margin-top:14px}
+    .tf-acts button{flex:1;padding:9px;border-radius:6px;border:2px solid;cursor:pointer;font-weight:bold}
+    .tf-save{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
+    .tf-cancel{background:#c0c0c0;border-color:#fff #808080 #808080 #fff;color:#000}
+    .tf-histlist{max-height:280px;overflow:auto}
+    .tf-hist-row{display:flex;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid #3a404a;font-size:12px}
+    .tf-rW{color:#7CFC00}.tf-rL{color:#ff8a7a}.tf-rD{color:#bcd}
+    .tf-hd{color:#8896aa;flex:0 0 auto}
     .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
@@ -7034,11 +7064,67 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs">'+
       half(0,true)+half(1,false)+
       '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>'+
+      lcTrackerHtml(s)+
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
   body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));
   body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>{ s.start=+b.getAttribute('data-lcstart'); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); }));
   body.querySelector('[data-lcreset]').addEventListener('click',()=>{ s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); });
+  // Match tracker (bottom player): Start → Mulligan/Next Game → Finish, with per-game results + mulligans.
+  body.querySelectorAll('[data-tf]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const a=b.getAttribute('data-tf');
+    if(a==='start'){ s.tr={active:true,gameNo:1,curMull:0,games:[],nexted:false}; lcSave(); lcRender(body); }
+    else if(a==='mull'){ if(s.tr){ s.tr.curMull=(s.tr.curMull||0)+1; lcSave(); lcRender(body); } }
+    else if(a==='next'){ tfResultPrompt(body,'next'); }
+    else if(a==='finish'){ tfResultPrompt(body,'finish'); }
+    else if(a==='history'){ tfHistory(body); } }));
+}
+// ---- 2040 match tracker ----
+function tfMatches(){ try{ return DeckOS.store.get('tf_matches')||[]; }catch(e){ return []; } }
+function tfSaveMatches(l){ try{ DeckOS.store.set('tf_matches', l); }catch(e){} }
+function tfTally(games){ let w=0,l=0,d=0; (games||[]).forEach(g=>{ if(g.result==='W')w++; else if(g.result==='L')l++; else d++; }); return { w,l,d, res: w>l?'W':(l>w?'L':'D') }; }
+function tfResLabel(r){ return r==='W'?'Win':r==='L'?'Loss':'Draw'; }
+function lcTrackerHtml(s){ const t=s.tr||{};
+  if(!t.active) return '<div class="tf-track"><button class="tf-btn tf-start" data-tf="start">▶ Start Match</button>'+
+      '<button class="tf-btn tf-hist" data-tf="history" title="Match history">📋</button></div>';
+  return '<div class="tf-track">'+
+    '<button class="tf-btn tf-mull" data-tf="mull">🌀 Mulligan ('+(t.curMull||0)+')</button>'+
+    '<div class="tf-game">Game '+(t.gameNo||1)+'</div>'+
+    '<button class="tf-btn" data-tf="next">⏭ Next Game</button>'+
+    (t.nexted?'<button class="tf-btn tf-fin" data-tf="finish">🏁 Finish Match</button>':'')+
+    '</div>';
+}
+function tfOverlay(body){ const fs=body.querySelector('.lc-fs'); if(!fs)return null; let ov=fs.querySelector('.tf-overlay'); if(ov)ov.remove(); ov=document.createElement('div'); ov.className='tf-overlay'; fs.appendChild(ov); return ov; }
+function tfResultPrompt(body,kind){ const s=lcLoad(); if(!s.tr||!s.tr.active)return; const ov=tfOverlay(body); if(!ov)return;
+  ov.innerHTML='<div class="tf-panel"><h3>Game '+(s.tr.gameNo||1)+' result</h3>'+
+    '<div class="tf-wld"><button class="tf-w" data-r="W">Won</button><button class="tf-l" data-r="L">Lost</button><button class="tf-d" data-r="D">Draw</button></div>'+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
+  ov.querySelector('[data-x]').onclick=()=>ov.remove();
+  ov.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ s.tr.games.push({result:b.getAttribute('data-r'),mulligans:s.tr.curMull||0});
+    if(kind==='next'){ s.tr.gameNo=(s.tr.gameNo||1)+1; s.tr.curMull=0; s.tr.nexted=true; lcSave(); ov.remove(); lcRender(body); }
+    else { lcSave(); ov.remove(); tfEndScreen(body); } });
+}
+function tfEndScreen(body){ const s=lcLoad(); const t=s.tr; if(!t)return; const ov=tfOverlay(body); if(!ov)return;
+  const deckNames=Object.values(state.decks||{}).map(d=>d.name).filter(Boolean);
+  const ta=tfTally(t.games);
+  ov.innerHTML='<div class="tf-panel"><h3>Match — '+tfResLabel(ta.res)+' '+ta.w+'–'+ta.l+(ta.d?'–'+ta.d:'')+'</h3>'+
+    '<label>Opponent</label><input id="tf-opp" placeholder="Opponent name" maxlength="80">'+
+    '<label>Your deck</label><input id="tf-mydeck" list="tf-decklist" placeholder="Your deck" maxlength="80"><datalist id="tf-decklist">'+deckNames.map(n=>'<option value="'+_mgEsc(n)+'"></option>').join('')+'</datalist>'+
+    '<label>Their deck / archetype</label><input id="tf-theirdeck" placeholder="e.g. Mono-Red Aggro" maxlength="80">'+
+    '<label>Mulligans per game</label><div class="tf-mulls">'+t.games.map((g,i)=>'<div class="tf-mrow"><span>Game '+(i+1)+' · '+tfResLabel(g.result)+'</span><input type="number" min="0" max="9" value="'+(g.mulligans||0)+'" data-mi="'+i+'"></div>').join('')+'</div>'+
+    '<label>Notes</label><textarea id="tf-notes" rows="2" placeholder="How it went…" maxlength="500"></textarea>'+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Discard</button><button class="tf-save" data-save>Save match</button></div></div>';
+  const val=id=>{ const e=ov.querySelector('#'+id); return e?e.value.trim().slice(0,500):''; };
+  ov.querySelector('[data-x]').onclick=()=>{ if(confirm('Discard this match?')){ s.tr={active:false}; lcSave(); ov.remove(); lcRender(body); } };
+  ov.querySelector('[data-save]').onclick=()=>{ ov.querySelectorAll('[data-mi]').forEach(inp=>{ t.games[+inp.getAttribute('data-mi')].mulligans=Math.max(0,Math.min(9,parseInt(inp.value)||0)); });
+    const m={ id:'m'+Date.now().toString(36), ts:Date.now(), opponent:val('tf-opp'), myDeck:val('tf-mydeck'), theirDeck:val('tf-theirdeck'), notes:val('tf-notes'), games:t.games.slice(), result:tfTally(t.games).res };
+    const list=tfMatches(); list.unshift(m); if(list.length>200)list.length=200; tfSaveMatches(list);
+    s.tr={active:false}; lcSave(); ov.remove(); lcRender(body); if(typeof toast==='function')toast('Match saved 🏁','success'); };
+}
+function tfHistory(body){ const ov=tfOverlay(body); if(!ov)return; const list=tfMatches();
+  ov.innerHTML='<div class="tf-panel"><h3>Match history</h3>'+
+    (list.length?'<div class="tf-histlist">'+list.slice(0,40).map(m=>{ const ta=tfTally(m.games); return '<div class="tf-hist-row"><span><b class="tf-res tf-r'+m.result+'">'+tfResLabel(m.result)+' '+ta.w+'–'+ta.l+(ta.d?'–'+ta.d:'')+'</b> vs '+_mgEsc(m.opponent||'—')+(m.theirDeck?' <i>('+_mgEsc(m.theirDeck)+')</i>':'')+'</span><span class="tf-hd">'+new Date(m.ts).toLocaleDateString()+'</span></div>'; }).join('')+'</div>':'<div style="color:#9aa6b6;padding:8px 2px">No matches recorded yet. Hit ▶ Start Match.</div>')+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Close</button></div></div>';
+  ov.querySelector('[data-x]').onclick=()=>ov.remove();
 }
 function notesRefreshApp(){ const b=document.querySelector('#modal-prog-documents .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
 // The Documents folder: a file list of saved notes. Click a note to reopen it on the
