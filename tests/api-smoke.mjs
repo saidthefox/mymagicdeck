@@ -242,6 +242,23 @@ try {
         } else { console.log('  (skipped tournament-loop asserts: register failed)'); }
       } else { console.log('  (skipped Discord-link asserts: no BOT_API_KEY)'); }
     } else { console.log('  (skipped upload-gate asserts: register returned ' + reg.status + ')'); }
+
+    // Clean up: these tests register real `smoke_*` users on the live DB — remove them + their stray rows.
+    try {
+      const sdb = require('better-sqlite3')(process.env.DB_PATH || '/data/mymagicdeck.db');
+      const sids = sdb.prepare("SELECT id FROM users WHERE username LIKE 'smoke\\_%' ESCAPE '\\'").all().map(r => r.id);
+      const tx = sdb.transaction(() => { for (const id of sids) {
+        sdb.prepare('DELETE FROM uploads WHERE user_id=?').run(id);
+        sdb.prepare('DELETE FROM tf_matches WHERE user_id=?').run(id);
+        sdb.prepare('DELETE FROM tf_live WHERE host_id=? OR guest_id=?').run(id, id);
+        try { sdb.prepare('DELETE FROM mail WHERE user_id=?').run(id); } catch (_) {}
+        try { sdb.prepare('DELETE FROM tournament_subs WHERE user_id=?').run(id); } catch (_) {}
+        try { sdb.prepare('DELETE FROM decks WHERE user_id=?').run(id); } catch (_) {}
+        sdb.prepare('DELETE FROM users WHERE id=?').run(id);
+      } });
+      tx(); sdb.close();
+      if (sids.length) console.log('  (cleaned up ' + sids.length + ' smoke test account(s))');
+    } catch (_) { console.log('  (smoke account cleanup skipped: no DB write access — delete smoke_* users manually)'); }
   } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));
