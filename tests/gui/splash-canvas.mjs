@@ -56,7 +56,8 @@ const guest = await p.evaluate(()=>{ state.user=null; const d=state.decks.tdeck;
   const wrap=document.getElementById('splash-stats-wrap');
   const owner=_splashOwner();
   let threw=false; try{ statsSet('curve',true); }catch(e){ threw=true; }
-  return { widgetsBtn: !!wrap && !!wrap.querySelector('button') && getComputedStyle(wrap).display!=='none', owner, threw, curve:!!document.querySelector('.splash-stat.stat-curve'), genBtn: (function(){ try{ statsSet('profile',true); }catch(e){} return !!document.querySelector('.stat-profile .ss-prof-empty .btn'); })() }; });
+  const cv=document.querySelector('.splash-stat.stat-curve');
+  return { widgetsBtn: !!wrap && !!wrap.querySelector('button') && getComputedStyle(wrap).display!=='none', owner, threw, curve:!!cv, draggable: !!cv && !!cv.getAttribute('onpointerdown'), genBtn: (function(){ try{ statsSet('profile',true); }catch(e){} return !!document.querySelector('.stat-profile .ss-prof-empty .btn'); })() }; });
 
 console.log('guest:', JSON.stringify(guest));
 console.log('layout:', JSON.stringify(layout));
@@ -68,7 +69,7 @@ const ok = layout.present && layout.scaled && layout.notFixed
   && sideboard
   && rail.present && rail.anchoredRight && rail.fullHeight && resetGear
   && toggle.picShown && /Interactive Splash/.test(toggle.labelPic) && toggle.interShown && /Deck Pic/.test(toggle.labelInter) && toggle.serveCtl
-  && guest.widgetsBtn && !guest.owner && !guest.threw && guest.curve && guest.genBtn
+  && guest.widgetsBtn && !guest.owner && !guest.threw && guest.curve && guest.draggable && guest.genBtn
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

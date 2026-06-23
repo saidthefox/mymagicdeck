@@ -494,8 +494,9 @@
     /* font-size carries the widget's scale (set by the resize grip) so text stays crisp
        at any size — internals are em-based. (transform:scale would blur the text.) */
     .splash-stat { position:absolute; font-size:13px; background:rgba(10,12,18,0.82); border:1px solid rgba(255,255,255,0.2); border-radius:0.6em; color:#fff; padding:0.6em 0.8em; font-family:Tahoma,sans-serif; box-shadow:0 4px 16px rgba(0,0,0,0.55); -webkit-backdrop-filter:blur(2px); backdrop-filter:blur(2px); max-width:34em; }
-    .splash-overlay.editing .splash-stat { cursor:grab; outline:1px dashed rgba(255,255,255,0.28); }
-    .splash-overlay.editing .splash-stat:active { cursor:grabbing; }
+    .splash-stat:not(.rail) { cursor:grab; }            /* widgets are draggable for any viewer */
+    .splash-stat:not(.rail):active { cursor:grabbing; }
+    .splash-overlay.editing .splash-stat { outline:1px dashed rgba(255,255,255,0.28); }
     .splash-stat-rsz { position:absolute; right:-3px; bottom:-3px; width:16px; height:16px; cursor:nwse-resize; background:linear-gradient(135deg,transparent 45%,rgba(255,255,255,0.55) 45%,rgba(255,255,255,0.55) 60%,transparent 60%,transparent 72%,rgba(255,255,255,0.55) 72%,rgba(255,255,255,0.55) 87%,transparent 87%); border-radius:0 0 7px 0; touch-action:none; }
     .splash-overlay:not(.editing) .splash-stat-rsz { display:none; }
     .splash-stat .ss-t { font-size:0.7em; text-transform:uppercase; letter-spacing:0.1em; color:#9aa3b5; margin-bottom:0.4em; }
@@ -3354,8 +3355,10 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
   // Stat widgets (deck name / mana curve / type breakdown / price / deck list) — drag like cards.
   const statsOn=(deck.layout&&deck.layout.statsOn)||{};
   const RAIL_W=240; const railOn=!!(deck.layout&&deck.layout.listRail&&statsOn.list); // deck list docked as a right-side full-height rail
+  // Newly-spawned widgets land just to the RIGHT of the cards (clear space), not on top of them.
+  const cardsRight=(maxX>0?maxX:0)+16;
   const statPlaced=[]; let si=0;
-  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; if(sd.id==='list'&&railOn)continue; /* rail is rendered separately */ let p=positions['stat:'+sd.id]; if(!p)p={x:16,y:16+si*84,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
+  for(const sd of STAT_DEFS){ if(!statsOn[sd.id])continue; if(sd.id==='list'&&railOn)continue; /* rail is rendered separately */ let p=positions['stat:'+sd.id]; if(!p)p={x:cardsRight,y:16+si*92,z:900+si}; statPlaced.push({id:sd.id,p}); si++; maxX=Math.max(maxX,p.x+230); maxY=Math.max(maxY,p.y+70); if(typeof p.z==='number')_freeZ=Math.max(_freeZ,p.z); }
   const W=Math.max(maxX+40,420)+(railOn?RAIL_W+12:0),H=Math.max(maxY+40,320);
   let html=`<div class="splash-columns"><div class="splash-free${_snapOn?' snap':''}" id="splash-free" style="width:${W}px;height:${H}px;transform:scale(${scale});transform-origin:top left">`;
   for(const{e,p}of placed){
@@ -3372,7 +3375,7 @@ function _buildSplashFree(allCards,sbCards,zoomPct){
     html+=`</div>`;
   }
   for(const{id,p} of statPlaced){
-    const handler=_splashEdit?`onpointerdown="freeStatDown(event,'stat:${id}')"`:'';
+    const handler=`onpointerdown="freeStatDown(event,'stat:${id}')"`; // widgets are draggable for any viewer (visitors locally)
     const sS=p.s||1;
     const tf=sS!==1?`;font-size:${(13*sS).toFixed(2)}px`:''; // scale via font-size (crisp), not transform
     const grip=_splashEdit?`<div class="splash-stat-rsz" onpointerdown="freeStatResize(event,'stat:${id}')"></div>`:'';
@@ -3462,7 +3465,7 @@ function freeStatDown(e,key){
   const sx=e.clientX,sy=e.clientY,bl=parseFloat(el.style.left)||0,bt=parseFloat(el.style.top)||0; let moved=false;
   const snap=v=>_snapOn?Math.round(v/_snapGrid)*_snapGrid:v;
   const move=ev=>{ if(!moved&&Math.abs(ev.clientX-sx)+Math.abs(ev.clientY-sy)>4)moved=true; if(moved){ el.style.left=Math.max(0,snap(bl+(ev.clientX-sx)/scale))+'px'; el.style.top=Math.max(0,snap(bt+(ev.clientY-sy)/scale))+'px'; } };
-  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; const s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]={x,y,z:_freeZ,s}; if(moved){ saveToStorage(); syncDeckToApi(deck.id); } };
+  const up=()=>{ window.removeEventListener('pointermove',move); window.removeEventListener('pointerup',up); const x=parseFloat(el.style.left)||0,y=parseFloat(el.style.top)||0; const s=parseFloat(el.dataset.s)||1; deck.layout.positions[key]={x,y,z:_freeZ,s}; if(moved&&_splashOwner()){ saveToStorage(); syncDeckToApi(deck.id); } }; // visitors drag locally; only the owner persists
   window.addEventListener('pointermove',move); window.addEventListener('pointerup',up);
 }
 // Resize a stat panel like a Win95 window — scales the whole widget (font + box grow
