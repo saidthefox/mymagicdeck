@@ -1593,6 +1593,7 @@
     .lg-leftrail .lg-log{flex:1;width:100%;min-height:0}
     .lg-topstrip{position:absolute;left:24%;right:8%;top:8px;height:62px;display:flex;align-items:center;justify-content:center;gap:12px;z-index:2}
     .lg-mid{position:absolute;left:27%;right:21%;top:74px;bottom:106px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:44px;z-index:1}
+    .lg-combatboard .lg-mid{gap:22px} /* Elephants: pull each elephant 50% closer to the centre line */
     .lg-rightrail{position:absolute;right:5px;top:8px;bottom:106px;width:18%;display:flex;flex-direction:column;justify-content:space-between;align-items:center;z-index:2}
     .lg-botstrip{position:absolute;left:27%;right:6px;bottom:6px;height:98px;display:flex;align-items:flex-end;justify-content:center;gap:10px;z-index:4}
     .lg-deck{position:relative;width:48px;height:66px;border-radius:6px;flex-shrink:0;background:repeating-linear-gradient(48deg,#2b3a6b 0 6px,#22305c 6px 12px);border:1px solid #0c1430;box-shadow:2px 2px 0 #1b2856,3px 3px 0 #15203f,4px 6px 9px rgba(0,0,0,.5)}
@@ -7218,15 +7219,15 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     if(canAct){ if(c.kind==='block'||c.kind==='target'||c.kind==='scry'){ cBtn=(c.options||[]).map(o=>'<button class="btn small'+(o.value==='block'||o.value==='top'||o.value==='me'?' primary':'')+'" data-pick="'+o.value+'">'+_mgEsc(o.label)+'</button>').join(''); } // Elephants choices use buttons, not card-tapping
       else cBtn='<span class="lg-tap">⤴ tap a highlighted card</span>'+(skip?'<button class="btn small" data-pick="__none__">⊘ Skip</button>':''); } }
   else if(_lg.mode==='over'){ const r=_lg.reason==='time'?' (on time)':(_lg.reason==='resign'?' (resign)':''); cBan='<div class="lg-banner" style="background:linear-gradient(180deg,#2f9b54,#176235);border-color:#7CFC00">🏆 '+_mgEsc(pname(_lg.winner))+' wins!'+r+'</div>'; cBtn='<button class="btn small primary" id="lg-again">'+(_lg.mode2==='online'?'↩ Menu':'Play again')+'</button>'; }
-  body.innerHTML='<div class="lg-wrap"><div class="lg-board">'+
+  body.innerHTML='<div class="lg-wrap"><div class="lg-board'+(_lg.combat?' lg-combatboard':'')+'">'+
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<button class="lg-gear" id="lg-gear" title="Settings">⚙</button>'+
     (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div>'+(_lg.mode2!=='online'?'<label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label>':'')+'<button class="btn small" id="lg-quit" style="margin-top:8px;width:100%">⮐ End game · back to menu</button></div>'):'')+
     '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
-    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+gyZone(opp)+'</div>'+
+    '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+(_lg.combat?'':gyZone(opp))+'</div>'+
     '<div class="lg-mid">'+(_lg.combat?eleRow(opp):playedRow(opp))+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+(_lg.combat?eleRow(me):playedRow(me))+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+(_lg.mode2==='online'&&_lg.mode!=='over'?'<div class="lg-bar" style="margin-top:10px"><button class="btn small" id="lg-resign">🏳 Resign</button></div>':'')+'</div>'+
-    '<div class="lg-pgy">'+gyZone(me)+'</div>'+
+    (_lg.combat?'':'<div class="lg-pgy">'+gyZone(me)+'</div>')+
     deckMine()+
     '<div class="lg-botstrip"><div class="lg-hand'+(handActive?' active':'')+'">'+fan(me,playable)+'</div></div>'+
     '</div></div>';
