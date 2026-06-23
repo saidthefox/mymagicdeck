@@ -16,8 +16,10 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   // Start a local game (CPU is P2; it's P1's turn, so the CPU stays idle while we drive P1).
   lgStart('cpu'); await new Promise(r=>setTimeout(r,80));
   out.combat=_lg.combat===true; out.life=[_lg.players[0].life,_lg.players[1].life];
-  out.sick=[_lg.players[0].ele.sick,_lg.players[1].ele.sick];
-  out.t1NoAttackBtn=!$('#lg-attack');                                  // P1 summoning-sick turn 1
+  out.sick=[_lg.players[0].ele.sick,_lg.players[1].ele.sick];          // haste: neither is summoning-sick
+  out.t1CanAttack=!!$('#lg-attack');                                   // P1 can swing turn 1 (haste)
+  out.cardName=!!($('.lg-ec-nm')&&/Darksteel War Elephant/.test($('.lg-ec-nm').textContent)); // rendered as a named card
+  out.cardKeywords=!!($('.lg-ec-tx')&&/Indestructible.*trample.*haste/i.test($('.lg-ec-tx').textContent));
   // Cast a "land" (Mountain) as an instant — it should ask for a target, then pump +3/+0.
   _lg.players[0].hand=['mountain','island','wastes','swamp','plains']; _lg.castThisTurn=false;
   lgCast('mountain');
@@ -44,7 +46,7 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.fmtCard && r.hasCpu && r.noOnline
-  && r.combat && r.life[0]===20 && r.life[1]===20 && r.sick[0]===true && r.sick[1]===false && r.t1NoAttackBtn
+  && r.combat && r.life[0]===20 && r.life[1]===20 && r.sick[0]===false && r.sick[1]===false && r.t1CanAttack && r.cardName && r.cardKeywords
   && r.targetPrompt && r.pump.dp===3 && r.pump.pow===6 && r.pump.cast===true && r.pump.gy
   && r.blockPrompt && r.trample===17 && r.unblocked===11 && r.flyingThrough
   && r.buffWoreOff && r.winner===0 && r.over==='over'

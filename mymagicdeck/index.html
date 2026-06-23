@@ -1522,15 +1522,21 @@
     @keyframes lg-lifelow{50%{opacity:.5}}
     .lg-ele{font-size:12px;font-weight:bold;color:#cdeacd;background:rgba(40,90,50,.5);border:1px solid #3a7d4c;border-radius:5px;padding:1px 6px}
     .lg-ele.sick{color:#9aa6b6;background:rgba(60,64,72,.5);border-color:#4a505c}
-    /* the elephant as a creature on the battlefield */
-    .lg-elerow{display:flex;justify-content:center;align-items:center;min-height:64px}
-    .lg-elecard{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;width:74px;height:58px;border-radius:8px;background:radial-gradient(circle at 50% 35%,#3f6b46,#22351f);border:2px solid #5aa86a;box-shadow:0 2px 5px rgba(0,0,0,.5);transition:transform .15s}
-    .lg-elecard.mine{border-color:#ffd700;box-shadow:0 0 10px rgba(255,215,0,.4)}
-    .lg-elecard.tapped{transform:rotate(18deg);filter:saturate(.6) brightness(.85)}
-    .lg-elecard.exiled{background:repeating-linear-gradient(45deg,#2a2230,#2a2230 5px,#352a3e 5px,#352a3e 10px);border-color:#6a5a7c;border-style:dashed;color:#b8a8cc;font-size:10px;line-height:1.1;text-align:center}
-    .lg-ele-em{font-size:22px;line-height:1}
-    .lg-ele-pt{position:absolute;top:2px;right:5px;font-size:12px;font-weight:bold;color:#fff;text-shadow:0 1px 2px #000}
-    .lg-ele-tags{position:absolute;bottom:1px;left:0;right:0;text-align:center;font-size:10px}
+    /* the elephant rendered as an actual (Darksteel/artifact-framed) Magic card on the battlefield */
+    .lg-elerow{display:flex;justify-content:center;align-items:center;min-height:150px;padding:2px}
+    .lg-ecard{position:relative;width:130px;height:146px;display:flex;flex-direction:column;padding:4px;box-sizing:border-box;border-radius:8px;background:linear-gradient(155deg,#8b8f96,#5a5e66 55%,#3c3f45);border:2px solid #cfd4db;box-shadow:0 3px 9px rgba(0,0,0,.55),inset 0 0 0 1px rgba(255,255,255,.12);font-family:'MS Sans Serif',Tahoma,sans-serif;color:#16181c;transition:transform .15s,filter .15s}
+    .lg-ecard.mine{border-color:#ffd700;box-shadow:0 0 11px rgba(255,215,0,.45),inset 0 0 0 1px rgba(255,255,255,.14)}
+    .lg-ecard.tapped{transform:rotate(16deg);filter:saturate(.6) brightness(.85)}
+    .lg-ecard.exiled{align-items:center;justify-content:center;text-align:center;font-size:12px;color:#cdbce0;background:repeating-linear-gradient(45deg,#2a2230,#2a2230 5px,#352a3e 5px,#352a3e 10px);border-color:#6a5a7c;border-style:dashed}
+    .lg-ec-hd{display:flex;align-items:center;justify-content:space-between;gap:3px;background:linear-gradient(180deg,#e9ecf1,#c3c8d0);border:1px solid #6f747c;border-radius:4px;padding:1px 4px}
+    .lg-ec-nm{font-size:8px;font-weight:bold;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .lg-ec-cost{font-size:9px;font-weight:bold;background:#1c1f24;color:#e8ebf0;border-radius:50%;width:13px;height:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .lg-ec-art{flex:1;margin:3px 0 2px;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 36%,#727781,#34373d);border:1px solid #6f747c;border-radius:4px;overflow:hidden}
+    .lg-ec-art span{font-size:38px;filter:grayscale(.4) drop-shadow(0 2px 2px rgba(0,0,0,.55))}
+    .lg-ec-tl{font-size:7px;font-weight:bold;background:linear-gradient(180deg,#e9ecf1,#c3c8d0);border:1px solid #6f747c;border-radius:3px;padding:1px 3px;line-height:1.1}
+    .lg-ec-tx{margin-top:2px;font-size:8px;line-height:1.15;background:#eef0f4;border:1px solid #8a8f97;border-radius:3px;padding:2px 4px;min-height:20px;color:#1a1d22}
+    .lg-ec-st{display:block;margin-top:1px;font-size:7.5px;font-weight:bold;color:#2b6cb0}
+    .lg-ec-pt{position:absolute;right:5px;bottom:4px;font-size:11px;font-weight:bold;background:linear-gradient(180deg,#e9ecf1,#b9bec6);border:1px solid #5a5e66;border-radius:4px;padding:0 5px;color:#16181c;box-shadow:0 1px 2px rgba(0,0,0,.4)}
     .lg-bars{display:flex;gap:6px;width:100%}
     .lg-bar5,.lg-bar6{position:relative;flex:1;height:13px;border-radius:7px;background:#0d0d0d;border:1px solid #000;overflow:hidden}
     .lg-bar5 i,.lg-bar6 i{display:block;height:100%;transition:width .3s ease}
@@ -6877,14 +6883,14 @@ const LG_FMT_DATA={
             ['🌲','Forest','When it enters, return one land from your graveyard to your hand.'],
             ['◇','Wastes','When it enters, draw a card.'] ] },
   elephants:{ icon:'🐘', name:'Elephants', play:true, combat:true, startLife:20,
-    blurb:'Each player has a <b>3/3 indestructible elephant with trample</b> and 20 life. Here the lands aren’t permanents — each is a <b>one-per-turn instant-style spell that targets a creature</b>. ⚔️ Attack with your elephant: the defender may block with their untapped elephant, and trample carries the leftover (power − blocker toughness) to the face. The player on the play is summoning-sick turn one and skips their first draw; the player on the draw swings and draws. <b>Win by dropping your opponent to 0 life.</b> Local play.',
-    lands:[ ['🌾','Plains','Exile target creature; it returns at the end of turn (summoning sick) — blink your own, or remove a blocker.'],
-            ['🏝️','Island','Target creature gains flying until end of turn (unblockable by a grounded elephant); scry 1.'],
-            ['💀','Swamp','Target creature gets -0/-2 until end of turn — shrink a blocker so more tramples through.'],
-            ['⛰️','Mountain','Target creature gets +3/+0 until end of turn — the alpha-strike pump.'],
-            ['🌲','Forest','Target creature gets +1/+2 until end of turn and untaps — swing again or set up a block.'],
-            ['◇','Wastes','Target creature gets +1/+1 until end of turn and you draw a card.'],
-            ['🐘','Elephant','You start with one — a 3/3 indestructible with trample. Attack for its power on your turn (not turn one if you’re on the play).'] ] }
+    blurb:'Each player starts with a <b>Darksteel War Elephant</b> — a 0-cost 3/3 with indestructible, trample, and haste — and 20 life. Here the lands aren’t permanents — each is a <b>one-per-turn instant-style spell that targets a creature</b>. ⚔️ Attack with your elephant; the defender may block with their untapped elephant, and trample carries the leftover to the face. Both players can swing from turn one. <b>Win by dropping your opponent to 0 life.</b> Local play.',
+    lands:[ ['🌾','Plains','Exile target creature; it returns at the end of turn.'],
+            ['🏝️','Island','Target creature gains flying until end of turn. Scry 1.'],
+            ['💀','Swamp','Target creature gets -0/-2 until end of turn.'],
+            ['⛰️','Mountain','Target creature gets +3/+0 until end of turn.'],
+            ['🌲','Forest','Target creature gets +1/+2 until end of turn and untaps.'],
+            ['◇','Wastes','Target creature gets +1/+1 until end of turn. Draw a card.'],
+            ['🐘','Darksteel War Elephant','0-mana 3/3 artifact creature: indestructible, trample, haste. You start with one.'] ] }
 };
 function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
   document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
@@ -6926,8 +6932,8 @@ function lgStart(mode){ mode = (mode==='cpu')?'cpu':'hotseat'; const cpu = mode=
   const fmt=_lgM.fmt; const fd=LG_FMT_DATA[fmt]||LG_FMT_DATA.land; const combat=!!fd.combat;
   const names = mode==='cpu' ? ['You','Computer'] : ['Player 1','Player 2'];
   const players=[lgMakePlayer(names[0]),lgMakePlayer(names[1])];
-  if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ dp:0, dt:0, flying:false, tapped:false, sick:i===0, exiled:false }; }); // 3/3 base; P1 (on the play) is summoning-sick turn 1
-  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Their elephant has summoning sickness.':'')] };
+  if(combat) players.forEach((p,i)=>{ p.life=fd.startLife||20; p.ele={ dp:0, dt:0, flying:false, tapped:false, sick:false, exiled:false }; }); // 3/3 base; haste — both can swing turn 1
+  _lg={ players, active:0, turn:1, stack:[], priority:0, lastPass:null, castThisTurn:false, attackedThisTurn:false, choice:null, winner:null, mode:'turn', mode2:mode, cpu, view:0, _cpuPending:false, opts:lgOptsGet(), fmt, combat, log:[names[0]+' '+(mode==='cpu'?'go':'goes')+' first (no draw on turn 1).'+(combat?' Both elephants have haste — swing away!':'')] };
   lgSetTitle('Basics — '+fd.name); lgRerender(); }
 // Whoever currently owes an action: the turn player, the player with priority, or the player facing a choice.
 function lgActor(){ if(!_lg)return null; if(_lg.mode==='turn')return _lg.active; if(_lg.mode==='respond')return _lg.priority; if(_lg.mode==='choose')return _lg.choice?_lg.choice.who:_lg.active; return null; }
@@ -7002,7 +7008,7 @@ function lgETB(type,ctrl){ const me=_lg.players[ctrl], opp=_lg.players[1-ctrl];
 }
 function lgEndTurn(){ if(_lg.mode!=='turn')return; const a=_lg.players[_lg.active];
   if(a.hand.length>5){ lgChoose(_lg.active,'End of turn — discard down to 5 ('+(a.hand.length-5)+' to go):', a.hand.map((t,i)=>({label:LG_ICO[t]+' '+LG_NAME[t],value:i})), v=>{ const t=a.hand.splice(v,1)[0]; a.gy.push(t); _lg.log.push(a.name+' discards '+LG_NAME[t]+'.'); lgEndTurn(); }, 'discard'); _lg.mode='choose'; lgRerender(); return; }
-  if(_lg.combat){ _lg.players.forEach(p=>{ const e=p.ele; if(!e)return; e.dp=0; e.dt=0; e.flying=false; if(e.exiled){ e.exiled=false; e.tapped=false; e.sick=true; } }); } // end-of-turn: buffs wear off; exiled elephants return (summoning-sick)
+  if(_lg.combat){ _lg.players.forEach(p=>{ const e=p.ele; if(!e)return; e.dp=0; e.dt=0; e.flying=false; if(e.exiled){ e.exiled=false; e.tapped=false; e.sick=false; } }); } // end-of-turn: buffs wear off; exiled elephants return (haste, ready to swing)
   _lg.active=1-_lg.active; _lg.turn++; _lg.castThisTurn=false; _lg.attackedThisTurn=false;
   if(_lg.combat){ const e=_lg.players[_lg.active].ele; if(e){ e.tapped=false; e.sick=false; } } // untap step + summoning sickness wears off at your turn start
   lgDraw(_lg.active); // every turn after P1's first draws (P1 skipped its turn-1 draw at game start)
@@ -7125,9 +7131,14 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     return '<div class="lg-combat"><span class="lg-life'+((p.life||0)<=5?' low':'')+'">❤ '+Math.max(0,p.life||0)+'</span></div>'; };
   // The elephant as a creature on the battlefield: live P/T + flying / tapped / sick / exiled status.
   const eleRow=pi=>{ const e=_lg.players[pi].ele; if(!e)return '<div class="lg-elerow"></div>';
-    if(e.exiled)return '<div class="lg-elerow"><div class="lg-elecard exiled">✦<br>exiled</div></div>';
-    const pow=lgElePow(e), tou=lgEleTou(e), tags=[]; if(e.flying)tags.push('🪶'); if(e.sick)tags.push('💤'); if(e.tapped)tags.push('↻');
-    return '<div class="lg-elerow"><div class="lg-elecard'+(e.tapped?' tapped':'')+(pi===_lg.active?' mine':'')+'"><span class="lg-ele-pt">'+pow+'/'+tou+'</span><span class="lg-ele-em">🐘</span>'+(tags.length?'<span class="lg-ele-tags">'+tags.join(' ')+'</span>':'')+'</div></div>'; };
+    if(e.exiled)return '<div class="lg-elerow"><div class="lg-ecard exiled">✦<br>exiled</div></div>';
+    const pow=lgElePow(e), tou=lgEleTou(e), st=[]; if(e.flying)st.push('🪶 flying'); if(e.tapped)st.push('↻ tapped');
+    return '<div class="lg-elerow"><div class="lg-ecard'+(e.tapped?' tapped':'')+(pi===_lg.active?' mine':'')+'">'
+      +'<div class="lg-ec-hd"><span class="lg-ec-nm">Darksteel War Elephant</span><span class="lg-ec-cost">0</span></div>'
+      +'<div class="lg-ec-art"><span>🐘</span></div>'
+      +'<div class="lg-ec-tl">Artifact Creature — Elephant</div>'
+      +'<div class="lg-ec-tx">Indestructible, trample, haste'+(st.length?'<span class="lg-ec-st">'+st.join(' · ')+'</span>':'')+'</div>'
+      +'<div class="lg-ec-pt">'+pow+'/'+tou+'</div></div></div>'; };
   const plate=pi=>{ const p=_lg.players[pi], f=p.field, mx=Math.max(0,...LG_TYPES.map(t=>f[t])), tp=lgTypesInPlay(f);
     const clk=_lg.clocks?('<span class="lg-clock" data-clk="'+pi+'">'+lgFmtTime(_lg.clocks[pi])+'</span>'):'';
     const bars=_lg.combat?'':'<div class="lg-bars"><div class="lg-bar5"><i style="width:'+(mx/5*100).toFixed(0)+'%"></i><b>'+mx+'/5 same</b></div><div class="lg-bar6"><i style="width:'+(tp/6*100).toFixed(0)+'%"></i><b>'+tp+'/6 types</b></div></div>';
