@@ -2159,6 +2159,7 @@
         <button class="btn primary" style="width:100%;justify-content:center;padding:10px" onclick="accountSignOut()">🚪 Sign Out</button>
         <div style="margin-top:16px"><label style="display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:5px">🔫 Holstered deck <span style="opacity:.7">— loaded &amp; selected on sign-in</span></label>
           <select id="auth-holster" class="auth-input" style="width:100%" onchange="holsterSet(this.value)"></select></div>
+        <div id="discord-link" style="margin-top:16px;font-size:.82rem"></div>
         <div class="auth-switch" style="margin-top:14px"><a onclick="deleteAccount()" style="color:#c0392b">Delete account…</a></div>
       </div>
     </div>
@@ -2598,6 +2599,14 @@ function accountSignOut(){
   else if(typeof mgwClose==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['account'])mgwClose('account');
   else closeModal('modal-auth');
 }
+// ── Discord account linking (Account panel) ──
+const _dcHd='<div style="color:var(--text-dim);font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px">🎮 Discord</div>';
+function renderDiscordLink(){ const el=document.getElementById('discord-link'); if(!el||!state.user)return; el.innerHTML=_dcHd+'<div style="color:var(--text-dim)">…</div>';
+  apiFetch('/discord/status').then(s=>{ if(s.linked){ el.innerHTML=_dcHd+'<div>Linked'+(s.discord_name?(' as <b>'+_mgEsc(s.discord_name)+'</b>'):'')+'. <a onclick="unlinkDiscord()" style="color:#c0392b;cursor:pointer">Unlink</a></div>'; }
+    else { el.innerHTML=_dcHd+'<button class="btn small" onclick="linkDiscord()">🔗 Link Discord account</button><div id="discord-code" style="margin-top:6px"></div>'; } }).catch(()=>{ el.innerHTML=''; }); }
+function linkDiscord(){ const box=document.getElementById('discord-code'); if(box)box.textContent='Generating…';
+  apiFetch('/discord/link-code',{method:'POST',body:'{}'}).then(r=>{ const mins=Math.round((r.expires_in||600)/60); if(box)box.innerHTML='<div style="background:var(--surface2,#22252c);border:1px solid var(--border);border-radius:6px;padding:8px 10px;line-height:1.5">In Discord, run <code>/link '+_mgEsc(r.code)+'</code><br><span style="color:var(--text-dim);font-size:.75rem">Expires in '+mins+' min. The MyMagicBot must be in your server.</span></div>'; }).catch(()=>{ if(box)box.innerHTML='<span style="color:#c0392b">Could not generate a code — try again.</span>'; }); }
+function unlinkDiscord(){ apiFetch('/discord/unlink',{method:'POST',body:'{}'}).then(()=>{ renderDiscordLink(); if(typeof toast==='function')toast('Discord unlinked'); }).catch(()=>{}); }
 function _updateAuthUI(){
   // Already signed in → the Account program shows a "signed in as…" panel with Sign Out
   // instead of the login form.
@@ -2608,6 +2617,7 @@ function _updateAuthUI(){
   if(signedIn){ document.getElementById('auth-modal-title').textContent='Account'; document.getElementById('auth-signedin-name').textContent=state.user.username;
     const hs=document.getElementById('auth-holster'); if(hs){ const cur=(typeof holsterGet==='function'?holsterGet():''); const decks=Object.values(state.decks||{}).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
       hs.innerHTML='<option value="">(last used deck)</option>'+decks.map(d=>'<option value="'+d.id+'"'+(d.id===cur?' selected':'')+'>'+_mgEsc(d.name||'Untitled')+'</option>').join(''); }
+    if(typeof renderDiscordLink==='function')renderDiscordLink();
     return; }
   const isSignup=_authMode==='signup', isForgot=_authMode==='forgot';
   document.getElementById('auth-modal-title').textContent=isForgot?'Reset Password':(isSignup?'Create Account':'Sign In');

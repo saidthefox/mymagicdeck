@@ -303,6 +303,9 @@ try { db.prepare('UPDATE users SET is_admin = 1 WHERE username = ?').run(process
 try { db.exec('ALTER TABLE mail ADD COLUMN from_user INTEGER'); } catch (_) { /* exists */ } // sender id → enables replies
 try { db.exec('ALTER TABLE users ADD COLUMN uploads_disabled INTEGER DEFAULT 0'); } catch (_) { /* exists */ }          // repeat-infringer enforcement
 try { db.exec('ALTER TABLE users ADD COLUMN accepted_upload_terms_at INTEGER'); } catch (_) { /* exists */ }            // first-upload rules acceptance
+try { db.exec('ALTER TABLE users ADD COLUMN discord_id TEXT'); } catch (_) { /* exists */ }                            // linked Discord account
+try { db.exec('ALTER TABLE users ADD COLUMN discord_name TEXT'); } catch (_) { /* exists */ }
+try { db.exec('CREATE INDEX IF NOT EXISTS idx_users_discord ON users(discord_id)'); } catch (_) {}
 function isAdminUser(id) { try { const r = db.prepare('SELECT is_admin FROM users WHERE id = ?').get(id); return !!(r && r.is_admin); } catch (_) { return false; } }
 function uploadsDisabled(id) { try { const r = db.prepare('SELECT uploads_disabled FROM users WHERE id = ?').get(id); return !!(r && r.uploads_disabled); } catch (_) { return false; } }
 function uploadsAccepted(id) { try { const r = db.prepare('SELECT accepted_upload_terms_at FROM users WHERE id = ?').get(id); return (r && r.accepted_upload_terms_at) || null; } catch (_) { return null; } }
@@ -1774,6 +1777,53 @@ app.post('/api/integrations/tournament', { preHandler: [botOnly, rateLimitReport
     }
     return { id, notified: notified.size };
   } catch (e) { app.log.error(e); return { id }; }
+});
+
+// ── Discord account linking ───────────────────────────────────────────────────
+// A signed-in MMD user generates a short-lived code in the app, then runs `/link <code>` in Discord;
+// the bot posts the code + their Discord id here (x-bot-key) to bind the two accounts. After that the bot
+// can look up that player's stats by Discord id. No OAuth/secrets beyond the existing BOT_API_KEY.
+const _dcCodes = new Map(); // CODE -> { uid, exp }
+const DC_CODE_TTL = 10 * 60 * 1000;
+function dcPruneCodes() { const now = Date.now(); for (const [k, v] of _dcCodes) if (v.exp < now) _dcCodes.delete(k); }
+app.post('/api/discord/link-code', { preHandler: [authenticate, rateLimitReport] }, async (req) => {
+  dcPruneCodes();
+  let code; for (let i = 0; i < 12; i++) { code = crypto.randomBytes(4).toString('hex').toUpperCase().slice(0, 6); if (![..._dcCodes.values()].length || ![..._dcCodes.keys()].includes(code)) break; }
+  _dcCodes.set(code, { uid: req.user.sub, exp: Date.now() + DC_CODE_TTL });
+  const cur = db.prepare('SELECT discord_name FROM users WHERE id = ?').get(req.user.sub);
+  return { code, expires_in: DC_CODE_TTL / 1000, linked: !!(cur && cur.discord_name), discord_name: (cur && cur.discord_name) || null };
+});
+app.get('/api/discord/status', { preHandler: authenticate }, async (req) => {
+  const r = db.prepare('SELECT discord_id, discord_name FROM users WHERE id = ?').get(req.user.sub);
+  return { linked: !!(r && r.discord_id), discord_name: (r && r.discord_name) || null };
+});
+app.post('/api/discord/unlink', { preHandler: authenticate }, async (req) => {
+  db.prepare('UPDATE users SET discord_id = NULL, discord_name = NULL WHERE id = ?').run(req.user.sub);
+  return { ok: true };
+});
+// Bot: redeem a link code → bind this Discord id to the MMD account that generated it.
+app.post('/api/integrations/discord/link', { preHandler: [botOnly, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const code = (b.code || '').toString().trim().toUpperCase();
+  const discordId = (b.discord_id || '').toString().trim();
+  const discordName = _str(b.discord_name || '', 80).trim();
+  if (!code || !discordId) return reply.code(400).send({ error: 'code and discord_id are required.' });
+  dcPruneCodes();
+  const entry = _dcCodes.get(code);
+  if (!entry) return reply.code(404).send({ error: 'That code is invalid or has expired. Generate a fresh one in MyMagicDeck → Account.' });
+  _dcCodes.delete(code);
+  db.prepare('UPDATE users SET discord_id = NULL, discord_name = NULL WHERE discord_id = ?').run(discordId); // one Discord ↔ one account
+  db.prepare('UPDATE users SET discord_id = ?, discord_name = ? WHERE id = ?').run(discordId, discordName || null, entry.uid);
+  const u = db.prepare('SELECT username FROM users WHERE id = ?').get(entry.uid);
+  return { ok: true, username: u ? u.username : null };
+});
+// Bot: look up a linked player's record by Discord id (for /mtgstats etc.).
+app.get('/api/integrations/discord/user/:discordId', { preHandler: botOnly }, async (req, reply) => {
+  const u = db.prepare('SELECT id, username FROM users WHERE discord_id = ?').get((req.params.discordId || '').toString());
+  if (!u) return reply.code(404).send({ error: 'No MyMagicDeck account is linked to that Discord user.' });
+  const ms = db.prepare('SELECT result FROM tf_matches WHERE user_id = ?').all(u.id);
+  let w = 0, l = 0, d = 0; for (const m of ms) { if (m.result === 'W') w++; else if (m.result === 'L') l++; else d++; }
+  return { username: u.username, matches: ms.length, record: { w, l, d }, winPct: (w + l) ? Math.round(w / (w + l) * 100) : 0 };
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────

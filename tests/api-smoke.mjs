@@ -187,6 +187,26 @@ try {
         const dis = await Ja('/uploads/card-art', { method:'POST' }, UT);
         assert(dis.status === 403, 'uploads_disabled account → card-art 403');
       } catch (_) { console.log('  (skipped uploads_disabled assert: no DB write access)'); }
+
+      // --- Discord account linking (uses the registered user UT + the bot service key) ---
+      const BK = process.env.BOT_API_KEY;
+      if (BK) {
+        const Jb = (p, opt) => fetch(BASE + p, { ...opt, headers: { ...(opt && opt.body ? { 'content-type':'application/json' } : {}), 'x-bot-key': BK, ...((opt && opt.headers) || {}) } }).then(async r => ({ status:r.status, body: await r.json().catch(() => null) }));
+        const lc = await Ja('/discord/link-code', { method:'POST', body:'{}' }, UT);
+        assert(lc.status === 200 && lc.body.code, 'POST /discord/link-code → code');
+        const did = 'dc_' + Math.floor(Math.random() * 1e6);
+        const lk = await Jb('/integrations/discord/link', { method:'POST', body: JSON.stringify({ code: lc.body.code, discord_id: did, discord_name:'Tester#1' }) });
+        assert(lk.status === 200 && lk.body.username === ru, 'bot redeems the code → links it to the MMD account');
+        const stt = await Ja('/discord/status', null, UT);
+        assert(stt.status === 200 && stt.body.linked === true && stt.body.discord_name === 'Tester#1', 'GET /discord/status shows linked');
+        const lu = await Jb('/integrations/discord/user/' + did, null);
+        assert(lu.status === 200 && lu.body.username === ru && lu.body.record, 'bot looks up the linked player by Discord id');
+        const bad = await Jb('/integrations/discord/link', { method:'POST', body: JSON.stringify({ code:'NOPE00', discord_id: did }) });
+        assert(bad.status === 404, 'bad/expired link code → 404');
+        const un = await Ja('/discord/unlink', { method:'POST', body:'{}' }, UT);
+        const st2 = await Ja('/discord/status', null, UT);
+        assert(un.status === 200 && st2.body.linked === false, 'unlink clears the link');
+      } else { console.log('  (skipped Discord-link asserts: no BOT_API_KEY)'); }
     } else { console.log('  (skipped upload-gate asserts: register returned ' + reg.status + ')'); }
   } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
 } catch (e) {

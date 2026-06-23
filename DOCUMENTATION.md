@@ -258,6 +258,11 @@ Posting a tournament fans out **mail** to every (other) user whose subscription 
 |--------|------|------|-------------|
 | GET | `/api/integrations/status` | — | whether the Discord-bot tournament ingest is configured |
 | POST | `/api/integrations/tournament` | bot | the MTG Discord bot posts a tournament (creates it + fans out mail) |
+| POST | `/api/discord/link-code` | JWT | generate a short-lived code to link your Discord (run `/link <code>` in the bot) |
+| GET | `/api/discord/status` | JWT | whether your account has a linked Discord, and its name |
+| POST | `/api/discord/unlink` | JWT | unlink your Discord account |
+| POST | `/api/integrations/discord/link` | bot | redeem a link code `{code,discord_id,discord_name}` → bind accounts |
+| GET | `/api/integrations/discord/user/:discordId` | bot | a linked player's 2040 record by Discord id (for `/mtgstats`) |
 | GET | `/api/web/framecheck?url=` | — | can a URL be iframed? Header-only, **SSRF-guarded** (validates + pins the IP on every redirect hop) |
 
 ### Card Duel (online)
