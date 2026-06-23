@@ -41,6 +41,9 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   // Win by life (unblocked swing for lethal)
   fresh(); _lg.players[1].life=2; _lg.players[1].ele.tapped=true; _lg.players[0].hand=[]; _lg.players[1].hand=[]; lgAttack();
   out.winner=_lg.winner; out.over=_lg.mode;
+  // The log shows the WHOLE match (no last-N cap) and is scrollable.
+  fresh(); for(let i=0;i<30;i++)_lg.log.push('event '+i); lgRerender();
+  const logEl=$('.lg-log'); out.fullLog=!!(logEl && (logEl.innerHTML.match(/event /g)||[]).length===30 && getComputedStyle(logEl).overflowY!=='visible');
   return out; });
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
@@ -50,7 +53,7 @@ const ok = r.fmtCard && r.hasCpu && r.noOnline
   && r.defenderStop && r.afterDefTrick && r.defBlockedLife===20
   && r.noDefenderStop && r.attackerStop && r.trample===17
   && r.spentNoStop && r.armed && r.clickTargeted
-  && r.winner===0 && r.over==='over'
+  && r.winner===0 && r.over==='over' && r.fullLog
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

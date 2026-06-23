@@ -7223,7 +7223,7 @@ function lgRender(body){ if(!body)return; _lgBody=body; body.style.cssText='padd
     '<div class="lg-rotate">↻ Rotate your device for the full board</div>'+
     '<button class="lg-gear" id="lg-gear" title="Settings">⚙</button>'+
     (_lgSet?('<div class="lg-settings"><div class="lg-set-h">⚙ Settings</div>'+(_lg.mode2!=='online'?'<label class="lg-set-row"><input type="checkbox" id="lg-opt-stopall"'+((_lg.opts&&_lg.opts.stopAll)?' checked':'')+'><span>Stop on every opponent cast<span class="lg-set-sub">Always get a response window so you can bluff an Island counter.</span></span></label>':'')+'<button class="btn small" id="lg-quit" style="margin-top:8px;width:100%">⮐ End game · back to menu</button></div>'):'')+
-    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice(-8).reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
+    '<div class="lg-leftrail">'+plate(opp)+'<div class="lg-log">'+_lg.log.slice().reverse().map(_mgEsc).join('<br>')+'</div>'+plate(me)+'</div>'+
     '<div class="lg-topstrip">'+backsfan(opp)+deckOpp()+(_lg.combat?'':gyZone(opp))+'</div>'+
     '<div class="lg-mid">'+(_lg.combat?eleRow(opp):playedRow(opp))+'<div class="lg-center"><div class="lg-divider"></div>'+(_lg.stack.length?'<div class="lg-cbtns">'+stackView()+'</div>':'')+'</div>'+(_lg.combat?eleRow(me):playedRow(me))+'</div>'+
     '<div class="lg-rctrl"><div class="lg-cbanner">'+cBan+'</div>'+(cBtn?'<div class="lg-bar">'+cBtn+'</div>':'')+(_lg.mode2==='online'&&_lg.mode!=='over'?'<div class="lg-bar" style="margin-top:10px"><button class="btn small" id="lg-resign">🏳 Resign</button></div>':'')+'</div>'+
