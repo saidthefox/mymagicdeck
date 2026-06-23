@@ -554,11 +554,37 @@ function cardRowToScryfall(r) {
 }
 
 // ── Fastify instance ──────────────────────────────────────────────────────────
-const app = Fastify({ logger: { level: process.env.LOG_LEVEL || 'info' } });
+const app = Fastify({
+  logger: { level: process.env.LOG_LEVEL || 'info' },
+  bodyLimit: 1048576,        // 1 MB JSON cap (file uploads use @fastify/multipart with its own limits)
+  requestTimeout: 30000,     // drop slow/hung requests (mitigates slowloris-style DoS)
+  ajv: { customOptions: { removeAdditional: 'all', coerceTypes: true } }, // strip unknown fields on schema'd routes
+});
 
+// CORS locked to our own origins (apex + any *.mymagicdeck.com subdomain) + localhost for dev —
+// instead of reflecting any origin.
 app.register(require('@fastify/cors'), {
-  origin: true,           // reflect request origin — tighten in prod if desired
+  origin(origin, cb) {
+    if (!origin) return cb(null, true); // same-origin / curl / server-to-server (no Origin header)
+    let host = ''; try { host = new URL(origin).hostname; } catch (e) { return cb(null, false); }
+    const ok = host === 'mymagicdeck.com' || host.endsWith('.mymagicdeck.com') || host === 'localhost' || host === '127.0.0.1';
+    cb(null, ok);
+  },
   credentials: true,
+});
+
+// Security headers on every API response. API payloads are JSON or images, so a `default-src 'none'`
+// CSP is safe here (nothing should load sub-resources from an API response); the HTML page's own CSP
+// is set at the nginx layer.
+app.addHook('onRequest', (req, reply, done) => {
+  reply.header('X-Content-Type-Options', 'nosniff');
+  reply.header('X-Frame-Options', 'DENY');
+  reply.header('Referrer-Policy', 'no-referrer');
+  reply.header('Cross-Origin-Resource-Policy', 'same-site');
+  reply.header('Permissions-Policy', 'geolocation=(), microphone=(), camera=(), payment=(), usb=()');
+  reply.header('Content-Security-Policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'");
+  reply.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  done();
 });
 
 app.register(require('@fastify/jwt'), {
@@ -604,6 +630,13 @@ function rateLimitAuth(req, reply, done) {
   }
   done();
 }
+// Failed-login lockout (per IP): after several wrong passwords, lock that IP out for a cooldown —
+// escalates beyond the generic auth rate limit and blunts password brute-forcing. Cleared on success.
+const _loginFails = new Map(); const LOGIN_FAIL_MAX = 8, LOGIN_LOCK_MS = 10 * 60 * 1000;
+function loginLocked(key) { const e = _loginFails.get(key); if (!e) return false; if (Date.now() > e.until) { _loginFails.delete(key); return false; } return e.count >= LOGIN_FAIL_MAX; }
+function loginFail(key) { const e = _loginFails.get(key) || { count: 0, until: 0 }; e.count++; e.until = Date.now() + LOGIN_LOCK_MS; _loginFails.set(key, e); }
+function loginOk(key) { _loginFails.delete(key); }
+setInterval(() => { const now = Date.now(); for (const [k, e] of _loginFails) if (now > e.until) _loginFails.delete(k); }, 15 * 60 * 1000);
 
 // Clean up stale rate limit buckets every 30 minutes
 setInterval(() => {
@@ -1783,20 +1816,25 @@ app.post('/api/auth/login', {
   },
 }, async (req, reply) => {
   const { username, password } = req.body;
+  const lkey = clientIp(req);
+  if (loginLocked(lkey)) return reply.code(429).send({ error: 'Too many failed logins. Please wait a few minutes and try again.' });
 
   const record = db.prepare(
     'SELECT id, username, email, password, is_admin FROM users WHERE username = ?'
   ).get(username);
 
   if (!record) {
+    loginFail(lkey);
     return reply.code(401).send({ error: 'Invalid username or password.' });
   }
 
   const ok = await bcrypt.compare(password, record.password);
   if (!ok) {
+    loginFail(lkey);
     return reply.code(401).send({ error: 'Invalid username or password.' });
   }
 
+  loginOk(lkey);
   const token = app.jwt.sign({ sub: record.id, username: record.username });
   return { token, user: { username: record.username, email: record.email, is_admin: !!record.is_admin } };
 });
@@ -2783,7 +2821,7 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
 // ── POST /api/splash/analyze — the blob LLM parses the decklist into an "infographic"
 // profile (archetype / tagline / strategy / key cards). Text only; no image generation. ──
 let _analyzeInFlight = 0; const ANALYZE_CONCURRENCY = 2;
-app.post('/api/splash/analyze', { preHandler: [softAuthenticate, rateLimitAnalyze] }, async (req, reply) => {
+app.post('/api/splash/analyze', { preHandler: [softAuthenticate, rateLimitAnalyze], schema: { body: { type: 'object', properties: { deckName: { type: 'string', maxLength: 120 }, cards: { type: 'array', maxItems: 300, items: { type: 'object', properties: { n: { type: 'string', maxLength: 120 }, q: {}, t: { type: 'string', maxLength: 80 } } } } } } } }, async (req, reply) => {
   if (!VLM_ENABLED) return reply.code(503).send({ error: 'Deck analysis isn’t available right now.' });
   const b = req.body || {};
   const cards = Array.isArray(b.cards) ? b.cards.slice(0, 250) : [];
@@ -3238,7 +3276,7 @@ function cardleState(uid,day){
     guesses, solved, done, fill, answer: done?cardleAnswerCard(oid):null, stats:cardleStats(uid) };
 }
 app.get('/api/cardle/state', { preHandler:authenticate }, async (req,reply)=>{ const day=cardleDay(); const st=cardleState(req.user.sub, day); if(!st)return reply.code(503).send({error:'Card library not ready.'}); return st; });
-app.post('/api/cardle/guess', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+app.post('/api/cardle/guess', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', required:['name'], properties:{ name:{ type:'string', minLength:1, maxLength:120 } } } } }, async (req,reply)=>{
   const day=cardleDay(); const oid=cardlePickOracle(day); if(!oid) return reply.code(503).send({error:'Card library not ready.'});
   const uid=req.user.sub; let row=cardleGameRow(uid,day);
   if(row&&row.done) return cardleState(uid,day);
