@@ -1338,6 +1338,27 @@
     .tf-hist-row{display:flex;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid #3a404a;font-size:12px}
     .tf-rW{color:#7CFC00}.tf-rL{color:#ff8a7a}.tf-rD{color:#bcd}
     .tf-hd{color:#8896aa;flex:0 0 auto}
+    /* ===== Dicey — friendly d20 desktop helper ===== */
+    #dicey{position:fixed;z-index:6200;width:64px;touch-action:none}
+    .dicey-die{background:none;border:none;padding:0;cursor:grab;width:64px;height:64px;display:block;filter:drop-shadow(0 4px 8px rgba(0,0,0,.5))}
+    .dicey-die:active{cursor:grabbing}
+    .dicey-svg{width:64px;height:64px;display:block}
+    .dicey-die.dicey-rolling{animation:dicey-roll .7s ease-in-out}
+    @keyframes dicey-roll{0%{transform:rotate(0) scale(1)}25%{transform:rotate(160deg) scale(1.12)}50%{transform:rotate(300deg) scale(.95)}75%{transform:rotate(430deg) scale(1.08)}100%{transform:rotate(540deg) scale(1)}}
+    .dicey-bubble{position:absolute;bottom:72px;right:0;width:242px;background:#2a2e36;border:1px solid #4a505c;border-radius:10px;padding:10px;color:#eee;font-family:Tahoma,sans-serif;font-size:12px;box-shadow:0 12px 34px rgba(0,0,0,.6)}
+    .dicey-bubble:after{content:'';position:absolute;bottom:-8px;right:26px;border:8px solid transparent;border-top-color:#2a2e36;border-bottom:0}
+    .dicey-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+    .dicey-hd b{color:#fff;font-size:13px}
+    .dicey-x{background:none;border:none;color:#9aa6b6;cursor:pointer;font-size:14px;line-height:1}
+    .dicey-tip{color:#cbd3e0;line-height:1.45;margin-bottom:8px;min-height:34px}
+    .dicey-search{width:100%;box-sizing:border-box;background:#fff;border:1px solid #888;border-radius:5px;padding:5px 7px;font-size:12px;color:#111;margin-bottom:6px}
+    .dicey-apps{display:flex;flex-direction:column;gap:3px;max-height:172px;overflow:auto}
+    .dicey-app{text-align:left;background:#363b45;border:1px solid #4a505c;border-radius:5px;color:#e7eef7;padding:5px 8px;font-size:12px;cursor:pointer}
+    .dicey-app:hover{background:#3f6ea5}
+    .dicey-foot{display:flex;gap:6px;margin-top:8px}
+    .dicey-foot button{flex:1;border:2px solid;border-radius:6px;cursor:pointer;font-weight:bold;font-size:12px;padding:6px;font-family:Tahoma,sans-serif}
+    .dicey-roll{background:#b33a44;border-color:#fca #402 #402 #fca;color:#fff}
+    .dicey-hide{background:#c0c0c0;border-color:#fff #808080 #808080 #fff;color:#000;flex:0 0 auto}
     .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
@@ -5626,6 +5647,7 @@ function init(){
   // On phones, launch the chosen startup program (default: the tactile card-guesser).
   if(typeof taskbarApply==='function')taskbarApply();
   osBootStartup();
+  if(typeof diceyInit==='function')diceyInit(); // friendly d20 helper (if enabled)
 }
 
 /* ── Mobile "guess my card": tap the card's anatomy to describe a card; after a
@@ -8129,6 +8151,7 @@ function mgStartMenuHtml(showLaunch,showDesktop){
     item('account','👤 Account')+
     (state.user?'<div class="mg-smitem" data-logout="1">🚪 Sign out</div>':'')+
     '<div class="mg-smitem" data-app="sysset">⚙️ System Settings</div>'+
+    '<div class="mg-smitem" data-dicey="1">🎲 Dicey helper</div>'+
     '<div class="mg-smitem" data-app="about">ℹ️ About</div>'+
     '<div class="mg-smsep"></div>'+
     '<div class="mg-smitem" data-shut="1">⏻&nbsp; Shut Down</div>'+
@@ -8148,7 +8171,80 @@ function mgWireStartMenu(a){
   const bs=a.querySelector('.mg-smitem[data-backsearch]');if(bs)bs.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgCloseDesktopEmbed();});
   const lo=a.querySelector('.mg-smitem[data-logout]');if(lo)lo.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;if(typeof logout==='function')logout();mgRenderDesktop();});
   const sd=a.querySelector('.mg-smitem[data-shut]');if(sd)sd.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;mgFullExit();});
+  const dc=a.querySelector('.mg-smitem[data-dicey]');if(dc)dc.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;const m=document.getElementById('wm-startmenu');if(m)m.remove();if(typeof diceyToggle==='function')diceyToggle();if(typeof mgRenderDesktop==='function')mgRenderDesktop();});
 }
+// ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
+let _diceyEl=null, _diceyOpen=false;
+const DICEY_TIPS=[
+  "Hi! Drag me anywhere. Click me for the app list, or roll me for a surprise.",
+  "Need the Mana Pool, Cardle, or your decks? Tap one below and I'll open it.",
+  "Tip: every window has a ⚙ in its title bar to reset its size & position.",
+  "On a splash page, the 🧩 Widgets menu lets anyone spawn a deck list or AI analysis.",
+  "Track matches in 2040 — Start Match, then log each game's result.",
+  "Feeling lucky? Roll me. High rolls help… low rolls are the risk you take. 🎲",
+];
+function diceyState(){ try{ const s=DeckOS.store.get('dicey'); if(s&&typeof s==='object')return s; }catch(e){} return {on:true,x:null,y:null}; }
+function diceySave(s){ try{ DeckOS.store.set('dicey', s); }catch(e){} }
+function diceyD20Svg(face){ return '<svg viewBox="0 0 100 100" class="dicey-svg" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">'+
+  '<polygon points="50,4 91,28 91,72 50,96 9,72 9,28" fill="#b33a44" stroke="#5a141b" stroke-width="3" stroke-linejoin="round"/>'+
+  '<polygon points="50,4 91,28 50,42 9,28" fill="#d24f5a" opacity=".55"/>'+
+  '<polygon points="50,96 91,72 50,58 9,72" fill="#7a1f27" opacity=".55"/>'+
+  '<polygon points="50,20 77,35 67,64 33,64 23,35" fill="#e6ebf2" stroke="#5a141b" stroke-width="2.4" stroke-linejoin="round"/>'+
+  '<circle cx="42" cy="33" r="3" fill="#1a1a1a"/><circle cx="58" cy="33" r="3" fill="#1a1a1a"/>'+
+  '<circle cx="43" cy="32" r="1" fill="#fff"/><circle cx="59" cy="32" r="1" fill="#fff"/>'+
+  '<text x="50" y="58" text-anchor="middle" font-family="Tahoma,sans-serif" font-weight="bold" font-size="20" fill="#3a1014" class="dicey-face">'+face+'</text>'+
+  '</svg>'; }
+function diceyApps(){ const order=['cgg','cardle','manapool','dicebag','twentyfourty','landgame','splash','decks','storage','widgets','calendar','battle','sysset','about'];
+  const out=[]; order.forEach(k=>{ if(k==='cgg'){ out.push({k,icon:'🗃️',title:'Card Guesser'}); return; } const a=(typeof MGW_APPS!=='undefined')&&MGW_APPS[k]; if(a)out.push({k,icon:a.icon,title:a.title}); }); return out; }
+function diceyInit(){ const s=diceyState();
+  if(!s.on){ if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
+  if(_diceyEl)return;
+  const el=document.createElement('div'); el.id='dicey'; _diceyEl=el;
+  el.innerHTML='<button class="dicey-die" title="Dicey — click for help, drag to move, roll for luck">'+diceyD20Svg(20)+'</button>';
+  document.body.appendChild(el);
+  const x=(s.x!=null)?s.x:(window.innerWidth-94), y=(s.y!=null)?s.y:(window.innerHeight-160);
+  el.style.left=Math.max(2,Math.min(x,window.innerWidth-66))+'px'; el.style.top=Math.max(2,Math.min(y,window.innerHeight-66))+'px';
+  diceyDrag(el);
+  el.querySelector('.dicey-die').addEventListener('click',()=>{ if(el._moved){ el._moved=false; return; } _diceyOpen?diceyClosePanel():diceyOpenPanel(); });
+}
+function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
+  if(s.on)diceyInit(); else { _diceyOpen=false; if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
+  if(typeof toast==='function')toast(s.on?'Dicey is here to help! 🎲':'Dicey hopped back in the bag.'); }
+function diceyDrag(el){ const die=el.querySelector('.dicey-die'); let sx,sy,ox,oy,moved;
+  die.addEventListener('pointerdown',e=>{ if(e.button)return; sx=e.clientX;sy=e.clientY; const r=el.getBoundingClientRect(); ox=r.left;oy=r.top; moved=false; el._moved=false;
+    const mv=ev=>{ const dx=ev.clientX-sx,dy=ev.clientY-sy; if(!moved&&Math.abs(dx)+Math.abs(dy)>5){ moved=true; el._moved=true; diceyClosePanel(); }
+      if(moved){ el.style.left=Math.max(2,Math.min(ox+dx,window.innerWidth-66))+'px'; el.style.top=Math.max(2,Math.min(oy+dy,window.innerHeight-66))+'px'; } };
+    const up=()=>{ document.removeEventListener('pointermove',mv); document.removeEventListener('pointerup',up); if(moved){ const s=diceyState(); s.x=parseFloat(el.style.left); s.y=parseFloat(el.style.top); diceySave(s); } };
+    document.addEventListener('pointermove',mv); document.addEventListener('pointerup',up); }); }
+function diceyClosePanel(){ _diceyOpen=false; const p=_diceyEl&&_diceyEl.querySelector('.dicey-bubble'); if(p)p.remove(); }
+function diceySetTip(html){ const t=_diceyEl&&_diceyEl.querySelector('.dicey-tip'); if(t)t.innerHTML=html; }
+function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=true;
+  const tip=DICEY_TIPS[(Math.random()*DICEY_TIPS.length)|0]; const apps=diceyApps();
+  const bub=document.createElement('div'); bub.className='dicey-bubble';
+  bub.innerHTML='<div class="dicey-hd"><b>🎲 Dicey</b><button class="dicey-x" title="Close">✕</button></div>'+
+    '<div class="dicey-tip">'+_mgEsc(tip)+'</div>'+
+    '<input class="dicey-search" placeholder="Find an app…" autocomplete="off">'+
+    '<div class="dicey-apps">'+apps.map(a=>'<button class="dicey-app" data-dapp="'+a.k+'">'+a.icon+' '+_mgEsc(a.title)+'</button>').join('')+'</div>'+
+    '<div class="dicey-foot"><button class="dicey-roll">🎲 Roll for me!</button><button class="dicey-hide" title="Hide Dicey">🫥</button></div>';
+  _diceyEl.appendChild(bub);
+  bub.querySelector('.dicey-x').onclick=diceyClosePanel;
+  bub.querySelector('.dicey-hide').onclick=()=>{ diceyClosePanel(); diceyToggle(); };
+  bub.querySelector('.dicey-roll').onclick=diceyRoll;
+  bub.querySelectorAll('.dicey-app').forEach(b=>b.onclick=()=>{ const k=b.getAttribute('data-dapp'); diceyClosePanel(); try{ mgLaunchApp(k); }catch(e){} });
+  const q=bub.querySelector('.dicey-search'); q.addEventListener('input',()=>{ const v=q.value.toLowerCase(); bub.querySelectorAll('.dicey-app').forEach(b=>{ b.style.display=b.textContent.toLowerCase().includes(v)?'':'none'; }); });
+}
+function diceyRoll(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'), faceEl=_diceyEl&&_diceyEl.querySelector('.dicey-face'); if(!faceEl)return;
+  const rnd=()=>(typeof _diceRand==='function'?_diceRand(20):((Math.random()*20)|0))+1;
+  if(die){ die.classList.remove('dicey-rolling'); void die.offsetWidth; die.classList.add('dicey-rolling'); }
+  const iv=setInterval(()=>{ faceEl.textContent=rnd(); },60);
+  setTimeout(()=>{ clearInterval(iv); const roll=rnd(); faceEl.textContent=roll; diceyOutcome(roll); }, 700); }
+function diceyOutcome(roll){ const fun=['cardle','manapool','dicebag','twentyfourty','landgame','battle'];
+  const open=k=>{ try{ mgLaunchApp(k); }catch(e){} diceyClosePanel(); };
+  if(roll===20){ diceySetTip('<b>NATURAL 20!</b> 🎉 The dice gods smile — here, try today’s Cardle.'); setTimeout(()=>open('cardle'),750); }
+  else if(roll===1){ diceySetTip('<b>Natural 1…</b> 😬 I fumble! Have a consolation roll in the Dice Bag.'); setTimeout(()=>open('dicebag'),750); }
+  else if(roll>=15){ const k=fun[(Math.random()*fun.length)|0]; const a=(MGW_APPS[k]||{icon:'🎲',title:k}); diceySetTip('Rolled <b>'+roll+'</b> — strong! Opening '+a.icon+' '+_mgEsc(a.title)+'.'); setTimeout(()=>open(k),750); }
+  else { diceySetTip('Rolled <b>'+roll+'</b>. '+_mgEsc(DICEY_TIPS[(Math.random()*DICEY_TIPS.length)|0])); } }
+window.addEventListener('resize',()=>{ if(_diceyEl){ const r=_diceyEl.getBoundingClientRect(); _diceyEl.style.left=Math.max(2,Math.min(r.left,window.innerWidth-66))+'px'; _diceyEl.style.top=Math.max(2,Math.min(r.top,window.innerHeight-66))+'px'; } });
 function mgOpenInBuilder(id){if(!state.decks[id])return;loadDeck(id);mgShutdown();siteRestore();if(window.innerWidth<=900&&typeof mobileNav==='function')mobileNav('deck');}
 async function mgAddGuessToDeck(c){
   const did=(mgActiveDeckId&&state.decks[mgActiveDeckId])?mgActiveDeckId:state.currentDeckId;
