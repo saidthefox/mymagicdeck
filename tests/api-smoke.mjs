@@ -180,6 +180,18 @@ try {
       assert(acc.status === 200 && acc.body.accepted_at, 'POST /uploads/accept-terms → accepted_at');
       const post = await Ja('/uploads/card-art', { method:'POST' }, UT);
       assert(post.status === 400, 'after accepting, card-art passes the rules gate (400 no-file, not 412)');
+
+      // Set-as-splash-pic renders + stores server-side — NOT a user upload, so it bypasses the gate/pause.
+      const sp = await J('/auth/register', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username:'smoke_sp_' + Math.floor(Math.random()*1e6), email:'sp' + Math.floor(Math.random()*1e6) + '@example.com', password:'smoketest123' }) });
+      if (sp.status === 200 && sp.body.token) {
+        const SP = sp.body.token;
+        const dg = await Ja('/uploads/deck-photo', { method:'POST' }, SP);
+        assert(dg.status === 412, 'a fresh user still hits the terms gate on a real upload (deck-photo → 412)');
+        const sr = await Ja('/splash/render', { method:'POST', body: JSON.stringify({ store:true, width:300, height:300, background:'#101317', cards:[] }) }, SP);
+        assert(sr.status === 200 && sr.body.url && /^\/u\//.test(sr.body.url), 'splash render+store saves a server-composed image (bypasses the upload gate)');
+        const srNo = await J('/splash/render', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ store:true, cards:[] }) });
+        assert(srNo.status === 401, 'splash render+store requires sign-in');
+      }
       try {
         const udb = require('better-sqlite3')(process.env.DB_PATH || '/data/mymagicdeck.db');
         udb.prepare('UPDATE users SET uploads_disabled = 1 WHERE username = ?').run(ru);

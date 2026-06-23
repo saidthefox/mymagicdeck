@@ -3283,7 +3283,7 @@ const SHARE_BGS=[{key:'',label:'Plain'},{key:'swamp',label:'Swamp'},{key:'island
 // Closed word-lists (must match the server's allowlists). No free text → limits misuse.
 const BG_SCENE_OPTS=[['desert','a desert'],['forest','a forest'],['random-biome','a random biome'],['ascii','ASCII art'],['tokyo','Tokyo'],['space','outer space'],['underwater','underwater'],['mountains','the mountains'],['city','a city'],['void','the void'],['dream','a dreamscape'],['swamp','a swamp'],['volcano','a volcano'],['library','a library'],['tavern','a tavern'],['meadow','a meadow'],['cosmos','the cosmos']];
 const BG_VIBE_OPTS=[['none','(any vibe)'],['cozy','cozy'],['epic','epic'],['eerie','eerie'],['cheerful','cheerful'],['mysterious','mysterious'],['chaotic','chaotic'],['serene','serene'],['retro','retro']];
-let _siBg='', _shareBlob=null;
+let _siBg='', _shareBlob=null, _shareParams=null;
 function openShareImage(){ if(document.body.classList.contains('wm-on')&&typeof mgLaunchApp==='function'&&MGW_APPS['shareimg'])mgLaunchApp('shareimg'); else _openShareImage(); }
 function _openShareImage(){
   if(!_splashDeck){toast('Open your splash first','error');return;}
@@ -3388,8 +3388,9 @@ async function _genShareImage(){
   // server derives font sizes from this `s`, so without it text renders too small.
   if(snap.stats&&Object.keys(snap.stats).length){ statPos={}; for(const k in snap.stats){ const v=snap.stats[k]; statPos[k]={x:sc(v.x+ox),y:sc(v.y+oy),w:sc(v.w),h:sc(v.h),s:(v.s||1)*s}; } }
   try{
+    _shareParams={ width:sc(cw), height:sc(chh), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) };
     const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:Object.assign({'Content-Type':'application/json'},apiToken()?{Authorization:'Bearer '+apiToken()}:{}),
-      body:JSON.stringify({ width:sc(cw), height:sc(chh), background:_siBg||null, cards, overlays, statPos, meta:_shareMeta(_splashDeck.deck, _splashDeck.username) })});
+      body:JSON.stringify(_shareParams)});
     if(!res.ok){ const j=await res.json().catch(()=>({})); st.className='si-status err'; st.textContent=j.error||'Render failed'; return; }
     _shareBlob=await res.blob();
     const url=URL.createObjectURL(_shareBlob);
@@ -3405,15 +3406,16 @@ function _dlShare(){ if(!_shareBlob)return; const a=document.createElement('a');
 async function _shareShare(){ if(!_shareBlob)return; const f=new File([_shareBlob],'deck.png',{type:'image/png'}); try{ if(navigator.canShare&&navigator.canShare({files:[f]}))await navigator.share({files:[f],title:(_splashDeck&&_splashDeck.deck.name)||'My deck'}); else _dlShare(); }catch(e){} }
 // Persist the generated pic and make it the deck's served splash (reuses the deck-photo upload).
 async function _setSplashPic(){
-  if(!_shareBlob){toast('Generate the image first','info');return;}
   const deck=_splashDeck&&_splashDeck.deck; if(!deck){toast('Open a deck first','error');return;}
   if(!(state.user&&apiToken())){toast('Sign in to save a splash pic','error');return;}
+  if(!_shareParams){toast('Generate the image first','info');return;}
   const btn=document.getElementById('si-setsplash'); if(btn){btn.disabled=true;btn.textContent='Saving…';}
   try{
-    const fd=new FormData(); fd.append('file',new File([_shareBlob],'splash.png',{type:'image/png'}));
-    const res=await fetch(API_BASE+'/uploads/deck-photo',{method:'POST',headers:{Authorization:'Bearer '+apiToken()},body:fd});
+    // Re-render server-side WITH store — the image is the server's own composition of Scryfall card art,
+    // not a user file upload, so it isn't subject to the upload pause/gate.
+    const res=await fetch(API_BASE+'/splash/render',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+apiToken()},body:JSON.stringify(Object.assign({store:true}, _shareParams))});
     const j=await res.json().catch(()=>({}));
-    if(!res.ok||!j.url)throw new Error(j.error||'Upload failed');
+    if(!res.ok||!j.url)throw new Error(j.error||'Save failed');
     deck.layout=deck.layout||{}; deck.layout.splashImage=j.url; deck.layout.serveImage=true;
     saveToStorage(); if(typeof syncDeckToApi==='function')syncDeckToApi(deck.id);
     toast('Saved — your splash now shows this pic 🎴','success');

@@ -2931,6 +2931,20 @@ app.post('/api/splash/render', { preHandler: [softAuthenticate, rateLimitUpload]
     : buildOverlaySVG({ W, H, bandH, contentTop: bandH, contentH: ch }, b.overlays || {}, b.meta || {});
   if (svg) { try { img = await sharp(img).composite([{ input: svg, left: 0, top: 0 }]).png().toBuffer(); } catch (e) { app.log.warn('overlay render failed: ' + e.message); } }
 
+  // Save the composed image as the deck's splash pic. This is the server's own render of Scryfall card
+  // art (+ the user's layout) — NOT a user file upload — so it isn't subject to the upload gate/pause.
+  if (b.store) {
+    if (!req.user) return reply.code(401).send({ error: 'Sign in to save a splash pic.' });
+    const userId = req.user.sub;
+    const dir = path.join(UPLOAD_DIR, String(userId)); fs.mkdirSync(dir, { recursive: true });
+    let out; try { out = await sharp(img).webp({ quality: 86 }).toBuffer(); } catch (_) { out = img; }
+    const key = 'splash_' + crypto.randomBytes(8).toString('hex'), fname = key + '.webp';
+    fs.writeFileSync(path.join(dir, fname), out);
+    const url = `/u/${userId}/${fname}`;
+    db.prepare(`INSERT INTO uploads (user_id, key, kind, small, normal, large) VALUES (?, ?, 'deck', ?, ?, ?)`).run(userId, key, url, url, url);
+    return { url };
+  }
+
   reply.header('Content-Type', 'image/png');
   reply.header('Cache-Control', 'no-store');
   return reply.send(img);
