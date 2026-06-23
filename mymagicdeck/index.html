@@ -3074,11 +3074,11 @@ function openSplash(deckObj,username,opts){
   // Full-deck photo banner (read-only for public viewers; editable in edit mode)
   let photoHtml='';
   if(deckObj.deckPhoto){
-    photoHtml=`<div class="splash-deckphoto"><img src="${deckObj.deckPhoto}" alt="Full deck photo"/>${_splashEdit?`<button class="btn small primary splash-photo-edit" onclick="triggerDeckPhoto()">Change photo</button>`:''}</div>`;
-  } else if(_splashEdit){
+    photoHtml=`<div class="splash-deckphoto"><img src="${deckObj.deckPhoto}" alt="Full deck photo"/>${(_splashEdit&&UPLOADS_ENABLED)?`<button class="btn small primary splash-photo-edit" onclick="triggerDeckPhoto()">Change photo</button>`:''}</div>`;
+  } else if(_splashEdit&&UPLOADS_ENABLED){
     photoHtml=`<div class="splash-deckphoto empty" onclick="triggerDeckPhoto()"><span>＋ Add a full-deck photo</span></div>`;
   }
-  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload your own art or a deck photo.`)+`</div>`:'';
+  const editHint=_splashEdit?`<div style="font-size:0.72rem;color:var(--accent);margin-bottom:10px">✎ Editing your splash — drag cards & stat panels, change printings`+(UPLOADS_ENABLED?(state.user?`, or upload your own art.`:`. <b>Sign in</b> to upload your own art or a deck photo.`):`. <span style="color:var(--text-dim)">(Image uploads are paused for now.)</span>`)+`</div>`:'';
   // The owner can choose to serve the generated deck pic as the splash (else the interactive
   // layout is the splash); a header button toggles between the two for any viewer.
   const splashPic=(deckObj.layout&&deckObj.layout.splashImage)||deckObj.deckPhoto||'';
@@ -4313,9 +4313,10 @@ function _renderUploadTab(){
   const hasCustom=!!(ctx&&ctx.entry&&ctx.entry.card&&ctx.entry.card.customArt)||!!(ctx&&ctx.entry&&ctx.entry.arts&&ctx.entry.arts[ctx.copyIdx]);
   document.getElementById('printings-upload-wrap').innerHTML=`
     <div class="pup">
-      <label class="pup-drop"><input type="file" accept="image/*" onchange="doCardUpload(this)">📷 Choose a photo of your card</label>
+      ${UPLOADS_ENABLED?`<label class="pup-drop"><input type="file" accept="image/*" onchange="doCardUpload(this)">📷 Choose a photo of your card</label>
       <div class="pup-hint">Next you’ll drag the corners to straighten &amp; crop it — it becomes this card’s art on your splash page.</div>
-      <div class="pup-hint" style="color:var(--dim,#9aa6b6)">Your own alters / art only — no card scans. <a href="/dmca.html" target="_blank" rel="noopener" style="color:inherit">Rules</a>.</div>
+      <div class="pup-hint" style="color:var(--dim,#9aa6b6)">Your own alters / art only — no card scans. <a href="/dmca.html" target="_blank" rel="noopener" style="color:inherit">Rules</a>.</div>`
+      :`<div class="pup-hint" style="text-align:center;padding:14px 8px">🚧 Custom card-art uploads are paused for now — coming back soon.</div>`}
       <div class="pup-status" id="pup-status"></div>
       ${hasCustom?`<button class="btn small" onclick="revertArt()">↩ Revert to original art</button>`:''}
     </div>`;
@@ -4450,7 +4451,13 @@ function showUploadRules(proceed){
   ov.querySelector('#ur-cancel').onclick=()=>ov.remove();
   acc.onclick=()=>{ acc.disabled=true; apiFetch('/uploads/accept-terms',{method:'POST',body:'{}'}).then(r=>{ if(state.user){ state.user.uploads_accepted=(r&&r.accepted_at)||Date.now(); try{ localStorage.setItem('mmd_user',JSON.stringify(state.user)); }catch(e){} } ov.remove(); proceed(); }).catch(()=>{ acc.disabled=false; toast('Could not record acceptance — try again','error'); }); };
 }
+// ── User image uploads are PAUSED pending DMCA designated-agent registration (A1 — a separate mailing
+// address / phone to publish). Flip UPLOADS_ENABLED back to true to restore the whole upload UI + flow;
+// the backend routes, cropper, gallery viewing, rules modal, and /dmca page all stay in place. ──
+const UPLOADS_ENABLED = false;
+function _uploadsPaused(){ if(typeof toast==='function')toast('Uploads are paused for now — coming back soon.','info'); return true; }
 function doCardUpload(input){
+  if(!UPLOADS_ENABLED){ if(input)input.value=''; return _uploadsPaused()&&undefined; }
   const f=input.files&&input.files[0]; if(!f)return; input.value='';
   if(!state.user||!apiToken()){toast('Sign in to upload art','error');return;}
   // Capture the target entry + scope NOW (the popover may change while cropping).
@@ -4491,6 +4498,7 @@ function editSplashFromShare(){
   if(d)openSplash(d,state.user?.username||'You',{edit:true});
 }
 function triggerDeckPhoto(){
+  if(!UPLOADS_ENABLED){ _uploadsPaused(); return; }
   if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
   let inp=document.getElementById('deckphoto-file');
   if(!inp){inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.id='deckphoto-file';inp.style.display='none';inp.addEventListener('change',()=>doDeckPhotoUpload(inp));document.body.appendChild(inp);}
@@ -4532,6 +4540,9 @@ async function _openUploads(){
   if(!state.user||!apiToken()){toast('Sign in to manage uploads','error');return;}
   openModal('modal-uploads');
   document.getElementById('uploads-status').textContent='';
+  // Uploads paused: hide the "Upload cards" button + reword the hint; the gallery still shows existing art.
+  { const ub=document.getElementById('uploads-file'), lab=ub&&ub.closest('label'); if(lab)lab.style.display=UPLOADS_ENABLED?'':'none';
+    const hint=document.querySelector('.uploads-hint'); if(hint&&!UPLOADS_ENABLED)hint.textContent='Custom card-art uploads are paused for now — your existing uploads still show here.'; }
   _renderUplTray();
   document.getElementById('uploads-grid').innerHTML='<div class="uploads-empty">Loading…</div>';
   await refreshUploads();
@@ -4634,8 +4645,9 @@ async function deleteUpload(id){
 }
 // ── My Uploads: queued auto-detect batch ──────────────────────────────────────
 let _uplJobs=[], _uplRunning=false, _uplSeq=0; const UPL_MAX=15;
-function doDirectUpload(input){ const files=[...(input.files||[])]; input.value=''; addUplJobs(files); }
+function doDirectUpload(input){ if(!UPLOADS_ENABLED){ if(input)input.value=''; _uploadsPaused(); return; } const files=[...(input.files||[])]; input.value=''; addUplJobs(files); }
 function addUplJobs(files){
+  if(!UPLOADS_ENABLED){ _uploadsPaused(); return; }
   if(!state.user||!apiToken()){toast('Sign in to upload','error');return;}
   if(state.user.uploads_disabled){toast('Uploads are disabled on your account.','error');return;}
   if(!uploadsAcceptedLocal()){ showUploadRules(()=>addUplJobs(files)); return; }
