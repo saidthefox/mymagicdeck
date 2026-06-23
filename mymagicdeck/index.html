@@ -1405,6 +1405,10 @@
     .dicey-plat{position:fixed;z-index:6190;width:48px;height:66px;border-radius:5px;background:linear-gradient(160deg,#3a4660,#222a3c);border:2px solid #8aa0c8;box-shadow:0 4px 12px rgba(0,0,0,.5),inset 0 0 0 2px rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:20px;animation:dicey-platin .28s ease-out;transition:opacity .4s,transform .4s}
     .dicey-plat.fade{opacity:0;transform:translateY(8px)}
     @keyframes dicey-platin{0%{opacity:0;transform:translateY(10px) scale(.7)}100%{opacity:1;transform:translateY(0) scale(1)}}
+    /* Persistent hop-platforms: thin, varying length + colour (set inline), they stick around for the session */
+    .dicey-pf{position:fixed;z-index:6188;border-radius:7px;border:1.5px solid;box-shadow:0 4px 10px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.28);animation:dicey-pfin .42s cubic-bezier(.2,1.4,.4,1);transition:opacity .4s,transform .4s}
+    .dicey-pf.pf-out{opacity:0;transform:translateY(8px)}
+    @keyframes dicey-pfin{0%{opacity:0;transform:scaleX(.3) translateY(8px)}100%{opacity:1;transform:scaleX(1) translateY(0)}}
     .lc-half{container-type:size;position:relative;flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;overflow:hidden;border-bottom:3px solid #000;background:radial-gradient(circle at 50% 50%,#242424,#0e0e0e);padding:10px 0}
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
@@ -6432,6 +6436,7 @@ function wmDefaultRect(key){
   const n=Object.keys(wmWins).length, j=Math.min(n*18, 90);
   let w,h;
   if(key==='cgg'){ h=Math.min(560, innerHeight-120); w=Math.round(h*0.7); }       // Magic-card ratio
+  else if(key==='cardle'){ w=Math.min(520, innerWidth-32); h=Math.min(760, innerHeight-48); } // tall: show the whole fillable card + clues + guess box on open
   else if(key==='account'){ w=Math.min(380, innerWidth-24); h=Math.min(440, innerHeight-60); }
   else if(key==='manapool'){ w=Math.min(620, innerWidth-40); h=Math.min(600, innerHeight-60); }
   else if(key==='dicebag'){ w=Math.min(440, innerWidth-40); h=Math.min(560, innerHeight-60); }
@@ -6489,7 +6494,13 @@ function mmdToggleClip(){ _mmdClipped=!mmdIsClipped(); try{ DeckOS.store.set('mm
   const w=wmWins&&wmWins.site;
   if(w){ if(_mmdClipped){ w.state='normal'; w.rect.w=Math.min(560,innerWidth-40); if(w.rect.x+w.rect.w>innerWidth)w.rect.x=20; } else { w.rect.w=Math.min(1180,innerWidth-50); } wmApply('site'); wmSaveRect('site'); wmRenderTaskbar(); }
   else mmdApply(); }
-function wmFocus(key){ const el=wmEls[key]; if(!el)return; el.style.zIndex=(++wmZ); wmFocusedKey=key; wmRenderTaskbar(); }
+function wmFocus(key){ const el=(wmWins[key]&&wmWins[key].el)||wmEls[key]; if(!el)return;
+  // Jump above the highest sibling in #wm-layer — robust even if a window picked up a stray high z
+  // from another code path (e.g. a mobile-shell open). The layer (z 1500) sits below the taskbar
+  // (z 4000), so this can climb freely without ever covering the taskbar.
+  const layer=document.getElementById('wm-layer'); let mx=wmZ;
+  if(layer)for(const c of layer.children){ const z=parseInt(c.style.zIndex)||0; if(z>mx)mx=z; }
+  wmZ=mx+1; el.style.zIndex=wmZ; wmFocusedKey=key; wmRenderTaskbar(); }
 function wmOpen(key){
   const bd0=wmBackdropId(key); if(bd0){ const ov=document.getElementById(bd0); if(ov)ov.classList.remove('open'); } // never leave a fullscreen backdrop in WM mode
   const el = wmWinEl(key); if(!el) return; wmEls[key]=el;
@@ -7754,7 +7765,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'manapool', title:'Mana Pool', icon:MP_ICON, width:'620px', desktop:true, mount(body){ mpRender(body); } });
   DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
-  DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'480px', category:'games', mount(body){ cardleRender(body); } });
+  DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'520px', category:'games', mount(body){ cardleRender(body); } });
   DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
@@ -8390,7 +8401,7 @@ function diceyShowFace(n){ const f=_diceyEl&&_diceyEl.querySelector('.dicey-face
 function diceyApps(){ const order=['cgg','cardle','manapool','dicebag','twentyfourty','landgame','splash','decks','storage','widgets','calendar','battle','sysset','about'];
   const out=[]; order.forEach(k=>{ if(k==='cgg'){ out.push({k,icon:'🗃️',title:'Card Guesser'}); return; } const a=(typeof MGW_APPS!=='undefined')&&MGW_APPS[k]; if(a)out.push({k,icon:a.icon,title:a.title}); }); return out; }
 function diceyInit(){ const s=diceyState();
-  if(!s.on || !diceyHere(s)){ _diceyOpen=false; clearTimeout(_diceyTimer); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
+  if(!s.on || !diceyHere(s)){ _diceyOpen=false; clearTimeout(_diceyTimer); diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} return; }
   if(_diceyEl)return;
   const el=document.createElement('div'); el.id='dicey'; _diceyEl=el;
   el.innerHTML='<button class="dicey-die" title="Dicey — click for help, drag to move, roll for luck">'+diceyD20Svg()+'</button>';
@@ -8406,7 +8417,7 @@ function diceyInit(){ const s=diceyState();
 function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
 function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Oh boy, '+state.user.username+'! Wanna play?'):'Oh boy! Welcome back! 🐾', 2600); }
 function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
-  if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
+  if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
   if(typeof toast==='function')toast(s.on?'Oh boy! Dicey is out! 🎲🐾':'Dicey curled up in the bag.'); }
 // ---- Dicey personality: rolls to move, whirls when excited, greets, and builds card platforms to hop onto ----
 function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 5000+Math.random()*7000); }
@@ -8414,7 +8425,7 @@ function diceyIdleTick(){ if(!_diceyEl){ return; }
   if(_diceyOpen||_diceyDragging||document.hidden||_diceyReduced){ diceyScheduleIdle(); return; } // paused states — stay calm
   const roll=(typeof _diceRand==='function'?_diceRand(20):((Math.random()*20)|0))+1;
   if(roll>=18) diceyRoll();        // spontaneously roll + cast a spell
-  else if(roll>=14) diceyWhirl();
+  else if(roll>=14){ if(diceyPlatformsOn()&&Math.random()<.6)diceyHopPlatforms(); else diceyWhirl(); } // hop around his platforms
   else if(roll>=8){ const r=_diceyEl.getBoundingClientRect(); diceyMoveTo(r.left+(Math.random()*180-90), r.top+(Math.random()*70-35), 640); }
   else if(roll<=3) diceySay(DICEY_BARKS[(Math.random()*DICEY_BARKS.length)|0], 2200);
   diceyScheduleIdle();
@@ -8456,11 +8467,13 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
     '<div class="dicey-apps">'+apps.map(a=>'<button class="dicey-app" data-dapp="'+a.k+'">'+a.icon+' '+_mgEsc(a.title)+'</button>').join('')+'</div>'+
     '<div class="dicey-foot" style="margin-top:6px"><button class="dicey-app" style="flex:1;text-align:center" data-tour="1">▶ Replay the tour</button></div>'+
     '<label class="dicey-modeopt"><input type="checkbox" id="dicey-allmode"'+(diceyState().mode==='all'?' checked':'')+'> Follow me onto the classic site too</label>'+
+    '<label class="dicey-modeopt"><input type="checkbox" id="dicey-plats"'+(diceyPlatformsOn()?' checked':'')+'> 🧱 Build platforms to hop on</label>'+
     '<div class="dicey-foot"><button class="dicey-roll">🎲 Roll for me!</button><button class="dicey-hide" title="Hide Dicey">🫥</button></div>';
   _diceyEl.appendChild(bub); diceyPlaceBubble();
   bub.querySelector('.dicey-x').onclick=diceyClosePanel;
   bub.querySelector('[data-tour]').onclick=()=>diceyTour(1);
   const am=bub.querySelector('#dicey-allmode'); if(am)am.onchange=()=>{ const s=diceyState(); s.mode=am.checked?'all':'os'; diceySave(s); if(typeof toast==='function')toast(am.checked?'I’ll tag along everywhere! 🐾':'Back to Deck OS only.'); };
+  const pf=bub.querySelector('#dicey-plats'); if(pf)pf.onchange=()=>{ const s=diceyState(); s.platforms=pf.checked; diceySave(s); if(!pf.checked)diceyClearPlatforms(); if(typeof toast==='function')toast(pf.checked?'I’ll build hop-platforms! 🧱🐾':'No more platforms — I’ll keep to the ground.'); };
   bub.querySelector('.dicey-hide').onclick=()=>{ diceyClosePanel(); diceyToggle(); };
   bub.querySelector('.dicey-roll').onclick=diceyRoll;
   bub.querySelectorAll('.dicey-app').forEach(b=>b.onclick=()=>{ const k=b.getAttribute('data-dapp'); diceyClosePanel(); try{ mgLaunchApp(k); }catch(e){} });
@@ -8496,12 +8509,30 @@ const DICEY_SPELLS={
 function diceySpellCard(name){ if(!_diceyEl)return; const c=document.createElement('div'); c.className='dicey-spell';
   c.innerHTML='<div class="dicey-spell-art"></div><div class="dicey-spell-nm">'+_mgEsc(name)+'</div>';
   _diceyEl.appendChild(c); setTimeout(()=>{ if(c)c.remove(); }, 1850); }
-function diceyGrow(kind){ if(!_diceyEl)return; const r=_diceyEl.getBoundingClientRect();
-  const el=document.createElement('div'); el.className='dicey-grow '+kind;
-  if(kind==='wall'){ const w=20, h=Math.min(150, r.top-10); if(h<40)return; el.style.width=w+'px'; el.style.height=h+'px'; el.style.left=Math.round(r.left+(r.width-w)/2)+'px'; el.style.top=Math.round(r.top-h-4)+'px'; }
-  else { const w=130, h=20; el.style.width=w+'px'; el.style.height=h+'px'; el.style.left=Math.max(4,Math.min(Math.round(r.left+(r.width-w)/2), window.innerWidth-w-4))+'px'; el.style.top=Math.round(Math.min(r.bottom+6, window.innerHeight-h-4))+'px'; }
-  document.body.appendChild(el); requestAnimationFrame(()=>el.classList.add('in'));
-  setTimeout(()=>{ if(el){ el.classList.add('out'); setTimeout(()=>el.remove(),520); } }, 4000); }
+// Persistent hop-platforms (opt-out via the Dicey panel). Thin, varying length + colour; they
+// accumulate (capped) so Dicey has ledges to bounce around on — no more short-lived vertical walls.
+let _diceyPlats=[]; const DICEY_PLAT_MAX=9;
+const _diceyPalette=['#5aa86a','#5b8def','#c0392b','#d39a2d','#8e5bd0','#2bb6a8','#d05b9c','#e07b39'];
+function diceyPlatformsOn(){ return diceyState().platforms!==false; } // default on
+function diceyClearPlatforms(){ _diceyPlats.forEach(p=>{ try{ p.remove(); }catch(e){} }); _diceyPlats=[]; }
+function diceyBuildPlatform(opts){ opts=opts||{}; if(!_diceyEl||!diceyPlatformsOn())return null;
+  const r=_diceyEl.getBoundingClientRect();
+  const len=64+Math.round(Math.random()*130), hgt=7+Math.round(Math.random()*5);   // varying length 64–194, thin 7–12px
+  const col=_diceyPalette[(Math.random()*_diceyPalette.length)|0];
+  const dir=Math.random()<.5?-1:1, up=44+Math.round(Math.random()*72);
+  let x=r.left+r.width/2-len/2+dir*(58+Math.random()*72), y=r.top-up;
+  x=Math.max(4,Math.min(x, window.innerWidth-len-4)); y=Math.max(6,Math.min(y, window.innerHeight-hgt-80));
+  const el=document.createElement('div'); el.className='dicey-pf';
+  el.style.cssText='left:'+Math.round(x)+'px;top:'+Math.round(y)+'px;width:'+len+'px;height:'+hgt+'px;border-color:'+col+';background:linear-gradient(180deg,'+col+',rgba(0,0,0,.4))';
+  document.body.appendChild(el); _diceyPlats.push(el);
+  while(_diceyPlats.length>DICEY_PLAT_MAX){ const old=_diceyPlats.shift(); if(old){ old.classList.add('pf-out'); setTimeout(()=>old.remove(),420); } }
+  if(opts.hop!==false)diceyHopTo(el);
+  return el; }
+function diceyHopTo(plat){ if(!_diceyEl||!plat)return; const pr=plat.getBoundingClientRect();
+  const x=Math.max(2,Math.min(pr.left+pr.width/2-33, window.innerWidth-66)), y=Math.max(2, pr.top-58); // perch his ~66px body on top
+  diceySay('Hup!',900); diceyMoveTo(x,y,470); }
+function diceyHopPlatforms(){ if(!diceyPlatformsOn())return; if(_diceyPlats.length && Math.random()<.55)diceyHopTo(_diceyPlats[(Math.random()*_diceyPlats.length)|0]); else diceyBuildPlatform({hop:true}); }
+function diceyGrow(kind){ return diceyBuildPlatform({hop:true}); } // platforms are persistent now; the old vertical "wall" is retired
 function diceyCast(roll){ const sp=DICEY_SPELLS[roll]||{ name:'Mystic Roll', act:()=>diceySay('Rolled '+roll+'!',1800) };
   diceySpellCard(sp.name);
   setTimeout(()=>{ if(_diceyEl&&sp.act){ try{ sp.act(); }catch(e){} } }, 540); } // card resolves, then the effect fires
