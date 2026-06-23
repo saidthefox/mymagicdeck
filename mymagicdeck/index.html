@@ -7079,6 +7079,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     else if(a==='history'){ tfHistory(body); } }));
 }
 // ---- 2040 match tracker ----
+const TF_WIN_GAMES=2; // best-of-3: a player who reaches 2 game wins has clinched the match
 function tfMatches(){ try{ return DeckOS.store.get('tf_matches')||[]; }catch(e){ return []; } }
 function tfSaveMatches(l){ try{ DeckOS.store.set('tf_matches', l); }catch(e){} }
 function tfTally(games){ let w=0,l=0,d=0; (games||[]).forEach(g=>{ if(g.result==='W')w++; else if(g.result==='L')l++; else d++; }); return { w,l,d, res: w>l?'W':(l>w?'L':'D') }; }
@@ -7100,8 +7101,9 @@ function tfResultPrompt(body,kind){ const s=lcLoad(); if(!s.tr||!s.tr.active)ret
     '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
   ov.querySelector('[data-x]').onclick=()=>ov.remove();
   ov.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ s.tr.games.push({result:b.getAttribute('data-r'),mulligans:s.tr.curMull||0});
-    if(kind==='next'){ s.tr.gameNo=(s.tr.gameNo||1)+1; s.tr.curMull=0; s.tr.nexted=true; lcSave(); ov.remove(); lcRender(body); }
-    else { lcSave(); ov.remove(); tfEndScreen(body); } });
+    const ta=tfTally(s.tr.games); const clinched=ta.w>=TF_WIN_GAMES||ta.l>=TF_WIN_GAMES; // best-of-3 decided at 2 game wins
+    if(kind==='next'&&!clinched){ s.tr.gameNo=(s.tr.gameNo||1)+1; s.tr.curMull=0; s.tr.nexted=true; lcSave(); ov.remove(); lcRender(body); }
+    else { lcSave(); ov.remove(); tfEndScreen(body); } }); // clinched, or Finish Match → end screen
 }
 function tfEndScreen(body){ const s=lcLoad(); const t=s.tr; if(!t)return; const ov=tfOverlay(body); if(!ov)return;
   const deckNames=Object.values(state.decks||{}).map(d=>d.name).filter(Boolean);

@@ -23,6 +23,14 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   $('[data-save]').click(); await wait();
   const list=DeckOS.store.get('tf_matches')||[]; const m=list[0]||{};
   out.saved={ n:list.length, opp:m.opponent, theirDeck:m.theirDeck, res:m.result, g1mull:(m.games&&m.games[0]||{}).mulligans, games:(m.games||[]).length };
+  // Clinch: 2 game wins via Next Game auto-finishes the match (no forced 3rd game).
+  $('[data-tf="start"]').click(); await wait();
+  $('[data-tf="next"]').click(); await wait(); $('.tf-wld [data-r="W"]').click(); await wait();
+  out.afterWin1={ game2:/Game 2/.test(($('.tf-game')||{}).textContent||''), noEndYet:!$('#tf-opp') };
+  $('[data-tf="next"]').click(); await wait(); $('.tf-wld [data-r="W"]').click(); await wait();
+  out.clinch={ endAutoOpen:!!$('#tf-opp'), mrows:document.querySelectorAll('.tf-mrow').length };
+  $('#tf-opp').value='Al'; $('[data-save]').click(); await wait();
+  const l2=DeckOS.store.get('tf_matches')||[]; out.clinchSaved={ n:l2.length, res:l2[0]&&l2[0].result, games:l2[0]&&(l2[0].games||[]).length };
   $('[data-tf="history"]').click(); await wait(); out.hist=document.querySelectorAll('.tf-hist-row').length;
   return out; });
 console.log(JSON.stringify(r));
@@ -31,7 +39,8 @@ const ok = r.idleStart && r.afterStart.mull && r.afterStart.next && r.afterStart
   && r.afterNext.game2 && r.afterNext.finishShown && r.afterNext.mullReset
   && r.endScreen.opp && r.endScreen.mrows===2
   && r.saved.n===1 && r.saved.opp==='Bob' && r.saved.theirDeck==='Mono-Red' && r.saved.res==='D' && r.saved.g1mull===2 && r.saved.games===2
-  && r.hist===1 && !errs.length;
+  && r.afterWin1.game2 && r.afterWin1.noEndYet && r.clinch.endAutoOpen && r.clinch.mrows===2 && r.clinchSaved.n===2 && r.clinchSaved.res==='W' && r.clinchSaved.games===2
+  && r.hist===2 && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);
