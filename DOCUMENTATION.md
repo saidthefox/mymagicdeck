@@ -262,7 +262,9 @@ Posting a tournament fans out **mail** to every (other) user whose subscription 
 | GET | `/api/discord/status` | JWT | whether your account has a linked Discord, and its name |
 | POST | `/api/discord/unlink` | JWT | unlink your Discord account |
 | POST | `/api/integrations/discord/link` | bot | redeem a link code `{code,discord_id,discord_name}` → bind accounts |
-| GET | `/api/integrations/discord/user/:discordId` | bot | a linked player's 2040 record by Discord id (for `/mtgstats`) |
+| GET | `/api/integrations/discord/user/:discordId` | bot | a linked player's 2040 record by Discord id (for `/mmd-stats`) |
+| POST | `/api/integrations/discord/pairings` | bot | push a round's pairings `{tourn,round,pairings:[{tmatch,a_discord,b_discord}]}` → auto-creates 2040 matches for linked pairs |
+| GET | `/api/integrations/discord/pairings/:tourn/results` | bot | pull confirmed tournament results (Swiss codes) not yet reported |
 | GET | `/api/web/framecheck?url=` | — | can a URL be iframed? Header-only, **SSRF-guarded** (validates + pins the IP on every redirect hop) |
 
 ### Card Duel (online)
@@ -312,7 +314,8 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | POST | `/api/tf/live/:code/join` | yes | join a live match `{myDeck?}` (as the guest) |
 | GET | `/api/tf/live/:code` | yes | poll the live match state (participant only, your POV) |
 | POST | `/api/tf/live/:code/game` | yes | record a game `{index,result:'me'\|'them'\|'draw'}` (synced to both) |
-| POST | `/api/tf/live/:code/finish` | yes | finish `{notes?,myDeck?}` → writes the match to BOTH players' history |
+| POST | `/api/tf/live/:code/finish` | yes | finish: casual locks now; tournament matches need BOTH players to confirm |
+| GET | `/api/tf/live/mine` | yes | your open/live matches (so tournament pairings appear without a code) |
 
 Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to
 `tf_matches` (per account) so history + win-rate stats follow you across devices.

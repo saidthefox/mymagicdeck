@@ -1825,6 +1825,44 @@ app.get('/api/integrations/discord/user/:discordId', { preHandler: botOnly }, as
   let w = 0, l = 0, d = 0; for (const m of ms) { if (m.result === 'W') w++; else if (m.result === 'L') l++; else d++; }
   return { username: u.username, matches: ms.length, record: { w, l, d }, winPct: (w + l) ? Math.round(w / (w + l) * 100) : 0 };
 });
+// Bot: push a round's pairings. For every table where BOTH players are linked, spin up a 2040 tournament
+// match (auto-paired — no code to share). Returns which tables became 2040 matches vs were skipped.
+app.post('/api/integrations/discord/pairings', { preHandler: [botOnly, rateLimitReport] }, async (req, reply) => {
+  const b = req.body || {};
+  const tourn = _str(b.tourn || '', 80).trim();
+  const round = parseInt(b.round, 10) || 0;
+  const pairings = Array.isArray(b.pairings) ? b.pairings.slice(0, 64) : [];
+  if (!tourn || !pairings.length) return reply.code(400).send({ error: 'tourn and pairings are required.' });
+  const findUser = did => db.prepare('SELECT id, username FROM users WHERE discord_id = ?').get(String(did || ''));
+  const created = [], skipped = [], now = Date.now();
+  for (const p of pairings) {
+    const tmatch = _str((p && p.tmatch) || '', 60).trim(); if (!tmatch) continue;
+    const ua = findUser(p.a_discord), ub = findUser(p.b_discord);
+    if (!ua || !ub) { skipped.push({ tmatch, reason: 'unlinked' }); continue; }
+    const ex = db.prepare('SELECT code FROM tf_live WHERE tourn = ? AND tmatch = ?').get(tourn, tmatch);
+    if (ex) { created.push({ tmatch, code: ex.code }); continue; }
+    let code; for (let i = 0; i < 12; i++) { code = crypto.randomBytes(3).toString('hex').toUpperCase().slice(0, 5); if (!tfLiveGet(code)) break; }
+    db.prepare(`INSERT INTO tf_live (code,host_id,guest_id,host_name,guest_name,host_discord,guest_discord,games,status,tourn,tround,tmatch,created,updated)
+      VALUES (?,?,?,?,?,?,?, '[]','live', ?,?,?, ?,?)`).run(code, ua.id, ub.id, ua.username, ub.username, String(p.a_discord), String(p.b_discord), tourn, round, tmatch, now, now);
+    created.push({ tmatch, code, a: ua.username, b: ub.username });
+  }
+  return { tourn, round, created, skipped };
+});
+// Bot: pull confirmed-done tournament results not yet reported (marks them reported on read).
+app.get('/api/integrations/discord/pairings/:tourn/results', { preHandler: botOnly }, async (req) => {
+  const tourn = String(req.params.tourn || '');
+  const rows = db.prepare("SELECT * FROM tf_live WHERE tourn = ? AND status = 'done' AND reported = 0").all(tourn);
+  const results = [];
+  for (const r of rows) {
+    let games = []; try { games = JSON.parse(r.games || '[]'); } catch (_) {}
+    const rc = tfLiveCode(games);
+    results.push({ tmatch: r.tmatch, round: r.tround, a_discord: r.host_discord, b_discord: r.guest_discord,
+      code: rc.code, winner_discord: rc.winner === 'draw' ? null : (rc.winner === 'host' ? r.host_discord : r.guest_discord),
+      a_wins: rc.hw, b_wins: rc.gw });
+    db.prepare('UPDATE tf_live SET reported = 1 WHERE code = ?').run(r.code);
+  }
+  return { tourn, results };
+});
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
 app.post('/api/auth/register', {
@@ -3413,7 +3451,10 @@ db.exec(`CREATE TABLE IF NOT EXISTS tf_live (
   games TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'open', notes TEXT,
   rev INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL )`);
 const TF_LIVE_TTL = 12*60*60*1000;
-function tfLivePrune(){ try{ db.prepare('DELETE FROM tf_live WHERE updated < ?').run(Date.now()-TF_LIVE_TTL); }catch(_){} }
+// Tournament linkage + two-sided confirmation (a match created by a Discord tournament pairing carries the
+// tournament/round/table + both players' Discord ids; both must confirm before the result locks + reports).
+['tourn TEXT','tmatch TEXT','tround INTEGER','host_discord TEXT','guest_discord TEXT','confirm_host INTEGER DEFAULT 0','confirm_guest INTEGER DEFAULT 0','reported INTEGER DEFAULT 0'].forEach(c=>{ try{ db.exec('ALTER TABLE tf_live ADD COLUMN '+c); }catch(_){} });
+function tfLivePrune(){ try{ db.prepare("DELETE FROM tf_live WHERE updated < ? AND tourn IS NULL").run(Date.now()-TF_LIVE_TTL); }catch(_){} } // keep tournament matches longer
 function tfLiveGet(code){ return db.prepare('SELECT * FROM tf_live WHERE code=?').get(String(code||'').toUpperCase()); }
 function tfLiveRole(row, uid){ return row.host_id===uid ? 'host' : (row.guest_id===uid ? 'guest' : null); }
 function tfLiveTally(games, role){ let w=0,l=0,d=0; for(const g of games){ if(!g)continue; if(g.winner==='draw')d++; else if(g.winner===role)w++; else l++; } return {w,l,d}; }
@@ -3425,8 +3466,18 @@ function tfLiveOut(row, uid){ let games=[]; try{ games=JSON.parse(row.games||'[]
     myDeck: role==='host'?(row.host_deck||''):(row.guest_deck||''),
     theirDeck: role==='host'?(row.guest_deck||''):(row.host_deck||''), notes:row.notes||'',
     games: games.map(g=>({ result: !g?'D':(g.winner==='draw'?'D':(g.winner===role?'W':'L')) })),
-    tally: tfLiveTally(games, role), result: tfLiveResult(games, role) }; }
+    tally: tfLiveTally(games, role), result: tfLiveResult(games, role),
+    tourn: row.tourn||null, round: row.tround||null,
+    confirmedMe: role==='host'?!!row.confirm_host:!!row.confirm_guest,
+    confirmedOpp: role==='host'?!!row.confirm_guest:!!row.confirm_host }; }
 function tfLiveTouch(code, patch){ const f=Object.keys(patch); db.prepare('UPDATE tf_live SET '+f.map(k=>k+'=?').join(',')+', rev=rev+1, updated=? WHERE code=?').run(...f.map(k=>patch[k]), Date.now(), code); }
+// Best-of-3 result from the host POV → the bot's Swiss codes ('2'=2-0, '3'=2-1, '0'=draw).
+function tfLiveCode(games){ const t=tfLiveTally(games,'host'); if(t.w===t.l) return { code:'0', winner:'draw', hw:t.w, gw:t.l }; return { code: Math.min(t.w,t.l)===0?'2':'3', winner:(t.w>t.l?'host':'guest'), hw:t.w, gw:t.l }; }
+function tfLiveWriteHistories(fresh, games){ const ts=Date.now();
+  const writeFor=(uid,r)=>{ if(!uid)return; const g=games.map(x=>({ result: x.winner==='draw'?'D':(x.winner===r?'W':'L'), mulligans:0 }));
+    const opp=r==='host'?(fresh.guest_name||''):(fresh.host_name||''), myDeck=r==='host'?(fresh.host_deck||''):(fresh.guest_deck||''), theirDeck=r==='host'?(fresh.guest_deck||''):(fresh.host_deck||'');
+    db.prepare(`INSERT INTO tf_matches (user_id,ts,opponent,my_deck,their_deck,notes,games,result) VALUES (?,?,?,?,?,?,?,?)`).run(uid, ts, _tfClip(opp,80), _tfClip(myDeck,80), _tfClip(theirDeck,80), _tfClip(fresh.notes,500), JSON.stringify(g), tfLiveResult(games,r)); };
+  writeFor(fresh.host_id,'host'); writeFor(fresh.guest_id,'guest'); }
 app.post('/api/tf/live', { preHandler:[authenticate, rateLimitLg] }, async (req)=>{
   tfLivePrune();
   let code; for(let i=0;i<12;i++){ code=crypto.randomBytes(3).toString('hex').toUpperCase().slice(0,5); if(!tfLiveGet(code))break; }
@@ -3455,25 +3506,35 @@ app.post('/api/tf/live/:code/game', { preHandler:[authenticate, rateLimitLg], sc
   let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
   const winner = req.body.result==='draw' ? 'draw' : (req.body.result==='me' ? role : (role==='host'?'guest':'host'));
   games[req.body.index]={winner}; games=games.slice(0,11).map(g=>g||{winner:'draw'});
-  tfLiveTouch(row.code, { games:JSON.stringify(games), status:'live' });
+  tfLiveTouch(row.code, { games:JSON.stringify(games), status:'live', confirm_host:0, confirm_guest:0 }); // a new game invalidates prior confirmations
   return tfLiveOut(tfLiveGet(row.code), req.user.sub);
 });
+// Finish: casual matches lock immediately; tournament matches require BOTH players to confirm the same
+// recorded result (then the bot can pull it as the round result).
 app.post('/api/tf/live/:code/finish', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', properties:{ notes:{ type:'string', maxLength:500 }, myDeck:{ type:'string', maxLength:80 } } } } }, async (req,reply)=>{
   const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
   const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
   let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
   if(!games.length) return reply.code(400).send({error:'No games recorded.'});
-  const b=req.body||{}, patch={ status:'done' };
+  const b=req.body||{}, patch={};
   if(typeof b.myDeck==='string') patch[role==='host'?'host_deck':'guest_deck']=_tfClip(b.myDeck,80);
   if(typeof b.notes==='string') patch.notes=_tfClip(b.notes,500);
-  tfLiveTouch(row.code, patch);
-  if(row.status!=='done'){ const fresh=tfLiveGet(row.code), ts=Date.now();   // first finish writes BOTH histories (mirrored)
-    const writeFor=(uid,r)=>{ if(!uid)return; const g=games.map(x=>({ result: x.winner==='draw'?'D':(x.winner===r?'W':'L'), mulligans:0 }));
-      const opp=r==='host'?(fresh.guest_name||''):(fresh.host_name||''), myDeck=r==='host'?(fresh.host_deck||''):(fresh.guest_deck||''), theirDeck=r==='host'?(fresh.guest_deck||''):(fresh.host_deck||'');
-      db.prepare(`INSERT INTO tf_matches (user_id,ts,opponent,my_deck,their_deck,notes,games,result) VALUES (?,?,?,?,?,?,?,?)`).run(uid, ts, _tfClip(opp,80), _tfClip(myDeck,80), _tfClip(theirDeck,80), _tfClip(fresh.notes,500), JSON.stringify(g), tfLiveResult(games,r)); };
-    writeFor(fresh.host_id,'host'); writeFor(fresh.guest_id,'guest');
+  if(row.tourn){
+    patch[role==='host'?'confirm_host':'confirm_guest']=1;
+    const bothConfirm = role==='host' ? !!row.confirm_guest : !!row.confirm_host;
+    if(bothConfirm) patch.status='done';
+    tfLiveTouch(row.code, patch);
+    if(bothConfirm && row.status!=='done') tfLiveWriteHistories(tfLiveGet(row.code), games);
+    return tfLiveOut(tfLiveGet(row.code), req.user.sub);
   }
+  patch.status='done'; tfLiveTouch(row.code, patch);
+  if(row.status!=='done') tfLiveWriteHistories(tfLiveGet(row.code), games);
   return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
+// A player's open/live matches (so a tournament-created pairing shows up without sharing a code).
+app.get('/api/tf/live/mine', { preHandler:authenticate }, async (req)=>{
+  const rows=db.prepare("SELECT * FROM tf_live WHERE (host_id=? OR guest_id=?) AND status!='done' ORDER BY updated DESC LIMIT 20").all(req.user.sub, req.user.sub);
+  return { matches: rows.map(r=>tfLiveOut(r, req.user.sub)) };
 });
 
 // ── Start ─────────────────────────────────────────────────────────────────────

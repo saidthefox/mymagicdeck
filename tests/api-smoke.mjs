@@ -206,6 +206,40 @@ try {
         const un = await Ja('/discord/unlink', { method:'POST', body:'{}' }, UT);
         const st2 = await Ja('/discord/status', null, UT);
         assert(un.status === 200 && st2.body.linked === false, 'unlink clears the link');
+
+        // --- Tournament loop: pair two linked players → 2040 match → both confirm → bot pulls result ---
+        const mkLinked = async (uname, did) => {
+          const rr = await J('/auth/register', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username: uname, email: uname + '@example.com', password: 'smoketest123' }) });
+          if (rr.status !== 200) return null;
+          const tk = rr.body.token;
+          const c = await Ja('/discord/link-code', { method:'POST', body:'{}' }, tk);
+          await Jb('/integrations/discord/link', { method:'POST', body: JSON.stringify({ code: c.body.code, discord_id: did, discord_name: uname }) });
+          return tk;
+        };
+        const dA = 'dca_' + Math.floor(Math.random()*1e6), dB = 'dcb_' + Math.floor(Math.random()*1e6);
+        const TA = await mkLinked('smoke_pa_' + Math.floor(Math.random()*1e5), dA);
+        const TB = await mkLinked('smoke_pb_' + Math.floor(Math.random()*1e5), dB);
+        if (TA && TB) {
+          const tourn = 'smoketourn_' + Math.floor(Math.random()*1e6);
+          const pr = await Jb('/integrations/discord/pairings', { method:'POST', body: JSON.stringify({ tourn, round:1, pairings:[ { tmatch:'1:1', a_discord:dA, b_discord:dB }, { tmatch:'1:2', a_discord:dA, b_discord:'nobody_unlinked' } ] }) });
+          assert(pr.status === 200 && pr.body.created.length === 1 && pr.body.created[0].tmatch === '1:1' && pr.body.skipped.length === 1, 'pairings push → 1 created (both linked), 1 skipped (unlinked)');
+          const code = pr.body.created[0].code;
+          const mine = await Ja('/tf/live/mine', null, TA);
+          assert(mine.status === 200 && mine.body.matches.some(m => m.code === code && m.tourn === tourn && m.round === 1), 'GET /tf/live/mine surfaces the tournament match (no code shared)');
+          await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:0, result:'me' }) }, TA);  // A wins g1
+          await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:1, result:'me' }) }, TB);  // B wins g2
+          await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:2, result:'me' }) }, TA);  // A wins g3
+          const f1 = await Ja('/tf/live/' + code + '/finish', { method:'POST', body:'{}' }, TA);
+          assert(f1.status === 200 && f1.body.status !== 'done' && f1.body.confirmedMe === true, 'one confirm → still awaiting the other');
+          const r0 = await Jb('/integrations/discord/pairings/' + tourn + '/results', null);
+          assert(r0.status === 200 && r0.body.results.length === 0, 'no result reported until BOTH confirm');
+          const f2 = await Ja('/tf/live/' + code + '/finish', { method:'POST', body:'{}' }, TB);
+          assert(f2.status === 200 && f2.body.status === 'done', 'both confirm → match locked');
+          const r1 = await Jb('/integrations/discord/pairings/' + tourn + '/results', null);
+          assert(r1.status === 200 && r1.body.results.length === 1 && r1.body.results[0].tmatch === '1:1' && r1.body.results[0].code === '3' && r1.body.results[0].winner_discord === dA, 'bot pulls the result: A wins 2-1 (Swiss code 3)');
+          const r2 = await Jb('/integrations/discord/pairings/' + tourn + '/results', null);
+          assert(r2.body.results.length === 0, 'reported results are not returned twice');
+        } else { console.log('  (skipped tournament-loop asserts: register failed)'); }
       } else { console.log('  (skipped Discord-link asserts: no BOT_API_KEY)'); }
     } else { console.log('  (skipped upload-gate asserts: register returned ' + reg.status + ')'); }
   } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
