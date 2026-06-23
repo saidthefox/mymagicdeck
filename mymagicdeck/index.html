@@ -3191,7 +3191,7 @@ function _buildSplashColumns(g,sbCards,allCards,zoomPct,sortMode){
       html+=`<div class="splash-card" style="top:${i*SO}px;z-index:${i+1};width:${CARD_W}px" onclick="${cardClick}" ontouchstart="splashCardTouch(event,this)" ontouchend="event.preventDefault()">`;
       html+=imgNormal
         ?`<img src="${imgNormal}" data-normal="${imgNormal}" data-large="${imgLarge||imgNormal}" alt="${it.card.name}"/>`
-        :`<div class="no-img-ph">${it.card.name}</div>`;
+        :`<div class="no-img-ph">${_mgEsc(it.card.name)}</div>`;
       if(_splashEdit&&i===flat.length-1)html+=`<div class="splash-edit-badge">✎</div>`;
       html+=`</div>`;
     });
@@ -3806,7 +3806,7 @@ function checkUrlHash(){
       openSplash(data.deck,data.username);
     }).catch(()=>{
       const label={myvintagedeck:'myvintagedeck.com',mycommanderdeck:'mycommanderdeck.com'}[site]||site;
-      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No splash deck set for <strong style="color:#c8cdd8">${label}</strong> yet.</div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your deck on mymagicdeck.com</a></div>`;
+      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No splash deck set for <strong style="color:#c8cdd8">${_mgEsc(label)}</strong> yet.</div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your deck on mymagicdeck.com</a></div>`;
     });
     return;
   }
@@ -3817,7 +3817,7 @@ function checkUrlHash(){
     apiFetch('/users/'+username+'/splash').then(data=>{
       openSplash(data.deck,data.username);
     }).catch(()=>{
-      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No public splash deck for <strong style="color:#c8cdd8">${username}</strong></div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your own deck</a></div>`;
+      document.body.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#0f1117;color:#7a87a0;font-family:system-ui;flex-direction:column;gap:12px"><div style="font-size:2rem">🃏</div><div style="font-size:1.1rem">No public splash deck for <strong style="color:#c8cdd8">${_mgEsc(username)}</strong></div><a href="https://mymagicdeck.com" style="color:#5b8def;text-decoration:none">← Build your own deck</a></div>`;
     });
     return;
   }
@@ -3875,14 +3875,14 @@ function renderDeckSection(entries,prefix){
       const cmc=card.cmc!=null?card.cmc:'';
       if(prefix==='sb'){
         // Desktop row
-        h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeSBCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${card.name}</span><span class="deck-card-price">${price}</span></div>`;
+        h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeSBCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${_mgEsc(card.name)}</span><span class="deck-card-price">${price}</span></div>`;
         // Mobile row
-        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${card.name}</div><div class="mob-deck-meta">${typeLine}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty-1})">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button></div></div></div>`;
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${_mgEsc(card.name)}</div><div class="mob-deck-meta">${_mgEsc(typeLine)}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty-1})">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button></div></div></div>`;
       } else {
         // Desktop row
-        h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${card.name}</span><span class="deck-card-price">${price}</span></div>`;
+        h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${_mgEsc(card.name)}</span><span class="deck-card-price">${price}</span></div>`;
         // Mobile row
-        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${card.name}</div><div class="mob-deck-meta">${typeLine}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button></div></div></div>`;
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${_mgEsc(card.name)}</div><div class="mob-deck-meta">${_mgEsc(typeLine)}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button></div></div></div>`;
       }
     }
     h+='</div>';}
@@ -4217,9 +4217,9 @@ async function openPrintings(e,uid,card,source,copyIdxArg){
       const img=getCardImage(p,'small');
       const isActive=p.id===card.id&&!card.customArt;
       const esc=JSON.stringify(sanitizeCard(p)).replace(/"/g,'&quot;');
-      html+=`<div class="printing-item${isActive?' active':''}" onclick="selectPrinting(${esc})" title="${p.set_name} (${p.released_at?.slice(0,4)||''})">`;
-      html+=img?`<img src="${img}" alt="${p.set_name}"/>`:`<div style="aspect-ratio:488/680;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-dim);padding:4px">${p.set_name}</div>`;
-      html+=`<div class="pi-set">${p.set_name}</div></div>`;
+      html+=`<div class="printing-item${isActive?' active':''}" onclick="selectPrinting(${esc})" title="${_mgEsc(p.set_name)} (${p.released_at?.slice(0,4)||''})">`;
+      html+=img?`<img src="${img}" alt="${_mgEsc(p.set_name)}"/>`:`<div style="aspect-ratio:488/680;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:0.55rem;color:var(--text-dim);padding:4px">${_mgEsc(p.set_name)}</div>`;
+      html+=`<div class="pi-set">${_mgEsc(p.set_name)}</div></div>`;
     }
     html+='</div>';
     document.getElementById('printings-grid-wrap').innerHTML=myUploadsHtml+html;
@@ -5402,11 +5402,11 @@ function renderSearchResults(){
   if(!r.length){if(document.getElementById('search-input').value.trim())c.innerHTML='<div class="no-results">No cards found.</div>';return}
   let h='';for(const card of r){const id=getCardId(card),qty=getDeckCardQty(card),sbqty=getSBCardQty(card),img=getCardImage(card,'small'),price=card.prices?.usd?'$'+parseFloat(card.prices.usd).toFixed(2):'—',cmc=card.cmc!==undefined?'MV '+card.cmc:'',esc=JSON.stringify(sanitizeCard(card)).replace(/"/g,'&quot;');
     h+=`<div class="card-result" onclick="showCardDetail(${esc})">`;
-    h+=img?`<img class="card-result-img" src="${img}" alt="${card.name}" loading="lazy"/>`:`<div class="card-result-img placeholder">${card.name}</div>`;
+    h+=img?`<img class="card-result-img" src="${img}" alt="${_mgEsc(card.name)}" loading="lazy"/>`:`<div class="card-result-img placeholder">${_mgEsc(card.name)}</div>`;
     if(qty>0)h+=`<div class="in-deck-badge">${qty}x</div>`;
     if(sbqty>0)h+=`<div class="in-deck-badge" style="top:auto;bottom:30px;background:var(--warn);">SB ${sbqty}x</div>`;
     h+=`<button class="card-result-add" onclick="event.stopPropagation();addCard(${esc})">+</button>`;
-    h+=`<div class="card-result-info"><div class="card-result-name">${card.name}</div><div class="card-result-meta"><span>${cmc}</span><span>${price}</span></div></div></div>`}
+    h+=`<div class="card-result-info"><div class="card-result-name">${_mgEsc(card.name)}</div><div class="card-result-meta"><span>${cmc}</span><span>${price}</span></div></div></div>`}
   if(state.searchHasMore)h+=`<div class="load-more-wrap"><button class="load-more-btn" onclick="loadMoreResults()">Load more results</button></div>`;
   c.innerHTML=h;
 }
