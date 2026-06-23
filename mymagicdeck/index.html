@@ -7535,7 +7535,9 @@ function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
 function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
   if(!(state.user&&apiToken())){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Sign in to play a synced match with a friend — you each track the same match and it lands in both your histories.</p><div class="tf-acts"><button class="tf-cancel" data-x>Close</button><button class="tf-save" data-login>Sign in</button></div></div>';
     ov.querySelector('[data-x]').onclick=()=>ov.remove(); ov.querySelector('[data-login]').onclick=()=>{ ov.remove(); if(typeof signInClick==='function')signInClick('login'); }; return; }
-  ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Track one match together — each game result syncs to both of you, and it saves to both histories.</p>'+
+  ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3>'+
+    '<div id="tf-tourn-list"></div>'+
+    '<p class="tf-note">Track one match together — each game result syncs to both of you, and it saves to both histories.</p>'+
     '<div class="tf-acts" style="flex-direction:column;gap:9px"><button class="tf-save" data-create style="width:100%">➕ Create a match</button>'+
     '<div style="display:flex;gap:6px;width:100%"><input id="tf-joincode" placeholder="Enter code" maxlength="5" autocomplete="off" style="flex:1;text-transform:uppercase"><button class="tf-w" data-join>Join</button></div></div>'+
     '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
@@ -7544,7 +7546,12 @@ function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
   const ji=ov.querySelector('#tf-joincode');
   ov.querySelector('[data-join]').onclick=()=>{ const c=(ji.value||'').trim().toUpperCase(); if(c)tfLiveJoin(body,c); };
   ji.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const c=(ji.value||'').trim().toUpperCase(); if(c)tfLiveJoin(body,c); } });
+  // Surface any tournament pairings waiting for this player (auto-paired by the Discord bot — no code).
+  apiFetch('/tf/live/mine').then(r=>{ const box=ov.querySelector('#tf-tourn-list'); if(!box)return; const tm=(r.matches||[]).filter(m=>m.tourn);
+    if(!tm.length)return; box.innerHTML='<div class="tf-note" style="color:#ffd27a;margin-bottom:5px">🏆 Your tournament matches</div>'+tm.map(m=>'<button class="tf-w" style="width:100%;text-align:left;margin-bottom:6px" data-resume="'+m.code+'">Round '+(m.round||'?')+' vs '+_mgEsc(m.opponent||'opponent')+' ▸</button>').join('');
+    box.querySelectorAll('[data-resume]').forEach(b=>b.onclick=()=>tfLiveResume(body, b.getAttribute('data-resume'))); }).catch(()=>{});
 }
+function tfLiveResume(body, code){ apiFetch('/tf/live/'+code).then(st=>{ tfLiveStop(); _tfLive={code:st.code, st, body}; tfLiveScreen(body); tfLivePoll(); }).catch(()=>{ if(typeof toast==='function')toast('Could not open that match','error'); }); }
 function tfLiveCreate(body){ apiFetch('/tf/live',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
 function tfLiveJoin(body,code){ apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
 function tfLiveScreen(body){ if(!_tfLive)return; const ov=tfOverlay(body); if(!ov)return; const st=_tfLive.st, t=st.tally||{w:0,l:0,d:0};
@@ -7555,18 +7562,26 @@ function tfLiveScreen(body){ if(!_tfLive)return; const ov=tfOverlay(body); if(!o
     ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
     ov.querySelector('[data-cc]').onclick=()=>tfCopy(st.code);
     ov.querySelector('[data-cl]').onclick=()=>tfCopy(tfLiveInviteUrl(st.code)); return; }
-  if(st.status==='done'){ ov.innerHTML='<div class="tf-panel"><h3>🏁 Match over — '+tfResLabel(st.result)+' '+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</h3><p class="tf-note">Saved to both players’ histories.</p><div class="tf-acts"><button class="tf-save" data-x>Done</button></div></div>';
+  const tctx = st.tourn ? '<div class="tf-note" style="margin:-4px 0 9px;color:#ffd27a">🏆 Tournament · Round '+(st.round||'?')+'</div>' : '';
+  if(st.status==='done'){ ov.innerHTML='<div class="tf-panel"><h3>🏁 Match over — '+tfResLabel(st.result)+' '+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</h3>'+tctx+'<p class="tf-note">'+(st.tourn?'Result confirmed by both players and reported to the tournament. 🏆':'Saved to both players’ histories.')+'</p><div class="tf-acts"><button class="tf-save" data-x>Done</button></div></div>';
     ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); tfSync(); }; return; }
   const gi=st.games.length;
-  ov.innerHTML='<div class="tf-panel"><h3>🔗 Live vs '+_mgEsc(st.opponent||'opponent')+'</h3>'+
+  const finBtn = st.tourn
+    ? (st.confirmedMe
+        ? '<button class="tf-fin" data-fin disabled style="opacity:.6;cursor:default">✓ Confirmed — waiting for opponent</button>'
+        : '<button class="tf-fin" data-fin>✓ Confirm result</button>')
+    : '<button class="tf-fin" data-fin>🏁 Finish match</button>';
+  const confirmNote = st.tourn ? '<div class="tf-note" style="margin-top:6px">'+(st.confirmedMe?'You’ve confirmed — the result locks once your opponent does too.':(st.confirmedOpp?'Your opponent confirmed — confirm to lock the result.':'Both players confirm to lock the result and report it to the tournament.'))+'</div>' : '';
+  ov.innerHTML='<div class="tf-panel"><h3>🔗 '+(st.tourn?'Match ':'Live ')+'vs '+_mgEsc(st.opponent||'opponent')+'</h3>'+tctx+
     '<div class="tf-liverec">'+(st.games.length?st.games.map((g,i)=>'<span class="tf-gpip tf-r'+g.result+'">G'+(i+1)+'·'+tfResLabel(g.result)[0]+'</span>').join(''):'<span class="tf-note">No games yet</span>')+'</div>'+
     '<div class="tf-livescore">'+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</div>'+
     '<div class="tf-note" style="margin-bottom:6px">Game '+(gi+1)+' — who won?</div>'+
     '<div class="tf-wld"><button class="tf-w" data-g="me">I won</button><button class="tf-l" data-g="them">They won</button><button class="tf-d" data-g="draw">Draw</button></div>'+
-    '<div class="tf-acts"><button class="tf-cancel" data-x>Leave</button><button class="tf-fin" data-fin>🏁 Finish match</button></div></div>';
+    confirmNote+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Leave</button>'+finBtn+'</div></div>';
   ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
   ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>tfLiveRecord(b.getAttribute('data-g')));
-  ov.querySelector('[data-fin]').onclick=()=>tfLiveFinish();
+  const fb=ov.querySelector('[data-fin]'); if(fb&&!fb.disabled)fb.onclick=()=>tfLiveFinish();
 }
 function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
   apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body)tfLiveScreen(_tfLive.body); } }).catch(()=>{}); }

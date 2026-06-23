@@ -26,6 +26,15 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   out.vsRival=/Rival/.test(($('.tf-panel')||{}).textContent||'');
   out.score=(($('.tf-livescore')||{}).textContent||'').includes('1');
   out.finBtn=!!$('.tf-overlay [data-fin]');
+  // Tournament match: shows round context + a "Confirm result" button (two-sided confirm)
+  _tfLive.st={ code:'ABCDE', status:'live', role:'host', rev:3, joined:true, opponent:'Rival', games:[{result:'W'},{result:'L'}], tally:{w:1,l:1,d:0}, result:'D', tourn:'t1', round:2, confirmedMe:false, confirmedOpp:false };
+  tfLiveScreen(body); await wait(30);
+  const pnl=()=>($('.tf-panel')||{}).textContent||'';
+  out.tournCtx=/Tournament · Round 2/.test(pnl());
+  out.confirmBtn=/Confirm result/.test(($('.tf-overlay [data-fin]')||{}).textContent||'');
+  // After I confirm, the button locks pending the opponent
+  _tfLive.st.confirmedMe=true; tfLiveScreen(body); await wait(30);
+  out.waitingOpp=/waiting for opponent/i.test(($('.tf-overlay [data-fin]')||{}).textContent||'') && !!($('.tf-overlay [data-fin]')||{}).disabled;
   // Done screen
   _tfLive.st={ code:'ABCDE', status:'done', role:'host', rev:5, joined:true, opponent:'Rival', games:[{result:'W'},{result:'W'}], tally:{w:2,l:0,d:0}, result:'W' };
   tfLiveScreen(body); await wait(30);
@@ -35,7 +44,8 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.liveBtn && r.guestPrompt && r.openCode && r.copyBtns===2
-  && r.recordBtns===3 && r.vsRival && r.score && r.finBtn && r.doneScreen
+  && r.recordBtns===3 && r.vsRival && r.score && r.finBtn
+  && r.tournCtx && r.confirmBtn && r.waitingOpp && r.doneScreen
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
