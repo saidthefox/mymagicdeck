@@ -1311,6 +1311,14 @@
     .lc-side-inner .lc-ctl button{white-space:nowrap}
     /* 2040 match tracker — bottom-left, upright (faces the bottom player) */
     .tf-track{position:absolute;left:6px;bottom:8px;z-index:6;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
+    /* live-match bar across the 2040 board (replaces the local tracker while connected) */
+    .tf-track.lc-livebar{left:6px;right:6px;flex-direction:row;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center;background:rgba(10,12,16,.78);border:1px solid rgba(184,147,47,.4);border-radius:8px;padding:5px 7px}
+    .lc-livehd{width:100%;text-align:center;font-size:11px;font-weight:bold;color:#ffd27a;font-family:Tahoma,sans-serif}
+    .lc-livegames{font-size:11px;color:#9aa6b6;font-family:Tahoma,sans-serif}
+    .lc-name{font-size:11px;font-weight:bold;color:#9aa6b6;text-align:center;font-family:Tahoma,sans-serif;margin-bottom:2px}
+    .lc-half.lc-flip .lc-name{transform:rotate(180deg)}
+    .lc-ovbtns.lc-ro{opacity:.7}
+    .lc-rolbl{font-size:12px;color:#7CFC00;font-family:Tahoma,sans-serif}
     .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
     .tf-btn:active{border-color:#808080 #fff #fff #808080}
     .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
@@ -7430,19 +7438,30 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   // Each half: big life number + step buttons at the outer (screen) edge. The shared Reset
   // and 20/40 controls live in a vertical strip pinned to the LEFT wall, centered between the
   // seats and rotated so both players can read them.
-  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+
-      '<div class="lc-life'+(s.players[i].life<=0?' dead':'')+'">'+s.players[i].life+'</div>'+
-      steps(i)+'</div>';
-  body.innerHTML='<div class="lc-wrap"><div class="lc-fs">'+
-      half(0,true)+half(1,false)+
-      '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>'+
-      lcTrackerHtml(s)+
+  // Live match: top half = opponent's synced life (read-only), bottom half = my life (editable, pushes).
+  const L = (typeof _tfLive!=='undefined' && _tfLive && _tfLive.st && (_tfLive.st.status==='live'||_tfLive.st.status==='done')) ? _tfLive.st : null;
+  const wait = (typeof _tfLive!=='undefined' && _tfLive && _tfLive.st && _tfLive.st.status==='open') ? _tfLive.st : null;
+  const lifeOf=i=> L ? (i===0 ? L.oppLife : _tfLive.myLife) : s.players[i].life;
+  const liveEdit=i=> L ? (i===1) : true;                                  // in a live match only my (bottom) half is editable
+  const stepsL=i=> liveEdit(i) ? steps(i) : '<div class="lc-ovbtns lc-ro"><span class="lc-rolbl">🔗 synced</span></div>';
+  const nameTag=i=> L ? ('<div class="lc-name">'+_mgEsc(i===0?(L.opponent||'Opponent'):'You')+'</div>') : '';
+  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+nameTag(i)+
+      '<div class="lc-life'+(lifeOf(i)<=0?' dead':'')+'">'+lifeOf(i)+'</div>'+
+      stepsL(i)+'</div>';
+  const sideHtml = L
+    ? '<div class="lc-side"><div class="lc-side-inner"><div class="lc-ctl"><button data-lcreset title="Reset my life to '+(L.startLife||20)+'">↺</button></div></div></div>'
+    : '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>';
+  const stripHtml = L ? lcLiveStrip(L) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
+  body.innerHTML='<div class="lc-wrap"><div class="lc-fs'+(L?' lc-live':'')+'">'+
+      half(0,true)+half(1,false)+ sideHtml + stripHtml +
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
-  body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); s.players[+b.getAttribute('data-lc')].life+=(+b.getAttribute('data-d')); lcSave(); lcRender(body); }));
+  body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const i=+b.getAttribute('data-lc'), d=+b.getAttribute('data-d');
+    if(L){ if(i===1)tfLiveLifeAdjust(d); return; } // live: only my half adjusts (+ syncs); opponent is read-only
+    s.players[i].life+=d; lcSave(); lcRender(body); }));
   body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>{ s.start=+b.getAttribute('data-lcstart'); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); }));
-  body.querySelector('[data-lcreset]').addEventListener('click',()=>{ s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); });
-  // Match tracker (bottom player): Start → Mulligan/Next Game → Finish, with per-game results + mulligans.
+  const rb=body.querySelector('[data-lcreset]'); if(rb)rb.addEventListener('click',()=>{ if(L){ _tfLive.myLife=L.startLife||20; lcRender(body); tfLivePushLife(); } else { s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); } });
+  // Local match tracker (only when not in a live match): Start → Mulligan/Next Game → Finish.
   body.querySelectorAll('[data-tf]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const a=b.getAttribute('data-tf');
     if(a==='start'){ s.tr={active:true,gameNo:1,curMull:0,games:[],nexted:false}; lcSave(); lcRender(body); }
     else if(a==='mull'){ if(s.tr){ s.tr.curMull=(s.tr.curMull||0)+1; lcSave(); lcRender(body); } }
@@ -7450,6 +7469,13 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     else if(a==='finish'){ tfResultPrompt(body,'finish'); }
     else if(a==='live'){ tfLivePanel(body); }
     else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); } }));
+  // Live-match strip controls (per-game result, finish/confirm, leave) + waiting-strip controls.
+  body.querySelectorAll('[data-lg]').forEach(b=>b.addEventListener('click',()=>tfLiveRecord(b.getAttribute('data-lg'))));
+  const lf=body.querySelector('[data-lfin]'); if(lf&&!lf.disabled)lf.addEventListener('click',()=>tfLiveFinish());
+  const ll=body.querySelector('[data-lleave]'); if(ll)ll.addEventListener('click',()=>tfLiveLeave());
+  const wc=body.querySelector('[data-lcc]'); if(wc)wc.addEventListener('click',()=>tfCopy(_tfLive&&_tfLive.code));
+  const wl=body.querySelector('[data-lcl]'); if(wl)wl.addEventListener('click',()=>tfCopy(tfLiveInviteUrl(_tfLive&&_tfLive.code)));
+  const wx=body.querySelector('[data-lcancel]'); if(wx)wx.addEventListener('click',()=>tfLiveLeave());
 }
 // ---- 2040 match tracker ----
 const TF_WIN_GAMES=2; // best-of-3: a player who reaches 2 game wins has clinched the match
@@ -7538,14 +7564,34 @@ function tfHistory(body){ const ov=tfOverlay(body); if(!ov)return; const list=tf
 // ===== 2040 LIVE — a shared match two signed-in players track together (create a code / join, results sync) =====
 let _tfLive=null; // { code, st, body, timer }
 function tfLiveInviteUrl(code){ return location.origin+'/?tfmatch='+encodeURIComponent(code); }
-function tfLiveStop(){ if(_tfLive&&_tfLive.timer)clearTimeout(_tfLive.timer); _tfLive=null; }
+function tfLiveStop(){ if(_tfLive){ clearTimeout(_tfLive.timer); clearTimeout(_tfLive.lifeTimer); } _tfLive=null; }
 function tfCopy(txt){ try{ navigator.clipboard.writeText(txt).then(()=>{ if(typeof toast==='function')toast('Copied!','success'); },()=>{}); }catch(e){ if(typeof toast==='function')toast(txt,'info'); } }
 function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
   apiFetch('/tf/live/'+code).then(st=>{ if(!_tfLive||_tfLive.code!==code)return;
-    const changed=!_tfLive.st||_tfLive.st.rev!==st.rev||_tfLive.st.status!==st.status; _tfLive.st=st;
-    if(changed&&_tfLive.body&&_tfLive.body.isConnected)tfLiveScreen(_tfLive.body);
+    const prev=_tfLive.st; if(prev&&prev.status==='open'&&st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success');
+    _tfLive.st=st;                                   // keep our own optimistic life (myLife is client-authoritative)
+    if(_tfLive.body&&_tfLive.body.isConnected&&typeof lcRender==='function')lcRender(_tfLive.body);
     if(st.status!=='done')_tfLive.timer=setTimeout(tfLivePoll,2500);
   }).catch(()=>{ if(_tfLive)_tfLive.timer=setTimeout(tfLivePoll,4000); }); }
+// Enter a live match: it now renders INSIDE the 2040 board (shared life + strip), never a blocking overlay.
+function tfLiveStart(body, st){ tfLiveStop(); _tfLive={ code:st.code, st, body, myLife:(st.myLife==null?(st.startLife||20):st.myLife), timer:null, lifeTimer:null };
+  if(typeof lcRender==='function')lcRender(body); tfLivePoll();
+  if(st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success'); }
+function tfLiveLifeAdjust(d){ if(!_tfLive)return; _tfLive.myLife=(_tfLive.myLife||0)+d; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); clearTimeout(_tfLive.lifeTimer); _tfLive.lifeTimer=setTimeout(tfLivePushLife,450); }
+function tfLivePushLife(){ if(!_tfLive)return; const code=_tfLive.code, life=_tfLive.myLife; apiFetch('/tf/live/'+code+'/life',{method:'POST',body:JSON.stringify({life})}).then(st=>{ if(_tfLive&&_tfLive.code===code)_tfLive.st=st; }).catch(()=>{}); }
+function tfLiveLeave(){ const body=_tfLive&&_tfLive.body; tfLiveStop(); if(body&&typeof lcRender==='function')lcRender(body); }
+// The live match's bar across the 2040 board (replaces the local Start/History tracker while connected).
+function lcLiveStrip(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'–'+t.d:''), gi=(L.games||[]).length;
+  if(L.status==='done') return '<div class="tf-track lc-livebar"><span class="lc-livehd">🏁 '+tfResLabel(L.result)+' '+sc+(L.tourn?' · reported 🏆':'')+'</span><button class="tf-btn" data-lleave>Done</button></div>';
+  const ctx=L.tourn?('🏆 R'+(L.round||'?')+' '):''; const finDis=(L.tourn&&L.confirmedMe)?' disabled':''; const finLbl=L.tourn?(L.confirmedMe?'✓ waiting…':'✓ Confirm'):'🏁 Finish';
+  return '<div class="tf-track lc-livebar"><span class="lc-livehd">🔗 '+ctx+_mgEsc(L.opponent||'opp')+' · '+sc+'</span>'+
+    '<span class="lc-livegames">G'+(gi+1)+'</span>'+
+    '<button class="tf-btn" data-lg="me">I won</button><button class="tf-btn" data-lg="them">They</button><button class="tf-btn" data-lg="draw">Draw</button>'+
+    '<button class="tf-btn tf-fin" data-lfin'+finDis+'>'+finLbl+'</button>'+
+    '<button class="tf-btn" data-lleave title="Leave (the match stays open)">✕</button></div>';
+}
+function lcWaitStrip(w){ return '<div class="tf-track lc-livebar"><span class="lc-livehd">🔗 Waiting for opponent · code <b>'+_mgEsc(w.code)+'</b></span>'+
+    '<button class="tf-btn" data-lcc>Copy code</button><button class="tf-btn" data-lcl>Copy link</button><button class="tf-btn" data-lcancel>Cancel</button></div>'; }
 function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
   if(!(state.user&&apiToken())){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Sign in to play a synced match with a friend — you each track the same match and it lands in both your histories.</p><div class="tf-acts"><button class="tf-cancel" data-x>Close</button><button class="tf-save" data-login>Sign in</button></div></div>';
     ov.querySelector('[data-x]').onclick=()=>ov.remove(); ov.querySelector('[data-login]').onclick=()=>{ ov.remove(); if(typeof signInClick==='function')signInClick('login'); }; return; }
@@ -7565,42 +7611,15 @@ function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
     if(!tm.length)return; box.innerHTML='<div class="tf-note" style="color:#ffd27a;margin-bottom:5px">🏆 Your tournament matches</div>'+tm.map(m=>'<button class="tf-w" style="width:100%;text-align:left;margin-bottom:6px" data-resume="'+m.code+'">Round '+(m.round||'?')+' vs '+_mgEsc(m.opponent||'opponent')+' ▸</button>').join('');
     box.querySelectorAll('[data-resume]').forEach(b=>b.onclick=()=>tfLiveResume(body, b.getAttribute('data-resume'))); }).catch(()=>{});
 }
-function tfLiveResume(body, code){ apiFetch('/tf/live/'+code).then(st=>{ tfLiveStop(); _tfLive={code:st.code, st, body}; tfLiveScreen(body); tfLivePoll(); }).catch(()=>{ if(typeof toast==='function')toast('Could not open that match','error'); }); }
-function tfLiveCreate(body){ apiFetch('/tf/live',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
-function tfLiveJoin(body,code){ apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
-function tfLiveScreen(body){ if(!_tfLive)return; const ov=tfOverlay(body); if(!ov)return; const st=_tfLive.st, t=st.tally||{w:0,l:0,d:0};
-  if(st.status==='open'){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Waiting for opponent…</h3><div class="tf-livecode">'+_mgEsc(st.code)+'</div>'+
-      '<p class="tf-note">Share the code, or send the invite link. They open 2040 → 🔗 Live → Join.</p>'+
-      '<div class="tf-acts" style="flex-wrap:wrap;gap:6px"><button class="tf-w" data-cc>Copy code</button><button class="tf-w" data-cl>Copy invite link</button></div>'+
-      '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
-    ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
-    ov.querySelector('[data-cc]').onclick=()=>tfCopy(st.code);
-    ov.querySelector('[data-cl]').onclick=()=>tfCopy(tfLiveInviteUrl(st.code)); return; }
-  const tctx = st.tourn ? '<div class="tf-note" style="margin:-4px 0 9px;color:#ffd27a">🏆 Tournament · Round '+(st.round||'?')+'</div>' : '';
-  if(st.status==='done'){ ov.innerHTML='<div class="tf-panel"><h3>🏁 Match over — '+tfResLabel(st.result)+' '+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</h3>'+tctx+'<p class="tf-note">'+(st.tourn?'Result confirmed by both players and reported to the tournament. 🏆':'Saved to both players’ histories.')+'</p><div class="tf-acts"><button class="tf-save" data-x>Done</button></div></div>';
-    ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); tfSync(); }; return; }
-  const gi=st.games.length;
-  const finBtn = st.tourn
-    ? (st.confirmedMe
-        ? '<button class="tf-fin" data-fin disabled style="opacity:.6;cursor:default">✓ Confirmed — waiting for opponent</button>'
-        : '<button class="tf-fin" data-fin>✓ Confirm result</button>')
-    : '<button class="tf-fin" data-fin>🏁 Finish match</button>';
-  const confirmNote = st.tourn ? '<div class="tf-note" style="margin-top:6px">'+(st.confirmedMe?'You’ve confirmed — the result locks once your opponent does too.':(st.confirmedOpp?'Your opponent confirmed — confirm to lock the result.':'Both players confirm to lock the result and report it to the tournament.'))+'</div>' : '';
-  ov.innerHTML='<div class="tf-panel"><h3>🔗 '+(st.tourn?'Match ':'Live ')+'vs '+_mgEsc(st.opponent||'opponent')+'</h3>'+tctx+
-    '<div class="tf-liverec">'+(st.games.length?st.games.map((g,i)=>'<span class="tf-gpip tf-r'+g.result+'">G'+(i+1)+'·'+tfResLabel(g.result)[0]+'</span>').join(''):'<span class="tf-note">No games yet</span>')+'</div>'+
-    '<div class="tf-livescore">'+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</div>'+
-    '<div class="tf-note" style="margin-bottom:6px">Game '+(gi+1)+' — who won?</div>'+
-    '<div class="tf-wld"><button class="tf-w" data-g="me">I won</button><button class="tf-l" data-g="them">They won</button><button class="tf-d" data-g="draw">Draw</button></div>'+
-    confirmNote+
-    '<div class="tf-acts"><button class="tf-cancel" data-x>Leave</button>'+finBtn+'</div></div>';
-  ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
-  ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>tfLiveRecord(b.getAttribute('data-g')));
-  const fb=ov.querySelector('[data-fin]'); if(fb&&!fb.disabled)fb.onclick=()=>tfLiveFinish();
-}
+function tfLiveResume(body, code){ apiFetch('/tf/live/'+code).then(st=>tfLiveStart(body,st)).catch(()=>{ if(typeof toast==='function')toast('Could not open that match','error'); }); }
+function tfLiveCreate(body){ const s=(typeof lcLoad==='function')?lcLoad():{start:20}; apiFetch('/tf/live',{method:'POST',body:JSON.stringify({startLife:s.start||20})}).then(st=>tfLiveStart(body,st)).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
+function tfLiveJoin(body,code){ apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({})}).then(st=>tfLiveStart(body,st)).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
+// (tfLiveScreen removed — the live match now renders inside the 2040 board via lcRender + lcLiveStrip,
+//  so it never traps you in a blocking overlay.)
 function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
-  apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body)tfLiveScreen(_tfLive.body); } }).catch(()=>{}); }
+  apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } }).catch(()=>{}); }
 function tfLiveFinish(){ if(!_tfLive)return; if(!_tfLive.st.games.length){ if(typeof toast==='function')toast('Record at least one game first','info'); return; }
-  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body)tfLiveScreen(_tfLive.body); } tfSync(); }).catch(()=>{}); }
+  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } tfSync(); }).catch(()=>{}); }
 // Deep link: mymagicdeck.com/?tfmatch=CODE opens 2040 and offers to join.
 function tfLiveCheckDeepLink(){ try{ const c=new URLSearchParams(location.search).get('tfmatch'); if(!c)return;
   history.replaceState(null,'',location.pathname); const code=c.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); if(!code)return;

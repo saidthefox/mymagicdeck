@@ -1,51 +1,51 @@
-// 2040 LIVE pairing UI: the 🔗 Live button, the signed-out prompt, and the create / live / done screens.
-// (The two-player sync logic is covered server-side in api-smoke; here we check the client surface renders.)
+// 2040 live match renders INSIDE the board (not a trapping overlay): shared life (opponent read-only),
+// a live strip with per-game result + finish/confirm + leave, and the linking entry panel.
 import { chromium } from 'playwright';
 const b = await chromium.launch();
-const p = await (await b.newContext({ viewport:{ width:520, height:780 }, hasTouch:true })).newPage();
+const p = await (await b.newContext({ viewport:{ width:520, height:820 }, hasTouch:true })).newPage();
 const errs=[]; p.on('console',m=>{if(m.type()==='error')errs.push(m.text().slice(0,160));}); p.on('pageerror',e=>errs.push('PE:'+(e.message||e)));
 await p.goto('http://mymagicdeck.com/',{waitUntil:'domcontentloaded',timeout:30000});
-await p.waitForTimeout(1500);
+await p.waitForTimeout(1400);
 const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-overlay'); if(cg){cg.classList.remove('open');cg.style.display='none';}
-  const wait=ms=>new Promise(r=>setTimeout(r,ms)); const $=s=>document.querySelector(s); const out={};
-  mgLaunchApp('twentyfourty'); await wait(300);
-  out.liveBtn=!!$('[data-tf="live"]');
-  $('[data-tf="live"]').click(); await wait(60);
-  out.guestPrompt=/sign in/i.test(($('.tf-panel')||{}).textContent||''); // signed-out → invited to sign in
-  const x=$('.tf-overlay [data-x]'); if(x)x.click(); await wait(30);
+  const wait=ms=>new Promise(r=>setTimeout(r,ms)); const $=s=>document.querySelector(s), $$=s=>document.querySelectorAll(s); const out={};
+  mgLaunchApp('twentyfourty'); await wait(250);
   const body=$('#modal-prog-twentyfourty .modal-body');
-  // Create / waiting screen
-  _tfLive={ code:'ABCDE', body, st:{ code:'ABCDE', status:'open', role:'host', rev:0, joined:false, opponent:'', games:[], tally:{w:0,l:0,d:0}, result:'D' } };
-  tfLiveScreen(body); await wait(30);
-  out.openCode=/ABCDE/.test(($('.tf-livecode')||{}).textContent||'');
-  out.copyBtns=document.querySelectorAll('.tf-overlay [data-cl],.tf-overlay [data-cc]').length;
-  // Live screen with a recorded game
-  _tfLive.st={ code:'ABCDE', status:'live', role:'host', rev:2, joined:true, opponent:'Rival', games:[{result:'W'}], tally:{w:1,l:0,d:0}, result:'W' };
-  tfLiveScreen(body); await wait(30);
-  out.recordBtns=document.querySelectorAll('.tf-overlay [data-g]').length;
-  out.vsRival=/Rival/.test(($('.tf-panel')||{}).textContent||'');
-  out.score=(($('.tf-livescore')||{}).textContent||'').includes('1');
-  out.finBtn=!!$('.tf-overlay [data-fin]');
-  // Tournament match: shows round context + a "Confirm result" button (two-sided confirm)
-  _tfLive.st={ code:'ABCDE', status:'live', role:'host', rev:3, joined:true, opponent:'Rival', games:[{result:'W'},{result:'L'}], tally:{w:1,l:1,d:0}, result:'D', tourn:'t1', round:2, confirmedMe:false, confirmedOpp:false };
-  tfLiveScreen(body); await wait(30);
-  const pnl=()=>($('.tf-panel')||{}).textContent||'';
-  out.tournCtx=/Tournament · Round 2/.test(pnl());
-  out.confirmBtn=/Confirm result/.test(($('.tf-overlay [data-fin]')||{}).textContent||'');
-  // After I confirm, the button locks pending the opponent
-  _tfLive.st.confirmedMe=true; tfLiveScreen(body); await wait(30);
-  out.waitingOpp=/waiting for opponent/i.test(($('.tf-overlay [data-fin]')||{}).textContent||'') && !!($('.tf-overlay [data-fin]')||{}).disabled;
-  // Done screen
-  _tfLive.st={ code:'ABCDE', status:'done', role:'host', rev:5, joined:true, opponent:'Rival', games:[{result:'W'},{result:'W'}], tally:{w:2,l:0,d:0}, result:'W' };
-  tfLiveScreen(body); await wait(30);
-  out.doneScreen=/match over/i.test(($('.tf-panel')||{}).textContent||'');
-  tfLiveStop();
+  out.liveEntry=!!$('[data-tf="live"]');                          // the 🔗 Live button in the tracker
+  // Guest taps Live → the entry panel invites sign-in
+  $('[data-tf="live"]').click(); await wait(50);
+  out.guestPrompt=/sign in/i.test(($('.tf-panel')||{}).textContent||''); const x=$('.tf-overlay [data-x]'); if(x)x.click(); await wait(20);
+  // --- Live match rendered in the board ---
+  try{ state.user={ username:'tester', uploads_accepted:1 }; }catch(e){}
+  _tfLive={ code:'ABCDE', body, myLife:18, st:{ code:'ABCDE', status:'live', role:'host', opponent:'Rival', games:[{result:'W'}], tally:{w:1,l:0,d:0}, result:'W', startLife:20, myLife:18, oppLife:15, tourn:null, round:null, confirmedMe:false, confirmedOpp:false } };
+  lcRender(body); await wait(40);
+  out.notTrapped = !$('.tf-overlay') && !!$('.lc-fs');            // no blocking overlay; the board is shown
+  out.oppName = /Rival/.test(($('.lc-half')||{}).textContent||'');
+  out.lives = [...$$('.lc-life')].map(e=>e.textContent);          // should include 15 (opp) and 18 (me)
+  out.oppReadOnly = !!$('.lc-ovbtns.lc-ro') && !$('[data-lc="0"]'); // opponent half synced/read-only
+  out.myEditable = !!$('[data-lc="1"]');
+  out.recordBtns = $$('[data-lg]').length; out.finBtn = !!$('[data-lfin]'); out.leaveBtn = !!$('[data-lleave]');
+  // life adjust (my half) bumps my life locally (+ debounced sync)
+  const plus=[...$$('[data-lc="1"]')].find(b=>b.getAttribute('data-d')==='1'); if(plus)plus.click(); await wait(20);
+  out.lifeBumped = _tfLive.myLife===19;
+  // Waiting (open) state shows the code + cancel in the board strip (still usable)
+  _tfLive.st.status='open'; lcRender(body); await wait(20);
+  out.waitStrip = /ABCDE/.test(($('.lc-livebar')||{}).textContent||'') && !!$('[data-lcancel]') && !!$('[data-lc="1"]');
+  // Tournament match → Confirm button + round context
+  _tfLive.st={ code:'ABCDE', status:'live', role:'host', opponent:'Rival', games:[{result:'W'}], tally:{w:1,l:0,d:0}, result:'W', startLife:20, myLife:18, oppLife:15, tourn:'t1', round:2, confirmedMe:false, confirmedOpp:false };
+  lcRender(body); await wait(20);
+  out.tournCtx = /R2/.test(($('.lc-livehd')||{}).textContent||''); out.confirmBtn = /Confirm/.test(($('[data-lfin]')||{}).textContent||'');
+  // Done → result + Done button
+  _tfLive.st={ code:'ABCDE', status:'done', role:'host', opponent:'Rival', games:[{result:'W'},{result:'W'}], tally:{w:2,l:0,d:0}, result:'W', tourn:'t1', round:2 };
+  lcRender(body); await wait(20);
+  out.doneStrip = /reported/i.test(($('.lc-livebar')||{}).textContent||'') && !!$('[data-lleave]');
+  tfLiveStop(); lcRender(body);
   return out; });
 console.log(JSON.stringify(r));
 console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
-const ok = r.liveBtn && r.guestPrompt && r.openCode && r.copyBtns===2
-  && r.recordBtns===3 && r.vsRival && r.score && r.finBtn
-  && r.tournCtx && r.confirmBtn && r.waitingOpp && r.doneScreen
+const ok = r.liveEntry && r.guestPrompt && r.notTrapped && r.oppName
+  && r.lives.includes('15') && r.lives.includes('18') && r.oppReadOnly && r.myEditable
+  && r.recordBtns===3 && r.finBtn && r.leaveBtn && r.lifeBumped
+  && r.waitStrip && r.tournCtx && r.confirmBtn && r.doneStrip
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

@@ -316,6 +316,7 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | POST | `/api/tf/live/:code/game` | yes | record a game `{index,result:'me'\|'them'\|'draw'}` (synced to both) |
 | POST | `/api/tf/live/:code/finish` | yes | finish: casual locks now; tournament matches need BOTH players to confirm |
 | GET | `/api/tf/live/mine` | yes | your open/live matches (so tournament pairings appear without a code) |
+| POST | `/api/tf/live/:code/life` | yes | set your life total `{life}` (synced to the opponent's board) |
 
 Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to
 `tf_matches` (per account) so history + win-rate stats follow you across devices.

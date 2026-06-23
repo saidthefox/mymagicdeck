@@ -238,6 +238,10 @@ try {
           const code = pr.body.created[0].code;
           const mine = await Ja('/tf/live/mine', null, TA);
           assert(mine.status === 200 && mine.body.matches.some(m => m.code === code && m.tourn === tourn && m.round === 1), 'GET /tf/live/mine surfaces the tournament match (no code shared)');
+          const lf = await Ja('/tf/live/' + code + '/life', { method:'POST', body: JSON.stringify({ life: 17 }) }, TA);
+          assert(lf.status === 200 && lf.body.myLife === 17, 'POST /life sets my life');
+          const lg2 = await Ja('/tf/live/' + code, null, TB);
+          assert(lg2.status === 200 && lg2.body.oppLife === 17 && lg2.body.myLife === 20, 'opponent sees my life synced (17); their own still 20');
           await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:0, result:'me' }) }, TA);  // A wins g1
           await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:1, result:'me' }) }, TB);  // B wins g2
           await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:2, result:'me' }) }, TA);  // A wins g3
