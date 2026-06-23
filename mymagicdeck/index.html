@@ -8582,12 +8582,13 @@ const _diceyPalette=['#5aa86a','#5b8def','#c0392b','#d39a2d','#8e5bd0','#2bb6a8'
 function diceyPlatformsOn(){ return diceyState().platforms!==false; } // default on
 function diceyClearPlatforms(){ _diceyPlats.forEach(p=>{ try{ p.remove(); }catch(e){} }); _diceyPlats=[]; }
 function diceyBuildPlatform(opts){ opts=opts||{}; if(!_diceyEl||!diceyPlatformsOn())return null;
-  const r=_diceyEl.getBoundingClientRect();
   const len=64+Math.round(Math.random()*130), hgt=7+Math.round(Math.random()*5);   // varying length 64–194, thin 7–12px
   const col=_diceyPalette[(Math.random()*_diceyPalette.length)|0];
-  const dir=Math.random()<.5?-1:1, up=44+Math.round(Math.random()*72);
-  let x=r.left+r.width/2-len/2+dir*(58+Math.random()*72), y=r.top-up;
-  x=Math.max(4,Math.min(x, window.innerWidth-len-4)); y=Math.max(6,Math.min(y, window.innerHeight-hgt-80));
+  const W=window.innerWidth, H=window.innerHeight;
+  // Scatter across the whole play area at varied heights — NOT above Dicey, or he just climbs to the ceiling.
+  let x=20+Math.random()*Math.max(40, W-len-40);
+  let y=H*0.24+Math.random()*Math.max(40, H*0.52);
+  x=Math.max(4,Math.min(x, W-len-4)); y=Math.max(6,Math.min(y, H-hgt-90));
   const el=document.createElement('div'); el.className='dicey-pf';
   el.style.cssText='left:'+Math.round(x)+'px;top:'+Math.round(y)+'px;width:'+len+'px;height:'+hgt+'px;border-color:'+col+';background:linear-gradient(180deg,'+col+',rgba(0,0,0,.4))';
   document.body.appendChild(el); _diceyPlats.push(el);
