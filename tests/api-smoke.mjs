@@ -141,6 +141,32 @@ try {
     assert(tfDel.status === 200 && tfAfter.body.matches.length === 0, 'DELETE /tf/match removes it');
     const tfNoAuth = await Ja('/tf/matches', null, null);
     assert(tfNoAuth.status === 401, 'GET /tf/matches without auth → 401');
+
+    // --- 2040 LIVE (shared match between two accounts) ---
+    const LH = tok(991000+Math.floor(Math.random()*9000),'live_host'), LG = tok(991100+Math.floor(Math.random()*9000),'live_guest'), LX = tok(991200+Math.floor(Math.random()*9000),'live_x');
+    const lc = await Ja('/tf/live', { method:'POST', body: JSON.stringify({ myDeck:'Mono-U' }) }, LH);
+    assert(lc.status === 200 && lc.body.code && lc.body.status === 'open' && lc.body.role === 'host', 'POST /tf/live → open match as host');
+    const lcode = lc.body.code;
+    const lx = await Ja('/tf/live/' + lcode, null, LX);
+    assert(lx.status === 403, 'GET /tf/live/:code by non-participant → 403');
+    const lj = await Ja('/tf/live/' + lcode + '/join', { method:'POST', body: JSON.stringify({ myDeck:'Mono-R' }) }, LG);
+    assert(lj.status === 200 && lj.body.status === 'live' && lj.body.role === 'guest' && lj.body.opponent === 'live_host', 'join → live; guest sees host as opponent');
+    const lxj = await Ja('/tf/live/' + lcode + '/join', { method:'POST', body: JSON.stringify({}) }, LX);
+    assert(lxj.status === 409, 'third player join → 409 (full)');
+    const g0 = await Ja('/tf/live/' + lcode + '/game', { method:'POST', body: JSON.stringify({ index:0, result:'me' }) }, LH);
+    assert(g0.status === 200 && g0.body.games[0].result === 'W' && g0.body.tally.w === 1, 'host records game 0 as a win');
+    const g0g = await Ja('/tf/live/' + lcode, null, LG);
+    assert(g0g.status === 200 && g0g.body.games[0].result === 'L', 'guest sees that game mirrored as a loss (synced)');
+    await Ja('/tf/live/' + lcode + '/game', { method:'POST', body: JSON.stringify({ index:1, result:'them' }) }, LG); // guest: opponent (host) won
+    await Ja('/tf/live/' + lcode + '/game', { method:'POST', body: JSON.stringify({ index:2, result:'me' }) }, LH);
+    const fin = await Ja('/tf/live/' + lcode + '/finish', { method:'POST', body: JSON.stringify({ notes:'gg' }) }, LH);
+    assert(fin.status === 200 && fin.body.status === 'done' && fin.body.result === 'W', 'host finishes → done, host won');
+    const hm = await Ja('/tf/matches', null, LH);
+    assert(hm.body.matches[0].opponent === 'live_guest' && hm.body.matches[0].result === 'W' && hm.body.matches[0].games.length === 3, 'live match written to host history (vs guest, W)');
+    const gm = await Ja('/tf/matches', null, LG);
+    assert(gm.body.matches[0].opponent === 'live_host' && gm.body.matches[0].result === 'L', 'same match mirrored into guest history (vs host, L)');
+    const e404 = await Ja('/tf/live/ZZZZZ', null, LH);
+    assert(e404.status === 404, 'GET unknown live code → 404');
   } else { console.log('  (skipped lg online + cardle + tf asserts: no JWT_SECRET)'); }
 } catch (e) {
   fail('threw: ' + (e && e.message || e));

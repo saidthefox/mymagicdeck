@@ -301,6 +301,11 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | GET | `/api/tf/matches` | yes | your recent matches (most recent first) |
 | POST | `/api/tf/match` | yes | save a match `{ts,opponent,myDeck,theirDeck,notes,games:[{result,mulligans}],result}` → `{id}` |
 | DELETE | `/api/tf/match/:id` | yes | delete one of your matches |
+| POST | `/api/tf/live` | yes | create a shared live match `{myDeck?}` → `{code,status,...}` |
+| POST | `/api/tf/live/:code/join` | yes | join a live match `{myDeck?}` (as the guest) |
+| GET | `/api/tf/live/:code` | yes | poll the live match state (participant only, your POV) |
+| POST | `/api/tf/live/:code/game` | yes | record a game `{index,result:'me'\|'them'\|'draw'}` (synced to both) |
+| POST | `/api/tf/live/:code/finish` | yes | finish `{notes?,myDeck?}` → writes the match to BOTH players' history |
 
 Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to
 `tf_matches` (per account) so history + win-rate stats follow you across devices.

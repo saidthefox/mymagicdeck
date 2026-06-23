@@ -1337,6 +1337,14 @@
     .tf-histlist{max-height:280px;overflow:auto}
     .tf-hist-row{display:flex;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid #3a404a;font-size:12px}
     .tf-rW{color:#7CFC00}.tf-rL{color:#ff8a7a}.tf-rD{color:#bcd}
+    /* 2040 live match */
+    .tf-note{font-size:12px;color:#9aa6b6;margin:6px 0 10px;line-height:1.4}
+    .tf-livecode{font-size:34px;font-weight:bold;letter-spacing:6px;text-align:center;color:#7CFC00;background:#0d0f13;border:1px solid #4a505c;border-radius:8px;padding:10px;margin:6px 0;font-family:'MS Sans Serif',monospace}
+    .tf-livescore{font-size:30px;font-weight:bold;text-align:center;color:#fff;margin:2px 0 8px}
+    .tf-liverec{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;min-height:22px;margin-bottom:4px}
+    .tf-gpip{font-size:11px;font-weight:bold;padding:2px 6px;border-radius:4px;background:#0d0f13;border:1px solid #3a404a}
+    .tf-gpip.tf-rW{border-color:#3a7d4c}.tf-gpip.tf-rL{border-color:#7d3a3a}.tf-gpip.tf-rD{border-color:#4a505c}
+    .tf-fin{background:#2f9b54;border-color:#7CFC00;color:#fff}
     /* Match History program */
     .mh-wrap{font-family:Tahoma,sans-serif;color:#e7eef7;background:#1b1f27;min-height:100%;padding:14px;box-sizing:border-box}
     .mh-load{color:#9aa6b6;padding:20px;text-align:center}
@@ -7323,6 +7331,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     else if(a==='mull'){ if(s.tr){ s.tr.curMull=(s.tr.curMull||0)+1; lcSave(); lcRender(body); } }
     else if(a==='next'){ tfResultPrompt(body,'next'); }
     else if(a==='finish'){ tfResultPrompt(body,'finish'); }
+    else if(a==='live'){ tfLivePanel(body); }
     else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); } }));
 }
 // ---- 2040 match tracker ----
@@ -7366,6 +7375,7 @@ function tfTally(games){ let w=0,l=0,d=0; (games||[]).forEach(g=>{ if(g.result==
 function tfResLabel(r){ return r==='W'?'Win':r==='L'?'Loss':'Draw'; }
 function lcTrackerHtml(s){ const t=s.tr||{};
   if(!t.active) return '<div class="tf-track"><button class="tf-btn tf-start" data-tf="start">▶ Start Match</button>'+
+      '<button class="tf-btn" data-tf="live" title="Live match with a friend">🔗 Live</button>'+
       '<button class="tf-btn tf-hist" data-tf="history" title="Match history">📋</button></div>';
   return '<div class="tf-track">'+
     '<button class="tf-btn tf-mull" data-tf="mull">🌀 Mulligan ('+(t.curMull||0)+')</button>'+
@@ -7408,6 +7418,68 @@ function tfHistory(body){ const ov=tfOverlay(body); if(!ov)return; const list=tf
     '<div class="tf-acts"><button class="tf-cancel" data-x>Close</button></div></div>';
   ov.querySelector('[data-x]').onclick=()=>ov.remove();
 }
+// ===== 2040 LIVE — a shared match two signed-in players track together (create a code / join, results sync) =====
+let _tfLive=null; // { code, st, body, timer }
+function tfLiveInviteUrl(code){ return location.origin+'/?tfmatch='+encodeURIComponent(code); }
+function tfLiveStop(){ if(_tfLive&&_tfLive.timer)clearTimeout(_tfLive.timer); _tfLive=null; }
+function tfCopy(txt){ try{ navigator.clipboard.writeText(txt).then(()=>{ if(typeof toast==='function')toast('Copied!','success'); },()=>{}); }catch(e){ if(typeof toast==='function')toast(txt,'info'); } }
+function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
+  apiFetch('/tf/live/'+code).then(st=>{ if(!_tfLive||_tfLive.code!==code)return;
+    const changed=!_tfLive.st||_tfLive.st.rev!==st.rev||_tfLive.st.status!==st.status; _tfLive.st=st;
+    if(changed&&_tfLive.body&&_tfLive.body.isConnected)tfLiveScreen(_tfLive.body);
+    if(st.status!=='done')_tfLive.timer=setTimeout(tfLivePoll,2500);
+  }).catch(()=>{ if(_tfLive)_tfLive.timer=setTimeout(tfLivePoll,4000); }); }
+function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
+  if(!(state.user&&apiToken())){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Sign in to play a synced match with a friend — you each track the same match and it lands in both your histories.</p><div class="tf-acts"><button class="tf-cancel" data-x>Close</button><button class="tf-save" data-login>Sign in</button></div></div>';
+    ov.querySelector('[data-x]').onclick=()=>ov.remove(); ov.querySelector('[data-login]').onclick=()=>{ ov.remove(); if(typeof signInClick==='function')signInClick('login'); }; return; }
+  ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Track one match together — each game result syncs to both of you, and it saves to both histories.</p>'+
+    '<div class="tf-acts" style="flex-direction:column;gap:9px"><button class="tf-save" data-create style="width:100%">➕ Create a match</button>'+
+    '<div style="display:flex;gap:6px;width:100%"><input id="tf-joincode" placeholder="Enter code" maxlength="5" autocomplete="off" style="flex:1;text-transform:uppercase"><button class="tf-w" data-join>Join</button></div></div>'+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
+  ov.querySelector('[data-x]').onclick=()=>ov.remove();
+  ov.querySelector('[data-create]').onclick=()=>tfLiveCreate(body);
+  const ji=ov.querySelector('#tf-joincode');
+  ov.querySelector('[data-join]').onclick=()=>{ const c=(ji.value||'').trim().toUpperCase(); if(c)tfLiveJoin(body,c); };
+  ji.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const c=(ji.value||'').trim().toUpperCase(); if(c)tfLiveJoin(body,c); } });
+}
+function tfLiveCreate(body){ apiFetch('/tf/live',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
+function tfLiveJoin(body,code){ apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({})}).then(st=>{ tfLiveStop(); _tfLive={code:st.code,st,body}; tfLiveScreen(body); tfLivePoll(); }).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
+function tfLiveScreen(body){ if(!_tfLive)return; const ov=tfOverlay(body); if(!ov)return; const st=_tfLive.st, t=st.tally||{w:0,l:0,d:0};
+  if(st.status==='open'){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Waiting for opponent…</h3><div class="tf-livecode">'+_mgEsc(st.code)+'</div>'+
+      '<p class="tf-note">Share the code, or send the invite link. They open 2040 → 🔗 Live → Join.</p>'+
+      '<div class="tf-acts" style="flex-wrap:wrap;gap:6px"><button class="tf-w" data-cc>Copy code</button><button class="tf-w" data-cl>Copy invite link</button></div>'+
+      '<div class="tf-acts"><button class="tf-cancel" data-x>Cancel</button></div></div>';
+    ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
+    ov.querySelector('[data-cc]').onclick=()=>tfCopy(st.code);
+    ov.querySelector('[data-cl]').onclick=()=>tfCopy(tfLiveInviteUrl(st.code)); return; }
+  if(st.status==='done'){ ov.innerHTML='<div class="tf-panel"><h3>🏁 Match over — '+tfResLabel(st.result)+' '+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</h3><p class="tf-note">Saved to both players’ histories.</p><div class="tf-acts"><button class="tf-save" data-x>Done</button></div></div>';
+    ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); tfSync(); }; return; }
+  const gi=st.games.length;
+  ov.innerHTML='<div class="tf-panel"><h3>🔗 Live vs '+_mgEsc(st.opponent||'opponent')+'</h3>'+
+    '<div class="tf-liverec">'+(st.games.length?st.games.map((g,i)=>'<span class="tf-gpip tf-r'+g.result+'">G'+(i+1)+'·'+tfResLabel(g.result)[0]+'</span>').join(''):'<span class="tf-note">No games yet</span>')+'</div>'+
+    '<div class="tf-livescore">'+t.w+'–'+t.l+(t.d?'–'+t.d:'')+'</div>'+
+    '<div class="tf-note" style="margin-bottom:6px">Game '+(gi+1)+' — who won?</div>'+
+    '<div class="tf-wld"><button class="tf-w" data-g="me">I won</button><button class="tf-l" data-g="them">They won</button><button class="tf-d" data-g="draw">Draw</button></div>'+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Leave</button><button class="tf-fin" data-fin>🏁 Finish match</button></div></div>';
+  ov.querySelector('[data-x]').onclick=()=>{ tfLiveStop(); ov.remove(); };
+  ov.querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>tfLiveRecord(b.getAttribute('data-g')));
+  ov.querySelector('[data-fin]').onclick=()=>tfLiveFinish();
+}
+function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
+  apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body)tfLiveScreen(_tfLive.body); } }).catch(()=>{}); }
+function tfLiveFinish(){ if(!_tfLive)return; if(!_tfLive.st.games.length){ if(typeof toast==='function')toast('Record at least one game first','info'); return; }
+  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body)tfLiveScreen(_tfLive.body); } tfSync(); }).catch(()=>{}); }
+// Deep link: mymagicdeck.com/?tfmatch=CODE opens 2040 and offers to join.
+function tfLiveCheckDeepLink(){ try{ const c=new URLSearchParams(location.search).get('tfmatch'); if(!c)return;
+  history.replaceState(null,'',location.pathname); const code=c.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); if(!code)return;
+  setTimeout(()=>{ try{ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['twentyfourty'])mgLaunchApp('twentyfourty'); }catch(e){}
+    setTimeout(()=>{ const b=document.querySelector('#modal-prog-twentyfourty .modal-body'); if(!b)return;
+      if(state.user&&apiToken()){ tfLiveJoin(b,code); }
+      else { const ov=tfOverlay(b); if(ov){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Join live match '+_mgEsc(code)+'</h3><p class="tf-note">Sign in to join this match.</p><div class="tf-acts"><button class="tf-cancel" data-x>Close</button><button class="tf-save" data-login>Sign in</button></div></div>'; ov.querySelector('[data-x]').onclick=()=>ov.remove(); ov.querySelector('[data-login]').onclick=()=>{ ov.remove(); if(typeof signInClick==='function')signInClick('login'); }; } }
+    }, 700);
+  }, 900);
+}catch(e){} }
+window.addEventListener('load',()=>setTimeout(tfLiveCheckDeepLink,1400));
 function notesRefreshApp(){ const b=document.querySelector('#modal-prog-documents .modal-body'); if(b&&b._notesMounted)notesRenderApp(b); }
 // The Documents folder: a file list of saved notes. Click a note to reopen it on the
 // desktop; "Rename" mode turns a click into an inline rename. Notes also rename + pin/

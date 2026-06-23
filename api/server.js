@@ -3324,6 +3324,77 @@ app.delete('/api/tf/match/:id', { preHandler:authenticate }, async (req)=>{
   if(Number.isFinite(id)) db.prepare('DELETE FROM tf_matches WHERE id=? AND user_id=?').run(id, req.user.sub);
   return { ok:true };
 });
+// ── 2040 LIVE: a shared match two signed-in players track together. One creates a code, the other joins,
+// per-game results sync (objective winner stored), and on finish BOTH players get the match in their own
+// history (mirrored to each POV). Stale matches are pruned after a TTL. ──
+db.exec(`CREATE TABLE IF NOT EXISTS tf_live (
+  code TEXT PRIMARY KEY, host_id INTEGER NOT NULL, guest_id INTEGER,
+  host_name TEXT, guest_name TEXT, host_deck TEXT, guest_deck TEXT,
+  games TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'open', notes TEXT,
+  rev INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL, updated INTEGER NOT NULL )`);
+const TF_LIVE_TTL = 12*60*60*1000;
+function tfLivePrune(){ try{ db.prepare('DELETE FROM tf_live WHERE updated < ?').run(Date.now()-TF_LIVE_TTL); }catch(_){} }
+function tfLiveGet(code){ return db.prepare('SELECT * FROM tf_live WHERE code=?').get(String(code||'').toUpperCase()); }
+function tfLiveRole(row, uid){ return row.host_id===uid ? 'host' : (row.guest_id===uid ? 'guest' : null); }
+function tfLiveTally(games, role){ let w=0,l=0,d=0; for(const g of games){ if(!g)continue; if(g.winner==='draw')d++; else if(g.winner===role)w++; else l++; } return {w,l,d}; }
+function tfLiveResult(games, role){ const t=tfLiveTally(games,role); return t.w>t.l?'W':(t.l>t.w?'L':'D'); }
+function tfLiveOut(row, uid){ let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
+  const role=tfLiveRole(row,uid)||'host';
+  return { code:row.code, status:row.status, role, rev:row.rev, joined:!!row.guest_id,
+    opponent: role==='host'?(row.guest_name||''):(row.host_name||''),
+    myDeck: role==='host'?(row.host_deck||''):(row.guest_deck||''),
+    theirDeck: role==='host'?(row.guest_deck||''):(row.host_deck||''), notes:row.notes||'',
+    games: games.map(g=>({ result: !g?'D':(g.winner==='draw'?'D':(g.winner===role?'W':'L')) })),
+    tally: tfLiveTally(games, role), result: tfLiveResult(games, role) }; }
+function tfLiveTouch(code, patch){ const f=Object.keys(patch); db.prepare('UPDATE tf_live SET '+f.map(k=>k+'=?').join(',')+', rev=rev+1, updated=? WHERE code=?').run(...f.map(k=>patch[k]), Date.now(), code); }
+app.post('/api/tf/live', { preHandler:[authenticate, rateLimitLg] }, async (req)=>{
+  tfLivePrune();
+  let code; for(let i=0;i<12;i++){ code=crypto.randomBytes(3).toString('hex').toUpperCase().slice(0,5); if(!tfLiveGet(code))break; }
+  const now=Date.now();
+  db.prepare(`INSERT INTO tf_live (code,host_id,host_name,host_deck,games,status,created,updated) VALUES (?,?,?,?,'[]','open',?,?)`)
+    .run(code, req.user.sub, _tfClip(req.user.username,80), _tfClip((req.body||{}).myDeck,80), now, now);
+  return tfLiveOut(tfLiveGet(code), req.user.sub);
+});
+app.post('/api/tf/live/:code/join', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', properties:{ myDeck:{ type:'string', maxLength:80 } } } } }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  if(row.host_id===req.user.sub || row.guest_id===req.user.sub) return tfLiveOut(row, req.user.sub); // already in it
+  if(row.guest_id) return reply.code(409).send({error:'Match is full.'});
+  if(row.status==='done') return reply.code(409).send({error:'Match already finished.'});
+  tfLiveTouch(row.code, { guest_id:req.user.sub, guest_name:_tfClip(req.user.username,80), guest_deck:_tfClip((req.body||{}).myDeck,80), status:'live' });
+  return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
+app.get('/api/tf/live/:code', { preHandler:authenticate }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  if(!tfLiveRole(row, req.user.sub)) return reply.code(403).send({error:'Not your match.'});
+  return tfLiveOut(row, req.user.sub);
+});
+app.post('/api/tf/live/:code/game', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', required:['index','result'], properties:{ index:{ type:'integer', minimum:0, maximum:10 }, result:{ type:'string', enum:['me','them','draw'] } } } } }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
+  if(row.status==='done') return reply.code(409).send({error:'Match already finished.'});
+  let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
+  const winner = req.body.result==='draw' ? 'draw' : (req.body.result==='me' ? role : (role==='host'?'guest':'host'));
+  games[req.body.index]={winner}; games=games.slice(0,11).map(g=>g||{winner:'draw'});
+  tfLiveTouch(row.code, { games:JSON.stringify(games), status:'live' });
+  return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
+app.post('/api/tf/live/:code/finish', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', properties:{ notes:{ type:'string', maxLength:500 }, myDeck:{ type:'string', maxLength:80 } } } } }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
+  let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
+  if(!games.length) return reply.code(400).send({error:'No games recorded.'});
+  const b=req.body||{}, patch={ status:'done' };
+  if(typeof b.myDeck==='string') patch[role==='host'?'host_deck':'guest_deck']=_tfClip(b.myDeck,80);
+  if(typeof b.notes==='string') patch.notes=_tfClip(b.notes,500);
+  tfLiveTouch(row.code, patch);
+  if(row.status!=='done'){ const fresh=tfLiveGet(row.code), ts=Date.now();   // first finish writes BOTH histories (mirrored)
+    const writeFor=(uid,r)=>{ if(!uid)return; const g=games.map(x=>({ result: x.winner==='draw'?'D':(x.winner===r?'W':'L'), mulligans:0 }));
+      const opp=r==='host'?(fresh.guest_name||''):(fresh.host_name||''), myDeck=r==='host'?(fresh.host_deck||''):(fresh.guest_deck||''), theirDeck=r==='host'?(fresh.guest_deck||''):(fresh.host_deck||'');
+      db.prepare(`INSERT INTO tf_matches (user_id,ts,opponent,my_deck,their_deck,notes,games,result) VALUES (?,?,?,?,?,?,?,?)`).run(uid, ts, _tfClip(opp,80), _tfClip(myDeck,80), _tfClip(theirDeck,80), _tfClip(fresh.notes,500), JSON.stringify(g), tfLiveResult(games,r)); };
+    writeFor(fresh.host_id,'host'); writeFor(fresh.guest_id,'guest');
+  }
+  return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
 
 // ── Start ─────────────────────────────────────────────────────────────────────
 app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
