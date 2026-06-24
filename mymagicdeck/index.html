@@ -7695,7 +7695,9 @@ function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
   apiFetch('/tf/live/'+code).then(st=>{ if(!_tfLive||_tfLive.code!==code)return;
     const prev=_tfLive.st; if(prev&&prev.status==='open'&&st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success');
     _tfLive.st=st;                                   // keep our own optimistic life (myLife is client-authoritative)
-    if(_tfLive.body&&_tfLive.body.isConnected&&typeof lcRender==='function')lcRender(_tfLive.body);
+    // Don't rebuild the board while an overlay (deck picker, etc.) is open — re-rendering destroys it.
+    const overlayOpen=_tfLive.body&&_tfLive.body.querySelector&&_tfLive.body.querySelector('.tf-overlay');
+    if(_tfLive.body&&_tfLive.body.isConnected&&!overlayOpen&&typeof lcRender==='function')lcRender(_tfLive.body);
     if(st.status!=='done')_tfLive.timer=setTimeout(tfLivePoll,2500);
   }).catch(()=>{ if(_tfLive)_tfLive.timer=setTimeout(tfLivePoll,4000); }); }
 // Enter a live match: it now renders INSIDE the 2040 board (shared life + strip), never a blocking overlay.
