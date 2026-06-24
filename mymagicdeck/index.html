@@ -1310,9 +1310,9 @@
     .lc-side-inner{display:flex;align-items:center;gap:28px;transform:rotate(-90deg);white-space:nowrap;pointer-events:auto}
     .lc-side-inner .lc-ctl button{white-space:nowrap}
     /* 2040 match tracker — bottom-left, upright (faces the bottom player) */
-    .tf-track{position:absolute;left:6px;bottom:8px;z-index:6;display:flex;flex-direction:column;gap:5px;align-items:flex-start}
-    /* live-match bar across the 2040 board (replaces the local tracker while connected) */
-    .tf-track.lc-livebar{left:6px;right:6px;flex-direction:row;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center;background:rgba(10,12,16,.78);border:1px solid rgba(184,147,47,.4);border-radius:8px;padding:5px 7px}
+    .tf-track{position:absolute;right:6px;top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+    /* live-match bar across the 2040 board (replaces the local tracker while connected) — pinned to the bottom */
+    .tf-track.lc-livebar{left:6px;right:6px;top:auto;bottom:8px;transform:none;flex-direction:row;flex-wrap:wrap;gap:5px;align-items:center;justify-content:center;background:rgba(10,12,16,.78);border:1px solid rgba(184,147,47,.4);border-radius:8px;padding:5px 7px}
     .lc-livehd{width:100%;text-align:center;font-size:11px;font-weight:bold;color:#ffd27a;font-family:Tahoma,sans-serif}
     .lc-livegames{font-size:11px;color:#9aa6b6;font-family:Tahoma,sans-serif}
     .lc-name{font-size:11px;font-weight:bold;color:#9aa6b6;text-align:center;font-family:Tahoma,sans-serif;margin-bottom:2px}
