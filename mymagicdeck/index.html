@@ -1345,8 +1345,9 @@
     /* Per-player X life pad: a light-grey X under the 20, 4 tappable arms; ✕ toggles ⇄ the step buttons */
     .lc-xtog{position:absolute;top:3px;left:50%;transform:translateX(-50%);z-index:4;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
     .lc-xtog.open{background:rgba(255,255,255,.18)}
-    .lc-half.lc-xmode .lc-life{position:relative;z-index:3}
-    .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(80cqw,80cqh);height:min(80cqw,80cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px)),linear-gradient(-45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px))}
+    /* In X-mode the big number is purely visual — clicks pass THROUGH it to the wedge underneath */
+    .lc-half.lc-xmode .lc-life{position:relative;z-index:3;pointer-events:none}
+    .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94cqw,94cqh);height:min(94cqw,94cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px)),linear-gradient(-45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px))}
     /* Four 90° wedge buttons — the triangular areas BETWEEN the X's diagonal lines (top/right/bottom/left) */
     .lc-xarm{position:absolute;inset:0;background:transparent;border:none;color:#e8e8ee;font-weight:800;font-size:clamp(.9rem,5cqmin,1.5rem);cursor:pointer;display:flex;padding:7px;text-shadow:0 1px 3px rgba(0,0,0,.85)}
     .lc-xarm.top{clip-path:polygon(50% 50%,0 0,100% 0);align-items:flex-start;justify-content:center}
