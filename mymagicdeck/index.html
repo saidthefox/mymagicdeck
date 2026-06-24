@@ -2473,7 +2473,10 @@ async function apiFetch(path,opts={}){
   // POST calls like mail delete + mark-all-read.
   const headers={...(opts.body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})};
   const res=await fetch(API_BASE+path,{...opts,headers});
-  if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));const err=new Error(body.error||'Request failed');err.status=res.status;throw err}
+  if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));
+    // Prefer the descriptive `message` (Fastify schema-validation errors put the real reason there and
+    // set `error` to a generic 'Bad Request'); fall back to our own `{error}` payloads.
+    const err=new Error(body.message||body.error||'Request failed');err.status=res.status;throw err}
   return res.json();
 }
 // Client error beacon → /api/clientlog (throttled, deduped, best-effort; never throws).
