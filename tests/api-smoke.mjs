@@ -262,6 +262,9 @@ try {
           assert(mine.status === 200 && mine.body.matches.some(m => m.code === code && m.tourn === tourn && m.round === 1), 'GET /tf/live/mine surfaces the tournament match (no code shared)');
           const lf = await Ja('/tf/live/' + code + '/life', { method:'POST', body: JSON.stringify({ life: 17 }) }, TA);
           assert(lf.status === 200 && lf.body.myLife === 17, 'POST /life sets my life');
+          const dk = await Ja('/tf/live/' + code + '/deck', { method:'POST', body: JSON.stringify({ deck:'Mono-Red Aggro' }) }, TA);
+          assert(dk.status === 200, 'POST /deck sets the deck you are playing');
+          await Ja('/tf/live/' + code + '/deck', { method:'POST', body: JSON.stringify({ deck:'Azorius Control' }) }, TB);
           const lg2 = await Ja('/tf/live/' + code, null, TB);
           assert(lg2.status === 200 && lg2.body.oppLife === 17 && lg2.body.myLife === 20, 'opponent sees my life synced (17); their own still 20');
           await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:0, result:'me' }) }, TA);  // A wins g1
@@ -273,6 +276,16 @@ try {
           assert(r0.status === 200 && r0.body.results.length === 0, 'no result reported until BOTH confirm');
           const f2 = await Ja('/tf/live/' + code + '/finish', { method:'POST', body:'{}' }, TB);
           assert(f2.status === 200 && f2.body.status === 'done', 'both confirm → match locked');
+          // Interactions ledger: the finished tournament match is durably recorded — public, both decks, traceable
+          const ixFeed = await J('/interactions?tourn=' + tourn);
+          assert(ixFeed.status === 200 && ixFeed.body.interactions.some(x => x.tourn === tourn
+            && [x.a.deck, x.b.deck].includes('Mono-Red Aggro') && [x.a.deck, x.b.deck].includes('Azorius Control')),
+            'interactions feed records the match with both decks');
+          const ixT = await J('/interactions/tournament/' + tourn);
+          assert(ixT.status === 200 && ixT.body.matches.length >= 1 && ixT.body.champion && ixT.body.champion.deck && ixT.body.path.length >= 1,
+            'tournament view returns a champion + winning-deck path');
+          const ixGuest = await J('/interactions');
+          assert(ixGuest.status === 200 && Array.isArray(ixGuest.body.interactions), 'interactions feed is public (guest, no token)');
           const r1 = await Jb('/integrations/discord/pairings/' + tourn + '/results', null);
           assert(r1.status === 200 && r1.body.results.length === 1 && r1.body.results[0].tmatch === '1:1' && r1.body.results[0].code === '3' && r1.body.results[0].winner_discord === dA, 'bot pulls the result: A wins 2-1 (Swiss code 3)');
           const r2 = await Jb('/integrations/discord/pairings/' + tourn + '/results', null);
@@ -289,11 +302,15 @@ try {
         sdb.prepare('DELETE FROM uploads WHERE user_id=?').run(id);
         sdb.prepare('DELETE FROM tf_matches WHERE user_id=?').run(id);
         sdb.prepare('DELETE FROM tf_live WHERE host_id=? OR guest_id=?').run(id, id);
+        try { sdb.prepare('DELETE FROM interactions WHERE a_user_id=? OR b_user_id=?').run(id, id); } catch (_) {}
         try { sdb.prepare('DELETE FROM mail WHERE user_id=?').run(id); } catch (_) {}
         try { sdb.prepare('DELETE FROM tournament_subs WHERE user_id=?').run(id); } catch (_) {}
         try { sdb.prepare('DELETE FROM decks WHERE user_id=?').run(id); } catch (_) {}
         sdb.prepare('DELETE FROM users WHERE id=?').run(id);
       } });
+      try { sdb.prepare("DELETE FROM interactions WHERE tourn LIKE 'smoketourn%'").run(); } catch (_) {}
+      // synthetic tok() users (live_host/guest etc.) use ids in the 9xxxxx range and have no users row → purge their ledger rows
+      try { sdb.prepare('DELETE FROM interactions WHERE a_user_id >= 900000 OR b_user_id >= 900000').run(); } catch (_) {}
       tx(); sdb.close();
       if (sids.length) console.log('  (cleaned up ' + sids.length + ' smoke test account(s))');
     } catch (_) { console.log('  (smoke account cleanup skipped: no DB write access — delete smoke_* users manually)'); }

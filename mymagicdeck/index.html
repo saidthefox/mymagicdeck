@@ -1326,6 +1326,11 @@
     .lc-half.lc-flip .lc-name{transform:rotate(180deg)}
     .lc-ovbtns.lc-ro{opacity:.7}
     .lc-rolbl{font-size:12px;color:#7CFC00;font-family:Tahoma,sans-serif}
+    /* 2040 "Deck you're playing" button (lower-left) */
+    .lc-deckbtn{position:absolute;left:6px;bottom:8px;z-index:7;display:flex;align-items:center;gap:5px;max-width:46%;font-family:Tahoma,sans-serif;font-size:12px;font-weight:bold;color:#fff;background:rgba(8,9,12,.6);border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
+    .lc-deckbtn.set{border-color:rgba(184,147,47,.6);color:#ffd27a}
+    .lc-deckbtn.live{bottom:46px}
+    .lc-deckbtn:active{filter:brightness(1.2)}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
     .diag-col{background:var(--bg,#0e0e0e);border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px}
@@ -1338,6 +1343,33 @@
     .diag-errs{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:.74rem;color:#ff8a8a;max-height:120px;overflow:auto;line-height:1.4}
     .diag-acts{display:flex;align-items:center;gap:10px}
     .diag-hint{color:var(--text-dim,#9aa6b6);font-size:.74rem}
+    /* Interactions — public match ledger (zKillboard-style feed) */
+    .ix-wrap{display:flex;flex-direction:column;height:100%;font-family:Tahoma,sans-serif;color:#cdd6e4}
+    .ix-head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.08);background:#0e1219;flex-shrink:0}
+    .ix-title{font-weight:800;color:#fff}
+    .ix-filter{margin-left:auto;background:#161b24;color:#cdd6e4;border:1px solid rgba(255,255,255,.18);border-radius:6px;padding:4px 8px;font-size:.82rem;max-width:62%}
+    .ix-body{flex:1;overflow:auto;padding:6px 8px}
+    .ix-loading,.ix-empty{color:#7b8696;text-align:center;padding:24px 12px;font-size:.85rem;line-height:1.5}
+    .ix-row{display:flex;align-items:stretch;gap:6px;padding:7px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .ix-side{flex:1;min-width:0;padding:4px 8px;border:1px solid rgba(255,255,255,.08);border-radius:6px;background:#12161e}
+    .ix-side.win{border-color:rgba(86,196,120,.55);background:rgba(40,90,55,.25)}
+    .ix-deck{font-weight:700;color:#fff;font-size:.86rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ix-pl{font-size:.72rem;color:#8b97a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ix-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;min-width:42px}
+    .ix-score{font-weight:800;color:#fff;font-size:.92rem}
+    .ix-vs{font-size:.6rem;color:#7b8696;text-transform:uppercase}
+    .ix-meta{display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:3px;flex-shrink:0;min-width:62px}
+    .ix-tag{font-size:.66rem;color:#ffd27a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+    .ix-tag.casual{color:#7b8696}
+    .ix-time{font-size:.66rem;color:#6b7686}
+    .ix-more{display:block;width:calc(100% - 12px);margin:10px 6px;padding:8px;background:#161b24;color:#cdd6e4;border:1px solid rgba(255,255,255,.18);border-radius:6px;cursor:pointer}
+    .ix-rdhdr{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#8b97a8;padding:10px 6px 4px}
+    .ix-champ{background:linear-gradient(rgba(184,147,47,.18),rgba(184,147,47,.05));border:1px solid rgba(184,147,47,.4);border-radius:8px;padding:10px 12px;margin:6px 6px 10px}
+    .ix-champ b{color:#ffd27a;font-size:1rem}
+    .ix-champ-sub{font-size:.7rem;color:#8b97a8;margin:6px 0 4px;text-transform:uppercase;letter-spacing:.06em}
+    .ix-path{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
+    .ix-pathstep{font-size:.74rem;background:#12161e;border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:3px 7px;color:#cdd6e4}
+    .ix-arrow{color:#6b7686}
     .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
     .tf-btn:active{border-color:#808080 #fff #fff #808080}
     .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
@@ -7513,7 +7545,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     : '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>';
   const stripHtml = L ? lcLiveStrip(L) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs'+(L?' lc-live':'')+'">'+
-      half(0,true)+half(1,false)+ sideHtml + stripHtml +
+      half(0,true)+half(1,false)+ sideHtml + stripHtml + lcDeckBtnHtml(s,L) +
     '</div></div>';
   // Re-render into THIS body (the window's .modal is moved into the WM layer, so re-querying by id fails).
   body.querySelectorAll('[data-lc]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const i=+b.getAttribute('data-lc'), d=+b.getAttribute('data-d');
@@ -7536,6 +7568,24 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const wc=body.querySelector('[data-lcc]'); if(wc)wc.addEventListener('click',()=>tfCopy(_tfLive&&_tfLive.code));
   const wl=body.querySelector('[data-lcl]'); if(wl)wl.addEventListener('click',()=>tfCopy(tfLiveInviteUrl(_tfLive&&_tfLive.code)));
   const wx=body.querySelector('[data-lcancel]'); if(wx)wx.addEventListener('click',()=>tfLiveLeave());
+  const dk=body.querySelector('[data-lcdeck]'); if(dk)dk.addEventListener('click',()=>lcDeckPick(body));
+}
+// 2040 "Deck" button (lower-left): pick the deck you're playing — stamps your matches in Interactions.
+function lcDeckBtnHtml(s,L){ const nm=(L&&typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.st)?(_tfLive.st.myDeck||''):(s.deck||'');
+  const lbl=nm?(nm.length>22?nm.slice(0,21)+'…':nm):'Deck';
+  return '<button class="lc-deckbtn'+(L?' live':'')+(nm?' set':'')+'" data-lcdeck title="The deck you’re playing — shows on your matches in Interactions">📋 '+_mgEsc(lbl)+'</button>'; }
+function lcSetDeck(name){ if(typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.code&&_tfLive.st&&(_tfLive.st.status==='live'||_tfLive.st.status==='open')){ apiFetch('/tf/live/'+_tfLive.code+'/deck',{method:'POST',body:JSON.stringify({deck:name||''})}).then(st=>{ if(_tfLive&&_tfLive.code===st.code)_tfLive.st=st; }).catch(()=>{}); } }
+function lcDeckPick(body){ const ov=tfOverlay(body); if(!ov)return;
+  const decks=(typeof state!=='undefined'&&state.decks)?Object.values(state.decks):[];
+  const names=[...new Set(decks.map(d=>d&&d.name).filter(Boolean))];
+  const cur=(typeof currentDeck==='function'&&currentDeck())?currentDeck().name:'';
+  const rows=names.length?names.map((n,i)=>'<button class="tf-w" style="width:100%;text-align:left;margin-bottom:6px'+(n===cur?';border-color:var(--accent)':'')+'" data-pick="'+i+'">📋 '+_mgEsc(n)+(n===cur?' · active':'')+'</button>').join('')
+    :'<p class="tf-note">No saved decks yet — build one in the deckbuilder first.</p>';
+  ov.innerHTML='<div class="tf-panel"><h3>📋 Deck you’re playing</h3><p class="tf-note">Pick the deck for this match — it shows on your matches in the Interactions ledger.</p>'+rows+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Close</button>'+(lcLoad().deck?'<button class="tf-w" data-clear>Clear</button>':'')+'</div></div>';
+  ov.querySelector('[data-x]').onclick=()=>ov.remove();
+  const cl=ov.querySelector('[data-clear]'); if(cl)cl.onclick=()=>{ const s=lcLoad(); s.deck=''; lcSave(); lcSetDeck(''); ov.remove(); lcRender(body); };
+  ov.querySelectorAll('[data-pick]').forEach(b=>b.onclick=()=>{ const n=names[+b.getAttribute('data-pick')]; const s=lcLoad(); s.deck=n; lcSave(); lcSetDeck(n); ov.remove(); lcRender(body); });
 }
 // ---- 2040 match tracker ----
 const TF_WIN_GAMES=2; // best-of-3: a player who reaches 2 game wins has clinched the match
@@ -7672,8 +7722,8 @@ function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
     box.querySelectorAll('[data-resume]').forEach(b=>b.onclick=()=>tfLiveResume(body, b.getAttribute('data-resume'))); }).catch(()=>{});
 }
 function tfLiveResume(body, code){ apiFetch('/tf/live/'+code).then(st=>tfLiveStart(body,st)).catch(()=>{ if(typeof toast==='function')toast('Could not open that match','error'); }); }
-function tfLiveCreate(body){ const s=(typeof lcLoad==='function')?lcLoad():{start:20}; apiFetch('/tf/live',{method:'POST',body:JSON.stringify({startLife:s.start||20})}).then(st=>tfLiveStart(body,st)).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
-function tfLiveJoin(body,code){ apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({})}).then(st=>tfLiveStart(body,st)).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
+function tfLiveCreate(body){ const s=(typeof lcLoad==='function')?lcLoad():{start:20}; apiFetch('/tf/live',{method:'POST',body:JSON.stringify({startLife:s.start||20, myDeck:s.deck||''})}).then(st=>tfLiveStart(body,st)).catch(()=>{ if(typeof toast==='function')toast('Could not create match','error'); }); }
+function tfLiveJoin(body,code){ const s=(typeof lcLoad==='function')?lcLoad():{}; apiFetch('/tf/live/'+code+'/join',{method:'POST',body:JSON.stringify({myDeck:s.deck||''})}).then(st=>tfLiveStart(body,st)).catch(e=>{ if(typeof toast==='function')toast((e&&e.status===409)?'That match is full or finished':((e&&e.status===404)?'Match not found':'Could not join'),'error'); }); }
 // (tfLiveScreen removed — the live match now renders inside the 2040 board via lcRender + lcLiveStrip,
 //  so it never traps you in a blocking overlay.)
 function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
@@ -8109,6 +8159,26 @@ let _diagErr=[];
   window.addEventListener('error',e=>{ _diagErr.push({t:Date.now(), m:(e&&e.message)||'error', src:((e&&e.filename||'').split('/').pop()||'')+(e&&e.lineno?':'+e.lineno:'')}); if(_diagErr.length>60)_diagErr.shift(); });
   window.addEventListener('unhandledrejection',e=>{ _diagErr.push({t:Date.now(), m:'promise: '+((e&&e.reason&&e.reason.message)||e&&e.reason||'rejection'), src:''}); if(_diagErr.length>60)_diagErr.shift(); });
 }catch(_){} })();
+// ===== Interactions — public match ledger (zKillboard-style feed + per-tournament deck-path) =====
+function ixAgo(ts){ const s=Math.max(0,(Date.now()-ts)/1000); if(s<60)return Math.floor(s)+'s'; if(s<3600)return Math.floor(s/60)+'m'; if(s<86400)return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
+function ixRowHtml(m){ const win=m.winner; const aw=win&&win.name===m.a.name, bw=win&&win.name===m.b.name;
+  const side=(p,won)=>'<div class="ix-side'+(won?' win':'')+'"><div class="ix-deck">'+_mgEsc(p.deck||'Unknown deck')+'</div><div class="ix-pl">'+_mgEsc(p.name||'?')+'</div></div>';
+  const ctx=m.tourn?('<span class="ix-tag">🏆 '+_mgEsc(m.tourn)+(m.round?' · R'+m.round:'')+'</span>'):'<span class="ix-tag casual">casual</span>';
+  return '<div class="ix-row">'+side(m.a,aw)+'<div class="ix-mid"><div class="ix-score">'+_mgEsc(m.score)+'</div><div class="ix-vs">'+(m.result==='draw'?'draw':'def.')+'</div></div>'+side(m.b,bw)+'<div class="ix-meta">'+ctx+'<span class="ix-time">'+ixAgo(m.ts)+'</span></div></div>'; }
+function ixWireMore(list){ const b=list.querySelector('[data-more]'); if(!b)return; b.onclick=()=>{ const before=b.getAttribute('data-more'); b.textContent='…'; apiFetch('/interactions?limit=50&before='+before).then(r=>{ const items=r.interactions||[]; b.remove(); list.insertAdjacentHTML('beforeend', items.map(ixRowHtml).join('')+(r.hasMore&&items.length?'<button class="ix-more" data-more="'+items[items.length-1].ts+'">Load more</button>':'')); ixWireMore(list); }).catch(()=>{ b.textContent='Load more'; }); }; }
+function ixFeed(list){ list.innerHTML='<div class="ix-loading">Loading…</div>'; apiFetch('/interactions?limit=50').then(r=>{ const items=r.interactions||[]; if(!items.length){ list.innerHTML='<div class="ix-empty">No matches yet.<br>Play a synced match in 2040 (with a deck attached via the 📋 button) and it lands here.</div>'; return; } list.innerHTML=items.map(ixRowHtml).join('')+(r.hasMore?'<button class="ix-more" data-more="'+items[items.length-1].ts+'">Load more</button>':''); ixWireMore(list); }).catch(()=>{ list.innerHTML='<div class="ix-empty">Could not load the ledger.</div>'; }); }
+function ixTournament(list,tourn){ list.innerHTML='<div class="ix-loading">Loading…</div>'; apiFetch('/interactions/tournament/'+encodeURIComponent(tourn)).then(r=>{ let h='';
+  if(r.champion){ h+='<div class="ix-champ">🏆 <b>'+_mgEsc(r.champion.deck||'Unknown deck')+'</b> — '+_mgEsc(r.champion.name||'')+'<div class="ix-champ-sub">winning deck’s path</div><div class="ix-path">'+(r.path||[]).map(m=>{ const opp=(m.winner&&m.winner.name===m.a.name)?m.b:m.a; return '<span class="ix-pathstep">R'+(m.round||'?')+' def. '+_mgEsc(opp.deck||opp.name||'?')+' ('+_mgEsc(m.score)+')</span>'; }).join('<span class="ix-arrow">→</span>')+'</div></div>'; }
+  (r.rounds||[]).forEach(rd=>{ h+='<div class="ix-rdhdr">Round '+rd+'</div>'+(r.byRound[rd]||[]).map(ixRowHtml).join(''); });
+  if(!r.matches||!r.matches.length)h='<div class="ix-empty">No matches recorded for this tournament yet.</div>';
+  list.innerHTML=h; }).catch(()=>{ list.innerHTML='<div class="ix-empty">Could not load.</div>'; }); }
+function ixRender(body){ if(!body)return; body.style.cssText='padding:0;height:100%;box-sizing:border-box;overflow:hidden;background:#0b0d12';
+  body.innerHTML='<div class="ix-wrap"><div class="ix-head"><div class="ix-title">⚔️ Interactions</div><select class="ix-filter" id="ix-filter"><option value="">— Recent feed —</option></select></div><div class="ix-body" id="ix-body"><div class="ix-loading">Loading…</div></div></div>';
+  const sel=body.querySelector('#ix-filter'), list=body.querySelector('#ix-body');
+  apiFetch('/interactions/tournaments').then(r=>{ (r.tournaments||[]).forEach(t=>{ const o=document.createElement('option'); o.value=t.tourn; o.textContent='🏆 '+t.tourn+' ('+t.matches+')'; sel.appendChild(o); }); }).catch(()=>{});
+  sel.onchange=()=>{ if(sel.value)ixTournament(list,sel.value); else ixFeed(list); };
+  ixFeed(list);
+}
 function diagRender(body){ if(!body)return;
   const esc=(typeof _mgEsc==='function')?_mgEsc:(s=>String(s));
   const fmt=ms=>ms?new Date(ms).toLocaleString():'—';
@@ -8161,6 +8231,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'520px', category:'games', mount(body){ cardleRender(body); } });
   DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
   DeckOS.registerProgram({ id:'diagnostics', title:'Diagnostics', icon:'🩺', width:'600px', desktop:true, mount(body){ diagRender(body); } });
+  DeckOS.registerProgram({ id:'interactions', title:'Interactions', icon:'⚔️', width:'600px', desktop:true, category:'games', mount(body){ ixRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts

@@ -3459,6 +3459,39 @@ app.get('/api/tf/matches', { preHandler:authenticate }, async (req)=>{
   const rows=db.prepare('SELECT * FROM tf_matches WHERE user_id=? ORDER BY ts DESC LIMIT 400').all(req.user.sub);
   return { matches: rows.map(tfRowOut) };
 });
+
+// ── INTERACTIONS — public match ledger (zKillboard-style). Read-only, guests allowed. Names + deck
+// names only (no emails / user ids leaked). ───────────────────────────────────────────────────────
+function ixOut(r){ let games=[]; try{ games=JSON.parse(r.games||'[]'); }catch(_){}
+  return { id:r.id, ts:r.ts, tourn:r.tourn||null, round:r.round||null,
+    a:{ name:r.a_name||'', deck:r.deck_a||'' }, b:{ name:r.b_name||'', deck:r.deck_b||'' },
+    result:r.result, score:(r.a_wins||0)+'-'+(r.b_wins||0),
+    winner: r.result==='draw'?null:(r.result==='a'?{name:r.a_name||'',deck:r.deck_a||''}:{name:r.b_name||'',deck:r.deck_b||''}),
+    games:games.length, source:r.source||'live' }; }
+app.get('/api/interactions', { preHandler: softAuthenticate }, async (req)=>{
+  const limit=Math.min(100, Math.max(1, parseInt(req.query.limit)||50));
+  const before=parseInt(req.query.before); const hasB=Number.isFinite(before);
+  const tourn=req.query.tourn?String(req.query.tourn):null;
+  let rows;
+  if(tourn) rows=db.prepare('SELECT * FROM interactions WHERE tourn=? '+(hasB?'AND ts<? ':'')+'ORDER BY ts DESC LIMIT ?').all(...(hasB?[tourn,before,limit]:[tourn,limit]));
+  else rows=db.prepare('SELECT * FROM interactions '+(hasB?'WHERE ts<? ':'')+'ORDER BY ts DESC LIMIT ?').all(...(hasB?[before,limit]:[limit]));
+  return { interactions: rows.map(ixOut), hasMore: rows.length===limit };
+});
+app.get('/api/interactions/tournaments', { preHandler: softAuthenticate }, async ()=>{
+  const rows=db.prepare("SELECT tourn, COUNT(*) c, MAX(ts) last, MAX(round) rounds FROM interactions WHERE tourn IS NOT NULL AND tourn!='' GROUP BY tourn ORDER BY last DESC LIMIT 200").all();
+  return { tournaments: rows.map(r=>({ tourn:r.tourn, matches:r.c, lastTs:r.last, rounds:r.rounds||0 })) };
+});
+app.get('/api/interactions/tournament/:tourn', { preHandler: softAuthenticate }, async (req)=>{
+  const tourn=String(req.params.tourn);
+  const matches=db.prepare('SELECT * FROM interactions WHERE tourn=? ORDER BY round ASC, ts ASC').all(tourn).map(ixOut);
+  const byRound={}; for(const m of matches){ const rd=m.round||0; (byRound[rd]=byRound[rd]||[]).push(m); }
+  const rounds=Object.keys(byRound).map(Number).sort((a,b)=>a-b);
+  let champion=null, path=[];
+  if(rounds.length){ const finals=byRound[rounds[rounds.length-1]]; const champMatch=finals[finals.length-1];
+    champion=champMatch&&champMatch.winner?champMatch.winner:null;
+    if(champion) path=matches.filter(m=>m.winner && m.winner.name===champion.name).sort((a,b)=>(a.round||0)-(b.round||0)); }
+  return { tourn, rounds, byRound, matches, champion, path };
+});
 // ── GET /api/diag — read-only "both sides" snapshot of the CALLER'S OWN account (server truth).
 // Powers the Diagnostics program so a scout can confirm the UI matches the backend. Own data only;
 // no admin reach, no writes. ─────────────────────────────────────────────────────────────────────
@@ -3510,6 +3543,18 @@ const TF_LIVE_TTL = 12*60*60*1000;
 // Tournament linkage + two-sided confirmation (a match created by a Discord tournament pairing carries the
 // tournament/round/table + both players' Discord ids; both must confirm before the result locks + reports).
 ['tourn TEXT','tmatch TEXT','tround INTEGER','host_discord TEXT','guest_discord TEXT','confirm_host INTEGER DEFAULT 0','confirm_guest INTEGER DEFAULT 0','reported INTEGER DEFAULT 0','host_life INTEGER DEFAULT 20','guest_life INTEGER DEFAULT 20','start_life INTEGER DEFAULT 20'].forEach(c=>{ try{ db.exec('ALTER TABLE tf_live ADD COLUMN '+c); }catch(_){} });
+
+// ── interactions: the durable, PUBLIC match ledger (one row per finished match) — powers the
+// Interactions app (a zKillboard-style feed + per-tournament deck-path tracing). Written once per
+// match in tfLiveWriteHistories (both sides + decks + tournament/round, never expires). ──
+db.exec(`CREATE TABLE IF NOT EXISTS interactions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER NOT NULL,
+  tourn TEXT, round INTEGER, tmatch TEXT,
+  a_user_id INTEGER, a_name TEXT, b_user_id INTEGER, b_name TEXT,
+  deck_a TEXT, deck_b TEXT, games TEXT NOT NULL DEFAULT '[]',
+  result TEXT, a_wins INTEGER DEFAULT 0, b_wins INTEGER DEFAULT 0, source TEXT DEFAULT 'live' )`);
+db.exec('CREATE INDEX IF NOT EXISTS idx_interactions_ts ON interactions(ts DESC)');
+db.exec('CREATE INDEX IF NOT EXISTS idx_interactions_tourn ON interactions(tourn, round)');
 function tfLivePrune(){ try{ db.prepare("DELETE FROM tf_live WHERE updated < ? AND tourn IS NULL").run(Date.now()-TF_LIVE_TTL); }catch(_){} } // keep tournament matches longer
 function tfLiveGet(code){ return db.prepare('SELECT * FROM tf_live WHERE code=?').get(String(code||'').toUpperCase()); }
 function tfLiveRole(row, uid){ return row.host_id===uid ? 'host' : (row.guest_id===uid ? 'guest' : null); }
@@ -3536,7 +3581,18 @@ function tfLiveWriteHistories(fresh, games){ const ts=Date.now();
   const writeFor=(uid,r)=>{ if(!uid)return; const g=games.map(x=>({ result: x.winner==='draw'?'D':(x.winner===r?'W':'L'), mulligans:0 }));
     const opp=r==='host'?(fresh.guest_name||''):(fresh.host_name||''), myDeck=r==='host'?(fresh.host_deck||''):(fresh.guest_deck||''), theirDeck=r==='host'?(fresh.guest_deck||''):(fresh.host_deck||'');
     db.prepare(`INSERT INTO tf_matches (user_id,ts,opponent,my_deck,their_deck,notes,games,result) VALUES (?,?,?,?,?,?,?,?)`).run(uid, ts, _tfClip(opp,80), _tfClip(myDeck,80), _tfClip(theirDeck,80), _tfClip(fresh.notes,500), JSON.stringify(g), tfLiveResult(games,r)); };
-  writeFor(fresh.host_id,'host'); writeFor(fresh.guest_id,'guest'); }
+  writeFor(fresh.host_id,'host'); writeFor(fresh.guest_id,'guest');
+  // One durable PUBLIC ledger row per match (host = side A, guest = side B).
+  try {
+    const rc=tfLiveCode(games); // winner/host-wins/guest-wins from host POV
+    db.prepare(`INSERT INTO interactions (ts,tourn,round,tmatch,a_user_id,a_name,b_user_id,b_name,deck_a,deck_b,games,result,a_wins,b_wins,source)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      ts, fresh.tourn||null, fresh.tround||null, fresh.tmatch||null,
+      fresh.host_id||null, _tfClip(fresh.host_name,80), fresh.guest_id||null, _tfClip(fresh.guest_name,80),
+      _tfClip(fresh.host_deck,80), _tfClip(fresh.guest_deck,80), JSON.stringify(games),
+      (rc.winner==='draw'?'draw':(rc.winner==='host'?'a':'b')), rc.hw, rc.gw, fresh.tourn?'tournament':'live');
+  } catch(_) {}
+}
 app.post('/api/tf/live', { preHandler:[authenticate, rateLimitLg] }, async (req)=>{
   tfLivePrune();
   let code; for(let i=0;i<12;i++){ code=crypto.randomBytes(3).toString('hex').toUpperCase().slice(0,5); if(!tfLiveGet(code))break; }
@@ -3550,6 +3606,14 @@ app.post('/api/tf/live/:code/life', { preHandler:[authenticate, rateLimitLg], sc
   const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
   const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
   tfLiveTouch(row.code, role==='host' ? { host_life:req.body.life } : { guest_life:req.body.life });
+  return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
+// Set the deck you're playing on an existing match (the 2040 Deck button) — works for resumed tournament
+// matches you didn't create/join. Patches your side's deck.
+app.post('/api/tf/live/:code/deck', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', required:['deck'], properties:{ deck:{ type:'string', maxLength:80 } } } } }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
+  tfLiveTouch(row.code, role==='host' ? { host_deck:_tfClip(req.body.deck,80) } : { guest_deck:_tfClip(req.body.deck,80) });
   return tfLiveOut(tfLiveGet(row.code), req.user.sub);
 });
 app.post('/api/tf/live/:code/join', { preHandler:[authenticate, rateLimitLg], schema:{ body:{ type:'object', properties:{ myDeck:{ type:'string', maxLength:80 } } } } }, async (req,reply)=>{
