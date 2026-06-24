@@ -1342,6 +1342,17 @@
     .lc-tbox-note{font-size:.7rem;color:#8b97a8;line-height:1.4;margin-top:4px}
     .lc-tchip{position:absolute;right:8px;bottom:25%;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
     .lc-tchip:active{filter:brightness(1.2)}
+    /* Per-player X life pad: a light-grey X under the 20, 4 tappable arms; ✕ toggles ⇄ the step buttons */
+    .lc-xtog{position:absolute;top:3px;left:50%;transform:translateX(-50%);z-index:4;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+    .lc-xtog.open{background:rgba(255,255,255,.18)}
+    .lc-half.lc-xmode .lc-life{position:relative;z-index:3}
+    .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(80cqw,80cqh);height:min(80cqw,80cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px)),linear-gradient(-45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px))}
+    .lc-xarm{position:absolute;width:50%;height:50%;background:transparent;border:none;color:#e8e8ee;font-weight:800;font-size:clamp(.9rem,5cqmin,1.5rem);cursor:pointer;display:flex;padding:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
+    .lc-xarm.nw{left:0;top:0;align-items:flex-start;justify-content:flex-start}
+    .lc-xarm.ne{right:0;top:0;align-items:flex-start;justify-content:flex-end}
+    .lc-xarm.sw{left:0;bottom:0;align-items:flex-end;justify-content:flex-start}
+    .lc-xarm.se{right:0;bottom:0;align-items:flex-end;justify-content:flex-end}
+    .lc-xarm:active{background:rgba(255,255,255,.12);border-radius:8px}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
     .diag-col{background:var(--bg,#0e0e0e);border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px}
@@ -7544,11 +7555,20 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   // Live match: top half = opponent's synced life (read-only), bottom half = my life (editable, pushes).
   const L = (typeof _tfLive!=='undefined' && _tfLive && _tfLive.st && (_tfLive.st.status==='live'||_tfLive.st.status==='done')) ? _tfLive.st : null;
   const wait = (typeof _tfLive!=='undefined' && _tfLive && _tfLive.st && _tfLive.st.status==='open') ? _tfLive.st : null;
+  if(!Array.isArray(s.x))s.x=[false,false];
+  // Per-player "X" life pad: a big light-grey X under the 20, 4 tappable arms (−5/+5/−1/+1). Toggled by xTog.
+  const xPad=i=>'<div class="lc-xpad">'+
+      '<button class="lc-xarm nw" data-lc="'+i+'" data-d="-5">−5</button>'+
+      '<button class="lc-xarm ne" data-lc="'+i+'" data-d="5">+5</button>'+
+      '<button class="lc-xarm sw" data-lc="'+i+'" data-d="-1">−1</button>'+
+      '<button class="lc-xarm se" data-lc="'+i+'" data-d="1">+1</button></div>';
+  const xTog=i=>'<button class="lc-xtog'+(s.x[i]?' open':'')+'" data-xtog="'+i+'" title="'+(s.x[i]?'Show the step buttons':'X life pad')+'">'+(s.x[i]?'⊞':'✕')+'</button>';
   const lifeOf=i=> L ? (i===0 ? L.oppLife : _tfLive.myLife) : s.players[i].life;
   const liveEdit=i=> L ? (i===1) : true;                                  // in a live match only my (bottom) half is editable
-  const stepsL=i=> liveEdit(i) ? steps(i) : '<div class="lc-ovbtns lc-ro"><span class="lc-rolbl">🔗 synced</span></div>';
+  const stepsL=i=> liveEdit(i) ? (s.x[i]?xPad(i):steps(i)) : '<div class="lc-ovbtns lc-ro"><span class="lc-rolbl">🔗 synced</span></div>';
   const nameTag=i=> L ? ('<div class="lc-name">'+_mgEsc(i===0?(L.opponent||'Opponent'):'You')+'</div>') : '';
-  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+'">'+nameTag(i)+
+  const half=(i,flip)=>'<div class="lc-half'+(flip?' lc-flip':'')+(s.x[i]&&liveEdit(i)?' lc-xmode':'')+'">'+nameTag(i)+
+      (liveEdit(i)?xTog(i):'')+
       '<div class="lc-life'+(lifeOf(i)<=0?' dead':'')+'">'+lifeOf(i)+'</div>'+
       stepsL(i)+'</div>';
   const sideHtml = L
@@ -7563,6 +7583,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     if(L){ if(i===1)tfLiveLifeAdjust(d); return; } // live: only my half adjusts (+ syncs); opponent is read-only
     s.players[i].life+=d; lcSave(); lcRender(body); }));
   body.querySelectorAll('[data-lcstart]').forEach(b=>b.addEventListener('click',()=>{ s.start=+b.getAttribute('data-lcstart'); s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); }));
+  body.querySelectorAll('[data-xtog]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const i=+b.getAttribute('data-xtog'); s.x[i]=!s.x[i]; lcSave(); lcRender(body); }));
   const rb=body.querySelector('[data-lcreset]'); if(rb)rb.addEventListener('click',()=>{ if(L){ _tfLive.myLife=L.startLife||20; lcRender(body); tfLivePushLife(); } else { s.players.forEach(p=>p.life=s.start); lcSave(); lcRender(body); } });
   // Local match tracker (only when not in a live match): Start → Mulligan/Next Game → Finish.
   body.querySelectorAll('[data-tf]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const a=b.getAttribute('data-tf');
