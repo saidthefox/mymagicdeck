@@ -975,7 +975,12 @@
     #mg-exit{position:absolute;top:12px;right:14px;z-index:3;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.07);border:1px solid #2e3a52;color:#c8cdd8;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
     #mg-exit:active{background:rgba(255,255,255,.16)}
     .mg-titlebar{display:flex;align-items:center;gap:6px;background:linear-gradient(#f4eddb,#dacdaa);border:1px solid #8a7a52;border-radius:9px;padding:5px 10px;box-shadow:inset 0 1px 0 rgba(255,255,255,.55)}
-    #mg-name{flex:1;font-weight:bold;font-size:15px;color:#191207;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Georgia,'Times New Roman',serif}
+    #mg-name-wrap{position:relative;flex:1;min-width:0}
+    #mg-name{width:100%;box-sizing:border-box;background:transparent;border:none;outline:none;padding:0;font-weight:bold;font-size:15px;color:#191207;font-family:Georgia,'Times New Roman',serif}
+    #mg-name::placeholder{color:#8a7a52;font-weight:normal;font-style:italic}
+    .mg-ac{position:absolute;left:0;right:0;top:100%;margin-top:4px;z-index:70;background:#fff;border:1px solid #8a7a52;border-radius:6px;max-height:200px;overflow:auto;display:none;box-shadow:0 8px 22px rgba(0,0,0,.45)}
+    .mg-ac div{padding:7px 10px;font-size:13px;color:#191207;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:Georgia,'Times New Roman',serif}
+    .mg-ac div:hover{background:#efe7d2}
     #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
     .mg-winbtn{width:22px;height:22px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#d8d2c4;color:#1a1a1a;font-size:12px;font-weight:bold;border:1px solid #2a2a2a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
     #mg-art{flex:1;min-height:140px;background:#23232b;border:1px solid #2a2114;border-radius:4px;position:relative;overflow:hidden}
@@ -2314,7 +2319,7 @@
     </div>
   </div>
   <div class="splash-body" id="splash-body"></div>
-  <div class="splash-foot" style="text-align:center;font-size:10px;line-height:1.4;color:rgba(255,255,255,.55);padding:8px 12px">Unofficial Fan Content per the Wizards of the Coast Fan Content Policy — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via Scryfall. · <a href="/terms.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">DMCA</a></div>
+  <div class="splash-foot" style="text-align:center;font-size:10px;line-height:1.4;color:rgba(255,255,255,.55);padding:8px 12px">Unofficial Fan Content per the Wizards of the Coast <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Fan Content Policy</a> — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via Scryfall. · <a href="/terms.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:rgba(255,255,255,.7)">DMCA</a></div>
 </div>
 
 <div id="printings-popover">
@@ -2343,7 +2348,7 @@
     <div id="mg-winbar"><span id="mg-wintitle">🗃️ CGG</span><button id="mg-cog" class="mg-winctl" aria-label="settings">⚙</button><button id="mg-min" class="mg-winctl" aria-label="minimize">_</button><button id="mg-max" class="mg-winctl" aria-label="restore size">❐</button><button id="mg-close" class="mg-winctl" aria-label="close">✕</button></div>
     <div id="mg-frame">
       <div class="mg-titlebar">
-        <div id="mg-name" class="mg-zone">Tap to name…</div>
+        <div id="mg-name-wrap"><input id="mg-name" placeholder="Type a card name…" autocomplete="off" autocapitalize="off" spellcheck="false" /><div id="mg-name-ac" class="mg-ac"></div></div>
         <div id="mg-mana" class="mg-zone" aria-label="mana cost">+</div>
       </div>
       <div id="mg-artwrap"><div id="mg-art"></div><div class="mg-edge mg-edge-l" id="mg-edge-l" aria-label="cycle card color"></div><div class="mg-edge mg-edge-r" id="mg-edge-r" aria-label="cycle card color"></div></div>
@@ -5882,7 +5887,7 @@ function mgOpenFormatPicker(){
 }
 function mgRender(){
   const c=mgColor();
-  document.getElementById('mg-name').textContent=mgState.name||'Tap to name…';
+  {const _nm=document.getElementById('mg-name'); if(_nm&&document.activeElement!==_nm)_nm.value=mgState.name||'';}
   const mana=document.getElementById('mg-mana');mana.style.cssText='';mana.innerHTML='';
   // A colored pip counts toward the mana value: 3 mana + white → "2" + W (not 3 + W).
   const isSingle=c&&mgState.ci<MG_COLORS.length-1, isMulti=c&&mgState.ci===MG_COLORS.length-1;
@@ -6130,7 +6135,7 @@ function renderAbout(){
       '<a href="https://github.com/saidthefox/mymagicbot" target="_blank" rel="noopener" style="color:var(--accent)">🤖 MyMagicBot on GitHub</a>'+
     '</div>'+
     '<div style="margin-top:16px"><button class="btn small" onclick="aboutFeedback()">💬 Submit feedback / request a feature</button></div>'+
-    '<div style="color:var(--text-dim);font-size:.72rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MyMagicDeck is unofficial Fan Content permitted under the Wizards of the Coast Fan Content Policy. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card data via Scryfall.<br><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:var(--accent)">Copyright / DMCA</a></div>'+
+    '<div style="color:var(--text-dim);font-size:.72rem;margin-top:16px;line-height:1.5">Made with ♥ for Magic.<br>MyMagicDeck is unofficial Fan Content permitted under the Wizards of the Coast <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener" style="color:var(--accent)">Fan Content Policy</a>. Not approved/endorsed by Wizards. Portions of the materials used are property of Wizards of the Coast. ©Wizards of the Coast LLC. Card data via Scryfall.<br><a href="/terms.html" target="_blank" rel="noopener" style="color:var(--accent)">Terms</a> · <a href="/privacy.html" target="_blank" rel="noopener" style="color:var(--accent)">Privacy</a> · <a href="/dmca.html" target="_blank" rel="noopener" style="color:var(--accent)">Copyright / DMCA</a></div>'+
     '</div>';
 }
 function aboutFeedback(){
@@ -9038,7 +9043,24 @@ function mgWire(){
   mgTaps('mg-fmt',mgOpenFormatPicker,mgClearFormat);
   mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
   mgTaps('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{if(mgState.t!=null){mgState.t--;if(mgState.t<0)mgState.t=null;}mgHint('toughness '+(mgState.t==null?'—':mgState.t));mgTouch();});
-  mgTaps('mg-name',()=>{const v=prompt('Card name (or part of it):',mgState.name||'');if(v!=null){mgState.name=v.trim();mgTouch();}},()=>{});
+  // Card name: type directly into the title bar (no popup), with prefix-search autocomplete
+  // ("Lightning B" → Lightning Bolt) via the global /api/cards/search.
+  (function(){ const inp=document.getElementById('mg-name'), ac=document.getElementById('mg-name-ac'); if(!inp||!ac||inp._mg)return; inp._mg=1; let t=null, seq=0;
+    const hide=()=>{ac.style.display='none';};
+    const pick=name=>{ inp.value=name; mgState.name=name; hide(); mgTouch(); };
+    inp.addEventListener('input',()=>{ mgState.name=inp.value.trim(); clearTimeout(t); t=setTimeout(mgTouch,300);
+      const q=inp.value.trim(); if(q.length<2){hide();return;}
+      const my=++seq;
+      apiFetch('/cards/search?q='+encodeURIComponent(q)+'&page=1&per_page=8').then(r=>{ if(my!==seq||document.activeElement!==inp)return;
+        const names=[...new Set(((r&&r.data)||[]).map(c=>c.name))].filter(n=>n&&!/ \/\/ /.test(n)).slice(0,8);
+        if(!names.length){hide();return;}
+        ac.innerHTML=names.map(n=>'<div data-nm="'+_mgEsc(n)+'">'+_mgEsc(n)+'</div>').join('');
+        ac.querySelectorAll('[data-nm]').forEach(el=>el.addEventListener('mousedown',e=>{e.preventDefault();pick(el.getAttribute('data-nm'));}));
+        ac.style.display='block';
+      }).catch(()=>{}); });
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const first=ac.querySelector('[data-nm]'); if(ac.style.display==='block'&&first){e.preventDefault();pick(first.getAttribute('data-nm'));} else {hide();inp.blur();} } else if(e.key==='Escape'){hide();} });
+    inp.addEventListener('blur',()=>{ setTimeout(hide,150); });
+  })();
   mgTaps('mg-edge-l',mgCycleColor,mgClearColor);
   mgTaps('mg-edge-r',mgCycleColor,mgClearColor);
   const min=document.getElementById('mg-min');if(min&&!min._mg){min._mg=1;min.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});}
@@ -9291,6 +9313,6 @@ fwInitSearchResize();
   ro.observe(panel);
 })();
 </script>
-<footer id="mmd-foot">Unofficial Fan Content per the Wizards of the Coast Fan Content Policy — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="/dmca.html">DMCA</a></footer>
+<footer id="mmd-foot">Unofficial Fan Content per the Wizards of the Coast <a href="https://company.wizards.com/en/legal/fancontentpolicy" target="_blank" rel="noopener">Fan Content Policy</a> — not approved/endorsed by Wizards. ©Wizards of the Coast LLC. Card data via <a href="https://scryfall.com" target="_blank" rel="noopener">Scryfall</a>. · <a href="/terms.html">Terms</a> · <a href="/privacy.html">Privacy</a> · <a href="/dmca.html">DMCA</a></footer>
 </body>
 </html>
