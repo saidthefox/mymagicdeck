@@ -163,6 +163,7 @@ framecheck, and battle routes.
 | POST | `/api/auth/login` | — | login → `{token, user}` |
 | POST | `/api/auth/forgot` | — | request reset — **always 200** (no account-existence leak); emails via Resend if configured |
 | POST | `/api/auth/reset` | — | complete reset with the emailed token + new password |
+| POST | `/api/auth/change-password` | yes | change your own password `{currentPassword,newPassword}` — verifies the current one (403 if wrong) |
 | DELETE | `/api/account` | JWT | permanent delete — **requires current password**; removes decks/uploads/fs/desktop/mail/tournaments/files |
 
 ### Decks

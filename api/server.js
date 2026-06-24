@@ -1993,6 +1993,22 @@ app.post('/api/auth/reset', { preHandler: rateLimitAuth }, async (req, reply) =>
   return { ok: true };
 });
 
+// ── POST /api/auth/change-password — signed-in user changes their own password (verifies current one) ──
+app.post('/api/auth/change-password', { preHandler: [authenticate, rateLimitAuth] }, async (req, reply) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 128) {
+    return reply.code(400).send({ error: 'New password must be 8–128 characters.' });
+  }
+  const rec = db.prepare('SELECT password FROM users WHERE id = ?').get(req.user.sub);
+  if (!rec || typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, rec.password))) {
+    return reply.code(403).send({ error: 'Current password is incorrect.' });
+  }
+  const hash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hash, req.user.sub);
+  try { db.prepare('DELETE FROM password_resets WHERE user_id = ? AND used = 0').run(req.user.sub); } catch (_) {}
+  return { ok: true };
+});
+
 // ── DELETE /api/account  (permanent account + data deletion) ──────────────────
 // Requires the current password (a stolen token alone can't nuke an account).
 // Removes everything tied to the user: decks/uploads/fs/desktop/reset tokens

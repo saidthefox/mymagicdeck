@@ -2187,6 +2187,15 @@
         <div style="margin-top:16px"><label style="display:block;font-size:.78rem;color:var(--text-dim);margin-bottom:5px">🔫 Holstered deck <span style="opacity:.7">— loaded &amp; selected on sign-in</span></label>
           <select id="auth-holster" class="auth-input" style="width:100%" onchange="holsterSet(this.value)"></select></div>
         <div id="discord-link" style="margin-top:16px;font-size:.82rem"></div>
+        <div style="margin-top:16px">
+          <button class="btn" style="width:100%;justify-content:center;padding:9px" onclick="toggleChangePw()">🔑 Change password</button>
+          <div id="changepw-form" style="display:none;margin-top:10px">
+            <input class="auth-input" id="cpw-current" type="password" placeholder="Current password" autocomplete="current-password" style="width:100%;box-sizing:border-box;margin-bottom:7px" />
+            <input class="auth-input" id="cpw-new" type="password" placeholder="New password (min 8 chars)" autocomplete="new-password" style="width:100%;box-sizing:border-box;margin-bottom:7px" />
+            <div class="auth-err" id="cpw-err"></div>
+            <button class="btn primary" id="cpw-submit" style="width:100%;justify-content:center;padding:9px" onclick="doChangePw()">Update password</button>
+          </div>
+        </div>
         <div class="auth-switch" style="margin-top:14px"><a onclick="deleteAccount()" style="color:#c0392b">Delete account…</a></div>
       </div>
     </div>
@@ -2623,6 +2632,19 @@ function signInClick(mode){
   } else openAuth(mode);
 }
 function toggleAuthMode(){_authMode=_authMode==='login'?'signup':'login';_updateAuthUI()}
+function toggleChangePw(){ const f=document.getElementById('changepw-form'); if(!f)return; const show=f.style.display==='none'; f.style.display=show?'block':'none'; if(show){ const e=document.getElementById('cpw-err'); if(e)e.textContent=''; const c=document.getElementById('cpw-current'); if(c)c.focus(); } }
+async function doChangePw(){ const cur=(document.getElementById('cpw-current').value||''), nw=(document.getElementById('cpw-new').value||''), err=document.getElementById('cpw-err'), btn=document.getElementById('cpw-submit');
+  if(!cur){err.textContent='Enter your current password.';return}
+  if(nw.length<8){err.textContent='New password must be at least 8 characters.';return}
+  btn.disabled=true;btn.textContent='…';
+  try{
+    await apiFetch('/auth/change-password',{method:'POST',body:JSON.stringify({currentPassword:cur,newPassword:nw})});
+    document.getElementById('cpw-current').value='';document.getElementById('cpw-new').value='';
+    document.getElementById('changepw-form').style.display='none';
+    if(typeof toast==='function')toast('Password updated. ✅','success');
+  }catch(e){ err.textContent=e.message||'Could not change password.'; }
+  finally{ btn.disabled=false; btn.textContent='Update password'; }
+}
 function accountSignOut(){
   logout();
   if(document.body.classList.contains('wm-on')&&typeof wmWins!=='undefined'&&wmWins.account)wmClose('account');

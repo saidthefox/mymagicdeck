@@ -191,6 +191,18 @@ try {
       const post = await Ja('/uploads/card-art', { method:'POST' }, UT);
       assert(post.status === 400, 'after accepting, card-art passes the rules gate (400 no-file, not 412)');
 
+      // Change password: wrong current → 403; correct → ok; too-short → 400; then login with the new one
+      const cpWrong = await Ja('/auth/change-password', { method:'POST', body: JSON.stringify({ currentPassword:'nope', newPassword:'newpass456' }) }, UT);
+      assert(cpWrong.status === 403, 'change-password with wrong current → 403');
+      const cpShort = await Ja('/auth/change-password', { method:'POST', body: JSON.stringify({ currentPassword:'smoketest123', newPassword:'short' }) }, UT);
+      assert(cpShort.status === 400, 'change-password with <8 char new → 400');
+      const cpOk = await Ja('/auth/change-password', { method:'POST', body: JSON.stringify({ currentPassword:'smoketest123', newPassword:'newpass456' }) }, UT);
+      assert(cpOk.status === 200 && cpOk.body && cpOk.body.ok, 'change-password with correct current → ok');
+      const liNew = await J('/auth/login', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username: ru, password: 'newpass456' }) });
+      assert(liNew.status === 200 && liNew.body && liNew.body.token, 'login works with the new password');
+      const liOld = await J('/auth/login', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username: ru, password: 'smoketest123' }) });
+      assert(liOld.status === 401, 'old password no longer works after change');
+
       // Set-as-splash-pic renders + stores server-side — NOT a user upload, so it bypasses the gate/pause.
       const sp = await J('/auth/register', { method:'POST', headers:{ 'content-type':'application/json' }, body: JSON.stringify({ username:'smoke_sp_' + Math.floor(Math.random()*1e6), email:'sp' + Math.floor(Math.random()*1e6) + '@example.com', password:'smoketest123' }) });
       if (sp.status === 200 && sp.body.token) {
