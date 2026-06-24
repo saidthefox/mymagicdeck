@@ -3443,6 +3443,32 @@ app.get('/api/tf/matches', { preHandler:authenticate }, async (req)=>{
   const rows=db.prepare('SELECT * FROM tf_matches WHERE user_id=? ORDER BY ts DESC LIMIT 400').all(req.user.sub);
   return { matches: rows.map(tfRowOut) };
 });
+// ── GET /api/diag — read-only "both sides" snapshot of the CALLER'S OWN account (server truth).
+// Powers the Diagnostics program so a scout can confirm the UI matches the backend. Own data only;
+// no admin reach, no writes. ─────────────────────────────────────────────────────────────────────
+app.get('/api/diag', { preHandler: authenticate }, async (req) => {
+  const uid = req.user.sub;
+  const one = (sql) => { try { return db.prepare(sql).get(uid) || {}; } catch (_) { return {}; } };
+  const u = (() => { try { return db.prepare('SELECT id,username,email,created_at,is_admin,uploads_disabled,accepted_upload_terms_at,discord_id,discord_name FROM users WHERE id=?').get(uid) || {}; } catch (_) { return {}; } })();
+  const decks = one('SELECT COUNT(*) c FROM decks WHERE user_id=?').c || 0;
+  const publicDecks = one("SELECT COUNT(*) c FROM decks WHERE user_id=? AND is_public=1").c || 0;
+  const splashDecks = one("SELECT COUNT(*) c FROM decks WHERE user_id=? AND is_splash=1").c || 0;
+  const matches = one('SELECT COUNT(*) c FROM tf_matches WHERE user_id=?').c || 0;
+  const lastMatch = one('SELECT ts FROM tf_matches WHERE user_id=? ORDER BY ts DESC LIMIT 1').ts || null;
+  const uploads = one('SELECT COUNT(*) c FROM uploads WHERE user_id=?').c || 0;
+  let live = [];
+  try { live = (db.prepare("SELECT code,status,tourn,tround FROM tf_live WHERE (host_id=? OR guest_id=?) AND status!='done' ORDER BY updated DESC LIMIT 10").all(uid, uid) || [])
+    .map(r => ({ code: r.code, status: r.status, tournament: !!r.tourn, round: r.tround || null })); } catch (_) {}
+  return {
+    now: Date.now(),
+    account: { id: u.id, username: u.username || null, email: u.email || null, createdAt: u.created_at || null, isAdmin: !!u.is_admin },
+    flags: { uploadsDisabled: !!u.uploads_disabled, acceptedUploadTermsAt: u.accepted_upload_terms_at || null },
+    discord: { linked: !!u.discord_id, name: u.discord_name || null },
+    counts: { decks, publicDecks, splashDecks, matches, uploads },
+    lastMatchTs: lastMatch,
+    liveMatches: live
+  };
+});
 app.post('/api/tf/match', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
   const b=req.body||{}; const games=tfValidGames(b.games); if(!games.length) return reply.code(400).send({error:'No games in match.'});
   const ts=Number.isFinite(+b.ts)?+b.ts:Date.now();

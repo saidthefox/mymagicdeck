@@ -142,6 +142,16 @@ try {
     const tfNoAuth = await Ja('/tf/matches', null, null);
     assert(tfNoAuth.status === 401, 'GET /tf/matches without auth → 401');
 
+    // Diagnostics snapshot (read-only, own account)
+    const dgAdd = await Ja('/tf/match', { method:'POST', body: JSON.stringify(tfm) }, G);
+    const dg = await Ja('/diag', null, G);
+    assert(dg.status === 200 && dg.body.account && dg.body.counts && typeof dg.body.counts.decks === 'number' && dg.body.counts.matches >= 1, 'GET /diag → own account + counts');
+    // (smoke uses synthetic JWTs with no users row, so account.id is absent here — real users have one.)
+    assert(dg.body.account && typeof dg.body.account === 'object' && Array.isArray(dg.body.liveMatches) && dg.body.flags && 'uploadsDisabled' in dg.body.flags && dg.body.discord, 'GET /diag → flags + liveMatches + discord shape');
+    const dgNoAuth = await Ja('/diag', null, null);
+    assert(dgNoAuth.status === 401, 'GET /diag without auth → 401');
+    await Ja('/tf/match/' + dgAdd.body.id, { method:'DELETE' }, G);
+
     // --- 2040 LIVE (shared match between two accounts) ---
     const LH = tok(991000+Math.floor(Math.random()*9000),'live_host'), LG = tok(991100+Math.floor(Math.random()*9000),'live_guest'), LX = tok(991200+Math.floor(Math.random()*9000),'live_x');
     const lc = await Ja('/tf/live', { method:'POST', body: JSON.stringify({ myDeck:'Mono-U' }) }, LH);

@@ -310,6 +310,7 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | GET | `/api/tf/matches` | yes | your recent matches (most recent first) |
 | POST | `/api/tf/match` | yes | save a match `{ts,opponent,myDeck,theirDeck,notes,games:[{result,mulligans}],result}` → `{id}` |
 | DELETE | `/api/tf/match/:id` | yes | delete one of your matches |
+| GET | `/api/diag` | yes | read-only snapshot of YOUR OWN account (account, counts, flags, discord, open live matches) — powers the Diagnostics program. Own data only, no writes |
 | POST | `/api/tf/live` | yes | create a shared live match `{myDeck?}` → `{code,status,...}` |
 | POST | `/api/tf/live/:code/join` | yes | join a live match `{myDeck?}` (as the guest) |
 | GET | `/api/tf/live/:code` | yes | poll the live match state (participant only, your POV) |

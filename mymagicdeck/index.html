@@ -1319,6 +1319,18 @@
     .lc-half.lc-flip .lc-name{transform:rotate(180deg)}
     .lc-ovbtns.lc-ro{opacity:.7}
     .lc-rolbl{font-size:12px;color:#7CFC00;font-family:Tahoma,sans-serif}
+    /* Diagnostics program */
+    .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
+    .diag-col{background:var(--bg,#0e0e0e);border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px}
+    .diag-h{font-weight:800;color:var(--text-bright,#fff);margin-bottom:6px;font-size:.92rem}
+    .diag-row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.84rem}
+    .diag-row:last-child{border-bottom:0}
+    .diag-k{color:var(--text-dim,#9aa6b6);flex:0 0 auto}
+    .diag-v{text-align:right;word-break:break-word}
+    .diag-note{color:var(--text-dim,#9aa6b6);font-size:.84rem;padding:4px 0}
+    .diag-errs{margin-top:6px;font-family:ui-monospace,Menlo,monospace;font-size:.74rem;color:#ff8a8a;max-height:120px;overflow:auto;line-height:1.4}
+    .diag-acts{display:flex;align-items:center;gap:10px}
+    .diag-hint{color:var(--text-dim,#9aa6b6);font-size:.74rem}
     .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
     .tf-btn:active{border-color:#808080 #fff #fff #808080}
     .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
@@ -8049,6 +8061,50 @@ function mpRender(body){
   body._mpStop=()=>{ if(body._mpRAF){cancelAnimationFrame(body._mpRAF);body._mpRAF=null;} if(ro){try{ro.disconnect();}catch(e){}} };
   body._mpRAF=requestAnimationFrame(step);
 }
+// ===== Diagnostics — read-only "both sides" snapshot for the scout (server truth + client state) =====
+let _diagErr=[];
+(function(){ try{
+  window.addEventListener('error',e=>{ _diagErr.push({t:Date.now(), m:(e&&e.message)||'error', src:((e&&e.filename||'').split('/').pop()||'')+(e&&e.lineno?':'+e.lineno:'')}); if(_diagErr.length>60)_diagErr.shift(); });
+  window.addEventListener('unhandledrejection',e=>{ _diagErr.push({t:Date.now(), m:'promise: '+((e&&e.reason&&e.reason.message)||e&&e.reason||'rejection'), src:''}); if(_diagErr.length>60)_diagErr.shift(); });
+}catch(_){} })();
+function diagRender(body){ if(!body)return;
+  const esc=(typeof _mgEsc==='function')?_mgEsc:(s=>String(s));
+  const fmt=ms=>ms?new Date(ms).toLocaleString():'—';
+  const row=(k,v)=>'<div class="diag-row"><span class="diag-k">'+esc(k)+'</span><span class="diag-v">'+v+'</span></div>';
+  const client=()=>{ const open=(typeof mgwOpenKeys==='function')?mgwOpenKeys():[]; const front=(typeof mgwFrontKey==='function')?mgwFrontKey():null; const d=(typeof currentDeck==='function')?currentDeck():null;
+    const nm=k=>(typeof MGW_APPS!=='undefined'&&MGW_APPS[k]&&MGW_APPS[k].title)?MGW_APPS[k].title:k;
+    return { open, front, nm, deck:d?{name:d.name, cards:(d.cards||d.mainboard||[]).length}:null,
+      uploadsEnabled:(typeof UPLOADS_ENABLED!=='undefined')?UPLOADS_ENABLED:null,
+      signedIn:!!(typeof state!=='undefined'&&state.user), username:(typeof state!=='undefined'&&state.user)?state.user.username:null }; };
+  const draw=(server)=>{ const c=client(); const errs=(typeof _diagErr!=='undefined'?_diagErr:[]); let sv;
+    if(server&&server.error){ sv='<div class="diag-note">Sign in as your scout account to see server truth. <span style="opacity:.7">('+esc(server.error)+')</span></div>'; }
+    else if(!server){ sv='<div class="diag-note">Loading…</div>'; }
+    else { sv=row('Account', esc(server.account.username||'—')+(server.account.isAdmin?' <b style="color:#ffd27a">(admin)</b>':'')+' · id '+(server.account.id||'?'))
+      +row('Email', esc(server.account.email||'—'))
+      +row('Joined', fmt(server.account.createdAt?server.account.createdAt*1000:null))
+      +row('Decks', server.counts.decks+' <span style="opacity:.7">('+server.counts.publicDecks+' public · '+server.counts.splashDecks+' splash)</span>')
+      +row('Match history', server.counts.matches+' <span style="opacity:.7">· last '+fmt(server.lastMatchTs)+'</span>')
+      +row('Uploads', server.counts.uploads+(server.flags.uploadsDisabled?' <b style="color:#ff8a8a">(disabled for this account)</b>':''))
+      +row('Discord', server.discord.linked?('linked'+(server.discord.name?' · '+esc(server.discord.name):'')):'not linked')
+      +row('Live matches', server.liveMatches.length?server.liveMatches.map(m=>esc(m.code)+' ('+esc(m.status)+(m.tournament?' 🏆R'+(m.round||'?'):'')+')').join(', '):'none open'); }
+    body.innerHTML='<div class="diag-wrap">'+
+      '<div class="diag-col"><div class="diag-h">🖥️ Server — your account</div>'+sv+'</div>'+
+      '<div class="diag-col"><div class="diag-h">🪟 This session — client</div>'+
+        row('Signed in', c.signedIn?('yes · '+esc(c.username||'')):'<b style="color:#ff8a8a">no</b>')+
+        row('Active deck', c.deck?(esc(c.deck.name||'(untitled)')+' · '+c.deck.cards+' cards'):'—')+
+        row('Uploads flag', c.uploadsEnabled===false?'<b style="color:#ffd27a">paused (UPLOADS_ENABLED=false)</b>':(c.uploadsEnabled===true?'on':'?'))+
+        row('Open programs', c.open.length?c.open.map(k=>esc(c.nm(k))).join(', '):'none')+
+        row('Frontmost', c.front?esc(c.nm(c.front)):'—')+
+        row('Console errors', errs.length?('<b style="color:#ff8a8a">'+errs.length+'</b>'):'0')+
+        (errs.length?'<div class="diag-errs">'+errs.slice(-8).map(e=>'<div>• '+esc((e.m||'')+(e.src?'  ['+e.src+']':''))+'</div>').join('')+'</div>':'')+
+      '</div>'+
+      '<div class="diag-acts"><button class="btn small" data-diag-refresh>↻ Refresh</button> <span class="diag-hint">Read-only. Confirms the UI matches the backend for your account.</span></div>'+
+    '</div>';
+    const rb=body.querySelector('[data-diag-refresh]'); if(rb)rb.onclick=()=>diagRender(body); };
+  draw(null);
+  if(typeof apiFetch==='function'&&typeof state!=='undefined'&&state.user){ apiFetch('/diag').then(draw).catch(e=>draw({error:(e&&e.status===401)?'401 unauthorized':'unreachable'})); }
+  else { draw({error:'not signed in'}); }
+}
 if(window.DeckOS){
   if(typeof widgetRegister==='function')DeckOS.widgets={ register:widgetRegister, mount:widgetMount, unmount:widgetUnmount, types:()=>Object.keys(WIDGET_TYPES) }; // mod API (now that DeckOS exists)
   DeckOS.calendar={ events:calAllEvents, addSource:calAddSource, add:calAdd, remove:calRemove };
@@ -8062,6 +8118,7 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'520px', category:'games', mount(body){ cardleRender(body); } });
   DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
+  DeckOS.registerProgram({ id:'diagnostics', title:'Diagnostics', icon:'🩺', width:'600px', desktop:true, mount(body){ diagRender(body); } });
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
