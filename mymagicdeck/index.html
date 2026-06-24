@@ -1340,7 +1340,7 @@
     .lc-tbox-acts{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
     .lc-tbox-done{font-size:.85rem;color:#7CFC00;margin:6px 0}
     .lc-tbox-note{font-size:.7rem;color:#8b97a8;line-height:1.4;margin-top:4px}
-    .lc-tchip{position:absolute;right:8px;bottom:8px;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
+    .lc-tchip{position:absolute;right:8px;bottom:25%;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
     .lc-tchip:active{filter:brightness(1.2)}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
@@ -7554,7 +7554,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const sideHtml = L
     ? '<div class="lc-side"><div class="lc-side-inner"><div class="lc-ctl"><button data-lcreset title="Reset my life to '+(L.startLife||20)+'">↺</button></div></div></div>'
     : '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>';
-  const stripHtml = L ? (L.tourn ? (_tfLive.min ? lcTournChip(L) : lcTournBox(L)) : lcLiveStrip(L)) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
+  const stripHtml = L ? (L.tourn ? (lcTrackerHtml(s,true) + (_tfLive.min ? lcTournChip(L) : lcTournBox(L))) : lcLiveStrip(L)) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs'+(L?' lc-live':'')+'">'+
       half(0,true)+half(1,false)+ sideHtml + stripHtml + lcDeckBtnHtml(s,L) +
     '</div></div>';
@@ -7568,7 +7568,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   body.querySelectorAll('[data-tf]').forEach(b=>b.addEventListener('click',e=>{ e.preventDefault(); const a=b.getAttribute('data-tf');
     if(a==='start'){ s.tr={active:true,gameNo:1,curMull:0,games:[],nexted:false}; lcSave(); lcRender(body); }
     else if(a==='mull'){ if(s.tr){ s.tr.curMull=(s.tr.curMull||0)+1; lcSave(); lcRender(body); } }
-    else if(a==='next'){ tfResultPrompt(body,'next'); }
+    else if(a==='next'){ if(typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.st&&_tfLive.st.tourn){ s.tr=s.tr||{active:true,gameNo:1,curMull:0,games:[]}; s.tr.gameNo=(s.tr.gameNo||1)+1; s.tr.curMull=0; lcSave(); _tfLive.min=false; lcRender(body); } else tfResultPrompt(body,'next'); }
     else if(a==='finish'){ tfResultPrompt(body,'finish'); }
     else if(a==='live'){ tfLivePanel(body); }
     else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); } }));
@@ -7639,15 +7639,17 @@ function mhDelete(id,body){ if(!confirm('Delete this match?'))return; tfSaveMatc
   if(state.user&&apiToken()&&String(id).startsWith('s'))apiFetch('/tf/match/'+id,{method:'DELETE'}).catch(()=>{}); mhPaint(body); }
 function tfTally(games){ let w=0,l=0,d=0; (games||[]).forEach(g=>{ if(g.result==='W')w++; else if(g.result==='L')l++; else d++; }); return { w,l,d, res: w>l?'W':(l>w?'L':'D') }; }
 function tfResLabel(r){ return r==='W'?'Win':r==='L'?'Loss':'Draw'; }
-function lcTrackerHtml(s){ const t=s.tr||{};
-  if(!t.active) return '<div class="tf-track"><button class="tf-btn tf-start" data-tf="start">▶ Start Match</button>'+
+function lcTrackerHtml(s, tourn){ const t=s.tr||{};
+  if(!t.active && !tourn) return '<div class="tf-track"><button class="tf-btn tf-start" data-tf="start">▶ Start Match</button>'+
       '<button class="tf-btn" data-tf="live" title="Live match with a friend">🔗 Live</button>'+
       '<button class="tf-btn tf-hist" data-tf="history" title="Match history">📋</button></div>';
+  // tournament mode shares the gameplay flow (so Mulligan is available) but Next Game opens the report box
+  // and there's no local Finish (the tournament box handles confirm/report).
   return '<div class="tf-track">'+
     '<button class="tf-btn tf-mull" data-tf="mull">🌀 Mulligan ('+(t.curMull||0)+')</button>'+
     '<div class="tf-game">Game '+(t.gameNo||1)+'</div>'+
     '<button class="tf-btn" data-tf="next">⏭ Next Game</button>'+
-    (t.nexted?'<button class="tf-btn tf-fin" data-tf="finish">🏁 Finish Match</button>':'')+
+    (!tourn && t.nexted?'<button class="tf-btn tf-fin" data-tf="finish">🏁 Finish Match</button>':'')+
     '</div>';
 }
 function tfOverlay(body){ const fs=body.querySelector('.lc-fs'); if(!fs)return null; let ov=fs.querySelector('.tf-overlay'); if(ov)ov.remove(); ov=document.createElement('div'); ov.className='tf-overlay'; fs.appendChild(ov); return ov; }
@@ -7701,6 +7703,8 @@ function tfLiveStart(body, st){ tfLiveStop(); _tfLive={ code:st.code, st, body, 
   if(typeof lcRender==='function')lcRender(body); tfLivePoll();
   // Stamp your picked deck onto the match if it isn't set yet (esp. resumed tournament matches you didn't create/join).
   try{ const d=(typeof lcLoad==='function')&&lcLoad().deck; if(d && st && !st.myDeck && (st.status==='live'||st.status==='open')) lcSetDeck(d); }catch(e){}
+  // Tournament matches share the gameplay flow so Mulligan is available — auto-start it on entry.
+  try{ if(st && st.tourn){ const s=lcLoad(); if(!s.tr||!s.tr.active){ s.tr={active:true,gameNo:1,curMull:0,games:[],nexted:false}; lcSave(); } } }catch(e){}
   if(st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success'); }
 function tfLiveLifeAdjust(d){ if(!_tfLive)return; _tfLive.myLife=(_tfLive.myLife||0)+d; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); clearTimeout(_tfLive.lifeTimer); _tfLive.lifeTimer=setTimeout(tfLivePushLife,450); }
 function tfLivePushLife(){ if(!_tfLive)return; const code=_tfLive.code, life=_tfLive.myLife; apiFetch('/tf/live/'+code+'/life',{method:'POST',body:JSON.stringify({life})}).then(st=>{ if(_tfLive&&_tfLive.code===code)_tfLive.st=st; }).catch(()=>{}); }

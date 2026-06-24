@@ -34,6 +34,7 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   _tfLive.st={ code:'ABCDE', status:'live', role:'host', opponent:'Rival', games:[{result:'W'}], tally:{w:1,l:0,d:0}, result:'W', startLife:20, myLife:18, oppLife:15, tourn:'t1', round:2, confirmedMe:false, confirmedOpp:false };
   lcRender(body); await wait(20);
   out.tournBox = !!$('.lc-tbox'); out.tournCtx = /Round 2/.test(($('.lc-tbox-hd')||{}).textContent||''); out.confirmBtn = /Confirm/.test(($('[data-lfin]')||{}).textContent||'');
+  out.mulliganBtn = !!$('[data-tf="mull"]') && !!$('[data-tf="next"]');   // gameplay flow (mulligan + next game) available in tournament mode
   // X → minimize to trophy chip → reopen
   $('[data-tboxmin]').click(); await wait(20);
   out.chip = !!$('.lc-tchip') && !$('.lc-tbox');
@@ -50,7 +51,7 @@ console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.liveEntry && r.guestPrompt && r.notTrapped && r.oppName
   && r.lives.includes('15') && r.lives.includes('18') && r.oppReadOnly && r.myEditable
   && r.recordBtns===3 && r.finBtn && r.leaveBtn && r.lifeBumped
-  && r.waitStrip && r.tournBox && r.tournCtx && r.confirmBtn && r.chip && r.reopened && r.doneStrip
+  && r.waitStrip && r.tournBox && r.tournCtx && r.confirmBtn && r.mulliganBtn && r.chip && r.reopened && r.doneStrip
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
