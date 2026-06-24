@@ -3468,7 +3468,7 @@ app.get('/api/tf/matches', { preHandler:authenticate }, async (req)=>{
 
 // ── INTERACTIONS — public match ledger (zKillboard-style). Read-only, guests allowed. Names + deck
 // names only (no emails / user ids leaked). ───────────────────────────────────────────────────────
-const IX_DECK_MASK='★★★★★';
+const IX_DECK_MASK='*****';
 function ixOut(r, concluded){ let games=[]; try{ games=JSON.parse(r.games||'[]'); }catch(_){}
   // Hide decklists while a tournament is still running (reveal once concluded). Casual matches always show.
   const hide = r.tourn && !(concluded && concluded.has(r.tourn));
