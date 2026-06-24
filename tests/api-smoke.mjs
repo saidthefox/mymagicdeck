@@ -281,11 +281,17 @@ try {
           assert(r0.status === 200 && r0.body.results.length === 0, 'no result reported until BOTH confirm');
           const f2 = await Ja('/tf/live/' + code + '/finish', { method:'POST', body:'{}' }, TB);
           assert(f2.status === 200 && f2.body.status === 'done', 'both confirm → match locked');
-          // Interactions ledger: the finished tournament match is durably recorded — public, both decks, traceable
+          // Interactions ledger: durably recorded + public, but decklists are obfuscated until the tournament concludes
+          const ixHidden = await J('/interactions?tourn=' + tourn);
+          const m0 = (ixHidden.body.interactions||[]).find(x => x.tourn === tourn);
+          assert(ixHidden.status === 200 && m0 && m0.decksHidden === true && m0.a.deck !== 'Mono-Red Aggro' && m0.b.deck !== 'Azorius Control',
+            'decklists are obfuscated while the tournament is ongoing');
+          const conc = await Jb('/integrations/discord/tournament/' + tourn + '/conclude', { method:'POST', body:'{}' });
+          assert(conc.status === 200 && conc.body.concluded, 'bot /conclude marks the tournament concluded');
           const ixFeed = await J('/interactions?tourn=' + tourn);
           assert(ixFeed.status === 200 && ixFeed.body.interactions.some(x => x.tourn === tourn
             && [x.a.deck, x.b.deck].includes('Mono-Red Aggro') && [x.a.deck, x.b.deck].includes('Azorius Control')),
-            'interactions feed records the match with both decks');
+            'decklists are revealed once the tournament has concluded');
           const ixT = await J('/interactions/tournament/' + tourn);
           assert(ixT.status === 200 && ixT.body.matches.length >= 1 && ixT.body.champion && ixT.body.champion.deck && ixT.body.path.length >= 1,
             'tournament view returns a champion + winning-deck path');
@@ -314,6 +320,7 @@ try {
         sdb.prepare('DELETE FROM users WHERE id=?').run(id);
       } });
       try { sdb.prepare("DELETE FROM interactions WHERE tourn LIKE 'smoketourn%'").run(); } catch (_) {}
+      try { sdb.prepare("DELETE FROM concluded_tournaments WHERE tourn LIKE 'smoketourn%'").run(); } catch (_) {}
       // synthetic tok() users (live_host/guest etc.) use ids in the 9xxxxx range and have no users row → purge their ledger rows
       try { sdb.prepare('DELETE FROM interactions WHERE a_user_id >= 900000 OR b_user_id >= 900000').run(); } catch (_) {}
       tx(); sdb.close();
