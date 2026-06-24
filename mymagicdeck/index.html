@@ -8606,27 +8606,26 @@ function mgRenderDesktop(){
   const decks=Object.values(state.decks||{}).filter(d=>!binned.has(d.id)&&inFolder(d));
   let icons='';
   if(mgCurrentFolder!==null)icons+='<div class="mg-icon" data-up="1"><div class="mg-ico">📂</div><div class="mg-ilbl">.. up</div></div>';
-  // core program icons first (at the top), then decks, then folders (new folders spawn after)
-  // Default desktop layout order: Recycle Bin, Storage, Calendar, Notes, HUD, Tournaments,
-  // MyMagicDeck, Splash, CGG, Card Duel, TWENTYFOURTY (then decks, then folders).
+  // Default desktop order (new users): Recycle Bin · MyMagicDeck · Splash Builder · MyMagicBot · Widgets ·
+  // Notes · Documents · Display — then the folder bubbles (Comms · Counters · Games · Sites) append after.
+  // Foldered programs are still emitted (so they reappear if a folder is dissolved) but get pulled into bubbles.
   if(mgCurrentFolder===null)icons+='<div class="mg-icon" id="mg-bin"><div class="mg-ico">🗑️</div><div class="mg-ilbl">Recycle Bin</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="storage"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Gallery</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mymagicbot"><div class="mg-ico">🤖</div><div class="mg-ilbl">MyMagicBot</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="widgets"><div class="mg-ico">🧩</div><div class="mg-ilbl">Widgets</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="notes"><div class="mg-ico">🗒️</div><div class="mg-ilbl">Notes</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="documents"><div class="mg-ico">📁</div><div class="mg-ilbl">Documents</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="hud"><div class="mg-ico">🖥️</div><div class="mg-ilbl">Display</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="widgets"><div class="mg-ico">🧩</div><div class="mg-ilbl">Widgets</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mail"><div class="mg-ico">📬'+(_mailUnread>0?'<span style="background:#e24b4a;color:#fff;border-radius:8px;font-size:9px;padding:0 4px;margin-left:-6px;vertical-align:super">'+_mailUnread+'</span>':'')+'</div><div class="mg-ilbl">Mail</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mymagicbot"><div class="mg-ico">🤖</div><div class="mg-ilbl">MyMagicBot</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="calendar"><div class="mg-ico">📅</div><div class="mg-ilbl">Calendar</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="tournaments"><div class="mg-ico">🏆</div><div class="mg-ilbl">Tournaments</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" id="mg-backsearch"><div class="mg-ico">✦</div><div class="mg-ilbl">MyMagicDeck</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="splash"><div class="mg-ico">🖼️</div><div class="mg-ilbl">Splash Builder</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
-  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">Basics</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="mail"><div class="mg-ico">📬'+(_mailUnread>0?'<span style="background:#e24b4a;color:#fff;border-radius:8px;font-size:9px;padding:0 4px;margin-left:-6px;vertical-align:super">'+_mailUnread+'</span>':'')+'</div><div class="mg-ilbl">Mail</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="manapool"><div class="mg-ico">'+MP_ICON+'</div><div class="mg-ilbl">Mana Pool</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="twentyfourty"><div class="mg-cggart"><b style="color:#e24b4a;font-size:15px">20</b><b style="color:#4caf7d;font-size:15px">40</b></div><div class="mg-ilbl">TWENTYFOURTY</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="dicebag"><div class="mg-ico">🎲</div><div class="mg-ilbl">Dice Bag</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="landgame"><div class="mg-ico">🏞️</div><div class="mg-ilbl">Basics</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="battle"><div class="mg-ico">⚔️</div><div class="mg-ilbl">Card Duel</div></div>';
+  if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-cgg="1"><div class="mg-cggart"><b style="color:#e24b4a">CARD</b><b style="color:#5b8def">GUESSER</b><b style="color:#4caf7d">GAME</b></div><div class="mg-ilbl">CGG</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-mtgtop8"><div class="mg-ico">🌐</div><div class="mg-ilbl">MTGTop8</div></div>';
   if(mgCurrentFolder===null&&embedded)icons+='<div class="mg-icon" data-app="web-stonesmtg"><div class="mg-ico">🪨</div><div class="mg-ilbl">Stones MTG</div></div>';
   if(mgCurrentFolder===null&&embedded&&typeof webUserShortcuts==='function')webUserShortcuts().forEach(a=>{ icons+='<div class="mg-icon" data-app="web-'+a.id+'"><div class="mg-ico">'+(a.icon||'🌐')+'</div><div class="mg-ilbl">'+_mgEsc(a.title)+'</div></div>'; });
@@ -8718,10 +8717,10 @@ function mgAppFolders(){ try{ return (window.DeckOS&&DeckOS.store.get('appfolder
 // New users start with these app-folder bubbles (seeded once per browser; a returning user's own folders
 // — local or synced from the server — always win, and the seed never re-runs once flagged).
 const DEFAULT_APP_FOLDERS=[
-  { name:'Games',    apps:['landgame','battle','cgg'] },
-  { name:'Sites',    apps:['web-stonesmtg','web-mtgtop8'] },
   { name:'Comms',    apps:['calendar','tournaments','mail'] },
   { name:'Counters', apps:['manapool','twentyfourty','dicebag'] },
+  { name:'Games',    apps:['landgame','battle','cgg'] },
+  { name:'Sites',    apps:['web-stonesmtg','web-mtgtop8'] },
 ];
 function mgSeedDefaultFolders(){ try{ if(!window.DeckOS)return;
   if(DeckOS.store.get('appfolders_seeded'))return;

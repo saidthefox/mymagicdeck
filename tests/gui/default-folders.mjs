@@ -18,6 +18,7 @@ console.log(JSON.stringify(r));
 console.log('PAGE_ERRORS:', errs.length, errs.slice(0,4));
 const eq=(a,b)=>a.length===b.length&&a.every((x,i)=>x===b[i]);
 const ok = r.count===4 && r.afterReseed===4
+  && eq(r.names,['Comms','Counters','Games','Sites'])
   && eq(r.games,['landgame','battle','cgg'])
   && eq(r.sites,['web-stonesmtg','web-mtgtop8'])
   && eq(r.comms,['calendar','tournaments','mail'])
