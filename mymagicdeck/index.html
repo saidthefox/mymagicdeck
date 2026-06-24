@@ -6373,6 +6373,8 @@ function renderWidgetsApp(body){ if(!body)return;
 const mgwState={}; let mgwZ=5200; let mgUiZ=1000; // mgUiZ = shared focus counter for minis inside the desktop (last-touched on top)
 function mgwWin(key){const a=MGW_APPS[key];const ov=document.getElementById(a.overlay);if(!ov)return null;return a.win?ov.querySelector(a.win):ov;}
 function mgwOpenKeys(){return Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s!=='closed');}
+// The single frontmost open program (highest overlay z-index) — only it is "active" on the taskbar.
+function mgwFrontKey(){ let best=null, bz=-1; for(const k of mgwOpenKeys()){ const st=mgwState[k]; if(!st||st.s!=='full')continue; const a=MGW_APPS[k], ov=a&&document.getElementById(a.overlay); const z=ov?(parseInt(ov.style.zIndex)||0):0; if(z>=bz){ bz=z; best=k; } } return best; }
 function mgwInjectBar(key){
   const a=MGW_APPS[key], win=mgwWin(key); if(!win||win._mgwBar)return; win._mgwBar=1;
   const bar=document.createElement('div'); bar.className='mgw-bar';
@@ -6471,7 +6473,11 @@ function mtaskRender(){ let bar=document.getElementById('mg-mtask'); const on=do
   bar.innerHTML='<button class="mt-start" id="mt-start">Start</button><div class="mt-apps">'+mgwTaskbarHtml()+'</div><button class="mt-desk" id="mt-desk" title="Show desktop (minimize all; tap again to restore)">🖥️</button>';
   const st=bar.querySelector('#mt-start'); if(st)st.onclick=e=>{ e.stopPropagation(); mtaskStartMenu(); };
   const dk=bar.querySelector('#mt-desk'); if(dk)dk.onclick=mtaskShowDesktop;
-  bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); const full=mgwState[k]&&mgwState[k].s==='full'; if(full){ if(typeof mgwMin==='function')mgwMin(k); } else if(typeof mgwToFull==='function')mgwToFull(k); _mtaskMinned=null; mtaskRender(); }); }
+  // Tap a tray icon: if it's open AND frontmost → minimize; if open-but-behind or minimized → bring to front.
+  bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); const st=mgwState[k];
+    if(st && st.s==='full' && k===mgwFrontKey()){ if(typeof mgwMin==='function')mgwMin(k); }
+    else if(typeof mgwToFull==='function')mgwToFull(k);
+    _mtaskMinned=null; mtaskRender(); }); }
 let _mtaskMinned=null;
 function mtaskShowDesktop(){ const full=Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s==='full');
   if(full.length){ _mtaskMinned=full.slice(); full.forEach(k=>{ if(typeof mgwMin==='function')mgwMin(k); }); }
@@ -6480,7 +6486,7 @@ function mtaskShowDesktop(){ const full=Object.keys(mgwState).filter(k=>mgwState
 function mtaskStartMenu(){ let m=document.getElementById('mt-startmenu'); if(m){ m.remove(); return; }
   m=document.createElement('div'); m.id='mt-startmenu'; m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); if(typeof mgWireStartMenu==='function')mgWireStartMenu(m);
   setTimeout(()=>{ const close=ev=>{ if(!m.contains(ev.target)&&ev.target.id!=='mt-start'){ m.remove(); document.removeEventListener('pointerdown',close,true); } }; document.addEventListener('pointerdown',close,true); },0); }
-function mgwTaskbarHtml(){return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(mgwState[k]&&mgwState[k].s==='full'?' active':'')+'" data-mgw="'+k+'" title="'+_mgEsc(MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
+function mgwTaskbarHtml(){ const front=mgwFrontKey(); return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(k===front?' active':'')+'" data-mgw="'+k+'" title="'+_mgEsc(MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
 
 // ===== WM (Level B): THE desktop window manager — real floating, resizable windows. =====
 // On desktop (body.wm-on) wm* owns every window: the builder/site (wmOpenSite/wmReleaseSite), CGG,
