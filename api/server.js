@@ -3635,8 +3635,21 @@ app.post('/api/tf/live/:code/game', { preHandler:[authenticate, rateLimitLg], sc
   if(row.status==='done') return reply.code(409).send({error:'Match already finished.'});
   let games=[]; try{ games=JSON.parse(row.games||'[]'); }catch(_){}
   const winner = req.body.result==='draw' ? 'draw' : (req.body.result==='me' ? role : (role==='host'?'guest':'host'));
-  games[req.body.index]={winner}; games=games.slice(0,11).map(g=>g||{winner:'draw'});
-  tfLiveTouch(row.code, { games:JSON.stringify(games), status:'live', confirm_host:0, confirm_guest:0 }); // a new game invalidates prior confirmations
+  // Safeguard: a player can only overwrite an existing game or append the very next one — never skip ahead
+  // (skipping used to backfill phantom 'draw' games and let one player drag the match into a contradictory
+  // state faster than the other could keep up).
+  const idx = Math.min(Math.max(0, req.body.index|0), games.length);
+  games[idx]={winner}; games=games.slice(0,11).map(g=>g||{winner:'draw'});
+  tfLiveTouch(row.code, { games:JSON.stringify(games), status:'live', confirm_host:0, confirm_guest:0 }); // a new/changed game invalidates prior confirmations
+  return tfLiveOut(tfLiveGet(row.code), req.user.sub);
+});
+// Redo: clear the recorded games and confirmations so the players can re-report (a safety valve for a
+// botched/out-of-sync match). Blocked once the match is done/reported.
+app.post('/api/tf/live/:code/reset', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
+  const row=tfLiveGet(req.params.code); if(!row) return reply.code(404).send({error:'Match not found.'});
+  const role=tfLiveRole(row, req.user.sub); if(!role) return reply.code(403).send({error:'Not your match.'});
+  if(row.status==='done') return reply.code(409).send({error:'Match already finished.'});
+  tfLiveTouch(row.code, { games:'[]', confirm_host:0, confirm_guest:0, status:'live' });
   return tfLiveOut(tfLiveGet(row.code), req.user.sub);
 });
 // Finish: casual matches lock immediately; tournament matches require BOTH players to confirm the same

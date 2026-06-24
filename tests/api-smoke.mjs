@@ -265,6 +265,11 @@ try {
           const dk = await Ja('/tf/live/' + code + '/deck', { method:'POST', body: JSON.stringify({ deck:'Mono-Red Aggro' }) }, TA);
           assert(dk.status === 200, 'POST /deck sets the deck you are playing');
           await Ja('/tf/live/' + code + '/deck', { method:'POST', body: JSON.stringify({ deck:'Azorius Control' }) }, TB);
+          // safeguards: a skipped index clamps to the next slot (no phantom-draw backfill); reset clears games
+          const clamp = await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:9, result:'me' }) }, TA);
+          assert(clamp.status === 200 && clamp.body.games.length === 1, 'game index clamps to next slot (no phantom games)');
+          const rst = await Ja('/tf/live/' + code + '/reset', { method:'POST', body:'{}' }, TA);
+          assert(rst.status === 200 && rst.body.games.length === 0, 'redo/reset clears recorded games');
           const lg2 = await Ja('/tf/live/' + code, null, TB);
           assert(lg2.status === 200 && lg2.body.oppLife === 17 && lg2.body.myLife === 20, 'opponent sees my life synced (17); their own still 20');
           await Ja('/tf/live/' + code + '/game', { method:'POST', body: JSON.stringify({ index:0, result:'me' }) }, TA);  // A wins g1

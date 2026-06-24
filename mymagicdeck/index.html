@@ -7574,7 +7574,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const sideHtml = L
     ? '<div class="lc-side"><div class="lc-side-inner"><div class="lc-ctl"><button data-lcreset title="Reset my life to '+(L.startLife||20)+'">↺</button></div></div></div>'
     : '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>';
-  const stripHtml = L ? (L.tourn ? (lcTrackerHtml(s,true) + (_tfLive.min ? lcTournChip(L) : lcTournBox(L))) : lcLiveStrip(L)) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
+  const stripHtml = L ? (L.tourn ? ((L.status==='done'?'':lcTrackerHtml(s,true)) + (_tfLive.min ? lcTournChip(L) : lcTournBox(L))) : lcLiveStrip(L)) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs'+(L?' lc-live':'')+'">'+
       half(0,true)+half(1,false)+ sideHtml + stripHtml + lcDeckBtnHtml(s,L) +
     '</div></div>';
@@ -7597,6 +7597,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   body.querySelectorAll('[data-lg]').forEach(b=>b.addEventListener('click',()=>tfLiveRecord(b.getAttribute('data-lg'))));
   const lf=body.querySelector('[data-lfin]'); if(lf&&!lf.disabled)lf.addEventListener('click',()=>tfLiveFinish());
   const ll=body.querySelector('[data-lleave]'); if(ll)ll.addEventListener('click',()=>tfLiveLeave());
+  const lrd=body.querySelector('[data-lredo]'); if(lrd)lrd.addEventListener('click',()=>tfLiveRedo());
   const wc=body.querySelector('[data-lcc]'); if(wc)wc.addEventListener('click',()=>tfCopy(_tfLive&&_tfLive.code));
   const wl=body.querySelector('[data-lcl]'); if(wl)wl.addEventListener('click',()=>tfCopy(tfLiveInviteUrl(_tfLive&&_tfLive.code)));
   const wx=body.querySelector('[data-lcancel]'); if(wx)wx.addEventListener('click',()=>tfLiveLeave());
@@ -7716,6 +7717,7 @@ function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
   apiFetch('/tf/live/'+code).then(st=>{ if(!_tfLive||_tfLive.code!==code)return;
     const prev=_tfLive.st; if(prev&&prev.status==='open'&&st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success');
     _tfLive.st=st;                                   // keep our own optimistic life (myLife is client-authoritative)
+    if(st.status==='done'){ try{ const ls=lcLoad(); if(ls.tr&&ls.tr.active){ ls.tr.active=false; lcSave(); } }catch(e){} } // match over → drop the local game flow
     // Don't rebuild the board while an overlay (deck picker, etc.) is open — re-rendering destroys it.
     const overlayOpen=_tfLive.body&&_tfLive.body.querySelector&&_tfLive.body.querySelector('.tf-overlay');
     if(_tfLive.body&&_tfLive.body.isConnected&&!overlayOpen&&typeof lcRender==='function')lcRender(_tfLive.body);
@@ -7740,6 +7742,7 @@ function lcLiveStrip(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'
     '<span class="lc-livegames">G'+(gi+1)+'</span>'+
     '<button class="tf-btn" data-lg="me">I won</button><button class="tf-btn" data-lg="them">They</button><button class="tf-btn" data-lg="draw">Draw</button>'+
     '<button class="tf-btn tf-fin" data-lfin'+finDis+'>'+finLbl+'</button>'+
+    '<button class="tf-btn" data-lredo title="Clear games & re-report">↺</button>'+
     '<button class="tf-btn" data-lleave title="Leave (the match stays open)">✕</button></div>';
 }
 function lcWaitStrip(w){ return '<div class="tf-track lc-livebar"><span class="lc-livehd">🔗 Waiting for opponent · code <b>'+_mgEsc(w.code)+'</b></span>'+
@@ -7754,7 +7757,7 @@ function lcTournBox(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'�
     '<div class="lc-tbox-hd">'+hdr+'</div><div class="lc-tbox-sc">'+sc+'</div>'+
     '<div class="lc-tbox-g">Game '+(gi+1)+' — who won?</div>'+
     '<div class="lc-tbox-acts"><button class="tf-btn" data-lg="me">I won</button><button class="tf-btn" data-lg="them">They won</button><button class="tf-btn" data-lg="draw">Draw</button></div>'+
-    '<div class="lc-tbox-acts"><button class="tf-btn tf-fin" data-lfin'+finDis+'>'+finLbl+'</button></div>'+
+    '<div class="lc-tbox-acts"><button class="tf-btn tf-fin" data-lfin'+finDis+'>'+finLbl+'</button><button class="tf-btn" data-lredo title="Clear games & re-report">↺ Redo</button></div>'+
     '<div class="lc-tbox-note">'+note+'</div></div>'; }
 function lcTournChip(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'–'+t.d:''); return '<button class="lc-tchip" data-tboxmax title="Tap to report · Round '+(L.round||'?')+' vs '+_mgEsc(L.opponent||'opp')+'">🏆 '+sc+'</button>'; }
 function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
@@ -7784,7 +7787,9 @@ function tfLiveJoin(body,code){ const s=(typeof lcLoad==='function')?lcLoad():{}
 function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
   apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } }).catch(()=>{}); }
 function tfLiveFinish(){ if(!_tfLive)return; if(!_tfLive.st.games.length){ if(typeof toast==='function')toast('Record at least one game first','info'); return; }
-  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({ myDeck:((typeof lcLoad==='function'&&lcLoad().deck)||'') })}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } tfSync(); }).catch(()=>{}); }
+  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({ myDeck:((typeof lcLoad==='function'&&lcLoad().deck)||'') })}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(st.status==='done'){ try{ const ls=lcLoad(); if(ls.tr&&ls.tr.active){ ls.tr.active=false; lcSave(); } }catch(e){} } if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } tfSync(); }).catch(()=>{}); }
+function tfLiveRedo(){ if(!_tfLive)return; if(typeof confirm==='function'&&!confirm('Clear the recorded games and re-report this match from scratch?'))return;
+  apiFetch('/tf/live/'+_tfLive.code+'/reset',{method:'POST',body:'{}'}).then(st=>{ if(_tfLive){ _tfLive.st=st; try{ const ls=lcLoad(); if(ls.tr){ ls.tr.gameNo=1; ls.tr.curMull=0; lcSave(); } }catch(e){} if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } }).catch(()=>{}); }
 // Deep link: mymagicdeck.com/?tfmatch=CODE opens 2040 and offers to join.
 function tfLiveCheckDeepLink(){ try{ const c=new URLSearchParams(location.search).get('tfmatch'); if(!c)return;
   history.replaceState(null,'',location.pathname); const code=c.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); if(!code)return;

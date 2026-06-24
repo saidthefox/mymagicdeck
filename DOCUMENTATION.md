@@ -320,6 +320,7 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | GET | `/api/tf/live/mine` | yes | your open/live matches (so tournament pairings appear without a code) |
 | POST | `/api/tf/live/:code/life` | yes | set your life total `{life}` (synced to the opponent's board) |
 | POST | `/api/tf/live/:code/deck` | yes | set the deck you're playing `{deck}` (2040 Deck button → stamps the match) |
+| POST | `/api/tf/live/:code/reset` | yes | redo: clear recorded games + confirmations (blocked once the match is done) |
 | GET | `/api/interactions` | public | match ledger feed, recent-first; `?before=<ts>&limit=&tourn=` |
 | GET | `/api/interactions/tournaments` | public | tournaments present in the ledger (+ match counts) |
 | GET | `/api/interactions/tournament/:tourn` | public | a tournament's matches by round + `champion` + winning-deck `path` |
