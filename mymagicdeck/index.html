@@ -1347,12 +1347,13 @@
     .lc-xtog.open{background:rgba(255,255,255,.18)}
     .lc-half.lc-xmode .lc-life{position:relative;z-index:3}
     .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(80cqw,80cqh);height:min(80cqw,80cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px)),linear-gradient(-45deg,transparent calc(50% - 8px),rgba(200,202,210,.5) calc(50% - 8px),rgba(200,202,210,.5) calc(50% + 8px),transparent calc(50% + 8px))}
-    .lc-xarm{position:absolute;width:50%;height:50%;background:transparent;border:none;color:#e8e8ee;font-weight:800;font-size:clamp(.9rem,5cqmin,1.5rem);cursor:pointer;display:flex;padding:8px;text-shadow:0 1px 3px rgba(0,0,0,.8)}
-    .lc-xarm.nw{left:0;top:0;align-items:flex-start;justify-content:flex-start}
-    .lc-xarm.ne{right:0;top:0;align-items:flex-start;justify-content:flex-end}
-    .lc-xarm.sw{left:0;bottom:0;align-items:flex-end;justify-content:flex-start}
-    .lc-xarm.se{right:0;bottom:0;align-items:flex-end;justify-content:flex-end}
-    .lc-xarm:active{background:rgba(255,255,255,.12);border-radius:8px}
+    /* Four 90° wedge buttons — the triangular areas BETWEEN the X's diagonal lines (top/right/bottom/left) */
+    .lc-xarm{position:absolute;inset:0;background:transparent;border:none;color:#e8e8ee;font-weight:800;font-size:clamp(.9rem,5cqmin,1.5rem);cursor:pointer;display:flex;padding:7px;text-shadow:0 1px 3px rgba(0,0,0,.85)}
+    .lc-xarm.top{clip-path:polygon(50% 50%,0 0,100% 0);align-items:flex-start;justify-content:center}
+    .lc-xarm.right{clip-path:polygon(50% 50%,100% 0,100% 100%);align-items:center;justify-content:flex-end}
+    .lc-xarm.bottom{clip-path:polygon(50% 50%,100% 100%,0 100%);align-items:flex-end;justify-content:center}
+    .lc-xarm.left{clip-path:polygon(50% 50%,0 100%,0 0);align-items:center;justify-content:flex-start}
+    .lc-xarm:active{background:rgba(255,255,255,.16)}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
     .diag-col{background:var(--bg,#0e0e0e);border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px}
@@ -7595,10 +7596,10 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   if(!Array.isArray(s.x))s.x=[false,false];
   // Per-player "X" life pad: a big light-grey X under the 20, 4 tappable arms (−5/+5/−1/+1). Toggled by xTog.
   const xPad=i=>'<div class="lc-xpad">'+
-      '<button class="lc-xarm nw" data-lc="'+i+'" data-d="-5">−5</button>'+
-      '<button class="lc-xarm ne" data-lc="'+i+'" data-d="5">+5</button>'+
-      '<button class="lc-xarm sw" data-lc="'+i+'" data-d="-1">−1</button>'+
-      '<button class="lc-xarm se" data-lc="'+i+'" data-d="1">+1</button></div>';
+      '<button class="lc-xarm top" data-lc="'+i+'" data-d="5">+5</button>'+
+      '<button class="lc-xarm right" data-lc="'+i+'" data-d="1">+1</button>'+
+      '<button class="lc-xarm bottom" data-lc="'+i+'" data-d="-5">−5</button>'+
+      '<button class="lc-xarm left" data-lc="'+i+'" data-d="-1">−1</button></div>';
   const xTog=i=>'<button class="lc-xtog'+(s.x[i]?' open':'')+'" data-xtog="'+i+'" title="'+(s.x[i]?'Show the step buttons':'X life pad')+'">'+(s.x[i]?'⊞':'✕')+'</button>';
   const lifeOf=i=> L ? (i===0 ? L.oppLife : _tfLive.myLife) : s.players[i].life;
   const liveEdit=i=> L ? (i===1) : true;                                  // in a live match only my (bottom) half is editable

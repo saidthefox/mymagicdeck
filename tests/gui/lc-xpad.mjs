@@ -17,9 +17,9 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   out.otherUntouched = !!document.querySelector('.lc-half.lc-flip .lc-ovbtns') && !document.querySelector('.lc-half.lc-flip .lc-xpad'); // opponent half still normal
   const life=()=>[...document.querySelectorAll('.lc-life')].pop().textContent;
   out.before = life();
-  document.querySelector(myHalf+' .lc-xarm.ne').click(); await wait(60);    // +5
+  document.querySelector(myHalf+' .lc-xarm.top').click(); await wait(60);   // top wedge = +5
   out.afterPlus = life();
-  document.querySelector(myHalf+' .lc-xarm.sw').click(); await wait(60);    // −1
+  document.querySelector(myHalf+' .lc-xarm.left').click(); await wait(60);  // left wedge = −1
   out.afterMinus = life();
   document.querySelector('[data-xtog="1"]').click(); await wait(60);        // toggle back
   out.restored = !!document.querySelector(myHalf+' .lc-ovbtns') && !document.querySelector(myHalf+' .lc-xpad');
