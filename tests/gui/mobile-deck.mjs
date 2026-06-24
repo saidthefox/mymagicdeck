@@ -22,7 +22,9 @@ const r = await p.evaluate(()=>{
     sections:[...document.querySelectorAll('#panel-deck .mob-section-header')].filter(x=>x.offsetParent!==null).length };
   out.ctBefore=first?first.querySelector('.mob-deck-ct').textContent:null;
   const plus=[...first.querySelectorAll('.mob-step')].pop(); plus.click();
-  out.ctAfter=first.querySelector('.mob-deck-ct').textContent;
+  // the list re-renders on qty change → re-query the (new) first visible row rather than the detached node
+  const fresh=[...document.querySelectorAll('#panel-deck .mob-deck-row')].filter(x=>x.offsetParent!==null)[0];
+  out.ctAfter=fresh?fresh.querySelector('.mob-deck-ct').textContent:null;
   // nav round-trip
   mobileNav('search');
   const dv=document.getElementById('deck-visual-view');
