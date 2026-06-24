@@ -30,14 +30,19 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   // Waiting (open) state shows the code + cancel in the board strip (still usable)
   _tfLive.st.status='open'; lcRender(body); await wait(20);
   out.waitStrip = /ABCDE/.test(($('.lc-livebar')||{}).textContent||'') && !!$('[data-lcancel]') && !!$('[data-lc="1"]');
-  // Tournament match → Confirm button + round context
+  // Tournament match → centered report box (not a strip): round context + Confirm button
   _tfLive.st={ code:'ABCDE', status:'live', role:'host', opponent:'Rival', games:[{result:'W'}], tally:{w:1,l:0,d:0}, result:'W', startLife:20, myLife:18, oppLife:15, tourn:'t1', round:2, confirmedMe:false, confirmedOpp:false };
   lcRender(body); await wait(20);
-  out.tournCtx = /R2/.test(($('.lc-livehd')||{}).textContent||''); out.confirmBtn = /Confirm/.test(($('[data-lfin]')||{}).textContent||'');
-  // Done → result + Done button
-  _tfLive.st={ code:'ABCDE', status:'done', role:'host', opponent:'Rival', games:[{result:'W'},{result:'W'}], tally:{w:2,l:0,d:0}, result:'W', tourn:'t1', round:2 };
+  out.tournBox = !!$('.lc-tbox'); out.tournCtx = /Round 2/.test(($('.lc-tbox-hd')||{}).textContent||''); out.confirmBtn = /Confirm/.test(($('[data-lfin]')||{}).textContent||'');
+  // X → minimize to trophy chip → reopen
+  $('[data-tboxmin]').click(); await wait(20);
+  out.chip = !!$('.lc-tchip') && !$('.lc-tbox');
+  $('[data-tboxmax]').click(); await wait(20);
+  out.reopened = !!$('.lc-tbox');
+  // Done → result + Done button (in the box)
+  _tfLive.min=false; _tfLive.st={ code:'ABCDE', status:'done', role:'host', opponent:'Rival', games:[{result:'W'},{result:'W'}], tally:{w:2,l:0,d:0}, result:'W', tourn:'t1', round:2 };
   lcRender(body); await wait(20);
-  out.doneStrip = /reported/i.test(($('.lc-livebar')||{}).textContent||'') && !!$('[data-lleave]');
+  out.doneStrip = /reported/i.test(($('.lc-tbox')||{}).textContent||'') && !!$('[data-lleave]');
   tfLiveStop(); lcRender(body);
   return out; });
 console.log(JSON.stringify(r));
@@ -45,7 +50,7 @@ console.log('CONSOLE_ERRORS:', errs.length, errs.slice(0,5));
 const ok = r.liveEntry && r.guestPrompt && r.notTrapped && r.oppName
   && r.lives.includes('15') && r.lives.includes('18') && r.oppReadOnly && r.myEditable
   && r.recordBtns===3 && r.finBtn && r.leaveBtn && r.lifeBumped
-  && r.waitStrip && r.tournCtx && r.confirmBtn && r.doneStrip
+  && r.waitStrip && r.tournBox && r.tournCtx && r.confirmBtn && r.chip && r.reopened && r.doneStrip
   && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

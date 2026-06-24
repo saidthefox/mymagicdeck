@@ -1331,6 +1331,17 @@
     .lc-deckbtn.set{border-color:rgba(184,147,47,.6);color:#ffd27a}
     .lc-deckbtn.live{bottom:46px}
     .lc-deckbtn:active{filter:brightness(1.2)}
+    /* Tournament match: centered report box (X to minimize) ⇄ trophy+score chip */
+    .lc-tbox{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:9;width:min(86%,320px);box-sizing:border-box;background:rgba(10,12,16,.96);border:1px solid rgba(184,147,47,.55);border-radius:12px;padding:16px 16px 14px;box-shadow:0 12px 40px rgba(0,0,0,.6);text-align:center;font-family:Tahoma,sans-serif;color:#fff}
+    .lc-tbox-x{position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:13px;line-height:1;display:flex;align-items:center;justify-content:center}
+    .lc-tbox-hd{font-weight:800;color:#ffd27a;font-size:.95rem;margin-bottom:4px;padding:0 18px}
+    .lc-tbox-sc{font-size:1.9rem;font-weight:900;color:#fff;margin:2px 0 8px}
+    .lc-tbox-g{font-size:.8rem;color:#9aa6b6;margin-bottom:8px}
+    .lc-tbox-acts{display:flex;gap:6px;justify-content:center;margin-bottom:8px;flex-wrap:wrap}
+    .lc-tbox-done{font-size:.85rem;color:#7CFC00;margin:6px 0}
+    .lc-tbox-note{font-size:.7rem;color:#8b97a8;line-height:1.4;margin-top:4px}
+    .lc-tchip{position:absolute;right:8px;bottom:8px;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
+    .lc-tchip:active{filter:brightness(1.2)}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
     .diag-col{background:var(--bg,#0e0e0e);border:1px solid var(--border,#333);border-radius:8px;padding:8px 10px}
@@ -7543,7 +7554,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const sideHtml = L
     ? '<div class="lc-side"><div class="lc-side-inner"><div class="lc-ctl"><button data-lcreset title="Reset my life to '+(L.startLife||20)+'">↺</button></div></div></div>'
     : '<div class="lc-side"><div class="lc-side-inner">'+resetCtl+startCtl+'</div></div>';
-  const stripHtml = L ? lcLiveStrip(L) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
+  const stripHtml = L ? (L.tourn ? (_tfLive.min ? lcTournChip(L) : lcTournBox(L)) : lcLiveStrip(L)) : (wait ? lcWaitStrip(wait) : lcTrackerHtml(s));
   body.innerHTML='<div class="lc-wrap"><div class="lc-fs'+(L?' lc-live':'')+'">'+
       half(0,true)+half(1,false)+ sideHtml + stripHtml + lcDeckBtnHtml(s,L) +
     '</div></div>';
@@ -7569,6 +7580,8 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
   const wl=body.querySelector('[data-lcl]'); if(wl)wl.addEventListener('click',()=>tfCopy(tfLiveInviteUrl(_tfLive&&_tfLive.code)));
   const wx=body.querySelector('[data-lcancel]'); if(wx)wx.addEventListener('click',()=>tfLiveLeave());
   const dk=body.querySelector('[data-lcdeck]'); if(dk)dk.addEventListener('click',()=>lcDeckPick(body));
+  const tmin=body.querySelector('[data-tboxmin]'); if(tmin)tmin.addEventListener('click',()=>{ if(_tfLive){ _tfLive.min=true; lcRender(body); } });
+  const tmax=body.querySelector('[data-tboxmax]'); if(tmax)tmax.addEventListener('click',()=>{ if(_tfLive){ _tfLive.min=false; lcRender(body); } });
 }
 // 2040 "Deck" button (lower-left): pick the deck you're playing — stamps your matches in Interactions.
 function lcDeckBtnHtml(s,L){ const nm=(L&&typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.st)?(_tfLive.st.myDeck||''):(s.deck||'');
@@ -7686,6 +7699,8 @@ function tfLivePoll(){ if(!_tfLive)return; const code=_tfLive.code;
 // Enter a live match: it now renders INSIDE the 2040 board (shared life + strip), never a blocking overlay.
 function tfLiveStart(body, st){ tfLiveStop(); _tfLive={ code:st.code, st, body, myLife:(st.myLife==null?(st.startLife||20):st.myLife), timer:null, lifeTimer:null };
   if(typeof lcRender==='function')lcRender(body); tfLivePoll();
+  // Stamp your picked deck onto the match if it isn't set yet (esp. resumed tournament matches you didn't create/join).
+  try{ const d=(typeof lcLoad==='function')&&lcLoad().deck; if(d && st && !st.myDeck && (st.status==='live'||st.status==='open')) lcSetDeck(d); }catch(e){}
   if(st.status==='live'&&typeof toast==='function')toast('Connected — now playing '+(st.opponent||'your opponent')+'! 🎮','success'); }
 function tfLiveLifeAdjust(d){ if(!_tfLive)return; _tfLive.myLife=(_tfLive.myLife||0)+d; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); clearTimeout(_tfLive.lifeTimer); _tfLive.lifeTimer=setTimeout(tfLivePushLife,450); }
 function tfLivePushLife(){ if(!_tfLive)return; const code=_tfLive.code, life=_tfLive.myLife; apiFetch('/tf/live/'+code+'/life',{method:'POST',body:JSON.stringify({life})}).then(st=>{ if(_tfLive&&_tfLive.code===code)_tfLive.st=st; }).catch(()=>{}); }
@@ -7702,6 +7717,19 @@ function lcLiveStrip(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'
 }
 function lcWaitStrip(w){ return '<div class="tf-track lc-livebar"><span class="lc-livehd">🔗 Waiting for opponent · code <b>'+_mgEsc(w.code)+'</b></span>'+
     '<button class="tf-btn" data-lcc>Copy code</button><button class="tf-btn" data-lcl>Copy link</button><button class="tf-btn" data-lcancel>Cancel</button></div>'; }
+// Tournament match → a centered report box (X to minimize); minimized = a trophy+score chip that reopens it.
+function lcTournBox(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'–'+t.d:''), gi=(L.games||[]).length;
+  const hdr='🏆 Round '+(L.round||'?')+' · vs '+_mgEsc(L.opponent||'opp');
+  if(L.status==='done') return '<div class="lc-tbox"><button class="lc-tbox-x" data-tboxmin title="minimize">✕</button><div class="lc-tbox-hd">'+hdr+'</div><div class="lc-tbox-sc">'+sc+'</div><div class="lc-tbox-done">🏁 '+tfResLabel(L.result)+' · reported to the tournament</div><div class="lc-tbox-acts"><button class="tf-btn" data-lleave>Done</button></div></div>';
+  const finDis=L.confirmedMe?' disabled':''; const finLbl=L.confirmedMe?'✓ waiting for opponent…':'✓ Confirm result';
+  const note=L.confirmedMe?'You’ve confirmed — locks when your opponent does too.':(L.confirmedOpp?'Opponent confirmed — confirm to lock + report.':'Both players confirm to lock the result and report it.');
+  return '<div class="lc-tbox"><button class="lc-tbox-x" data-tboxmin title="minimize">✕</button>'+
+    '<div class="lc-tbox-hd">'+hdr+'</div><div class="lc-tbox-sc">'+sc+'</div>'+
+    '<div class="lc-tbox-g">Game '+(gi+1)+' — who won?</div>'+
+    '<div class="lc-tbox-acts"><button class="tf-btn" data-lg="me">I won</button><button class="tf-btn" data-lg="them">They won</button><button class="tf-btn" data-lg="draw">Draw</button></div>'+
+    '<div class="lc-tbox-acts"><button class="tf-btn tf-fin" data-lfin'+finDis+'>'+finLbl+'</button></div>'+
+    '<div class="lc-tbox-note">'+note+'</div></div>'; }
+function lcTournChip(L){ const t=L.tally||{w:0,l:0,d:0}, sc=t.w+'–'+t.l+(t.d?'–'+t.d:''); return '<button class="lc-tchip" data-tboxmax title="Tap to report · Round '+(L.round||'?')+' vs '+_mgEsc(L.opponent||'opp')+'">🏆 '+sc+'</button>'; }
 function tfLivePanel(body){ const ov=tfOverlay(body); if(!ov)return;
   if(!(state.user&&apiToken())){ ov.innerHTML='<div class="tf-panel"><h3>🔗 Live match</h3><p class="tf-note">Sign in to play a synced match with a friend — you each track the same match and it lands in both your histories.</p><div class="tf-acts"><button class="tf-cancel" data-x>Close</button><button class="tf-save" data-login>Sign in</button></div></div>';
     ov.querySelector('[data-x]').onclick=()=>ov.remove(); ov.querySelector('[data-login]').onclick=()=>{ ov.remove(); if(typeof signInClick==='function')signInClick('login'); }; return; }
@@ -7729,7 +7757,7 @@ function tfLiveJoin(body,code){ const s=(typeof lcLoad==='function')?lcLoad():{}
 function tfLiveRecord(result){ if(!_tfLive)return; const idx=_tfLive.st.games.length;
   apiFetch('/tf/live/'+_tfLive.code+'/game',{method:'POST',body:JSON.stringify({index:idx,result})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } }).catch(()=>{}); }
 function tfLiveFinish(){ if(!_tfLive)return; if(!_tfLive.st.games.length){ if(typeof toast==='function')toast('Record at least one game first','info'); return; }
-  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({})}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } tfSync(); }).catch(()=>{}); }
+  apiFetch('/tf/live/'+_tfLive.code+'/finish',{method:'POST',body:JSON.stringify({ myDeck:((typeof lcLoad==='function'&&lcLoad().deck)||'') })}).then(st=>{ if(_tfLive){ _tfLive.st=st; if(_tfLive.body&&typeof lcRender==='function')lcRender(_tfLive.body); } tfSync(); }).catch(()=>{}); }
 // Deep link: mymagicdeck.com/?tfmatch=CODE opens 2040 and offers to join.
 function tfLiveCheckDeepLink(){ try{ const c=new URLSearchParams(location.search).get('tfmatch'); if(!c)return;
   history.replaceState(null,'',location.pathname); const code=c.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,5); if(!code)return;
