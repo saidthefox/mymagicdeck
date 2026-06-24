@@ -8591,6 +8591,7 @@ function mgFsSave(){try{if(state.user&&apiToken())apiFetch('/fs',{method:'PUT',b
 function mgGenId(){return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function mgFolderName(id){const f=mgFs.folders.find(x=>x.id===id);return f?f.name:'';}
 function mgRenderDesktop(){
+  if(typeof mgSeedDefaultFolders==='function')mgSeedDefaultFolders();
   const a=document.getElementById(mgDeskTarget);if(!a)return;
   const embedded=(mgDeskTarget==='pc-deskcontent');
   if(!embedded)mgArtMode='desktop';
@@ -8714,6 +8715,21 @@ function mgIconKey(el){ if(el.dataset.appfolder)return 'appfolder:'+el.dataset.a
 // iOS/Android-style folder; tap the bubble to open a popover and launch an app. ──
 let _appMeta={}; // appKey → {emoji,label}, captured from the rendered icons each desktop render
 function mgAppFolders(){ try{ return (window.DeckOS&&DeckOS.store.get('appfolders'))||[]; }catch(e){ return []; } }
+// New users start with these app-folder bubbles (seeded once per browser; a returning user's own folders
+// — local or synced from the server — always win, and the seed never re-runs once flagged).
+const DEFAULT_APP_FOLDERS=[
+  { name:'Games',    apps:['landgame','battle','cgg'] },
+  { name:'Sites',    apps:['web-stonesmtg','web-mtgtop8'] },
+  { name:'Comms',    apps:['calendar','tournaments','mail'] },
+  { name:'Counters', apps:['manapool','twentyfourty','dicebag'] },
+];
+function mgSeedDefaultFolders(){ try{ if(!window.DeckOS)return;
+  if(DeckOS.store.get('appfolders_seeded'))return;
+  const cur=mgAppFolders();
+  if(cur&&cur.length){ DeckOS.store.set('appfolders_seeded',1); return; }   // already has folders → just flag, don't seed
+  DeckOS.store.set('appfolders', DEFAULT_APP_FOLDERS.map(f=>({ id:mgGenId(), name:f.name, apps:f.apps.slice() })));
+  DeckOS.store.set('appfolders_seeded',1);
+}catch(e){} }
 function mgAppFoldersSave(list){ try{ DeckOS.store.set('appfolders', list); }catch(e){} if(typeof desktopSyncSoon==='function')desktopSyncSoon(); }
 function mgAppFolderOf(appKey){ return mgAppFolders().find(f=>f.apps.indexOf(appKey)>=0)||null; }
 function mgAppFolderCreate(apps){ // apps: [appKey, appKey]
@@ -8741,7 +8757,7 @@ function mgRenderAppFolders(container){
   if(!container)return; const folders=mgAppFolders(); if(!folders.length)return;
   folders.forEach(fld=>{
     const minis=[];
-    fld.apps.forEach(appKey=>{ const m=_appMeta[appKey]; if(m)minis.push(m.emoji||'🧩'); const sel=appKey==='cgg'?'.mg-icon[data-cgg]':'.mg-icon[data-app="'+appKey+'"]'; const el=container.querySelector(sel); if(el)el.remove(); });
+    fld.apps.forEach(appKey=>{ const m=_appMeta[appKey]||((typeof MGW_APPS!=='undefined'&&MGW_APPS[appKey])?{emoji:MGW_APPS[appKey].icon}:null); if(m)minis.push(m.emoji||'🧩'); const sel=appKey==='cgg'?'.mg-icon[data-cgg]':'.mg-icon[data-app="'+appKey+'"]'; const el=container.querySelector(sel); if(el)el.remove(); });
     if(!minis.length)return;
     const bub=document.createElement('div'); bub.className='mg-icon mg-appfolder'; bub.dataset.appfolder=fld.id; bub.dataset.ikey='appfolder:'+fld.id;
     bub.innerHTML='<div class="mg-folderbubble">'+minis.slice(0,4).map(m=>'<span class="mg-fbm">'+m+'</span>').join('')+'</div><div class="mg-ilbl">'+_mgEsc(fld.name||'Folder')+'</div>';
