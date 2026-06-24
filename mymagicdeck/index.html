@@ -8947,6 +8947,7 @@ function mgWireStartMenu(a){
 }
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
 let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0;
+let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=12000; // recent user input → Dicey stays calm; after this much quiet he wakes up
 const DICEY_BARKS=["Oh boy!","A game? I love games!","Wanna play?","Sniff… new cards?","Roll with me!","I found something!","Best deck ever!","Hup hup!"];
 const DICEY_TIPS=[
   "Hi! Drag me anywhere. Click me for the app list, or roll me for a surprise.",
@@ -8991,6 +8992,7 @@ function diceyInit(){ const s=diceyState();
   el.querySelector('.dicey-die').addEventListener('click',()=>{ if(el._moved){ el._moved=false; return; } _diceyOpen?diceyClosePanel():diceyOpenPanel(); });
   try{ _diceyReduced=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
   if(!_diceyGreeted){ _diceyGreeted=true; setTimeout(()=>{ if(!diceySeen())diceyIntro(); else diceyGreet(); }, 700); }
+  diceyWireActivity();
   diceyScheduleIdle();
 }
 function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
@@ -9000,8 +9002,22 @@ function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
   if(typeof toast==='function')toast(s.on?'Oh boy! Dicey is out! 🎲🐾':'Dicey curled up in the bag.'); }
 // ---- Dicey personality: rolls to move, whirls when excited, greets, and builds card platforms to hop onto ----
 function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 5000+Math.random()*7000); }
+// Activity-aware: while you're doing things Dicey goes chill (no wandering/barks/antics) and steps out of
+// the way; he only gets lively again once you've been idle a bit (like a screensaver waking up).
+function diceyWireActivity(){ if(_diceyInputWired)return; _diceyInputWired=true;
+  const bump=e=>{ if(_diceyEl&&e&&e.target&&_diceyEl.contains(e.target))return; // interacting with Dicey himself doesn't count
+    const wasActive=diceyUserActive(); _diceyBusyUntil=Date.now()+DICEY_ACTIVE_MS; if(!wasActive)diceyStepAside(); };
+  ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>document.addEventListener(ev,bump,{passive:true,capture:true})); }
+function diceyStepAside(){ if(!_diceyEl||_diceyDragging)return;
+  const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();   // hush any chatter
+  const r=_diceyEl.getBoundingClientRect(), m=110;
+  const central = r.left>m && r.left<window.innerWidth-66-m && r.top>m && r.top<window.innerHeight-66-m;
+  if(central){ const tb=document.querySelector('#mg-mtask')||document.querySelector('.mg-taskbar'); const gap=tb?56:14;
+    const x=window.innerWidth-66-10, y=window.innerHeight-66-gap;
+    diceyMoveTo(x,y,520); const s=diceyState(); s.x=x; s.y=y; diceySave(s); } }
+function diceyUserActive(){ return Date.now() < _diceyBusyUntil; }
 function diceyIdleTick(){ if(!_diceyEl){ return; }
-  if(_diceyOpen||_diceyDragging||document.hidden||_diceyReduced){ diceyScheduleIdle(); return; } // paused states — stay calm
+  if(_diceyOpen||_diceyDragging||document.hidden||_diceyReduced||diceyUserActive()){ diceyScheduleIdle(); return; } // paused / you're busy → stay calm
   const roll=(typeof _diceRand==='function'?_diceRand(20):((Math.random()*20)|0))+1;
   if(roll>=18) diceyRoll();        // spontaneously roll + cast a spell
   else if(roll>=14){ if(diceyPlatformsOn()&&Math.random()<.6)diceyHopPlatforms(); else diceyWhirl(); } // hop around his platforms
