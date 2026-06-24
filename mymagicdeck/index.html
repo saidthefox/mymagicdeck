@@ -1392,6 +1392,17 @@
     .ix-path{display:flex;flex-wrap:wrap;align-items:center;gap:5px}
     .ix-pathstep{font-size:.74rem;background:#12161e;border:1px solid rgba(255,255,255,.12);border-radius:5px;padding:3px 7px;color:#cdd6e4}
     .ix-arrow{color:#6b7686}
+    /* Command palette ("/" to open a Run box) */
+    .cmdp-overlay{position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);display:flex;align-items:flex-start;justify-content:center;padding-top:14vh}
+    .cmdp{width:min(560px,92vw);background:#12161e;border:1px solid rgba(255,255,255,.18);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;font-family:Tahoma,sans-serif}
+    #cmdp-input{width:100%;box-sizing:border-box;background:#0e1219;border:none;border-bottom:1px solid rgba(255,255,255,.12);color:#fff;padding:14px 16px;font-size:1rem;outline:none}
+    .cmdp-list{max-height:50vh;overflow:auto}
+    .cmdp-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;color:#cdd6e4}
+    .cmdp-item.sel,.cmdp-item:hover{background:rgba(91,140,255,.18)}
+    .cmdp-ic{font-size:1.1rem;width:1.5em;text-align:center;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center}
+    .cmdp-t{flex:1;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cmdp-id{font-size:.72rem;color:#7b8696;font-family:ui-monospace,Menlo,monospace}
+    .cmdp-empty{padding:14px 16px;color:#7b8696}
     .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
     .tf-btn:active{border-color:#808080 #fff #fff #808080}
     .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
@@ -6184,6 +6195,31 @@ function mgLaunchApp(app){
   if(app==='notes'){ if(typeof notesCreate==='function')notesCreate(); if(typeof mgRenderDesktop==='function')mgRenderDesktop(); return; }
   if(MGW_APPS[app])mgwLaunch(app);
 }
+// ===== Command palette: press "/" anywhere (not while typing) to open a Run box and launch any program.
+// Also mymagicdeck.com/?run=<id> deep-links straight to a program. Built for fast keyboard nav (+ agents). =====
+function cmdpPrograms(){ const out=[], seen={}; const add=(id,title,icon)=>{ if(!id||seen[id])return; seen[id]=1; out.push({id,title:title||id,icon:icon||'▦'}); };
+  add('cgg','CGG — card guesser','🗃️');
+  try{ if(typeof MGW_APPS!=='undefined') Object.keys(MGW_APPS).forEach(k=>add(k, MGW_APPS[k].title, MGW_APPS[k].icon)); }catch(e){}
+  return out.sort((a,b)=>a.title.localeCompare(b.title)); }
+function cmdpClose(){ const o=document.getElementById('cmd-palette'); if(o)o.remove(); }
+function cmdpLaunch(id){ cmdpClose(); try{ if(typeof mgLaunchApp==='function')mgLaunchApp(id); }catch(e){} }
+function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; const progs=cmdpPrograms();
+  const o=document.createElement('div'); o.id='cmd-palette'; o.className='cmdp-overlay';
+  o.innerHTML='<div class="cmdp" role="dialog"><input id="cmdp-input" placeholder="Run a program… (type a name, Enter to open, Esc to cancel)" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="cmdp-list" id="cmdp-list"></div></div>';
+  document.body.appendChild(o);
+  const inp=o.querySelector('#cmdp-input'), list=o.querySelector('#cmdp-list'); let sel=0, shown=progs;
+  const norm=s=>String(s||'').toLowerCase().replace(/^\//,'').trim();
+  const render=()=>{ const q=norm(inp.value); shown=q?progs.filter(p=>p.id.toLowerCase().includes(q)||p.title.toLowerCase().includes(q)):progs; if(sel>=shown.length)sel=0;
+    list.innerHTML=shown.length?shown.map((p,i)=>'<div class="cmdp-item'+(i===sel?' sel':'')+'" data-i="'+i+'"><span class="cmdp-ic">'+p.icon+'</span><span class="cmdp-t">'+_mgEsc(p.title)+'</span><span class="cmdp-id">'+_mgEsc(p.id)+'</span></div>').join(''):'<div class="cmdp-empty">No program matches that.</div>';
+    list.querySelectorAll('[data-i]').forEach(el=>{ el.onmousedown=ev=>{ ev.preventDefault(); const p=shown[+el.getAttribute('data-i')]; if(p)cmdpLaunch(p.id); }; }); };
+  inp.addEventListener('input',()=>{ sel=0; render(); });
+  inp.addEventListener('keydown',e=>{ if(e.key==='Escape'){ e.preventDefault(); cmdpClose(); } else if(e.key==='Enter'){ e.preventDefault(); if(shown[sel])cmdpLaunch(shown[sel].id); } else if(e.key==='ArrowDown'){ e.preventDefault(); sel=Math.min(sel+1,shown.length-1); render(); } else if(e.key==='ArrowUp'){ e.preventDefault(); sel=Math.max(sel-1,0); render(); } });
+  o.addEventListener('mousedown',e=>{ if(e.target===o)cmdpClose(); });
+  render(); inp.focus();
+}
+(function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
+  document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });
+  window.addEventListener('load',()=>{ try{ const r=new URLSearchParams(location.search).get('run'); if(r)setTimeout(()=>cmdpLaunch(r),400); }catch(e){} }); })();
 // ===== MGW: the shared program registry + the MOBILE window shell =====
 // MGW_APPS (below) is the single registry every program is declared in — used by BOTH form
 // factors. The mgw* lifecycle functions are the MOBILE shell (full / mini-drag / minimized + a
