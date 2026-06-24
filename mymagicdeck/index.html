@@ -2714,8 +2714,10 @@ async function doAuth(){
   }catch(e){
     err.textContent=e.message||'Something went wrong.';
   }finally{
+    // Re-enable the button WITHOUT calling _updateAuthUI() — that resets the form and clears #auth-err,
+    // which was instantly wiping the error message the catch just set (so failures showed no feedback).
     btn.disabled=false;
-    _updateAuthUI();
+    btn.textContent=(_authMode==='forgot')?'Send reset link':(_authMode==='signup'?'Create Account':'Sign In');
   }
 }
 // On login: push any guest decks to the server so they aren't lost — but skip
