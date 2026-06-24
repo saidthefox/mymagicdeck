@@ -114,20 +114,18 @@
     .deck-card-price { font-size: 0.72rem; color: var(--text-dim); flex-shrink: 0; }
     .deck-empty { text-align: center; color: var(--text-dim); font-size: 0.85rem; padding: 32px 12px; line-height: 1.6; }
     .deck-empty .icon { font-size: 2rem; margin-bottom: 8px; }
-    .mob-deck-row { display: none; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; min-height: 64px; }
-    .mob-deck-row:active { background: var(--surface2); }
-    .mob-deck-row.selected { background: var(--accent-dim); }
-    .mob-deck-thumb { width: 42px; height: 58px; border-radius: 4px; object-fit: cover; background: var(--surface2); flex-shrink: 0; display: block; }
-    .mob-deck-thumb-ph { width: 42px; height: 58px; border-radius: 4px; background: var(--surface2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: var(--text-dim); }
-    .mob-deck-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-    .mob-deck-name { font-size: 0.88rem; font-weight: 600; color: var(--text-bright); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .mob-deck-meta { font-size: 0.68rem; color: var(--text-dim); }
-    .mob-deck-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
-    .mob-deck-price { font-size: 0.72rem; color: var(--text-dim); }
-    .mob-qty-controls { display: flex; align-items: center; gap: 2px; }
-    .mob-qty-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 1rem; line-height: 1; transition: all 0.1s; }
-    .mob-qty-btn:active { color: var(--accent); background: var(--accent-dim); border-color: var(--accent); }
-    .mob-qty-num { font-size: 0.9rem; font-weight: 700; color: var(--text-bright); width: 22px; text-align: center; }
+    /* Mobile deck list — Hearthstone style: each row is a strip of the card's art with mana pips, a big name, and a −/count/+ stepper */
+    .mob-deck-row { display: none; align-items: center; gap: 10px; padding: 9px 12px; min-height: 54px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,.07); background-size: cover; background-position: center 26%; background-repeat: no-repeat; position: relative; }
+    .mob-deck-row:active { filter: brightness(1.18); }
+    .mob-deck-row.selected { box-shadow: inset 3px 0 0 var(--accent); }
+    .mob-deck-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; }
+    .mob-deck-name { font-size: 1rem; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.95); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mob-deck-pips { display: inline-flex; gap: 2px; flex-shrink: 0; }
+    .mob-step-group { display: flex; align-items: center; gap: 5px; flex-shrink: 0; background: rgba(8,9,12,.5); border-radius: 20px; padding: 3px 5px; backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px); }
+    .mob-step { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.32); background: rgba(255,255,255,.1); color: #fff; font-size: 1.2rem; line-height: 1; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .mob-step:active { background: var(--accent); border-color: var(--accent); }
+    .mob-deck-ct { min-width: 18px; text-align: center; font-size: 1.02rem; font-weight: 800; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.95); }
+    .mob-deck-row.overcopy .mob-deck-ct { color: var(--warn); }
     .mob-section-header { display: none; align-items: center; justify-content: space-between; padding: 10px 12px 4px; background: var(--bg); position: sticky; top: 0; z-index: 2; border-bottom: 1px solid var(--border); }
     .mob-section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
     .mob-section-icon { font-size: 1rem; }
@@ -729,6 +727,8 @@
       #app { grid-template-columns: 1fr; overflow: visible; min-height: 0; }
       .panel { border-right: none; border-bottom: 1px solid var(--border); max-height: none; overflow: visible; }
       .panel.mobile-hidden { display: none !important; }
+      /* The center-pane Search/Deck pill toggle is redundant with the bottom Deck flap and triggers the wide deck-visual trap — hide it on mobile */
+      .view-toggle { display: none !important; }
       #mobile-nav { display: flex; }
       #header .logo { font-size: 1rem; }
       #deck-name-input { min-width: 80px; max-width: 120px; font-size: 0.8rem; }
@@ -3952,6 +3952,11 @@ function renderDeckSection(entries,prefix){
       const id=getCardId(card),price=card.prices?.usd?'$'+parseFloat(card.prices.usd).toFixed(2):'',sel=state.selectedCard&&getCardId(state.selectedCard)===id;
       const overcopy=!isBasicLand(card)&&qty>4;
       const imgSrc=card.image_uris?.small||card.image_uris?.normal||'';
+      const _ci=card.image_uris||{}, _cf=(card.card_faces&&card.card_faces[0])||{}, _cfi=_cf.image_uris||{};
+      const art=_ci.art_crop||_cfi.art_crop||_ci.small||_ci.normal||'';
+      const mc=card.mana_cost||_cf.mana_cost||'';
+      const pipHtml=(mc.match(/\{[^}]+\}/g)||[]).map(p=>manaSymbol(p)).join('');
+      const bg=art?` style="background-image:linear-gradient(90deg,rgba(8,9,12,.94),rgba(8,9,12,.6) 55%,rgba(8,9,12,.34)),url('${art}')"`:'';
       const thumbHtml=imgSrc?`<img class="mob-deck-thumb" src="${imgSrc}" loading="lazy" alt="">`:`<div class="mob-deck-thumb-ph">🃏</div>`;
       const typeLine=(card.type_line||'').replace('—','–').split('–')[0].trim();
       const cmc=card.cmc!=null?card.cmc:'';
@@ -3959,12 +3964,12 @@ function renderDeckSection(entries,prefix){
         // Desktop row
         h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeSBCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${_mgEsc(card.name)}</span><span class="deck-card-price">${price}</span></div>`;
         // Mobile row
-        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}','sb')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${_mgEsc(card.name)}</div><div class="mob-deck-meta">${_mgEsc(typeLine)}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty-1})">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button></div></div></div>`;
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}"${bg} onclick="selectCardById('${id}','sb')"><div class="mob-deck-main"><span class="mob-deck-name">${_mgEsc(card.name)}</span><span class="mob-deck-pips">${pipHtml}</span></div><div class="mob-step-group"><button class="mob-step" onclick="event.stopPropagation();removeSBCard('${id}',1)">−</button><span class="mob-deck-ct">${qty}</span><button class="mob-step" onclick="event.stopPropagation();setSBCardQty('${id}',${qty+1})">+</button></div></div>`;
       } else {
         // Desktop row
         h+=`<div class="deck-card-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')"><div class="qty-controls"><button class="qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button><span class="qty-num">${qty}</span><button class="qty-btn remove" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button></div><span class="deck-card-name">${_mgEsc(card.name)}</span><span class="deck-card-price">${price}</span></div>`;
         // Mobile row
-        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}" onclick="selectCardById('${id}')">${thumbHtml}<div class="mob-deck-info"><div class="mob-deck-name">${_mgEsc(card.name)}</div><div class="mob-deck-meta">${_mgEsc(typeLine)}${cmc!==''?' · '+cmc+' CMC':''}</div></div><div class="mob-deck-right"><div class="mob-deck-price">${price}</div><div class="mob-qty-controls"><button class="mob-qty-btn" onclick="event.stopPropagation();removeCard('${id}',1)">\u2212</button><span class="mob-qty-num">${qty}</span><button class="mob-qty-btn" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button></div></div></div>`;
+        h+=`<div class="mob-deck-row${sel?' selected':''}${overcopy?' overcopy':''}"${bg} onclick="selectCardById('${id}')"><div class="mob-deck-main"><span class="mob-deck-name">${_mgEsc(card.name)}</span><span class="mob-deck-pips">${pipHtml}</span></div><div class="mob-step-group"><button class="mob-step" onclick="event.stopPropagation();removeCard('${id}',1)">−</button><span class="mob-deck-ct">${qty}</span><button class="mob-step" onclick="event.stopPropagation();setCardQty('${id}',${qty+1})">+</button></div></div>`;
       }
     }
     h+='</div>';}
@@ -3998,6 +4003,7 @@ function renderDeck(){
 function selectCardById(cid,zone='main'){const d=currentDeck();if(!d)return;const src=zone==='sb'?d.sideboard:d.cards;if(src?.[cid])showCardDetail(src[cid].card)}
 
 function switchCenterView(v){
+  if(v==='deck'&&window.innerWidth<=900)v='search'; // mobile uses the Deck flap (vertical list), not the wide center deck-visual view
   state.centerView=v;
   document.querySelectorAll('.view-toggle-btn').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
   const sv=document.getElementById('search-view'),dv=document.getElementById('deck-visual-view'),f=document.getElementById('card-filter-panel');
@@ -5733,6 +5739,8 @@ function mobileNav(panel){
     const el=document.getElementById(id);if(el)el.classList.toggle('mobile-hidden',key!==panel);
   }
   document.querySelectorAll('.mobile-nav-btn').forEach(b=>b.classList.toggle('active',b.id==='mnav-'+panel));
+  // On the Search flap, force the center pane back to card search (never stuck on the wide deck-visual view)
+  if(panel==='search'&&typeof switchCenterView==='function')switchCenterView('search');
 }
 
 document.addEventListener('keydown',function(e){
@@ -9138,26 +9146,16 @@ function fwInitSearchResize(){
   const searchView=document.getElementById('search-view');
   if(!handle||!panel||!searchView) return;
   let resizing=false, startY=0, startPanelH=0;
-  handle.addEventListener('mousedown', e=>{
-    resizing=true;
-    startY=e.clientY;
-    startPanelH=panel.offsetHeight;
-    e.preventDefault();
-    document.body.style.cursor='ns-resize';
-  });
-  document.addEventListener('mousemove', e=>{
-    if(!resizing) return;
-    const dy=e.clientY-startY;
-    const newH=Math.max(80, startPanelH+dy);
-    panel.style.height=newH+'px';
-    fwSaveLayout();
-  });
-  document.addEventListener('mouseup', ()=>{
-    if(!resizing) return;
-    resizing=false;
-    document.body.style.cursor='';
-    fwSaveLayout();
-  });
+  const start=y=>{ resizing=true; startY=y; startPanelH=panel.offsetHeight; document.body.style.cursor='ns-resize'; };
+  const move=y=>{ if(!resizing) return; const newH=Math.max(80, startPanelH+(y-startY)); panel.style.height=newH+'px'; fwSaveLayout(); };
+  const end=()=>{ if(!resizing) return; resizing=false; document.body.style.cursor=''; fwSaveLayout(); };
+  handle.addEventListener('mousedown', e=>{ e.preventDefault(); start(e.clientY); });
+  document.addEventListener('mousemove', e=>move(e.clientY));
+  document.addEventListener('mouseup', end);
+  // Touch support (the splitter was mouse-only → dead on mobile)
+  handle.addEventListener('touchstart', e=>{ if(!e.touches[0]) return; e.preventDefault(); start(e.touches[0].clientY); }, {passive:false});
+  document.addEventListener('touchmove', e=>{ if(resizing&&e.touches[0]){ e.preventDefault(); move(e.touches[0].clientY); } }, {passive:false});
+  document.addEventListener('touchend', end);
 }
 
 function fwSaveLayout(){
