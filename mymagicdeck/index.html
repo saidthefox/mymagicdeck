@@ -6205,7 +6205,7 @@ function cmdpPrograms(){ const out=[], seen={}; const add=(id,title,icon)=>{ if(
   return out.sort((a,b)=>a.title.localeCompare(b.title)); }
 function cmdpClose(){ const o=document.getElementById('cmd-palette'); if(o)o.remove(); }
 function cmdpLaunch(id){ cmdpClose(); try{ if(typeof mgLaunchApp==='function')mgLaunchApp(id); }catch(e){} }
-function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; const progs=cmdpPrograms();
+function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; if(typeof ixShuffleIcon==='function')ixShuffleIcon(); const progs=cmdpPrograms();
   const o=document.createElement('div'); o.id='cmd-palette'; o.className='cmdp-overlay';
   o.innerHTML='<div class="cmdp" role="dialog"><input id="cmdp-input" placeholder="Run a program… (type a name, Enter to open, Esc to cancel)" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="cmdp-list" id="cmdp-list"></div></div>';
   document.body.appendChild(o);
@@ -6630,6 +6630,7 @@ function mtaskShowDesktop(){ const full=Object.keys(mgwState).filter(k=>mgwState
   else if(_mtaskMinned&&_mtaskMinned.length){ const r=_mtaskMinned.slice(); _mtaskMinned=null; r.forEach(k=>{ if(typeof mgwToFull==='function')mgwToFull(k); }); }
   mtaskRender(); }
 function mtaskStartMenu(){ let m=document.getElementById('mt-startmenu'); if(m){ m.remove(); return; }
+  if(typeof ixShuffleIcon==='function')ixShuffleIcon();
   _smCats={}; // flyouts start closed each time the menu opens (else a stale-open flyout reappears)
   m=document.createElement('div'); m.id='mt-startmenu'; m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); if(typeof mgWireStartMenu==='function')mgWireStartMenu(m);
   setTimeout(()=>{ const close=ev=>{ if(!m.contains(ev.target)&&ev.target.id!=='mt-start'){ m.remove(); document.removeEventListener('pointerdown',close,true); } }; document.addEventListener('pointerdown',close,true); },0); }
@@ -6678,6 +6679,7 @@ function wmShowDesktop(){
 }
 function wmStartMenu(){
   let m=document.getElementById('wm-startmenu'); if(m){ m.remove(); return; }
+  if(typeof ixShuffleIcon==='function')ixShuffleIcon();
   m=document.createElement('div'); m.id='wm-startmenu'; m.style.cssText='position:fixed;left:6px;bottom:38px;z-index:4100';
   _smCats={}; // flyouts start closed each time the menu opens
   m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); mgWireStartMenu(m);
@@ -8259,6 +8261,11 @@ let _diagErr=[];
   window.addEventListener('unhandledrejection',e=>{ _diagErr.push({t:Date.now(), m:'promise: '+((e&&e.reason&&e.reason.message)||e&&e.reason||'rejection'), src:''}); if(_diagErr.length>60)_diagErr.shift(); });
 }catch(_){} })();
 // ===== Interactions — public match ledger (zKillboard-style feed + per-tournament deck-path) =====
+// Its icon shifts through the "two people holding hands" emoji — re-rolled (always different from the
+// current) whenever a menu/flyout reopens, so it's a new pair each time you look.
+const IX_ICONS=['🧑‍🤝‍🧑','👭','👬','👫','🧑🏿‍🤝‍🧑🏼','👩🏾‍🤝‍👨🏿','👩🏻‍🤝‍👩🏽','👨🏼‍🤝‍👨🏿','🧑🏽‍🤝‍🧑🏻','👩🏿‍🤝‍👨🏻'];
+let _ixIcon=IX_ICONS[0];
+function ixShuffleIcon(){ if(IX_ICONS.length<2)return; let n; do{ n=IX_ICONS[(Math.random()*IX_ICONS.length)|0]; }while(n===_ixIcon); _ixIcon=n; }
 function ixAgo(ts){ const s=Math.max(0,(Date.now()-ts)/1000); if(s<60)return Math.floor(s)+'s'; if(s<3600)return Math.floor(s/60)+'m'; if(s<86400)return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
 function ixRowHtml(m){ const win=m.winner; const aw=win&&win.name===m.a.name, bw=win&&win.name===m.b.name;
   const side=(p,won)=>'<div class="ix-side'+(won?' win':'')+'"><div class="ix-deck">'+_mgEsc(p.deck||'Unknown deck')+'</div><div class="ix-pl">'+_mgEsc(p.name||'?')+'</div></div>';
@@ -8330,7 +8337,8 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'520px', category:'games', mount(body){ cardleRender(body); } });
   DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
   DeckOS.registerProgram({ id:'diagnostics', title:'Diagnostics', icon:'🩺', width:'600px', desktop:true, mount(body){ diagRender(body); } });
-  DeckOS.registerProgram({ id:'interactions', title:'Interactions', icon:'⚔️', width:'600px', desktop:true, category:'games', mount(body){ ixRender(body); } });
+  DeckOS.registerProgram({ id:'interactions', title:'Interactions', icon:_ixIcon, width:'600px', desktop:true, category:'games', mount(body){ ixRender(body); } });
+  try{ Object.defineProperty(MGW_APPS.interactions,'icon',{ configurable:true, get(){ return _ixIcon; } }); }catch(e){} // shifting holding-hands icon
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
   if(typeof webRegisterAll==='function')webRegisterAll(); // user-created web shortcuts
@@ -8665,7 +8673,7 @@ function mgRenderDesktop(){
   const sh=document.getElementById('mg-share');if(sh)sh.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('share');});
   const fold=document.getElementById('mg-fold');if(fold)fold.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=true;mgRenderDesktop();});
   const file=document.getElementById('mg-file');if(file)file.addEventListener('click',e=>{e.stopPropagation();mgToolCollapsed=false;mgRenderDesktop();});
-  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;if(mgStartOpen)_smCats={};mgRenderDesktop();});
+  document.getElementById('mg-start').addEventListener('click',e=>{e.stopPropagation();mgStartOpen=!mgStartOpen;if(mgStartOpen){_smCats={};if(typeof ixShuffleIcon==='function')ixShuffleIcon();}mgRenderDesktop();});
   const iw=document.getElementById('mg-incard-win');if(iw)iw.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});
   const ec=document.getElementById('mg-embed-close');if(ec)ec.addEventListener('click',e=>{e.stopPropagation();mgCloseDesktopEmbed();});
   const cr=document.getElementById('mg-cgg-restore');if(cr)cr.addEventListener('click',e=>{e.stopPropagation();mgRestore();});
