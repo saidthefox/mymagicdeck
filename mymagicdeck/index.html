@@ -1343,17 +1343,17 @@
     .lc-tchip{position:absolute;right:8px;bottom:25%;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
     .lc-tchip:active{filter:brightness(1.2)}
     /* Per-player X life pad: a light-grey X under the 20, 4 tappable arms; ✕ toggles ⇄ the step buttons */
-    .lc-xtog{position:absolute;top:50%;right:3px;transform:translateY(-50%);z-index:4;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+    .lc-xtog{position:absolute;top:50%;right:16cqw;transform:translateY(-50%);z-index:4;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
     .lc-xtog.open{background:rgba(255,255,255,.18)}
     /* In X-mode the big number is purely visual — clicks pass THROUGH it to the wedge underneath */
     .lc-half.lc-xmode .lc-life{position:relative;z-index:3;pointer-events:none}
     .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94cqw,94cqh);height:min(94cqw,94cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% + 2.5px),transparent calc(50% + 2.5px)),linear-gradient(-45deg,transparent calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% + 2.5px),transparent calc(50% + 2.5px))}
     /* Four 90° wedge buttons — the triangular areas BETWEEN the X's diagonal lines (top/right/bottom/left) */
     .lc-xarm{position:absolute;inset:0;background:transparent;border:none;color:rgba(200,202,210,.5);font-weight:800;font-size:clamp(.9rem,5cqmin,1.5rem);cursor:pointer;display:flex;padding:7px;text-shadow:0 1px 2px rgba(0,0,0,.4)}
-    .lc-xarm.top{clip-path:polygon(50% 50%,0 0,100% 0);align-items:flex-start;justify-content:center;padding-top:16cqmin}
-    .lc-xarm.right{clip-path:polygon(50% 50%,100% 0,100% 100%);align-items:center;justify-content:flex-end;padding-right:8cqmin}
-    .lc-xarm.bottom{clip-path:polygon(50% 50%,100% 100%,0 100%);align-items:flex-end;justify-content:center;padding-bottom:16cqmin}
-    .lc-xarm.left{clip-path:polygon(50% 50%,0 100%,0 0);align-items:center;justify-content:flex-start;padding-left:8cqmin}
+    .lc-xarm.top{clip-path:polygon(50% 50%,0 0,100% 0);align-items:flex-start;justify-content:center}
+    .lc-xarm.right{clip-path:polygon(50% 50%,100% 0,100% 100%);align-items:center;justify-content:flex-end}
+    .lc-xarm.bottom{clip-path:polygon(50% 50%,100% 100%,0 100%);align-items:flex-end;justify-content:center}
+    .lc-xarm.left{clip-path:polygon(50% 50%,0 100%,0 0);align-items:center;justify-content:flex-start}
     .lc-xarm:active{background:rgba(255,255,255,.16)}
     /* Diagnostics program */
     .diag-wrap{padding:10px 12px;font-family:Tahoma,sans-serif;color:var(--text);display:flex;flex-direction:column;gap:12px}
