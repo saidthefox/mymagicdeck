@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=2" />
+  <link rel="stylesheet" href="/styles.css?v=3" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -5128,15 +5128,19 @@ async function desktopPullRender(){
 // ===== Desktop background (set from the HUD; persisted locally + per-account) =====
 const DESK_BGS=[['','Default (teal)','#017e7e'],['#000080','Navy','#000080'],['#2f4f6f','Slate','#2f4f6f'],['#3a3a3a','Graphite','#3a3a3a'],['#3b2a5a','Purple','#3b2a5a'],['#1f5132','Forest','#1f5132'],['#5a2a2a','Maroon','#5a2a2a'],['#101218','Midnight','#101218']];
 // ── Theme (light / dark) — persisted in DeckOS store + localStorage so it applies in classic too ──
-function themeGet(){ try{ const t=(window.DeckOS&&DeckOS.store.get('theme'))||localStorage.getItem('mmd_theme'); return t==='light'?'light':'dark'; }catch(e){ return 'dark'; } }
-function themeApply(t){ document.body.classList.toggle('theme-light', t==='light'); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content', t==='light'?'#f3f5f9':'#0f1117'); }
-function themeSet(t){ t=t==='light'?'light':'dark'; try{ if(window.DeckOS)DeckOS.store.set('theme',t); }catch(e){} try{ localStorage.setItem('mmd_theme',t); }catch(e){} themeApply(t); document.querySelectorAll('[data-theme]').forEach(c=>{c.checked=(t==='light');}); }
+const THEMES=['dark','light','glass','emerald','gold']; // 'dark' = default Win95 desktop (no class)
+const THEME_BG={dark:'#0f1117',light:'#f3f5f9',glass:'#141a35',emerald:'#04130d',gold:'#1a1200'};
+function themeGet(){ try{ const t=(window.DeckOS&&DeckOS.store.get('theme'))||localStorage.getItem('mmd_theme'); return THEMES.includes(t)?t:'dark'; }catch(e){ return 'dark'; } }
+function themeApply(t){ const b=document.body; THEMES.forEach(n=>{ if(n!=='dark')b.classList.remove('theme-'+n); }); if(t&&t!=='dark')b.classList.add('theme-'+t); const m=document.querySelector('meta[name="theme-color"]'); if(m)m.setAttribute('content', THEME_BG[t]||THEME_BG.dark); }
+function themeSet(t){ if(!THEMES.includes(t))t='dark'; try{ if(window.DeckOS)DeckOS.store.set('theme',t); }catch(e){} try{ localStorage.setItem('mmd_theme',t); }catch(e){} themeApply(t); document.querySelectorAll('[data-themepick]').forEach(el=>{ el.style.outline = el.getAttribute('data-themepick')===t ? '2px solid var(--accent)' : ''; }); }
 // Shared Appearance block (light mode + desktop background) used by both HUD and System Settings.
 function displaySettingsHtml(){
-  const curBg=(typeof deskBgGet==='function'?deskBgGet():''); const light=themeGet()==='light';
+  const curBg=(typeof deskBgGet==='function'?deskBgGet():''); const curTheme=themeGet();
+  const themeOpts=[['dark','Dark','#3a4154'],['light','Light','#e6ebf3'],['glass','Glass','linear-gradient(135deg,#6f86ff,#b07aff)'],['emerald','Emerald','#16b070'],['gold','Gold','linear-gradient(#f7dd84,#c9a02c)']];
   const swatches=DESK_BGS.map(([val,name,col])=>'<span class="hud-bg-sw'+(val===curBg?' on':'')+'" data-bg="'+val+'" title="'+name+'" style="background:'+col+'"></span>').join('');
   return '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Appearance</div>'+
-    '<label style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 2px"><span>Light mode</span><input type="checkbox" data-theme '+(light?'checked':'')+'></label>'+
+    '<div style="color:var(--text-dim);font-size:.74rem;padding:4px 2px 4px">Theme</div>'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;padding:2px 0 6px">'+themeOpts.map(function(o){return '<button class="btn small" data-themepick="'+o[0]+'" style="display:flex;align-items:center;gap:6px'+(o[0]===curTheme?';outline:2px solid var(--accent)':'')+'"><span style="width:14px;height:14px;border-radius:3px;border:1px solid rgba(0,0,0,.35);background:'+o[2]+'"></span>'+o[1]+'</button>';}).join('')+'</div>'+
     '<div style="color:var(--text-dim);font-size:.74rem;padding:2px 2px 4px">Desktop background</div>'+
     '<div style="padding:2px 0">'+swatches+'</div>'+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:14px">Taskbar (mobile)</div>'+
@@ -5145,7 +5149,7 @@ function displaySettingsHtml(){
 }
 function wireDisplaySettings(b){
   b.querySelectorAll('[data-bg]').forEach(sw=>sw.addEventListener('click',()=>deskBgSet(sw.getAttribute('data-bg'))));
-  const th=b.querySelector('[data-theme]'); if(th)th.addEventListener('change',()=>themeSet(th.checked?'light':'dark'));
+  b.querySelectorAll('[data-themepick]').forEach(btn=>btn.addEventListener('click',()=>themeSet(btn.getAttribute('data-themepick'))));
   const tp=b.querySelector('[data-tbpin]'); if(tp)tp.addEventListener('change',()=>{ try{ DeckOS.store.set('taskbarPinned',tp.checked); }catch(e){} taskbarApply(); });
   const tb=b.querySelector('[data-tbbig]'); if(tb)tb.addEventListener('change',()=>{ try{ DeckOS.store.set('taskbarBig',tb.checked); }catch(e){} taskbarApply(); });
 }

@@ -1805,3 +1805,59 @@
     /* HUD desktop-background swatches */
     .hud-bg-sw{display:inline-block;width:26px;height:26px;border:2px solid #fff;outline:1px solid #888;border-radius:4px;cursor:pointer;margin:0 6px 6px 0;vertical-align:middle}
     .hud-bg-sw.on{outline:2px solid #1577d4;border-color:#1577d4}
+
+/* ════════════════════════════ THEME SKINS ════════════════════════════
+   Each remaps the core tokens (whole-app colors, like theme-light) AND the --ch-* chrome tokens
+   (desktop windows/taskbar/start menu/bevel buttons), plus a few structural overrides where a skin
+   differs in shape (radius / blur / borders). Toggle via System Settings → Theme. */
+
+/* ── Liquid Glass (Apple-style translucency + blur over a colourful backdrop) ── */
+body.theme-glass{
+  --bg:#141a35; --surface:rgba(255,255,255,.10); --surface2:rgba(255,255,255,.07); --surface3:rgba(255,255,255,.15);
+  --border:rgba(255,255,255,.18); --border-strong:rgba(255,255,255,.32);
+  --accent:#8fb4ff; --accent-hover:#aecbff; --accent-dim:rgba(143,180,255,.18);
+  --text:#e9f0ff; --text-dim:#aab6d6; --text-bright:#ffffff; --shadow:0 12px 48px rgba(0,0,0,.5);
+  --ch-face:rgba(255,255,255,.13); --ch-face2:rgba(255,255,255,.20); --ch-text:#eaf0ff;
+  --ch-bevel:rgba(255,255,255,.35) rgba(255,255,255,.06) rgba(255,255,255,.06) rgba(255,255,255,.35);
+  --ch-bevel-in:rgba(255,255,255,.06) rgba(255,255,255,.35) rgba(255,255,255,.35) rgba(255,255,255,.06);
+  --ch-win-border:rgba(255,255,255,.28); --ch-radius:14px; --ch-blur:14px;
+  --ch-titlebar:linear-gradient(90deg,rgba(130,165,255,.32),rgba(175,135,255,.24)); --ch-titlebar-text:#ffffff;
+  background:linear-gradient(135deg,#1a2348,#3a1f54 55%,#0e2740) fixed;
+}
+body.theme-glass .mgw-win{ border:1px solid var(--ch-win-border)!important; border-radius:16px!important; box-shadow:0 14px 50px rgba(0,0,0,.55); }
+body.theme-glass .mgw-bar{ border-radius:16px 16px 0 0; }
+body.theme-glass .mgw-win,body.theme-glass .mg-taskbar,body.theme-glass .mg-startmenu,body.theme-glass #wm-taskbar,
+body.theme-glass .wm-task,body.theme-glass .mg-barwin,body.theme-glass .mgw-win .modal-body .btn,body.theme-glass .lc-ovbtns button{
+  backdrop-filter:blur(var(--ch-blur)); -webkit-backdrop-filter:blur(var(--ch-blur)); }
+body.theme-glass .mgw-win .modal-body .btn,body.theme-glass .lc-ovbtns button,body.theme-glass .mg-barwin,
+body.theme-glass .wm-task,body.theme-glass .mg-winctl,body.theme-glass #wm-taskbar .wm-start{ border-radius:9px; }
+body.theme-glass .mg-taskbar,body.theme-glass #wm-taskbar{ border-top:1px solid var(--border-strong); }
+
+/* ── Emerald City (sharp edges, deep + bright emerald green) ── */
+body.theme-emerald{
+  --bg:#04130d; --surface:#093726; --surface2:#0d4631; --surface3:#11583e;
+  --border:#1c7a52; --border-strong:#2fb178; --accent:#36e08e; --accent-hover:#5cf6ac; --accent-dim:rgba(54,224,142,.16);
+  --text:#c9f7e1; --text-dim:#69b394; --text-bright:#eafff6; --shadow:0 4px 24px rgba(0,45,28,.65);
+  --ch-face:#0d4631; --ch-face2:#11583e; --ch-text:#eafff6;
+  --ch-bevel:#33c98a #041f15 #041f15 #33c98a; --ch-bevel-in:#041f15 #33c98a #33c98a #041f15;
+  --ch-win-border:#3ad690; --ch-radius:0px; --ch-blur:0px;
+  --ch-titlebar:linear-gradient(90deg,#0b6b45,#16b070); --ch-titlebar-text:#eafff6;
+}
+body.theme-emerald .lc-ovbtns button,body.theme-emerald .mg-winbtn,body.theme-emerald .mg-barwin,
+body.theme-emerald .wm-task,body.theme-emerald .mgw-win .modal-body .btn{ border-radius:0; }
+body.theme-emerald .mgw-win{ box-shadow:0 0 24px rgba(28,180,110,.30); }
+
+/* ── El Dorado Gold (so gold it hurts) ── */
+body.theme-gold{
+  --bg:#1a1200; --surface:#3a2a06; --surface2:#4d3a08; --surface3:#66500f;
+  --border:#a8841e; --border-strong:#e8c34a; --accent:#ffd700; --accent-hover:#fff04a; --accent-dim:rgba(255,215,0,.18);
+  --text:#fff4cf; --text-dim:#cbab51; --text-bright:#fffbe6; --shadow:0 6px 34px rgba(150,110,0,.6);
+  --ch-face:#d4af37; --ch-face2:#e6c659; --ch-text:#2e2200;
+  --ch-bevel:#fff3b0 #8a6d12 #8a6d12 #fff3b0; --ch-bevel-in:#8a6d12 #fff3b0 #fff3b0 #8a6d12;
+  --ch-win-border:#fff3b0 #6b520a #6b520a #fff3b0; --ch-radius:3px; --ch-blur:0px;
+  --ch-titlebar:linear-gradient(90deg,#8a6d12,#ffd700 55%,#b8860b); --ch-titlebar-text:#2a1f00;
+}
+body.theme-gold .mgw-win .modal-body .btn,body.theme-gold .lc-ovbtns button,body.theme-gold #wm-taskbar .wm-start,
+body.theme-gold .mg-barwin,body.theme-gold .wm-task,body.theme-gold .mg-winctl{ background:linear-gradient(#f7dd84,#c9a02c); }
+body.theme-gold .mgw-win{ box-shadow:0 0 36px rgba(255,205,50,.45); }
+body.theme-gold .mgw-bar .mgw-ti{ text-shadow:0 1px 1px rgba(255,255,255,.4); }
