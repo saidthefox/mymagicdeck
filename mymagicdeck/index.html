@@ -1343,8 +1343,9 @@
     .lc-tchip{position:absolute;right:8px;bottom:25%;z-index:9;display:flex;align-items:center;gap:5px;background:rgba(10,12,16,.85);border:1px solid rgba(184,147,47,.6);border-radius:20px;padding:7px 13px;color:#ffd27a;font-weight:800;font-size:1rem;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.5);font-family:Tahoma,sans-serif}
     .lc-tchip:active{filter:brightness(1.2)}
     /* Per-player X life pad: a light-grey X under the 20, 4 tappable arms; ✕ toggles ⇄ the step buttons */
-    .lc-xtog{position:absolute;top:50%;right:16cqw;transform:translateY(-50%);z-index:4;width:24px;height:24px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
-    .lc-xtog.open{background:rgba(255,255,255,.18)}
+    .lc-xtog{position:absolute;top:50%;right:16cqw;transform:translateY(-50%);z-index:4;width:26px;height:26px;border-radius:6px;border:1px solid rgba(200,202,210,.3);background:rgba(200,202,210,.07);color:rgba(205,207,214,.72);cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center}
+    .lc-xtog.open{border-color:transparent;background:transparent;color:rgba(205,207,214,.5);font-size:12px}
+    .lc-xtog:active{background:rgba(200,202,210,.16)}
     /* In X-mode the big number is purely visual — clicks pass THROUGH it to the wedge underneath */
     .lc-half.lc-xmode .lc-life{position:relative;z-index:3;pointer-events:none}
     .lc-xpad{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:min(94cqw,94cqh);height:min(94cqw,94cqh);z-index:1;border-radius:12px;background:linear-gradient(45deg,transparent calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% + 2.5px),transparent calc(50% + 2.5px)),linear-gradient(-45deg,transparent calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% - 2.5px),rgba(205,207,214,.3) calc(50% + 2.5px),transparent calc(50% + 2.5px))}
@@ -7603,7 +7604,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
       '<button class="lc-xarm right" data-lc="'+i+'" data-d="1">+1</button>'+
       '<button class="lc-xarm bottom" data-lc="'+i+'" data-d="-5">−5</button>'+
       '<button class="lc-xarm left" data-lc="'+i+'" data-d="-1">−1</button></div>';
-  const xTog=i=>'<button class="lc-xtog'+(s.x[i]?' open':'')+'" data-xtog="'+i+'" title="'+(s.x[i]?'Show the step buttons':'X life pad')+'">'+(s.x[i]?'⊞':'✕')+'</button>';
+  const xTog=i=>'<button class="lc-xtog'+(s.x[i]?' open':'')+'" data-xtog="'+i+'" title="'+(s.x[i]?'Close the X pad (show step buttons)':'Open the X life pad')+'">'+(s.x[i]?'✕':'⊞')+'</button>';
   const lifeOf=i=> L ? (i===0 ? L.oppLife : _tfLive.myLife) : s.players[i].life;
   const liveEdit=i=> L ? (i===1) : true;                                  // in a live match only my (bottom) half is editable
   const stepsL=i=> liveEdit(i) ? (s.x[i]?xPad(i):steps(i)) : '<div class="lc-ovbtns lc-ro"><span class="lc-rolbl">🔗 synced</span></div>';
