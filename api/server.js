@@ -1880,16 +1880,28 @@ app.post('/api/integrations/discord/tournament/:tourn/conclude', { preHandler: [
   return { tourn, concluded: true };
 });
 
-// Bot: upcoming Discord-sourced tournaments within the next `days` (for /notifications reminders).
-// Read-only, bot-key gated. Dates are 'YYYY-MM-DD' so lexicographic range compare is correct.
+// Bot: upcoming tournaments a Discord user should be reminded about (for /notifications). Read-only, bot-key.
+// Always includes Discord-sourced events (the server's own); if ?discord=<id> links to an account with
+// subscription filters, also includes community-listed events matching those filters. Deduped by id.
 app.get('/api/integrations/discord/tournaments/upcoming', { preHandler: botOnly }, async (req) => {
-  const days = Math.max(1, Math.min(60, parseInt((req.query || {}).days, 10) || 15));
+  const q = req.query || {};
+  const days = Math.max(1, Math.min(60, parseInt(q.days, 10) || 15));
   const today = new Date().toISOString().slice(0, 10);
   const until = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
-  const rows = db.prepare(
-    "SELECT id, title, format, mode, region, date, time, url FROM tournaments WHERE date >= ? AND date <= ? AND source LIKE 'discord%' ORDER BY date ASC, time ASC"
-  ).all(today, until);
-  return { tournaments: rows };
+  const all = db.prepare('SELECT * FROM tournaments WHERE date >= ? AND date <= ? ORDER BY date ASC, time ASC').all(today, until);
+  const trim = t => ({ id: t.id, title: t.title, format: t.format, date: t.date, time: t.time || '', region: t.region || '', url: t.url || '' });
+  const pick = new Map();
+  for (const t of all) if (String(t.source || '').startsWith('discord')) pick.set(t.id, trim(t)); // server's own events, always
+  const did = String(q.discord || '').trim();
+  if (did) {
+    const u = db.prepare('SELECT id FROM users WHERE discord_id = ?').get(did);
+    if (u) {
+      const subs = db.prepare('SELECT * FROM tournament_subs WHERE user_id = ?').all(u.id);
+      if (subs.length) for (const t of all) { if (!pick.has(t.id) && subs.some(s => tournamentMatches(t, s))) pick.set(t.id, trim(t)); }
+    }
+  }
+  const tournaments = [...pick.values()].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+  return { tournaments };
 });
 
 // ── POST /api/auth/register ───────────────────────────────────────────────────
