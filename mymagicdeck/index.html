@@ -7946,7 +7946,7 @@ window.DeckOS = {
     return true;
   },
   // Start-menu items for registered programs; pass a category ('games'|'utilities') to filter.
-  programsMenuHtml(cat){ return this._programs.filter(p=>!cat||(p.category||'utilities')===cat).map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+p.icon+' '+_mgEsc(p.title)+'</div>').join(''); },
+  programsMenuHtml(cat){ return this._programs.filter(p=>!cat||(p.category||'utilities')===cat).map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+((typeof MGW_APPS!=='undefined'&&MGW_APPS[p.id]&&MGW_APPS[p.id].icon)||p.icon)+' '+_mgEsc(p.title)+'</div>').join(''); },  // live icon (so a shifting icon like Interactions updates here too)
   // --- mods (third-party programs). LOCAL-TRUST model: a mod is JS that calls DeckOS.registerProgram.
   // It runs with full access to your session (like a userscript) — only install mods you trust.
   // (The sandboxed-iframe capability model for untrusted/hosted mods is on the roadmap.)
@@ -8265,7 +8265,8 @@ let _diagErr=[];
 // current) whenever a menu/flyout reopens, so it's a new pair each time you look.
 const IX_ICONS=['🧑‍🤝‍🧑','👭','👬','👫','🧑🏿‍🤝‍🧑🏼','👩🏾‍🤝‍👨🏿','👩🏻‍🤝‍👩🏽','👨🏼‍🤝‍👨🏿','🧑🏽‍🤝‍🧑🏻','👩🏿‍🤝‍👨🏻'];
 let _ixIcon=IX_ICONS[0];
-function ixShuffleIcon(){ if(IX_ICONS.length<2)return; let n; do{ n=IX_ICONS[(Math.random()*IX_ICONS.length)|0]; }while(n===_ixIcon); _ixIcon=n; }
+function ixShuffleIcon(){ if(IX_ICONS.length<2)return; let n; do{ n=IX_ICONS[(Math.random()*IX_ICONS.length)|0]; }while(n===_ixIcon); _ixIcon=n;
+  try{ const ic=document.querySelector('#modal-prog-interactions .mgw-ic'); if(ic)ic.textContent=_ixIcon; }catch(e){} } // keep an open window's title-bar icon in sync
 function ixAgo(ts){ const s=Math.max(0,(Date.now()-ts)/1000); if(s<60)return Math.floor(s)+'s'; if(s<3600)return Math.floor(s/60)+'m'; if(s<86400)return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'d'; }
 function ixRowHtml(m){ const win=m.winner; const aw=win&&win.name===m.a.name, bw=win&&win.name===m.b.name;
   const side=(p,won)=>'<div class="ix-side'+(won?' win':'')+'"><div class="ix-deck">'+_mgEsc(p.deck||'Unknown deck')+'</div><div class="ix-pl">'+_mgEsc(p.name||'?')+'</div></div>';

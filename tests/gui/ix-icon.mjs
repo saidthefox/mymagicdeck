@@ -14,10 +14,13 @@ const r = await p.evaluate(()=>{
   out.distinct = new Set(seq).size;
   out.iconReflects = MGW_APPS.interactions.icon === seq[seq.length-1];
   out.startMenuReroll = (()=>{ const a=MGW_APPS.interactions.icon; mtaskStartMenu(); const m=MGW_APPS.interactions.icon; mtaskStartMenu(); return m!==a; })();
+  // the actual bug: Start-menu HTML (built from _programs) must render the LIVE icon, not a stale ⚔️ copy
+  ixShuffleIcon(); const menu=DeckOS.programsMenuHtml('games');
+  out.menuReflectsLive = menu.includes('data-app="interactions">'+MGW_APPS.interactions.icon);  // the Interactions row shows the live icon
   return out; });
 console.log(JSON.stringify(r));
 console.log('PAGE_ERRORS:', errs.length, errs.slice(0,4));
-const ok = r.allValid && r.noAdjacentRepeat && r.distinct>=3 && r.iconReflects && r.startMenuReroll && !errs.length;
+const ok = r.allValid && r.noAdjacentRepeat && r.distinct>=3 && r.iconReflects && r.startMenuReroll && r.menuReflectsLive && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);
