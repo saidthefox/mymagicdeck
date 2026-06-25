@@ -428,6 +428,7 @@ async function refreshCards() {
 
 // Seed on startup if cards table is empty, then refresh daily
 function scheduleCardRefresh() {
+  if (process.env.SKIP_CARD_REFRESH === '1') { app.log.warn('SKIP_CARD_REFRESH=1 — not seeding/refreshing the card DB (load-test/dev only).'); return; }
   const count = db.prepare('SELECT COUNT(*) as n FROM cards').get().n;
   if (count === 0) {
     app.log.info('Cards table empty — seeding from Scryfall bulk data...');
@@ -613,6 +614,9 @@ app.register(require('@fastify/multipart'), {
 const _rateBuckets = new Map();
 const RATE_WINDOW = 15 * 60 * 1000; // 15 minutes
 const RATE_MAX_AUTH = 20;            // max auth attempts per window
+// Load-test / dev escape hatch: when RATE_LIMIT_DISABLED=1 every per-IP limiter is a no-op. Default OFF —
+// prod never sets it, so behaviour there is unchanged. (Lets a single-IP load generator drive real traffic.)
+const RATE_LIMIT_DISABLED = process.env.RATE_LIMIT_DISABLED === '1';
 
 // Real client IP for rate-limit keys + abuse logs. The chain is
 // client → Cloudflare → nginx → app. Cloudflare sets CF-Connecting-IP
@@ -629,6 +633,7 @@ function clientIp(req) {
 }
 
 function rateLimitAuth(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   const ip = clientIp(req);
   const now = Date.now();
   let bucket = _rateBuckets.get(ip);
@@ -685,6 +690,7 @@ const UPLOAD_WINDOW = 15 * 60 * 1000;
 const UPLOAD_MAX = 60; // uploads per window
 
 function rateLimitUpload(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   const key = req.user?.sub || clientIp(req);
   const now = Date.now();
   let bucket = _uploadBuckets.get(key);
@@ -708,6 +714,7 @@ setInterval(() => {
 // limiter; anonymous visitors get a strict per-IP cap (the LLM call is expensive).
 const ANALYZE_GUEST_WINDOW = 60 * 60 * 1000, ANALYZE_GUEST_MAX = 5; const _analyzeGuestBuckets = new Map();
 function rateLimitAnalyze(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   if (req.user && req.user.sub) return rateLimitUpload(req, reply, done); // signed in → normal limiter
   const ip = clientIp(req), now = Date.now();
   let b = _analyzeGuestBuckets.get(ip);
@@ -730,6 +737,7 @@ let _bgInFlight = 0;
 const _bgGuestBuckets = new Map();           // guests keyed by IP, stricter window
 const GUEST_BG_MAX = 2, GUEST_BG_WINDOW = 60 * 60 * 1000; // 2 AI scenes / hour for signed-out users
 function rateLimitBgGen(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   const guest = !req.user;
   const map = guest ? _bgGuestBuckets : _bgBuckets, max = guest ? GUEST_BG_MAX : BG_MAX, win = guest ? GUEST_BG_WINDOW : BG_WINDOW;
   const key = req.user?.sub || clientIp(req);
@@ -1358,6 +1366,7 @@ const _reportBuckets = new Map();
 const REPORT_WINDOW = 15 * 60 * 1000;
 const REPORT_MAX = 20;
 function rateLimitReport(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   const ip = clientIp(req);
   const now = Date.now();
   let b = _reportBuckets.get(ip);
@@ -1710,6 +1719,7 @@ function _fetchHeadPinned(urlObj, ip, family) {
 // Dedicated limiter so framecheck can't drain (or be drained by) the report budget.
 const _fcBuckets = new Map(); const FC_WINDOW = 10 * 60 * 1000; const FC_MAX = 40;
 function rateLimitFrameCheck(req, reply, done) {
+  if(RATE_LIMIT_DISABLED)return done();
   const ip = clientIp(req);
   const now = Date.now(); let b = _fcBuckets.get(ip);
   if (!b || now - b.start > FC_WINDOW) { b = { start: now, count: 0 }; _fcBuckets.set(ip, b); }
@@ -3288,7 +3298,7 @@ function lgRecord(row,s){ if(s.status!=='over'||s.recorded)return; s.recorded=tr
     .run(row.format,row.clock,row.p1_user,row.p2_user,row.p1_name,row.p2_name,winnerUser,s.reason||'over'); }
 function lgMatchSave(code,s){ db.prepare('UPDATE lg_matches SET state=?, status=?, updated_at=unixepoch() WHERE code=?').run(JSON.stringify(s), s.status, code); }
 const _lgBuckets=new Map();
-function rateLimitLg(req,reply,done){ const ip=clientIp(req); const now=Date.now(); let b=_lgBuckets.get(ip); if(!b||now-b.start>60000){ b={start:now,count:0}; _lgBuckets.set(ip,b);} if(++b.count>120){ reply.code(429).send({error:'Slow down.'}); return; } done(); }
+function rateLimitLg(req,reply,done){ if(RATE_LIMIT_DISABLED)return done(); const ip=clientIp(req); const now=Date.now(); let b=_lgBuckets.get(ip); if(!b||now-b.start>60000){ b={start:now,count:0}; _lgBuckets.set(ip,b);} if(++b.count>120){ reply.code(429).send({error:'Slow down.'}); return; } done(); }
 
 app.post('/api/lg/create', { preHandler:[authenticate, rateLimitLg] }, async (req,reply)=>{
   const { format, clock } = req.body||{}; if(format!=='land') return reply.code(400).send({error:'Unknown format.'}); if(!LG_CLOCK_MS.hasOwnProperty(clock)) return reply.code(400).send({error:'Bad time control.'});
