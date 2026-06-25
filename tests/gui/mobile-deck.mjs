@@ -16,7 +16,7 @@ const r = await p.evaluate(()=>{
   const rows=[...document.querySelectorAll('#panel-deck .mob-deck-row')].filter(x=>x.offsetParent!==null);
   const first=rows[0];
   const out={ rows:rows.length, art:first?/url\(/.test(first.getAttribute('style')||''):false,
-    pips:first?first.querySelectorAll('.mob-deck-pips .mana-symbol').length:0,
+    pips:first?first.querySelectorAll('.mob-deck-pips .ms, .mob-deck-pips .mana-symbol').length:0,
     steppers:first?first.querySelectorAll('.mob-step').length:0,
     name:first?!!first.querySelector('.mob-deck-name'):false,
     sections:[...document.querySelectorAll('#panel-deck .mob-section-header')].filter(x=>x.offsetParent!==null).length };

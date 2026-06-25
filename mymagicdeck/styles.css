@@ -633,6 +633,10 @@
     .deck-item-meta { font-size: 0.72rem; color: var(--text-dim); }
     .deck-item-actions { display: flex; gap: 4px; }
     .mana-symbol { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; font-size: 0.6rem; font-weight: 700; line-height: 1; }
+    /* Scryfall mana-symbol SVGs — scale with surrounding text, faint drop shadow like printed pips. */
+    .ms { display:inline-block; width:1.05em; height:1.05em; vertical-align:-0.13em; margin:0 .5px; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+    .splash-stat .ss-list .ms { width:1.1em; height:1.1em; }
+    .detail-mana .ms, #panel-detail .ms { width:1.35em; height:1.35em; }
     .mana-W { background: #f9f0db; color: #3d3520; } .mana-U { background: #5b8def; color: #fff; }
     .mana-B { background: #2d1f3d; color: #a88fc8; border: 1px solid #a88fc8; } .mana-R { background: #c03030; color: #fff; }
     .mana-G { background: #2d6040; color: #7de0a0; } .mana-C { background: #3a4050; color: #c0c8d8; }
