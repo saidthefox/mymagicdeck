@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=7" />
+  <link rel="stylesheet" href="/styles.css?v=8" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4671,6 +4671,7 @@ function renderSysset(){
       '<option value="cgg"'+(su==='cgg'?' selected':'')+'>🎴 Card Guesser</option>'+
       Object.keys(MGW_APPS).map(k=>'<option value="'+k+'"'+(su===k?' selected':'')+'>'+MGW_APPS[k].icon+' '+_mgEsc(MGW_APPS[k].title)+'</option>').join('')+
     '</select>'+
+    '<label style="display:flex;align-items:center;gap:7px;padding:4px 2px 2px;font-size:.82rem;cursor:pointer"><input type="checkbox" id="ss-startmin"'+(osStartMinGet()?' checked':'')+'> <span>Start with MyMagicDeck minimized <span style="color:var(--text-dim);font-size:.74rem">— open to the desktop instead of the deckbuilder</span></span></label>'+
     displaySettingsHtml();
   const lc=document.getElementById('ss-local');if(lc)lc.addEventListener('change',()=>{if(window.DeckOS){DeckOS.mode=lc.checked?'local':'hosted';DeckOS.applyMode();DeckOS.ui.toast(lc.checked?'Personal mode on':'Connected mode on');}});
   const ex=document.getElementById('ss-export');if(ex)ex.addEventListener('click',()=>DeckOS.exportDecks());
@@ -4682,6 +4683,7 @@ function renderSysset(){
   b.querySelectorAll('[data-rmsmod]').forEach(btn=>btn.addEventListener('click',()=>{DeckOS.removeSandboxMod(btn.getAttribute('data-rmsmod'));renderSysset();DeckOS.ui.toast('Mod removed (reload to unload it)');}));
   const ma=document.getElementById('ss-modadd');if(ma)ma.addEventListener('click',async()=>{const u=document.getElementById('ss-modurl').value;const sb=document.getElementById('ss-modsandbox');const ok=(sb&&sb.checked)?DeckOS.installSandboxMod(u):await DeckOS.installMod(u);if(ok)renderSysset();});
   const sp=document.getElementById('ss-startup');if(sp)sp.addEventListener('change',()=>{ osStartupSet(sp.value); DeckOS.ui.toast('Startup set to '+(sp.options[sp.selectedIndex].text||sp.value)); });
+  const smn=document.getElementById('ss-startmin');if(smn)smn.addEventListener('change',()=>{ osStartMinSet(smn.checked); DeckOS.ui.toast(smn.checked?'MyMagicDeck will start minimized':'MyMagicDeck will start open'); });
   wireDisplaySettings(b);
 }
 // HUD: live status of your published subdomain page(s). (Pin the Page Status widget for a desktop version.)
@@ -4803,12 +4805,17 @@ function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)
 // ===== Startup program + pinned mobile taskbar (quick app-switching on phones) =====
 function osStartupGet(){ try{ return DeckOS.store.get('startup')||'cgg'; }catch(e){ return 'cgg'; } }
 function osStartupSet(v){ try{ DeckOS.store.set('startup',v); }catch(e){} if(v==='cgg'&&typeof mguessSetDisabled==='function')mguessSetDisabled(false); }
+function osStartMinGet(){ try{ return !!DeckOS.store.get('startMinimized'); }catch(e){ return false; } }
+function osStartMinSet(v){ try{ DeckOS.store.set('startMinimized',!!v); }catch(e){} }
 function osBootStartup(){ const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches; if(!isMobile)return;
+  // "Start minimized": open straight to the desktop with MyMagicDeck minimized, rather than the deckbuilder.
+  const finish=()=>{ if(osStartMinGet()&&typeof mgEmbedDesktop==='function')mgEmbedDesktop(); };
   let off=false; try{ off=sessionStorage.getItem('mmd_mguess_off')==='1'; }catch(e){}
-  if(off)return; const s=osStartupGet();
-  if(s==='none')return;
-  if(s==='cgg'){ if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess(); return; }
-  if(typeof MGW_APPS!=='undefined'&&MGW_APPS[s]){ try{ mgLaunchApp(s); }catch(e){} } else if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess(); }
+  if(off){ finish(); return; } const s=osStartupGet();
+  if(s==='none'){ finish(); return; }
+  if(s==='cgg'){ if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess(); finish(); return; }
+  if(typeof MGW_APPS!=='undefined'&&MGW_APPS[s]){ try{ mgLaunchApp(s); }catch(e){} } else if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess();
+  finish(); }
 function taskbarPinned(){ try{ return !!DeckOS.store.get('taskbarPinned'); }catch(e){ return false; } }
 function taskbarBig(){ try{ return !!DeckOS.store.get('taskbarBig'); }catch(e){ return false; } }
 function taskbarApply(){ const pinned=taskbarPinned() && !document.body.classList.contains('wm-on'); const big=taskbarBig();
