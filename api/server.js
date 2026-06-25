@@ -1880,6 +1880,18 @@ app.post('/api/integrations/discord/tournament/:tourn/conclude', { preHandler: [
   return { tourn, concluded: true };
 });
 
+// Bot: upcoming Discord-sourced tournaments within the next `days` (for /notifications reminders).
+// Read-only, bot-key gated. Dates are 'YYYY-MM-DD' so lexicographic range compare is correct.
+app.get('/api/integrations/discord/tournaments/upcoming', { preHandler: botOnly }, async (req) => {
+  const days = Math.max(1, Math.min(60, parseInt((req.query || {}).days, 10) || 15));
+  const today = new Date().toISOString().slice(0, 10);
+  const until = new Date(Date.now() + days * 86400000).toISOString().slice(0, 10);
+  const rows = db.prepare(
+    "SELECT id, title, format, mode, region, date, time, url FROM tournaments WHERE date >= ? AND date <= ? AND source LIKE 'discord%' ORDER BY date ASC, time ASC"
+  ).all(today, until);
+  return { tournaments: rows };
+});
+
 // ── POST /api/auth/register ───────────────────────────────────────────────────
 app.post('/api/auth/register', {
   preHandler: rateLimitAuth,

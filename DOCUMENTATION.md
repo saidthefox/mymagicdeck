@@ -325,6 +325,7 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | GET | `/api/interactions/tournaments` | public | tournaments present in the ledger (+ match counts) |
 | GET | `/api/interactions/tournament/:tourn` | public | a tournament's matches by round + `champion` + winning-deck `path` (decks `★`-masked until concluded) |
 | POST | `/api/integrations/discord/tournament/:tourn/conclude` | bot key | mark a tournament concluded → reveal its decklists in the ledger (bot calls on `/end`) |
+| GET | `/api/integrations/discord/tournaments/upcoming` | bot key | upcoming Discord-sourced tournaments within `?days=` (default 15) — feeds the bot's `/notifications` reminder scheduler |
 
 Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to
 `tf_matches` (per account) so history + win-rate stats follow you across devices.
