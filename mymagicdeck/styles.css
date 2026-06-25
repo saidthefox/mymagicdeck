@@ -1120,6 +1120,7 @@
     #wm-clock{font-size:11px;color:#000;flex-shrink:0;padding:0 8px;border-left:1px solid #808080}
     #wm-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.wm-on .mg-taskbar{display:none} /* the persistent #wm-taskbar replaces the desktop's own taskbar */
+    body.mtask-on .mg-taskbar{display:none} /* likewise the pinned #mg-mtask overlay replaces it (else it stacks under — invisible in opaque skins, but shows THROUGH the translucent Glass bar → doubled taskbar) */
     /* Pinned mobile taskbar — the regular Start + open-app buttons, always on top, reserves bounds */
     #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:var(--ch-face);border-top:2px solid #fff;box-sizing:border-box;overflow:hidden;font-family:Tahoma,'MS Sans Serif',sans-serif}
     #mg-mtask .mt-apps{display:flex;align-items:stretch;gap:6px;flex:1;min-width:0;overflow-x:auto}
