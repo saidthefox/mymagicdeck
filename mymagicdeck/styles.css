@@ -18,6 +18,11 @@
       --white: #f9f0db; --blue: #5b8def; --black: #a88fc8; --red: #e05252;
       --green: #4caf7d; --colorless: #7a87a0; --gold: #d4a843;
       --card-w: 120px; --card-h: 167px; --stack-offset: 30px;
+      /* ── Win95 chrome tokens (default skin). Theme blocks remap these to reskin ALL desktop chrome. ── */
+      --ch-face:#c0c0c0; --ch-face2:#d8d4cc; --ch-text:#000;
+      --ch-bevel:#fff #808080 #808080 #fff; --ch-bevel-in:#808080 #fff #fff #808080;
+      --ch-win-border:#dfdfdf #404040 #404040 #dfdfdf; --ch-radius:0px; --ch-blur:0px;
+      --ch-titlebar:var(--ch-titlebar); --ch-titlebar-text:#fff;
     }
     /* Light mode (opt-in via System Settings / HUD). Flips the theme vars; the Win95
        program windows keep their own grey skin (.mgw-win override). */
@@ -930,12 +935,12 @@
     }
     /* ── Mobile "guess my card" overlay (tactile card; guess engine TBD) ── */
     #mguess-overlay{position:fixed;inset:0;z-index:6000;background:#0b0d12;display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:10px;overflow:auto}
-    #mg-winbar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0;margin-bottom:4px}
+    #mg-winbar{display:flex;align-items:center;gap:4px;background:var(--ch-titlebar);padding:4px 4px 4px 6px;flex-shrink:0;margin-bottom:4px}
     #mg-wintitle{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mg-winctl{width:24px;height:21px;flex-shrink:0;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;font-size:12px;font-weight:bold;color:#000;display:flex;align-items:center;justify-content:center;line-height:1;font-family:Tahoma,sans-serif}
-    .mg-winctl:active{border-color:#808080 #fff #fff #808080}
-    .mg-barwin{font-size:11px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mg-barwin.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
+    .mg-winctl{width:24px;height:21px;flex-shrink:0;background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);font-size:12px;font-weight:bold;color:var(--ch-text);display:flex;align-items:center;justify-content:center;line-height:1;font-family:Tahoma,sans-serif}
+    .mg-winctl:active{border-color:var(--ch-bevel-in)}
+    .mg-barwin{font-size:11px;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mg-barwin.active{border-color:var(--ch-bevel-in);background:#dcdcdc}
     #search-results{position:relative}
     #mguess-overlay.windowed{background:transparent;pointer-events:none;padding:0;overflow:hidden}
     #mguess-card.mg-mini{position:absolute;pointer-events:auto;cursor:grab;box-shadow:3px 3px 12px rgba(0,0,0,.55);touch-action:none;-webkit-touch-callout:none}
@@ -944,7 +949,7 @@
     .mg-cggart{display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;background:#000;border:2px solid #888;line-height:1.05;padding:2px;box-sizing:border-box}
     .mg-cggart b{font-size:9px;font-family:'Courier New',monospace;letter-spacing:.5px}
     #mguess-overlay.open{display:flex}
-    #mguess-card{position:relative;width:min(96vw,440px);flex:1 1 auto;min-height:0;box-sizing:border-box;background:#c0c0c0;border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
+    #mguess-card{position:relative;width:min(96vw,440px);flex:1 1 auto;min-height:0;box-sizing:border-box;background:var(--ch-face);border:3px solid;border-color:var(--ch-win-border);padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column}
     #mg-artwrap{position:relative;flex:1;min-height:0;display:flex}
     .mg-edge{position:absolute;top:0;bottom:0;width:22px;z-index:6;cursor:pointer;background:transparent;-webkit-tap-highlight-color:transparent}
     .mg-edge-l{left:0}.mg-edge-r{right:0}
@@ -975,8 +980,8 @@
     .mg-zone:active{filter:brightness(1.12)}
     #mg-hint{font-size:12px;color:#7a87a0;text-align:center;min-height:16px;font-family:-apple-system,system-ui,sans-serif}
     .mg95{font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
-    .mg-bvl{border:2px solid;border-color:#fff #808080 #808080 #fff}
-    .mg-cbx{width:14px;height:14px;flex-shrink:0;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:#000}
+    .mg-bvl{border:2px solid;border-color:var(--ch-bevel)}
+    .mg-cbx{width:14px;height:14px;flex-shrink:0;background:#fff;border:2px solid;border-color:var(--ch-bevel-in);display:inline-flex;align-items:center;justify-content:center;font-size:11px;line-height:1;color:#000}
     .mg-cbrow{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:12px;color:#000;cursor:pointer}
     .mg-desk{position:absolute;inset:0;background:var(--desk-bg,#017e7e);display:flex;flex-direction:column}
     .mg-deskicons{flex:1;min-height:0;overflow:auto;display:flex;flex-wrap:wrap;align-content:flex-start;gap:4px;padding:10px}
@@ -991,14 +996,14 @@
     /* Marquee (rubber-band) multi-select — Splash free layout + desktop */
     .os-marquee{position:absolute;border:1px solid rgba(125,224,160,.9);background:rgba(125,224,160,.16);border-radius:2px;z-index:99998;pointer-events:none}
     .os-sel{box-shadow:0 0 0 2px #7de0a0, 0 0 10px rgba(125,224,160,.55) !important;border-radius:4px}
-    .os-selmenu{position:fixed;z-index:100000;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 10px rgba(0,0,0,.5);padding:3px;min-width:170px;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .os-selmenu{position:fixed;z-index:100000;background:var(--ch-face);border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 10px rgba(0,0,0,.5);padding:3px;min-width:170px;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .os-selmenu .os-mi{padding:6px 10px;font-size:12px;color:#000;cursor:pointer;white-space:nowrap}
     .os-selmenu .os-mi:hover{background:#000080;color:#fff}
     .mg-icon.mg-droptarget .mg-ico,.mg-icon.mg-droptarget .mg-cggart,.mg-icon.mg-droptarget .mg-folderbubble{outline:2px solid #ffe066;outline-offset:2px;border-radius:12px}
     /* iOS/Android-style app-folder bubble */
     .mg-folderbubble{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:2px;width:48px;height:48px;margin:0 auto 2px;padding:4px;box-sizing:border-box;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.34);border-radius:13px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
     .mg-fbm{display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;overflow:hidden}
-    .mg-fbpop{position:fixed;z-index:5200;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 12px rgba(0,0,0,.55);border-radius:7px;padding:8px;width:248px;max-width:92vw;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .mg-fbpop{position:fixed;z-index:5200;background:var(--ch-face);border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 12px rgba(0,0,0,.55);border-radius:7px;padding:8px;width:248px;max-width:92vw;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .mg-fbpop-bar{display:flex;align-items:center;gap:6px;margin-bottom:6px}
     .mg-fbpop-name{flex:1;min-width:0;font-weight:bold;font-size:12px;color:#000;background:transparent;border:0;padding:2px}
     .mg-fbpop-name:focus{outline:1px solid #1577d4;background:#fff}
@@ -1012,8 +1017,8 @@
     .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:calc(11px * var(--os-font,1));color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:calc(72px * var(--os-icon,1))}
     .mg-icon.sel{border:1px dotted #fff}
     .mg-icon.sel .mg-ilbl{background:#000080;text-shadow:none}
-    .mg-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;background:#c0c0c0;border-bottom:2px solid #808080;padding:4px 6px;flex-wrap:wrap}
-    .mg-toolbar button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:#c0c0c0;padding:3px 8px}
+    .mg-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;background:var(--ch-face);border-bottom:2px solid #808080;padding:4px 6px;flex-wrap:wrap}
+    .mg-toolbar button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:var(--ch-face);padding:3px 8px}
     .mg-path{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-seldeck{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%;flex-shrink:0}
     .mg-vsep{flex-shrink:0;width:0;height:15px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 2px}
@@ -1022,17 +1027,17 @@
     .mg-presdot{flex-shrink:0;align-self:center;width:9px;height:9px;border-radius:50%;background:#888;border:1px solid #5a5a5a;cursor:pointer}
     .mg-presdot.on{background:#39d353;border-color:#1f8b38}
     .mg-acct:hover{text-decoration:underline}
-    .mg-taskbar{flex-shrink:0;min-height:32px;background:#c0c0c0;border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
-    #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:#c0c0c0;padding:3px 12px}
+    .mg-taskbar{flex-shrink:0;min-height:32px;background:var(--ch-face);border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
+    #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:var(--ch-face);padding:3px 12px}
     .mg-adding{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-binrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.16)}
     .mg-binname{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#fff;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-    .mg-binrow button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:#c0c0c0;padding:3px 10px;flex-shrink:0}
+    .mg-binrow button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:var(--ch-face);padding:3px 10px;flex-shrink:0}
     .mg-rnm{width:72px;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;text-align:center;border:1px solid #000;padding:1px;box-sizing:border-box;touch-action:auto;user-select:text;-webkit-user-select:text}
     .mg-dragclone{position:fixed;z-index:9999;pointer-events:none;opacity:.85;transform:translate(-50%,-50%);width:74px;display:flex;flex-direction:column;align-items:center;gap:3px}
     .mg-dragclone .mg-ico{font-size:30px}.mg-dragclone .mg-ilbl{font-size:11px;color:#fff;text-shadow:0 1px 2px #000}
     .mg-drophi{outline:2px dotted #fff;outline-offset:-2px;background:rgba(0,0,128,.45)}
-    .mg-startmenu{position:absolute;left:3px;bottom:34px;width:210px;max-width:92%;background:#c0c0c0;z-index:20;display:flex;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
+    .mg-startmenu{position:absolute;left:3px;bottom:34px;width:210px;max-width:92%;background:var(--ch-face);z-index:20;display:flex;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
     .mg-smtitle{writing-mode:vertical-rl;transform:rotate(180deg);background:#000080;color:#fff;font-weight:bold;font-size:13px;padding:8px 3px;flex-shrink:0;letter-spacing:.5px;display:flex;justify-content:space-between;align-items:center;gap:8px}
     .mg-smtitle-os{font-size:10px;opacity:.82;font-weight:normal;letter-spacing:.5px}
     .mg-smbody{flex:1;min-width:0;padding:3px}
@@ -1046,14 +1051,14 @@
     .mg-smlbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
     .mg-smchev{flex:0 0 auto;font-size:10px}
     /* flyout box to the right of the Start menu, Windows-style */
-    .mg-smsub{position:absolute;left:100%;top:-3px;min-width:172px;background:#c0c0c0;border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 8px rgba(0,0,0,.5);z-index:40;display:none;padding:3px}
+    .mg-smsub{position:absolute;left:100%;top:-3px;min-width:172px;background:var(--ch-face);border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 8px rgba(0,0,0,.5);z-index:40;display:none;padding:3px}
     .mg-smcat.open>.mg-smsub{display:block}
     .mg-smsub .mg-smitem{color:#000}
-    #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:#c0c0c0;z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
+    #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:var(--ch-face);z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
     /* MGW: generic Win95 program windows (Splash / Share / Account / future apps) */
-    .mgw-win{border:3px solid !important;border-color:#dfdfdf #404040 #404040 #dfdfdf !important;border-radius:0 !important;background:#c0c0c0 !important;padding:0 !important;overflow:hidden}
-    .mgw-bar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;flex-shrink:0}
-    .mgw-bar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:5px}
+    .mgw-win{border:3px solid !important;border-color:var(--ch-win-border) !important;border-radius:0 !important;background:var(--ch-face) !important;padding:0 !important;overflow:hidden}
+    .mgw-bar{display:flex;align-items:center;gap:4px;background:var(--ch-titlebar);padding:4px 4px 4px 6px;flex-shrink:0}
+    .mgw-bar .mgw-ti{flex:1;min-width:0;color:var(--ch-titlebar-text);font-weight:bold;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:5px}
     .mgw-bar .mgw-ic{font-size:13px}
     .mgw-mini{pointer-events:auto;box-shadow:3px 3px 12px rgba(0,0,0,.55);cursor:grab;touch-action:none;-webkit-touch-callout:none}
     .mgw-mini.dragging{cursor:grabbing;opacity:.92}
@@ -1064,14 +1069,14 @@
        HUD, Storage, About, Share…) is readable on the gray window. Redefining the theme vars
        flips even inline var(--text) usages to dark. The MyMagicDeck site window + Splash Builder
        never get .mgw-win, so they keep their own modern look. */
-    .mgw-win{ --text:#101010; --text-dim:#3a3a3a; --text-bright:#000; --bg:#fff; --surface:#c0c0c0; --surface2:#c0c0c0; --surface3:#d8d4cc; --border:#808080; --border-strong:#808080; --radius:2px; --accent:#000080; --accent-hover:#000080; }
+    .mgw-win{ --text:#101010; --text-dim:#3a3a3a; --text-bright:#000; --bg:#fff; --surface:var(--ch-face); --surface2:var(--ch-face); --surface3:var(--ch-face2); --border:#808080; --border-strong:#808080; --radius:2px; --accent:#000080; --accent-hover:#000080; }
     .mgw-win .modal-body{ color:#101010; }
-    .mgw-win .modal-body .btn{ border-width:2px; border-style:solid; border-color:#fff #808080 #808080 #fff; box-shadow:none; color:#000; background:#c0c0c0; }
-    .mgw-win .modal-body .btn:hover{ color:#000; background:#c8c8c8; border-color:#fff #808080 #808080 #fff; }
-    .mgw-win .modal-body .btn:active{ border-color:#808080 #fff #fff #808080; }
-    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:#000; background:#c0c0c0; }
+    .mgw-win .modal-body .btn{ border-width:2px; border-style:solid; border-color:var(--ch-bevel); box-shadow:none; color:var(--ch-text); background:var(--ch-face); }
+    .mgw-win .modal-body .btn:hover{ color:var(--ch-text); background:#c8c8c8; border-color:var(--ch-bevel); }
+    .mgw-win .modal-body .btn:active{ border-color:var(--ch-bevel-in); }
+    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:#000; background:var(--ch-face); }
     .mgw-win .modal-body .btn.danger{ color:#a00; }
-    .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:#808080 #fff #fff #808080; border-radius:0; background:#fff; color:#000; }
+    .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:var(--ch-bevel-in); border-radius:0; background:#fff; color:#000; }
     .mgw-win .modal-body a{ color:#00006e; }
     /* The whole site is a Win95 program window sitting on the root PC desktop */
     #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:var(--desk-bg,#017e7e);isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
@@ -1088,9 +1093,9 @@
     #site-window.site-mini.dragging{cursor:grabbing;opacity:.95}
     #site-window.site-mini *{pointer-events:none}
     /* Deck OS shell — active whenever body.deckos is set (mobile always; desktop via the toggle). */
-    body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:linear-gradient(90deg,#00006e,#1577d4);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
-    body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:#fff;font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-    body.deckos #site-window{border:3px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;background:#c0c0c0;box-sizing:border-box}
+    body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:var(--ch-titlebar);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
+    body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:var(--ch-titlebar-text);font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    body.deckos #site-window{border:3px solid;border-color:var(--ch-win-border);background:var(--ch-face);box-sizing:border-box}
     body.deckos.pc-deskmode #pc-desktop, body.deckos.site-windowed #pc-desktop, body.wm-on #pc-desktop{display:block}
     body.wm-on #pc-desktop{z-index:0}
     body.deckos:not(.wm-on).pc-deskmode #site-window{display:none}
@@ -1104,24 +1109,24 @@
     .wm-win .mgw-bar, .wm-win #mg-winbar{cursor:move;user-select:none}
     .wm-win .modal-body, .wm-win #mg-frame{flex:1;min-height:0;overflow:auto}
     .wm-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:6;background:linear-gradient(135deg,transparent 50%,#808080 50%,#808080 60%,transparent 60%,transparent 72%,#808080 72%,#808080 82%,transparent 82%)}
-    #wm-taskbar{position:fixed;left:0;right:0;bottom:0;height:34px;z-index:4000;display:none;align-items:center;gap:6px;padding:3px 6px;background:#c0c0c0;border-top:2px solid #fff;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    #wm-taskbar{position:fixed;left:0;right:0;bottom:0;height:34px;z-index:4000;display:none;align-items:center;gap:6px;padding:3px 6px;background:var(--ch-face);border-top:2px solid #fff;font-family:Tahoma,'MS Sans Serif',sans-serif}
     body.wm-on #wm-taskbar{display:flex}
-    #wm-taskbar .wm-start{font-weight:bold;font-size:12px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 12px;flex-shrink:0;cursor:pointer}
-    #wm-taskbar .wm-showdesk{font-size:13px;line-height:1;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:2px 7px;flex-shrink:0;cursor:pointer;margin:0 6px}
-    #wm-taskbar .wm-showdesk:active{border-color:#808080 #fff #fff #808080}
+    #wm-taskbar .wm-start{font-weight:bold;font-size:12px;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);padding:3px 12px;flex-shrink:0;cursor:pointer}
+    #wm-taskbar .wm-showdesk{font-size:13px;line-height:1;background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);padding:2px 7px;flex-shrink:0;cursor:pointer;margin:0 6px}
+    #wm-taskbar .wm-showdesk:active{border-color:var(--ch-bevel-in)}
     #wm-taskbar .wm-tasks{display:flex;gap:4px;flex:1;min-width:0;overflow:hidden}
-    .wm-task{font-size:11px;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:5px}
-    .wm-task.active{border-color:#808080 #fff #fff #808080;background:#dcdcdc}
+    .wm-task{font-size:11px;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);padding:3px 10px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;display:flex;align-items:center;gap:5px}
+    .wm-task.active{border-color:var(--ch-bevel-in);background:#dcdcdc}
     #wm-clock{font-size:11px;color:#000;flex-shrink:0;padding:0 8px;border-left:1px solid #808080}
     #wm-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.wm-on .mg-taskbar{display:none} /* the persistent #wm-taskbar replaces the desktop's own taskbar */
     /* Pinned mobile taskbar — the regular Start + open-app buttons, always on top, reserves bounds */
-    #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:#c0c0c0;border-top:2px solid #fff;box-sizing:border-box;overflow:hidden;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:var(--ch-face);border-top:2px solid #fff;box-sizing:border-box;overflow:hidden;font-family:Tahoma,'MS Sans Serif',sans-serif}
     #mg-mtask .mt-apps{display:flex;align-items:stretch;gap:6px;flex:1;min-width:0;overflow-x:auto}
-    #mg-mtask .mt-start,#mg-mtask .mt-desk{flex-shrink:0;font-weight:bold;color:#000;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;cursor:pointer}
+    #mg-mtask .mt-start,#mg-mtask .mt-desk{flex-shrink:0;font-weight:bold;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);cursor:pointer}
     #mg-mtask .mt-start{font-size:12px;padding:0 14px}
     #mg-mtask .mt-desk{font-size:16px;line-height:1;padding:0 12px}
-    #mg-mtask .mt-start:active,#mg-mtask .mt-desk:active{border-color:#808080 #fff #fff #808080}
+    #mg-mtask .mt-start:active,#mg-mtask .mt-desk:active{border-color:var(--ch-bevel-in)}
     #mt-startmenu{position:fixed;left:4px;bottom:var(--mtask-h,40px);z-index:6001}
     #mt-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.mtask-on .modal-overlay{bottom:var(--mtask-h)} /* reserve space so full-screen apps don't cover the bar */
@@ -1180,17 +1185,17 @@
     .cd-win{color:#7CFC00;font-size:17px;font-weight:bold}
     .cd-stats{text-align:center;color:#c9d2dd;font-size:11px;background:rgba(0,0,0,.28);border-radius:6px;padding:7px;max-width:470px;margin:10px auto 0}
     /* Mountable desktop widgets (HUD hub): small faded panels anchored on the desktop, under the windows */
-    .os-widget{position:absolute;z-index:12;width:208px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;opacity:.93;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 8px rgba(0,0,0,.4)}
-    .os-widget .ow-bar{background:linear-gradient(90deg,#00006e,#1577d4);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
+    .os-widget{position:absolute;z-index:12;width:208px;background:var(--ch-face);border:2px solid;border-color:var(--ch-win-border);opacity:.93;font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;box-shadow:2px 2px 8px rgba(0,0,0,.4)}
+    .os-widget .ow-bar{background:var(--ch-titlebar);color:#fff;font-weight:bold;padding:2px 4px 2px 6px;display:flex;align-items:center;justify-content:space-between;gap:4px;cursor:move}
     .os-widget .ow-btns{display:flex;gap:3px}
     .dw{display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 4px}
     .dw-face{width:62px;height:62px;display:flex;align-items:center;justify-content:center;font-size:1.55rem;font-weight:800;background:linear-gradient(145deg,#fff,#cdd4e0);color:#1a2030;border-radius:12px;box-shadow:inset 0 2px 3px rgba(255,255,255,.8),0 2px 5px rgba(0,0,0,.4);cursor:pointer;user-select:none}
     .dw-face.dw-pop{animation:dw-pop .35s ease}
     @keyframes dw-pop{0%{transform:scale(.7) rotate(-12deg)}60%{transform:scale(1.12)}100%{transform:none}}
     .dw-types{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;max-width:180px}
-    .dw-t{background:#d4d0c8;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:9px;padding:2px 5px;cursor:pointer;color:#000;font-family:inherit}
+    .dw-t{background:var(--ch-face);border:1px solid;border-color:var(--ch-bevel);font-size:9px;padding:2px 5px;cursor:pointer;color:var(--ch-text);font-family:inherit}
     .dw-t.on{background:#1577d4;color:#fff;border-color:#0a4d8c}
-    .os-widget .ow-bar button{background:#c0c0c0;border:1px solid;border-color:#fff #808080 #808080 #fff;font-size:10px;font-weight:bold;min-width:16px;height:14px;line-height:1;padding:0 1px;cursor:pointer;color:#000}
+    .os-widget .ow-bar button{background:var(--ch-face);border:1px solid;border-color:var(--ch-bevel);font-size:10px;font-weight:bold;min-width:16px;height:14px;line-height:1;padding:0 1px;cursor:pointer;color:var(--ch-text)}
     .os-widget .ow-body{padding:6px 8px;max-height:300px;overflow:auto;line-height:1.45}
     .os-widget.pinned{opacity:.5;transition:opacity .15s}
     .os-widget.pinned .ow-bar{cursor:default}
@@ -1237,16 +1242,16 @@
     .cal-ev.cal-evt{background:#7a5cc7}
     .cal-add{display:flex;gap:5px;margin-top:8px}
     .cal-add input[type=text]{flex:1;min-width:0}
-    .cal-add input{font-family:inherit;font-size:12px;padding:3px 4px;border:2px solid;border-color:#808080 #fff #fff #808080}
+    .cal-add input{font-family:inherit;font-size:12px;padding:3px 4px;border:2px solid;border-color:var(--ch-bevel-in)}
     /* Tournaments program */
     .t-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#000}
     .t-tabs{display:flex;gap:2px;border-bottom:2px solid #808080;margin-bottom:8px}
-    .t-tab{padding:4px 10px;background:#c0c0c0;border:2px solid;border-color:#dfdfdf #404040 #404040 #dfdfdf;border-bottom:none;cursor:pointer;font-size:12px}
+    .t-tab{padding:4px 10px;background:var(--ch-face);border:2px solid;border-color:var(--ch-win-border);border-bottom:none;cursor:pointer;font-size:12px}
     .t-tab.on{background:#fff;font-weight:bold;position:relative;top:2px}
     .t-panel{max-height:60vh;overflow:auto}
     .t-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
     .t-row label{font-size:11px;color:#444}
-    .t-wrap input,.t-wrap select,.t-wrap textarea{font-family:inherit;font-size:12px;padding:3px 5px;border:2px solid;border-color:#808080 #fff #fff #808080;background:#fff}
+    .t-wrap input,.t-wrap select,.t-wrap textarea{font-family:inherit;font-size:12px;padding:3px 5px;border:2px solid;border-color:var(--ch-bevel-in);background:#fff}
     .t-wrap textarea{width:100%;min-height:46px;resize:vertical}
     .t-field{display:flex;flex-direction:column;gap:2px}
     .t-card{border:1px solid #b5b5b5;background:#fff;padding:6px 8px;margin-bottom:6px}
@@ -1383,8 +1388,8 @@
     .cmdp-t{flex:1;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .cmdp-id{font-size:.72rem;color:#7b8696;font-family:ui-monospace,Menlo,monospace}
     .cmdp-empty{padding:14px 16px;color:#7b8696}
-    .tf-btn{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
-    .tf-btn:active{border-color:#808080 #fff #fff #808080}
+    .tf-btn{font-family:Tahoma,sans-serif;background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);color:var(--ch-text);border-radius:4px;cursor:pointer;font-weight:bold;padding:5px 9px;font-size:12px;touch-action:manipulation;user-select:none}
+    .tf-btn:active{border-color:var(--ch-bevel-in)}
     .tf-start{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
     .tf-fin{background:#a53a3a;border-color:#fca #402 #402 #fca;color:#fff}
     .tf-mull{background:#caa94a;border-color:#fe9 #640 #640 #fe9}
@@ -1406,7 +1411,7 @@
     .tf-acts{display:flex;gap:8px;margin-top:14px}
     .tf-acts button{flex:1;padding:9px;border-radius:6px;border:2px solid;cursor:pointer;font-weight:bold}
     .tf-save{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
-    .tf-cancel{background:#c0c0c0;border-color:#fff #808080 #808080 #fff;color:#000}
+    .tf-cancel{background:var(--ch-face);border-color:var(--ch-bevel);color:var(--ch-text)}
     .tf-histlist{max-height:280px;overflow:auto}
     .tf-hist-row{display:flex;justify-content:space-between;gap:8px;padding:6px 2px;border-bottom:1px solid #3a404a;font-size:12px}
     .tf-rW{color:#7CFC00}.tf-rL{color:#ff8a7a}.tf-rD{color:#bcd}
@@ -1466,7 +1471,7 @@
     .dicey-foot{display:flex;gap:6px;margin-top:8px}
     .dicey-foot button{flex:1;border:2px solid;border-radius:6px;cursor:pointer;font-weight:bold;font-size:12px;padding:6px;font-family:Tahoma,sans-serif}
     .dicey-roll{background:#b33a44;border-color:#fca #402 #402 #fca;color:#fff}
-    .dicey-hide{background:#c0c0c0;border-color:#fff #808080 #808080 #fff;color:#000;flex:0 0 auto}
+    .dicey-hide{background:var(--ch-face);border-color:var(--ch-bevel);color:var(--ch-text);flex:0 0 auto}
     .dicey-modeopt{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11px;color:#aab4c2;cursor:pointer}
     /* Dicey "casts a spell": a Magic card floats up above his head on a roll */
     .dicey-spell{position:absolute;bottom:78px;left:50%;width:64px;height:90px;box-sizing:border-box;padding:4px;display:flex;flex-direction:column;gap:3px;background:linear-gradient(160deg,#3a3550,#221d33);border:2px solid #c9a24a;border-radius:7px;box-shadow:0 8px 22px rgba(0,0,0,.6);z-index:6201;pointer-events:none;animation:dicey-cast 1.85s ease-out forwards}
@@ -1494,8 +1499,8 @@
     .lc-half:last-child{border-bottom:none}
     .lc-half.lc-flip{transform:rotate(180deg)}
     .lc-ctl{display:flex;gap:8px;align-items:center;justify-content:center;flex:0 0 auto}
-    .lc-ctl button{font-family:Tahoma,sans-serif;background:#c0c0c0;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;border-radius:4px;cursor:pointer;font-weight:bold;padding:6px 14px;font-size:14px;touch-action:manipulation;user-select:none}
-    .lc-ctl button:active{border-color:#808080 #fff #fff #808080}
+    .lc-ctl button{font-family:Tahoma,sans-serif;background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);color:var(--ch-text);border-radius:4px;cursor:pointer;font-weight:bold;padding:6px 14px;font-size:14px;touch-action:manipulation;user-select:none}
+    .lc-ctl button:active{border-color:var(--ch-bevel-in)}
     .lc-ctl .lc-on{background:#3a6ea5;border-color:#9cf #024 #024 #9cf;color:#fff}
     /* Sizes use clamp(vmin) as a baseline that works everywhere (older e-ink Chrome, no
        container-query units); the @supports block below refines to container units where
@@ -1505,8 +1510,8 @@
     .lc-life.dead{color:#e24b4a}
     .lc-ovbtns{display:flex;align-items:center;justify-content:center;gap:clamp(8px,5vw,30px);flex:0 0 auto}
     /* Solid Win95 buttons (not translucent) so they stay legible on grayscale e-ink. */
-    .lc-ovbtns button{background:#d4d0c8;border:2px solid;border-color:#fff #808080 #808080 #fff;color:#000;font-weight:bold;font-size:clamp(16px,5vmin,32px);min-width:clamp(54px,16vmin,104px);height:clamp(46px,12vmin,88px);border-radius:6px;cursor:pointer;touch-action:manipulation;user-select:none}
-    .lc-ovbtns button:active{border-color:#808080 #fff #fff #808080;background:#bdb8ae}
+    .lc-ovbtns button{background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);color:var(--ch-text);font-weight:bold;font-size:clamp(16px,5vmin,32px);min-width:clamp(54px,16vmin,104px);height:clamp(46px,12vmin,88px);border-radius:6px;cursor:pointer;touch-action:manipulation;user-select:none}
+    .lc-ovbtns button:active{border-color:var(--ch-bevel-in);background:#bdb8ae}
     @supports (font-size:1cqmin){
       .lc-life{font-size:min(62cqmin,200px)}
       .lc-ovbtns button{font-size:min(6cqmin,32px);min-width:min(15cqmin,104px);height:min(12cqmin,88px)}
@@ -1749,7 +1754,7 @@
     .lg-seglabel{font-size:10px;color:#c9b88f;margin:6px 0 2px}
     .lg-onl{margin-top:6px;padding:10px;border:1px solid rgba(184,147,47,.4);border-radius:8px;background:rgba(0,0,0,.22);max-width:340px}
     .lg-search{font-size:13px;color:#ffe9b8;margin-bottom:8px}
-    .lg-join-in{width:84px;text-transform:uppercase;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;border-radius:0;padding:3px 6px;font-size:12px;letter-spacing:1px}
+    .lg-join-in{width:84px;text-transform:uppercase;background:#fff;border:2px solid;border-color:var(--ch-bevel-in);border-radius:0;padding:3px 6px;font-size:12px;letter-spacing:1px}
     .lg-err{color:#ff9a8a;font-size:10px;margin-top:6px}
     .lg-code{font-size:26px;font-weight:bold;letter-spacing:4px;color:#ffe9b8;background:rgba(0,0,0,.3);border:1px solid #b8932f;border-radius:6px;padding:6px 14px;margin:8px 0;display:inline-block}
     .lg-statsbox{margin-top:12px;font-size:11px;color:#e7dcc0}
@@ -1770,17 +1775,17 @@
     body:not(.wm-on) #modal-prog-landgame .lg-wrap,body:not(.wm-on) #modal-prog-landgame .lg-board{height:100%;min-height:0}
     /* Embedded web-shortcut windows (load an external site in a Win95 frame) */
     .web-wrap{display:flex;flex-direction:column;height:100%;min-height:340px;background:#fff}
-    .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
-    .web-url{flex:0 1 38%;min-width:0;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .web-bar{display:flex;align-items:center;gap:6px;padding:4px 6px;background:var(--ch-face);border-bottom:1px solid #808080;flex-shrink:0}
+    .web-url{flex:0 1 38%;min-width:0;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:var(--ch-bevel-in);padding:2px 6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .web-sep{flex-shrink:0;width:0;height:18px;border-left:1px solid #808080;border-right:1px solid #fff;margin:0 4px}
-    .web-newurl{flex:1 1 38%;min-width:90px;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:#808080 #fff #fff #808080;padding:2px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
+    .web-newurl{flex:1 1 38%;min-width:90px;font-size:11px;color:#222;background:#fff;border:2px solid;border-color:var(--ch-bevel-in);padding:2px 6px;font-family:Tahoma,'MS Sans Serif',sans-serif}
     .web-frame{flex:1;min-height:0;width:100%;border:0;background:#fff;display:block}
     /* In Deck OS the desktop File toolbar owns file ops, so hide MMD's header buttons
        (deck name + sync stay). Classic mode keeps them — it has no desktop toolbar. */
     body.deckos .header-deck-controls .btn{display:none}
     /* Finder-style file browser (Open): folder tree of the user's decks */
     .fb-wrap{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;color:#000;display:flex;flex-direction:column;height:100%;min-height:300px}
-    .fb-bar{display:flex;gap:6px;align-items:center;padding:4px 6px;background:#c0c0c0;border-bottom:1px solid #808080;flex-shrink:0}
+    .fb-bar{display:flex;gap:6px;align-items:center;padding:4px 6px;background:var(--ch-face);border-bottom:1px solid #808080;flex-shrink:0}
     .fb-list{flex:1;min-height:0;overflow:auto;background:#fff;padding:4px 0}
     .fb-row{display:flex;align-items:center;gap:4px;padding:3px 8px;cursor:pointer;white-space:nowrap}
     .fb-row:hover{background:#e3eeff}
