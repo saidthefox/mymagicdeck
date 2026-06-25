@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=5" />
+  <link rel="stylesheet" href="/styles.css?v=6" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -419,6 +419,11 @@
     </div>
   </div>
 </div>
+  <div id="mobile-nav">
+    <button class="mobile-nav-btn active" id="mnav-deck" onclick="mobileNav('deck')"><span class="icon">📋</span>Deck</button>
+    <button class="mobile-nav-btn" id="mnav-search" onclick="mobileNav('search')"><span class="icon">🔍</span>Search</button>
+    <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🃏</span>Card</button>
+  </div>
 </div><!-- /site-window -->
 <div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
@@ -613,11 +618,6 @@
 </div>
 
 <div id="toast-container"></div>
-<div id="mobile-nav">
-  <button class="mobile-nav-btn active" id="mnav-deck" onclick="mobileNav('deck')"><span class="icon">📋</span>Deck</button>
-  <button class="mobile-nav-btn" id="mnav-search" onclick="mobileNav('search')"><span class="icon">🔍</span>Search</button>
-  <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🃏</span>Card</button>
-</div>
 
 <div id="mguess-overlay">
   <div id="mguess-card">

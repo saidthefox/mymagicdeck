@@ -1096,6 +1096,8 @@
     body.deckos #site-titlebar{display:flex;align-items:center;gap:4px;background:var(--ch-titlebar);padding:4px 4px 4px 6px;position:sticky;top:0;z-index:50}
     body.deckos #site-titlebar .mgw-ti{flex:1;min-width:0;color:var(--ch-titlebar-text);font-weight:bold;font-size:12px;display:flex;align-items:center;gap:5px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
     body.deckos #site-window{border:3px solid;border-color:var(--ch-win-border);background:var(--ch-face);box-sizing:border-box}
+    body:not(.wm-on) #site-clip{display:none} /* the ▐ attach/detach side-panels control only does anything in desktop WM mode — hide it on phones so it doesn't look broken */
+    body.deckos #app{overflow:hidden;min-height:0} /* bound #app inside the win95 box so the active panel's body scrolls internally, not the whole page (iOS rubber-band) */
     body.deckos.pc-deskmode #pc-desktop, body.deckos.site-windowed #pc-desktop, body.wm-on #pc-desktop{display:block}
     body.wm-on #pc-desktop{z-index:0}
     body.deckos:not(.wm-on).pc-deskmode #site-window{display:none}
