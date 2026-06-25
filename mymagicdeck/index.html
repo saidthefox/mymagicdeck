@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=8" />
+  <link rel="stylesheet" href="/styles.css?v=9" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -76,7 +76,7 @@
       </div>
     </div>
   </div>
-  <div class="panel" id="panel-search">
+  <div class="panel mobile-hidden" id="panel-search">
     <div class="search-bar">
       <div class="search-bar-top">
         <div class="search-input-wrap">
@@ -376,7 +376,7 @@
       </div>
     </div>
   </div>
-  <div class="panel" id="panel-detail">
+  <div class="panel mobile-hidden" id="panel-detail">
     <div class="detail-tabs">
       <div class="detail-tab active" data-tab="card" onclick="switchTab('card')">Card</div>
       <div class="detail-tab" data-tab="stats" onclick="switchTab('stats')">Stats</div>
@@ -4349,9 +4349,10 @@ function mgEmbedDesktop(){ // show the root desktop. If the site is already a fl
   if(!document.body.classList.contains('site-windowed')) document.body.classList.add('pc-deskmode'); // only minimize the site if it isn't already windowed
   mgDeskTarget='pc-deskcontent';
   mgRenderDesktop();
+  if(typeof mtaskRender==='function')mtaskRender(); // keep the pinned bar's MyMagicDeck button state in sync
 }
 function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='pc-deskcontent'; } // "Back to Search" = restore the site window
-function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';sw.style.zIndex='';if(sw.parentElement!==document.body)document.body.appendChild(sw);}}
+function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';sw.style.zIndex='';if(sw.parentElement!==document.body)document.body.appendChild(sw);}if(typeof mtaskRender==='function')mtaskRender();}
 let sitePos=null;
 function siteWindow(){ // ❐ : the whole site as a draggable mini over the desktop
   if(document.body.classList.contains('site-windowed')){siteRestore();return;}
@@ -4825,9 +4826,15 @@ function taskbarApply(){ const pinned=taskbarPinned() && !document.body.classLis
 function mtaskRender(){ let bar=document.getElementById('mg-mtask'); const on=document.body.classList.contains('mtask-on');
   if(!on){ if(bar)bar.remove(); const sm=document.getElementById('mt-startmenu'); if(sm)sm.remove(); return; }
   if(!bar){ bar=document.createElement('div'); bar.id='mg-mtask'; document.body.appendChild(bar); }
-  bar.innerHTML='<button class="mt-start" id="mt-start">Start</button><div class="mt-apps">'+mgwTaskbarHtml()+'</div><button class="mt-desk" id="mt-desk" title="Show desktop (minimize all; tap again to restore)">🖥️</button>';
+  const siteMin=document.body.classList.contains('pc-deskmode')||document.body.classList.contains('site-windowed');
+  bar.innerHTML='<button class="mt-start" id="mt-start">Start</button>'
+    +'<button class="mg-barwin'+(siteMin?'':' active')+'" id="mt-site"><span class="bw-ic">✦</span><span class="bw-nm">MyMagicDeck</span></button>'
+    +'<div class="mt-apps">'+mgwTaskbarHtml()+'</div><button class="mt-desk" id="mt-desk" title="Show desktop (minimize all; tap again to restore)">🖥️</button>';
   const st=bar.querySelector('#mt-start'); if(st)st.onclick=e=>{ e.stopPropagation(); mtaskStartMenu(); };
   const dk=bar.querySelector('#mt-desk'); if(dk)dk.onclick=mtaskShowDesktop;
+  // MyMagicDeck tray button: restore it if minimized, else minimize it (the pinned bar replaces the desktop's
+  // own taskbar, which carried this button — without it a minimized MMD had no way back when pinned).
+  const si=bar.querySelector('#mt-site'); if(si)si.onclick=()=>{ if(document.body.classList.contains('pc-deskmode')||document.body.classList.contains('site-windowed')){ if(typeof siteRestore==='function')siteRestore(); } else if(typeof mgEmbedDesktop==='function'){ mgEmbedDesktop(); } mtaskRender(); };
   // Tap a tray icon: if it's open AND frontmost → minimize; if open-but-behind or minimized → bring to front.
   bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); const st=mgwState[k];
     if(st && st.s==='full' && k===mgwFrontKey()){ if(typeof mgwMin==='function')mgwMin(k); }

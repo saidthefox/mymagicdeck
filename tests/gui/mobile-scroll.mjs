@@ -24,13 +24,18 @@ const r = await p.evaluate(async()=>{
     out.scrollable = pb.scrollHeight > pb.clientHeight + 100;
     pb.scrollTop=400; out.scrolled = pb.scrollTop>0;
     out.pageStill = (window.scrollY||0)===0; }
+  // single-panel default: with the Deck flap active, search/detail are hidden (not stacked)
+  out.searchHidden = getComputedStyle(document.getElementById('panel-search')).display==='none';
+  // pinned bar carries a MyMagicDeck tray button that minimizes/restores the site
+  const si=document.getElementById('mt-site'); out.siteBtn=!!si;
+  if(si){ si.click(); out.afterMin=document.body.classList.contains('pc-deskmode'); const si2=document.getElementById('mt-site'); si2&&si2.click(); out.afterRestore=!document.body.classList.contains('pc-deskmode'); }
   osStartMinSet(true); out.startMinPersist = osStartMinGet()===true; osStartMinSet(false);
   return out;
 });
 console.log(JSON.stringify(r));
 console.log('PAGE_ERRORS:', errs.length, errs.slice(0,4));
 const ok = r.wmOff && r.mtaskOn && /\dpx/.test(r.reserve) && parseFloat(r.reserve)>=30 && r.appDisplay==='flex'
-  && r.overflowY==='auto' && r.scrollable && r.scrolled && r.pageStill && r.startMinPersist && !errs.length;
+  && r.overflowY==='auto' && r.scrollable && r.scrolled && r.pageStill && r.startMinPersist && r.searchHidden && r.siteBtn && r.afterMin && r.afterRestore && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);

@@ -11,7 +11,7 @@ const r = await p.evaluate(async()=>{ const cg=document.getElementById('mguess-o
   document.body.classList.remove('wm-on','deckos'); document.body.classList.add('mtask-on'); // mobile pinned-taskbar mode
   mgwLaunch('manapool'); await wait(60); mgwLaunch('twentyfourty'); await wait(60); mtaskRender(); await wait(40);
   const tap=k=>{ const btn=document.querySelector('#mg-mtask .mg-barwin[data-mgw="'+k+'"]'); if(btn)btn.click(); };
-  const active=()=>[...document.querySelectorAll('#mg-mtask .mg-barwin.active')].map(b=>b.getAttribute('data-mgw'));
+  const active=()=>[...document.querySelectorAll('#mg-mtask .mg-barwin.active[data-mgw]')].map(b=>b.getAttribute('data-mgw'));
   out.bothOpen = mgwState.manapool && mgwState.twentyfourty && mgwState.manapool.s==='full' && mgwState.twentyfourty.s==='full';
   out.front1 = mgwFrontKey();                 // twentyfourty (opened last)
   out.active1 = active();                      // exactly one active — the frontmost
