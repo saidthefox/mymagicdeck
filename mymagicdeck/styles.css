@@ -1813,17 +1813,20 @@
 
 /* ── Liquid Glass (Apple-style translucency + blur over a colourful backdrop) ── */
 body.theme-glass{
-  --bg:#141a35; --surface:rgba(255,255,255,.10); --surface2:rgba(255,255,255,.07); --surface3:rgba(255,255,255,.15);
-  --border:rgba(255,255,255,.18); --border-strong:rgba(255,255,255,.32);
-  --accent:#8fb4ff; --accent-hover:#aecbff; --accent-dim:rgba(143,180,255,.18);
-  --text:#e9f0ff; --text-dim:#aab6d6; --text-bright:#ffffff; --shadow:0 12px 48px rgba(0,0,0,.5);
-  --ch-face:rgba(255,255,255,.13); --ch-face2:rgba(255,255,255,.20); --ch-text:#eaf0ff;
-  --ch-bevel:rgba(255,255,255,.35) rgba(255,255,255,.06) rgba(255,255,255,.06) rgba(255,255,255,.35);
-  --ch-bevel-in:rgba(255,255,255,.06) rgba(255,255,255,.35) rgba(255,255,255,.35) rgba(255,255,255,.06);
-  --ch-win-border:rgba(255,255,255,.28); --ch-radius:14px; --ch-blur:14px;
-  --ch-titlebar:linear-gradient(90deg,rgba(130,165,255,.32),rgba(175,135,255,.24)); --ch-titlebar-text:#ffffff;
-  background:linear-gradient(135deg,#1a2348,#3a1f54 55%,#0e2740) fixed;
+  /* Dark frosted vibrancy: more opaque + dark-tinted so text stays legible over ANY wallpaper
+     (white-tinted glass went muddy over bright backgrounds, esp. full-screen on mobile). */
+  --bg:#0d1330; --surface:rgba(24,30,58,.66); --surface2:rgba(32,40,72,.58); --surface3:rgba(46,56,96,.62);
+  --border:rgba(255,255,255,.16); --border-strong:rgba(255,255,255,.30);
+  --accent:#8fb4ff; --accent-hover:#aecbff; --accent-dim:rgba(143,180,255,.22);
+  --text:#eef3ff; --text-dim:#c2cce6; --text-bright:#ffffff; --shadow:0 12px 48px rgba(0,0,0,.55);
+  --ch-face:rgba(20,26,52,.62); --ch-face2:rgba(38,48,84,.6); --ch-text:#eef3ff;
+  --ch-bevel:rgba(255,255,255,.28) rgba(255,255,255,.05) rgba(255,255,255,.05) rgba(255,255,255,.28);
+  --ch-bevel-in:rgba(255,255,255,.05) rgba(255,255,255,.28) rgba(255,255,255,.28) rgba(255,255,255,.05);
+  --ch-win-border:rgba(255,255,255,.26); --ch-radius:14px; --ch-blur:16px;
+  --ch-titlebar:linear-gradient(90deg,rgba(86,116,205,.62),rgba(138,108,222,.55)); --ch-titlebar-text:#ffffff;
+  background:linear-gradient(135deg,#141a35,#2a1f44 55%,#0e2740) fixed;
 }
+body.theme-glass #mg-mtask, body.theme-glass .mg-taskbar{ background:rgba(16,21,44,.66); } /* readable frosted bar on mobile */
 body.theme-glass .mgw-win{ border:1px solid var(--ch-win-border)!important; border-radius:16px!important; box-shadow:0 14px 50px rgba(0,0,0,.55); }
 body.theme-glass .mgw-bar{ border-radius:16px 16px 0 0; }
 body.theme-glass .mgw-win,body.theme-glass .mg-taskbar,body.theme-glass .mg-startmenu,body.theme-glass #wm-taskbar,
