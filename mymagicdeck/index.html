@@ -4431,6 +4431,7 @@ function mgResolveAppId(s){ s=String(s||'').trim(); const low=s.toLowerCase(); i
   return s; }
 function diceyGuideTo(id){ try{
   id=mgResolveAppId(id);
+  _diceyGreeted=true; // suppress the startup intro/greet while he escorts — it shows only once he's settled
   const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(s.mode!=='all')s.mode='all'; if(typeof diceySave==='function')diceySave(s);
   if(typeof diceyInit==='function')diceyInit();
   const a=(typeof MGW_APPS!=='undefined'&&MGW_APPS[id])?MGW_APPS[id]:null; const nm=a?a.title:(id==='cgg'?'Card Guesser':id);
@@ -4438,14 +4439,19 @@ function diceyGuideTo(id){ try{
   const mv=(x,y,ms)=>{ if(typeof diceyMoveTo==='function')diceyMoveTo(x,y,ms); };
   const whirl=()=>{ if(typeof diceyWhirl==='function')diceyWhirl(); };
   const say=(t,ms)=>{ if(typeof diceySay==='function')diceySay(t,ms); };
-  // Escort path: glide to centre & greet → hop down to the Start corner & open Deck OS → glide to where the
-  // window appears & open it → settle out of the way.
-  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.30), 650); whirl(); say('Oh boy! Right this way… 🐾',2400); }, 350);
-  setTimeout(()=>{ mv(46, H()-92, 800); whirl(); }, 1500);
-  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); if(typeof diceyInit==='function')diceyInit(); mv(46, H()-92, 1); }, 2200);
-  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), 800); whirl(); say('Opening '+nm+' ▸',2200); }, 2800);
-  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 3550);
-  setTimeout(()=>{ mv(W()-86, H()-98, 750); }, 4500);   // settle in a corner, out of your way
+  const already=document.body.classList.contains('deckos');
+  // 1) greet + glide to the actual Deck OS toggle button (or centre if already inside Deck OS)
+  setTimeout(()=>{ const btn=document.getElementById('deckos-toggle'); whirl(); say('Oh boy! Right this way… 🐾',2800);
+    if(btn && !already){ const r=btn.getBoundingClientRect(); mv(Math.round(r.left+r.width/2-30), Math.round(r.top+r.height/2-12), 1100); }
+    else mv(Math.round(W()*0.5-30), Math.round(H()*0.30), 1100); }, 500);
+  // 2) he ARRIVES at the button → open Deck OS in sync with him reaching it
+  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); whirl(); }, 1750);
+  // 3) glide to where the window appears + open the program
+  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), 1100); whirl(); say('Opening '+nm+' ▸',2400); }, 3050);
+  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 4250);
+  // 4) settle bottom-right, THEN finally show his startup greeting/intro
+  setTimeout(()=>{ mv(W()-86, H()-98, 1100); }, 5300);
+  setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, 6700);
 }catch(e){} }
 (function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
   document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });
