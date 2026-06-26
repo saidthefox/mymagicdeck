@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=15" />
+  <link rel="stylesheet" href="/styles.css?v=16" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4448,12 +4448,28 @@ function diceyGuideTo(id){ try{
     mv(bx,by,GL); }, 550);
   // 2) he ARRIVES at the button → open Deck OS in sync with him reaching it (re-place after re-init so he doesn't jump)
   setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); if(bx!=null)mv(bx,by,1); whirl(); }, 1950);
-  // 3) glide to where the window appears + open the program
-  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), GL); whirl(); say('Opening '+nm+' ▸',2600); }, 3400);
-  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 4750);
-  // 4) glide bottom-right, settle for a full second, THEN show his startup greeting
-  setTimeout(()=>{ mv(W()-86, H()-98, GL); }, 6050);
-  setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, 6050+GL+1000);
+  // settle bottom-right, hold a full second, THEN show his startup greeting (shared by both routes below)
+  const settleThenGreet=(d)=>{ setTimeout(()=>{ mv(W()-86, H()-98, GL); }, d);
+    setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, d+GL+1000); };
+  // 3) route to the program: if it lives in an app-folder bubble (e.g. a guest's Basics inside Games), he
+  //    physically goes to the folder, opens it, walks to the entry and clicks it; else straight to its icon/centre.
+  setTimeout(()=>{
+    const fld=(typeof mgAppFolders==='function'?(mgAppFolders()||[]):[]).find(f=>Array.isArray(f.apps)&&f.apps.indexOf(id)>=0);
+    const fbub=fld&&document.querySelector('.mg-icon[data-appfolder="'+fld.id+'"]');
+    if(fbub){
+      const r=fbub.getBoundingClientRect(); mv(Math.round(r.left+r.width/2-30), Math.round(r.top+r.height/2-30), GL); whirl(); say('It’s in '+(fld.name||'a folder')+' →',2800);
+      setTimeout(()=>{ if(typeof mgAppFolderOpen==='function')mgAppFolderOpen(fld.id, fbub); whirl(); }, GL+300);
+      setTimeout(()=>{ const e=document.querySelector('.mg-fbapp[data-fbapp="'+id+'"]'); if(e){ const er=e.getBoundingClientRect(); mv(Math.round(er.left+er.width/2-30), Math.round(er.top+er.height/2-22), GL); } whirl(); say('Opening '+nm+' ▸',2600); }, GL+950);
+      setTimeout(()=>{ const e=document.querySelector('.mg-fbapp[data-fbapp="'+id+'"]'); if(e)e.click(); else if(typeof cmdpLaunch==='function')cmdpLaunch(id); }, GL+950+GL+300);
+      settleThenGreet(GL+950+GL+300+500);
+    } else {
+      const icon=document.querySelector('.mg-icon[data-app="'+id+'"]')||(id==='cgg'?document.querySelector('.mg-icon[data-cgg]'):null);
+      if(icon){ const r=icon.getBoundingClientRect(); mv(Math.round(r.left+r.width/2-30), Math.round(r.top+r.height/2-30), GL); } else mv(Math.round(W()*0.5-30), Math.round(H()*0.42), GL);
+      whirl(); say('Opening '+nm+' ▸',2600);
+      setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, GL+350);
+      settleThenGreet(GL+1100);
+    }
+  }, 3400);
 }catch(e){} }
 (function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
   document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });

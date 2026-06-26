@@ -5,12 +5,12 @@ const b = await chromium.launch();
 const p = await (await b.newContext({ viewport:{ width:1100, height:740 } })).newPage();
 const errs=[]; p.on('pageerror',e=>errs.push(String(e.message||e)));
 await p.goto('http://mymagicdeck.com/?dicey=basics',{waitUntil:'domcontentloaded',timeout:30000});
-await p.waitForTimeout(2400); // mid-escort
+await p.waitForTimeout(3500); // mid-escort (folder route)
 const mid = await p.evaluate(()=>{ const e=(typeof _diceyEl!=='undefined')&&_diceyEl; const rc=e&&e.getBoundingClientRect();
   return { pos:rc?{x:rc.left,y:rc.top}:null, introUp:!!document.querySelector('.dicey-bubble') }; });
-await p.waitForTimeout(6900); // past settle + 1s corner pause + intro (~8.3s)
+await p.waitForTimeout(8500); // past render-delayed folder route + settle + 1s + intro
 const end = await p.evaluate(()=>{ const e=(typeof _diceyEl!=='undefined')&&_diceyEl; const rc=e&&e.getBoundingClientRect();
-  return { dicey:!!e, deckos:document.body.classList.contains('deckos'), openedLandgame:!!document.getElementById('modal-prog-landgame'),
+  return { dicey:!!e, deckos:document.body.classList.contains('deckos'), openedLandgame:!!document.querySelector('.lg-start, .lg-wrap'),
     pos:rc?{x:rc.left,y:rc.top}:null, introUp:!!document.querySelector('.dicey-bubble, .dicey-say') }; });
 console.log(JSON.stringify({mid, end}));
 console.log('PAGE_ERRORS:', errs.length, errs.slice(0,4));
