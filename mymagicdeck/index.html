@@ -4421,9 +4421,19 @@ function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; if(
   o.addEventListener('mousedown',e=>{ if(e.target===o)cmdpClose(); });
   render(); inp.focus();
 }
+// mymagicdeck.com/?dicey=<id> — Dicey escorts you in: he pops out, opens Deck OS (if you're not already in it),
+// then opens the program, narrating each beat. A guided cousin of ?run= (which just opens it instantly).
+function diceyGuideTo(id){ try{
+  const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(s.mode!=='all')s.mode='all'; if(typeof diceySave==='function')diceySave(s);
+  if(typeof diceyInit==='function')diceyInit();
+  const a=(typeof MGW_APPS!=='undefined'&&MGW_APPS[id])?MGW_APPS[id]:null; const nm=a?a.title:(id==='cgg'?'Card Guesser':id);
+  setTimeout(()=>{ if(typeof diceyWhirl==='function')diceyWhirl(); if(typeof diceySay==='function')diceySay('Oh boy! Right this way… 🐾',2600); }, 400);
+  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); if(typeof diceyInit==='function')diceyInit(); if(typeof diceyWhirl==='function')diceyWhirl(); }, 1700);
+  setTimeout(()=>{ if(typeof diceySay==='function')diceySay('Opening '+nm+' ▸',2200); if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 2900);
+}catch(e){} }
 (function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
   document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });
-  window.addEventListener('load',()=>{ try{ const r=new URLSearchParams(location.search).get('run'); if(r)setTimeout(()=>cmdpLaunch(r),400); }catch(e){} }); })();
+  window.addEventListener('load',()=>{ try{ const q=new URLSearchParams(location.search); const d=q.get('dicey'), r=q.get('run'); if(d)setTimeout(()=>diceyGuideTo(d),700); else if(r)setTimeout(()=>cmdpLaunch(r),400); }catch(e){} }); })();
 // ===== MGW: the shared program registry + the MOBILE window shell =====
 // MGW_APPS (below) is the single registry every program is declared in — used by BOTH form
 // factors. The mgw* lifecycle functions are the MOBILE shell (full / mini-drag / minimized + a
