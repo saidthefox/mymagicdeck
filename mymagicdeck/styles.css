@@ -1122,7 +1122,16 @@
     .wm-win.wm-max{left:0!important;top:0!important;width:100vw!important;height:calc(100vh - 34px)!important}
     .wm-win .mgw-bar, .wm-win #mg-winbar{cursor:move;user-select:none}
     .wm-win .modal-body, .wm-win #mg-frame{flex:1;min-height:0;overflow:auto}
-    .wm-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:6;background:linear-gradient(135deg,transparent 50%,#808080 50%,#808080 60%,transparent 60%,transparent 72%,#808080 72%,#808080 82%,transparent 82%)}
+    .wm-resize{position:absolute;right:0;bottom:0;width:18px;height:18px;cursor:nwse-resize;z-index:7;background:linear-gradient(135deg,transparent 50%,#808080 50%,#808080 60%,transparent 60%,transparent 72%,#808080 72%,#808080 82%,transparent 82%)}
+    /* Resize from any edge/corner like a normal window (the SE corner keeps its visible gripper above). */
+    .wm-rz{position:absolute;z-index:7}
+    .wm-rz-n{top:-3px;left:10px;right:10px;height:7px;cursor:ns-resize}
+    .wm-rz-s{bottom:-3px;left:10px;right:10px;height:7px;cursor:ns-resize}
+    .wm-rz-e{top:10px;bottom:10px;right:-3px;width:7px;cursor:ew-resize}
+    .wm-rz-w{top:10px;bottom:10px;left:-3px;width:7px;cursor:ew-resize}
+    .wm-rz-ne{top:-3px;right:-3px;width:14px;height:14px;cursor:nesw-resize}
+    .wm-rz-nw{top:-3px;left:-3px;width:14px;height:14px;cursor:nwse-resize}
+    .wm-rz-sw{bottom:-3px;left:-3px;width:14px;height:14px;cursor:nesw-resize}
     #wm-taskbar{position:fixed;left:0;right:0;bottom:0;height:34px;z-index:4000;display:none;align-items:center;gap:6px;padding:3px 6px;background:var(--ch-face);border-top:2px solid #fff;font-family:Tahoma,'MS Sans Serif',sans-serif}
     body.wm-on #wm-taskbar{display:flex}
     #wm-taskbar .wm-start{font-weight:bold;font-size:12px;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);padding:3px 12px;flex-shrink:0;cursor:pointer}
