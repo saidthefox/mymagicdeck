@@ -7329,43 +7329,41 @@ function diceyIdleTick(){ if(!_diceyEl){ return; }
   else if(roll<=3) diceySay(DICEY_BARKS[(Math.random()*DICEY_BARKS.length)|0], 2200);
   diceyScheduleIdle();
 }
-// ===== Dicey's "special summon" screensaver (desktop only): away a while → he tiles programs next to
-// MyMagicDeck until the screen is full, then goes GOLD like he topdecked Exodia. Return → he panics, puts
-// it all back. All of it is temporary (the gold skin is applied, never persisted). =====
-function diceyGridCells(){ const barH=38, pad=8; const W=window.innerWidth, H=window.innerHeight-barH;
-  const cols=Math.max(2, Math.floor(W/360)), rows=Math.max(2, Math.floor(H/300));
-  const cw=Math.floor((W-pad)/cols), ch=Math.floor((H-pad)/rows), cells=[];
-  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)cells.push({ x:Math.round(pad+c*cw), y:Math.round(pad+r*ch), w:cw-pad, h:ch-pad });
-  return cells; }
-function diceyCanSummon(){ return !_summon && document.body.classList.contains('wm-on') && !document.hidden && typeof wmWins!=='undefined' && wmWins.site && typeof wmOpen==='function' && typeof wmEligible==='function'; }
-function diceyBeginSummon(){ if(!diceyCanSummon())return; const cells=diceyGridCells(); if(cells.length<3)return;
-  const safe=['manapool','twentyfourty','dicebag','landgame','battle','cardle','calendar','interactions','matchhistory','widgets','notes','documents','tournaments','mail'];
+// ===== Dicey's "special summon" screensaver (desktop only): away a while → he rolls around opening programs
+// at random spots SCATTERED AROUND MyMagicDeck (which is left front & centre, untouched), then goes GOLD
+// like he topdecked Exodia. Return → he panics and puts it all back. Temporary — the gold skin is applied,
+// never persisted; MyMagicDeck and your theme come back exactly as they were. =====
+function diceyCanSummon(){ return !_summon && document.body.classList.contains('wm-on') && !document.hidden && typeof wmWins!=='undefined' && wmWins.site && typeof mgLaunchApp==='function' && typeof wmEligible==='function'; }
+function diceyRandRect(){ const barH=38, W=window.innerWidth, H=window.innerHeight-barH;
+  const w=Math.round(Math.max(320, Math.min(460, W*0.26))), h=Math.round(Math.max(240, Math.min(360, H*0.42)));
+  return { x:Math.round(8+Math.random()*Math.max(1,W-w-16)), y:Math.round(6+Math.random()*Math.max(1,H-h-12)), w, h }; }
+function diceyBeginSummon(){ if(!diceyCanSummon())return;
+  const safe=['manapool','twentyfourty','dicebag','landgame','battle','cardle','calendar','interactions','matchhistory','widgets','documents','tournaments','mail'];
   const cands=safe.filter(k=> wmEligible(k) && !(wmWins[k]&&wmWins[k].state!=='min'));
   if(!cands.length)return;
-  _summon={ cells, i:1, opened:[], cands, savedTheme:(typeof themeGet==='function'?themeGet():'dark'),
-    savedSite:(wmWins.site&&wmWins.site.rect)?Object.assign({},wmWins.site.rect):null, savedState:wmWins.site&&wmWins.site.state, gold:false, timer:null };
+  _summon={ cands, opened:[], savedTheme:(typeof themeGet==='function'?themeGet():'dark'), gold:false, timer:null, max:Math.min(cands.length, 11) };
   diceySay('Heh… while they’re away… ✨',2600); diceyWhirl();
-  if(_summon.savedSite && wmWins.site){ wmWins.site.state='normal'; wmWins.site.rect=Object.assign({},cells[0]); wmApply('site'); } // MyMagicDeck takes the first tile
   _summon.timer=setTimeout(diceySummonNext, 1100);
 }
 function diceySummonNext(){ const sm=_summon; if(!sm)return;
-  if(sm.i>=sm.cells.length || !sm.cands.length){ diceySummonFinale(); return; }
-  const key=sm.cands.shift(), cell=sm.cells[sm.i];
-  diceyMoveTo(cell.x+cell.w/2-30, Math.max(4, cell.y+cell.h/2-30), 700);  // roll over to the empty space first
+  if(sm.opened.length>=sm.max || !sm.cands.length){ diceySummonFinale(); return; }
+  const key=sm.cands.shift(), rect=diceyRandRect();
+  diceyMoveTo(rect.x+rect.w/2-30, Math.max(4, rect.y+rect.h/2-30), 700);  // roll over to the empty spot first
   sm.timer=setTimeout(()=>{ if(_summon!==sm)return;
-    try{ wmOpen(key); if(wmWins[key]){ wmWins[key].state='normal'; wmWins[key].rect=Object.assign({},cell); wmApply(key); } sm.opened.push(key); }catch(e){}
-    diceyWhirl(); sm.i++; sm.timer=setTimeout(diceySummonNext, 1500);
+    try{ mgLaunchApp(key); if(wmWins[key]){ wmWins[key].state='normal'; wmWins[key].rect=rect; wmApply(key); } sm.opened.push(key); }catch(e){}  // mgLaunchApp mounts real content (wmOpen alone is an empty shell)
+    diceyWhirl(); sm.timer=setTimeout(diceySummonNext, 1500);
   }, 760);
 }
 function diceySummonFinale(){ const sm=_summon; if(!sm||sm.gold)return; sm.gold=true;
+  if(typeof wmFocus==='function')wmFocus('site');                         // MyMagicDeck back to the front & centre
   if(typeof themeApply==='function')themeApply('gold');                   // EXODIA — temporary skin, never persisted
-  diceyMoveTo(Math.round(window.innerWidth*0.5-30), Math.round(window.innerHeight*0.42-30), 700); diceyWhirl();
+  diceyMoveTo(Math.round(window.innerWidth*0.5-30), Math.round(window.innerHeight*0.5-30), 700); diceyWhirl();
   diceySay('EXODIA! …behold our masterpiece. 🔥', 6000);
 }
 function diceyDesummon(){ const sm=_summon; if(!sm)return; _summon=null; clearTimeout(sm.timer);
   if(sm.gold && typeof themeApply==='function')themeApply(sm.savedTheme||'dark');  // skin back to whatever they had
-  (sm.opened||[]).forEach(k=>{ try{ if(typeof wmClose==='function')wmClose(k); }catch(e){} });
-  try{ if(sm.savedSite && wmWins.site){ wmWins.site.state=sm.savedState||'normal'; wmWins.site.rect=sm.savedSite; wmApply('site'); } }catch(e){}
+  (sm.opened||[]).forEach(k=>{ try{ if(typeof wmClose==='function')wmClose(k); }catch(e){} });  // MyMagicDeck untouched
+  if(typeof wmFocus==='function')wmFocus('site');
   diceyWhirl(); diceySay('Ack—they’re back! Hide everything, don’t let them see the special summon!', 3400);
 }
 function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math.min(x,window.innerWidth-66)); y=Math.max(2,Math.min(y,window.innerHeight-66));
