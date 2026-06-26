@@ -22,6 +22,7 @@
       --ch-face:#c0c0c0; --ch-face2:#d8d4cc; --ch-text:#000;
       --ch-bevel:#fff #808080 #808080 #fff; --ch-bevel-in:#808080 #fff #fff #808080;
       --ch-win-border:#dfdfdf #404040 #404040 #dfdfdf; --ch-radius:0px; --ch-blur:0px;
+      --ch-text-dim:#3a3a3a; --ch-accent:#000080; /* dimmed text + focus/link accent INSIDE program windows */
       --ch-titlebar:var(--ch-titlebar); --ch-titlebar-text:#fff;
     }
     /* Light mode (opt-in via System Settings / HUD). Flips the theme vars; the Win95
@@ -1073,15 +1074,15 @@
        HUD, Storage, About, Share…) is readable on the gray window. Redefining the theme vars
        flips even inline var(--text) usages to dark. The MyMagicDeck site window + Splash Builder
        never get .mgw-win, so they keep their own modern look. */
-    .mgw-win{ --text:#101010; --text-dim:#3a3a3a; --text-bright:#000; --bg:#fff; --surface:var(--ch-face); --surface2:var(--ch-face); --surface3:var(--ch-face2); --border:#808080; --border-strong:#808080; --radius:2px; --accent:#000080; --accent-hover:#000080; }
-    .mgw-win .modal-body{ color:#101010; }
+    .mgw-win{ --text:var(--ch-text); --text-dim:var(--ch-text-dim); --text-bright:var(--ch-text); --bg:#fff; --surface:var(--ch-face); --surface2:var(--ch-face); --surface3:var(--ch-face2); --border:#808080; --border-strong:#808080; --radius:2px; --accent:var(--ch-accent); --accent-hover:var(--ch-accent); }
+    .mgw-win .modal-body{ color:var(--ch-text); }
     .mgw-win .modal-body .btn{ border-width:2px; border-style:solid; border-color:var(--ch-bevel); box-shadow:none; color:var(--ch-text); background:var(--ch-face); }
-    .mgw-win .modal-body .btn:hover{ color:var(--ch-text); background:#c8c8c8; border-color:var(--ch-bevel); }
+    .mgw-win .modal-body .btn:hover{ color:var(--ch-text); background:var(--ch-face2); border-color:var(--ch-bevel); }
     .mgw-win .modal-body .btn:active{ border-color:var(--ch-bevel-in); }
-    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:#000; background:var(--ch-face); }
-    .mgw-win .modal-body .btn.danger{ color:#a00; }
+    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:var(--ch-text); background:var(--ch-face); }
+    .mgw-win .modal-body .btn.danger{ color:#e05252; }
     .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:var(--ch-bevel-in); border-radius:0; background:#fff; color:#000; }
-    .mgw-win .modal-body a{ color:#00006e; }
+    .mgw-win .modal-body a{ color:var(--ch-accent); }
     /* The whole site is a Win95 program window sitting on the root PC desktop */
     #pc-desktop{position:fixed;inset:0;z-index:1;display:none;background:var(--desk-bg,#017e7e);isolation:isolate;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif}
     #pc-deskcontent{position:absolute;inset:0}
@@ -1835,7 +1836,7 @@ body.theme-glass{
   --ch-face:rgba(20,26,52,.62); --ch-face2:rgba(38,48,84,.6); --ch-text:#eef3ff;
   --ch-bevel:rgba(255,255,255,.28) rgba(255,255,255,.05) rgba(255,255,255,.05) rgba(255,255,255,.28);
   --ch-bevel-in:rgba(255,255,255,.05) rgba(255,255,255,.28) rgba(255,255,255,.28) rgba(255,255,255,.05);
-  --ch-win-border:rgba(255,255,255,.26); --ch-radius:14px; --ch-blur:16px;
+  --ch-win-border:rgba(255,255,255,.26); --ch-radius:14px; --ch-blur:16px; --ch-text-dim:#b3c0de; --ch-accent:#9fc0ff;
   --ch-titlebar:linear-gradient(90deg,rgba(86,116,205,.62),rgba(138,108,222,.55)); --ch-titlebar-text:#ffffff;
   background:linear-gradient(135deg,#141a35,#2a1f44 55%,#0e2740) fixed;
 }
@@ -1853,10 +1854,10 @@ body.theme-glass .mg-taskbar,body.theme-glass #wm-taskbar{ border-top:1px solid 
 body.theme-emerald{
   --bg:#04130d; --surface:#093726; --surface2:#0d4631; --surface3:#11583e;
   --border:#1c7a52; --border-strong:#2fb178; --accent:#36e08e; --accent-hover:#5cf6ac; --accent-dim:rgba(54,224,142,.16);
-  --text:#c9f7e1; --text-dim:#69b394; --text-bright:#eafff6; --shadow:0 4px 24px rgba(0,45,28,.65);
+  --text:#c9f7e1; --text-dim:#8ccfae; --text-bright:#eafff6; --shadow:0 4px 24px rgba(0,45,28,.65);
   --ch-face:#0d4631; --ch-face2:#11583e; --ch-text:#eafff6;
   --ch-bevel:#33c98a #041f15 #041f15 #33c98a; --ch-bevel-in:#041f15 #33c98a #33c98a #041f15;
-  --ch-win-border:#3ad690; --ch-radius:0px; --ch-blur:0px;
+  --ch-win-border:#3ad690; --ch-radius:0px; --ch-blur:0px; --ch-text-dim:#a6dec3; --ch-accent:#4cf0a6;
   --ch-titlebar:linear-gradient(90deg,#0b6b45,#16b070); --ch-titlebar-text:#eafff6;
 }
 body.theme-emerald .lc-ovbtns button,body.theme-emerald .mg-winbtn,body.theme-emerald .mg-barwin,
@@ -1870,7 +1871,7 @@ body.theme-gold{
   --text:#fff4cf; --text-dim:#cbab51; --text-bright:#fffbe6; --shadow:0 6px 34px rgba(150,110,0,.6);
   --ch-face:#d4af37; --ch-face2:#e6c659; --ch-text:#2e2200;
   --ch-bevel:#fff3b0 #8a6d12 #8a6d12 #fff3b0; --ch-bevel-in:#8a6d12 #fff3b0 #fff3b0 #8a6d12;
-  --ch-win-border:#fff3b0 #6b520a #6b520a #fff3b0; --ch-radius:3px; --ch-blur:0px;
+  --ch-win-border:#fff3b0 #6b520a #6b520a #fff3b0; --ch-radius:3px; --ch-blur:0px; --ch-text-dim:#5a4510; --ch-accent:#5a3d00;
   --ch-titlebar:linear-gradient(90deg,#8a6d12,#ffd700 55%,#b8860b); --ch-titlebar-text:#2a1f00;
 }
 body.theme-gold .mgw-win .modal-body .btn,body.theme-gold .lc-ovbtns button,body.theme-gold #wm-taskbar .wm-start,
