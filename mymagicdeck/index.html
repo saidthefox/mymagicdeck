@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=10" />
+  <link rel="stylesheet" href="/styles.css?v=11" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -5368,9 +5368,18 @@ const LG_FMT_DATA={
             ['◇','Wastes','Target creature gets +1/+1 until end of turn. Draw a card.'],
             ['🐘','Brightsteel War Elephant','0-mana 3/3 artifact creature: indestructible, trample, haste. You start with one.'] ] }
 };
-function lgSetTitle(t){ try{ if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
-  document.querySelectorAll('#modal-prog-landgame .mgw-ti').forEach(el=>{ el.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t); });
-  if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar(); }catch(e){} }
+function lgSetTitle(t){ try{
+  if(typeof MGW_APPS!=='undefined'&&MGW_APPS.landgame)MGW_APPS.landgame.title=t;   // WM taskbar reads this (wmTitle)
+  if(window.DeckOS&&Array.isArray(DeckOS._programs)){ const p=DeckOS._programs.find(x=>x.id==='landgame'); if(p)p.title=t; }
+  // Update the live title bar in whichever container the window lives in: a plain modal (#modal-prog-landgame)
+  // OR a hoisted .wm-win in the desktop WM layer (where that id no longer matches). The mount body's nearest
+  // .modal ancestor is the window in both cases.
+  const win=(_lgBody&&_lgBody.closest('.modal'))||document.getElementById('modal-prog-landgame');
+  const ti=win&&win.querySelector('.mgw-bar .mgw-ti, .mgw-ti');
+  if(ti)ti.innerHTML='<span class="mgw-ic">🏞️</span>'+_mgEsc(t);
+  if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar();
+  if(typeof wmRenderTaskbar==='function')wmRenderTaskbar();   // desktop WM taskbar chip
+}catch(e){} }
 function lgPromptFor(k){ return ({forest:'Return a land from your graveyard:',plains:'Flicker one of your lands:',mountain:'Destroy an opponent land:',swamp:'Discard a card:',discard:'Discard down to 5:'})[k]||''; }
 function lgFmtTime(ms){ if(ms==null)return ''; ms=Math.max(0,ms); const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }
 function lgoStop(){ if(_lgo){ clearTimeout(_lgo._t); clearInterval(_lgo._clk); } _lgo=null; }
