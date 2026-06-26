@@ -4853,11 +4853,12 @@ function mgwWireMiniDrag(key){
 }
 function mgwSyncTaskbar(){if(mgDeskTarget&&document.getElementById(mgDeskTarget)&&document.getElementById(mgDeskTarget).querySelector('.mg-desk'))mgRenderDesktop(); if(typeof mtaskRender==='function')mtaskRender();}
 // ===== Startup program + pinned mobile taskbar (quick app-switching on phones) =====
-function osStartupGet(){ try{ return DeckOS.store.get('startup')||'cgg'; }catch(e){ return 'cgg'; } }
+function osStartupGet(){ try{ return DeckOS.store.get('startup')||'none'; }catch(e){ return 'none'; } } // default: no auto-start program
 function osStartupSet(v){ try{ DeckOS.store.set('startup',v); }catch(e){} if(v==='cgg'&&typeof mguessSetDisabled==='function')mguessSetDisabled(false); }
 function osStartMinGet(){ try{ return !!DeckOS.store.get('startMinimized'); }catch(e){ return false; } }
 function osStartMinSet(v){ try{ DeckOS.store.set('startMinimized',!!v); }catch(e){} }
 function osBootStartup(){ const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches; if(!isMobile)return;
+  try{ const q=new URLSearchParams(location.search); if(q.get('dicey')||q.get('run'))return; }catch(e){} // a deep-link opens its own program — don't also launch a startup app under it
   // "Start minimized": open straight to the desktop with MyMagicDeck minimized, rather than the deckbuilder.
   const finish=()=>{ if(osStartMinGet()&&typeof mgEmbedDesktop==='function')mgEmbedDesktop(); };
   let off=false; try{ off=sessionStorage.getItem('mmd_mguess_off')==='1'; }catch(e){}
