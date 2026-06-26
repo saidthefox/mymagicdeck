@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=13" />
+  <link rel="stylesheet" href="/styles.css?v=14" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4406,7 +4406,7 @@ function cmdpPrograms(){ const out=[], seen={}; const add=(id,title,icon)=>{ if(
   try{ if(typeof MGW_APPS!=='undefined') Object.keys(MGW_APPS).forEach(k=>add(k, MGW_APPS[k].title, MGW_APPS[k].icon)); }catch(e){}
   return out.sort((a,b)=>a.title.localeCompare(b.title)); }
 function cmdpClose(){ const o=document.getElementById('cmd-palette'); if(o)o.remove(); }
-function cmdpLaunch(id){ cmdpClose(); try{ if(typeof mgLaunchApp==='function')mgLaunchApp(id); }catch(e){} }
+function cmdpLaunch(id){ cmdpClose(); try{ if(typeof mgLaunchApp==='function')mgLaunchApp((typeof mgResolveAppId==='function')?mgResolveAppId(id):id); }catch(e){} }
 function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; if(typeof ixShuffleIcon==='function')ixShuffleIcon(); const progs=cmdpPrograms();
   const o=document.createElement('div'); o.id='cmd-palette'; o.className='cmdp-overlay';
   o.innerHTML='<div class="cmdp" role="dialog"><input id="cmdp-input" placeholder="Run a program… (type a name, Enter to open, Esc to cancel)" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="cmdp-list" id="cmdp-list"></div></div>';
@@ -4423,13 +4423,29 @@ function cmdPaletteOpen(){ if(document.getElementById('cmd-palette'))return; if(
 }
 // mymagicdeck.com/?dicey=<id> — Dicey escorts you in: he pops out, opens Deck OS (if you're not already in it),
 // then opens the program, narrating each beat. A guided cousin of ?run= (which just opens it instantly).
+// Resolve a friendly name → program id: an exact id, 'cgg', else a program whose TITLE matches (so
+// ?run=basics / ?dicey=basics work even though the id is 'landgame').
+function mgResolveAppId(s){ s=String(s||'').trim(); const low=s.toLowerCase(); if(!low)return s;
+  try{ if(typeof MGW_APPS!=='undefined'){ if(MGW_APPS[low]||low==='cgg')return low; const ks=Object.keys(MGW_APPS);
+    const k=ks.find(k=>String(MGW_APPS[k].title||'').toLowerCase()===low)||ks.find(k=>String(MGW_APPS[k].title||'').toLowerCase().startsWith(low)); if(k)return k; } }catch(e){}
+  return s; }
 function diceyGuideTo(id){ try{
+  id=mgResolveAppId(id);
   const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(s.mode!=='all')s.mode='all'; if(typeof diceySave==='function')diceySave(s);
   if(typeof diceyInit==='function')diceyInit();
   const a=(typeof MGW_APPS!=='undefined'&&MGW_APPS[id])?MGW_APPS[id]:null; const nm=a?a.title:(id==='cgg'?'Card Guesser':id);
-  setTimeout(()=>{ if(typeof diceyWhirl==='function')diceyWhirl(); if(typeof diceySay==='function')diceySay('Oh boy! Right this way… 🐾',2600); }, 400);
-  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); if(typeof diceyInit==='function')diceyInit(); if(typeof diceyWhirl==='function')diceyWhirl(); }, 1700);
-  setTimeout(()=>{ if(typeof diceySay==='function')diceySay('Opening '+nm+' ▸',2200); if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 2900);
+  const W=()=>window.innerWidth, H=()=>window.innerHeight;
+  const mv=(x,y,ms)=>{ if(typeof diceyMoveTo==='function')diceyMoveTo(x,y,ms); };
+  const whirl=()=>{ if(typeof diceyWhirl==='function')diceyWhirl(); };
+  const say=(t,ms)=>{ if(typeof diceySay==='function')diceySay(t,ms); };
+  // Escort path: glide to centre & greet → hop down to the Start corner & open Deck OS → glide to where the
+  // window appears & open it → settle out of the way.
+  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.30), 650); whirl(); say('Oh boy! Right this way… 🐾',2400); }, 350);
+  setTimeout(()=>{ mv(46, H()-92, 800); whirl(); }, 1500);
+  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); if(typeof diceyInit==='function')diceyInit(); mv(46, H()-92, 1); }, 2200);
+  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), 800); whirl(); say('Opening '+nm+' ▸',2200); }, 2800);
+  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 3550);
+  setTimeout(()=>{ mv(W()-86, H()-98, 750); }, 4500);   // settle in a corner, out of your way
 }catch(e){} }
 (function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
   document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });
