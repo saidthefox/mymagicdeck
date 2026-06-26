@@ -1079,7 +1079,8 @@
     .mgw-win .modal-body .btn{ border-width:2px; border-style:solid; border-color:var(--ch-bevel); box-shadow:none; color:var(--ch-text); background:var(--ch-face); }
     .mgw-win .modal-body .btn:hover{ color:var(--ch-text); background:var(--ch-face2); border-color:var(--ch-bevel); }
     .mgw-win .modal-body .btn:active{ border-color:var(--ch-bevel-in); }
-    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:var(--ch-text); background:var(--ch-face); }
+    .mgw-win .modal-body .btn.primary{ font-weight:bold; color:var(--ch-text); background:var(--ch-face); border-color:var(--ch-bevel); }
+    .mgw-win .modal-body .btn.primary:active{ border-color:var(--ch-bevel-in); }
     .mgw-win .modal-body .btn.danger{ color:#e05252; }
     .mgw-win .modal-body input, .mgw-win .modal-body select, .mgw-win .modal-body textarea{ border-width:2px; border-style:solid; border-color:var(--ch-bevel-in); border-radius:0; background:#fff; color:#000; }
     .mgw-win .modal-body a{ color:var(--ch-accent); }
