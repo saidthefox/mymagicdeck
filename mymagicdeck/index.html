@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=14" />
+  <link rel="stylesheet" href="/styles.css?v=15" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4439,19 +4439,21 @@ function diceyGuideTo(id){ try{
   const mv=(x,y,ms)=>{ if(typeof diceyMoveTo==='function')diceyMoveTo(x,y,ms); };
   const whirl=()=>{ if(typeof diceyWhirl==='function')diceyWhirl(); };
   const say=(t,ms)=>{ if(typeof diceySay==='function')diceySay(t,ms); };
-  const already=document.body.classList.contains('deckos');
+  const already=document.body.classList.contains('deckos'); const GL=1210; // glide duration (~10% slower)
+  let bx, by;
   // 1) greet + glide to the actual Deck OS toggle button (or centre if already inside Deck OS)
-  setTimeout(()=>{ const btn=document.getElementById('deckos-toggle'); whirl(); say('Oh boy! Right this way… 🐾',2800);
-    if(btn && !already){ const r=btn.getBoundingClientRect(); mv(Math.round(r.left+r.width/2-30), Math.round(r.top+r.height/2-12), 1100); }
-    else mv(Math.round(W()*0.5-30), Math.round(H()*0.30), 1100); }, 500);
-  // 2) he ARRIVES at the button → open Deck OS in sync with him reaching it
-  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); whirl(); }, 1750);
+  setTimeout(()=>{ const btn=document.getElementById('deckos-toggle'); whirl(); say('Let’s roll — right this way.',3000);
+    if(btn && !already){ const r=btn.getBoundingClientRect(); bx=Math.round(r.left+r.width/2-30); by=Math.round(r.top+r.height/2-12); }
+    else { bx=Math.round(W()*0.5-30); by=Math.round(H()*0.30); }
+    mv(bx,by,GL); }, 550);
+  // 2) he ARRIVES at the button → open Deck OS in sync with him reaching it (re-place after re-init so he doesn't jump)
+  setTimeout(()=>{ if(!document.body.classList.contains('deckos')&&typeof deckosToggle==='function')deckosToggle(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); if(bx!=null)mv(bx,by,1); whirl(); }, 1950);
   // 3) glide to where the window appears + open the program
-  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), 1100); whirl(); say('Opening '+nm+' ▸',2400); }, 3050);
-  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 4250);
-  // 4) settle bottom-right, THEN finally show his startup greeting/intro
-  setTimeout(()=>{ mv(W()-86, H()-98, 1100); }, 5300);
-  setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, 6700);
+  setTimeout(()=>{ mv(Math.round(W()*0.5-30), Math.round(H()*0.42), GL); whirl(); say('Opening '+nm+' ▸',2600); }, 3400);
+  setTimeout(()=>{ if(typeof cmdpLaunch==='function')cmdpLaunch(id); else if(typeof mgLaunchApp==='function')mgLaunchApp(id); }, 4750);
+  // 4) glide bottom-right, settle for a full second, THEN show his startup greeting
+  setTimeout(()=>{ mv(W()-86, H()-98, GL); }, 6050);
+  setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, 6050+GL+1000);
 }catch(e){} }
 (function(){ const typing=el=>{ if(!el)return false; const t=(el.tagName||'').toUpperCase(); return t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||el.isContentEditable; };
   document.addEventListener('keydown',e=>{ if(e.key==='/'&&!e.metaKey&&!e.ctrlKey&&!e.altKey&&!typing(e.target)&&!document.getElementById('cmd-palette')){ e.preventDefault(); cmdPaletteOpen(); } });
@@ -7217,7 +7219,7 @@ function mgWireStartMenu(a){
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
 let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0;
 let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=12000; // recent user input → Dicey stays calm; after this much quiet he wakes up
-const DICEY_BARKS=["Oh boy!","A game? I love games!","Wanna play?","Sniff… new cards?","Roll with me!","I found something!","Best deck ever!","Hup hup!"];
+const DICEY_BARKS=["Feeling lucky?","A game? Let’s roll.","Nat 20 energy today.","Fresh cards to crack?","Roll with me.","Ooh, found something.","Best deck ever.","Shuffle up!"];
 const DICEY_TIPS=[
   "Hi! Drag me anywhere. Click me for the app list, or roll me for a surprise.",
   "Need the Mana Pool, Cardle, or your decks? Tap one below and I'll open it.",
@@ -7265,10 +7267,10 @@ function diceyInit(){ const s=diceyState();
   diceyScheduleIdle();
 }
 function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
-function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Oh boy, '+state.user.username+'! Wanna play?'):'Oh boy! Welcome back! 🐾', 2600); }
+function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Welcome back, '+state.user.username+'.'):'Welcome — roll on in.', 2600); }
 function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
   if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
-  if(typeof toast==='function')toast(s.on?'Oh boy! Dicey is out! 🎲🐾':'Dicey curled up in the bag.'); }
+  if(typeof toast==='function')toast(s.on?'Dicey is out! 🎲':'Dicey is back in the bag.'); }
 // ---- Dicey personality: rolls to move, whirls when excited, greets, and builds card platforms to hop onto ----
 function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 5000+Math.random()*7000); }
 // Activity-aware: while you're doing things Dicey goes chill (no wandering/barks/antics) and steps out of
@@ -7301,14 +7303,24 @@ function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math
   if(die){ die.style.transition='transform '+ms+'ms ease-in-out'; die.style.transform='rotate('+Math.round(_diceyRot)+'deg)'; }
   _diceyEl.style.left=x+'px'; _diceyEl.style.top=y+'px';
   const b=_diceyEl.querySelector('.dicey-bubble'); if(b){ b.classList.toggle('below', y<window.innerHeight*0.42); b.classList.toggle('bleft', x<250); } // keep his speech on-screen
+  diceySayPlace(); // re-anchor the speech bubble as he moves (flip below / shift off the walls)
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.transition=''; }, ms+30);
 }
 function diceyWhirl(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'); if(!die)return; die.classList.remove('dicey-whirling'); void die.offsetWidth; die.classList.add('dicey-whirling'); setTimeout(()=>die&&die.classList.remove('dicey-whirling'),700); }
-function diceySay(text,ms){ if(!_diceyEl)return; let s=_diceyEl.querySelector('.dicey-say'); if(s)s.remove(); s=document.createElement('div'); s.className='dicey-say'; s.textContent=text; _diceyEl.appendChild(s); clearTimeout(_diceyEl._sayT); _diceyEl._sayT=setTimeout(()=>{ if(s)s.remove(); }, ms||2000); }
+// Keep his speech bubble on-screen: flip below his body when he's near the top, and pin it to a side when
+// he's near a left/right wall — so the bubble (like Dicey himself) never clips through the app edges.
+function diceySayPlace(){ const s=_diceyEl&&_diceyEl.querySelector('.dicey-say'); if(!s||!_diceyEl)return; const r=_diceyEl.getBoundingClientRect();
+  s.classList.toggle('below', r.top < Math.min(window.innerHeight*0.3, 96));   // near the top → drift below his body
+  // nudge the centred pill off whichever wall it would clip — via margin, so we don't fight the translateX
+  // centring or the pop animation (the bubble stays a tidy single pill, never collapsed or clipped).
+  const cx=r.left+r.width/2, half=(s.offsetWidth||140)/2, pad=8; let shift=0;
+  if(cx-half < pad) shift = pad-(cx-half); else if(cx+half > window.innerWidth-pad) shift = (window.innerWidth-pad)-(cx+half);
+  s.style.marginLeft = Math.round(shift)+'px'; }
+function diceySay(text,ms){ if(!_diceyEl)return; let s=_diceyEl.querySelector('.dicey-say'); if(s)s.remove(); s=document.createElement('div'); s.className='dicey-say'; s.textContent=text; _diceyEl.appendChild(s); diceySayPlace(); clearTimeout(_diceyEl._sayT); _diceyEl._sayT=setTimeout(()=>{ if(s)s.remove(); }, ms||2000); }
 function diceyPlatformHop(){ if(!_diceyEl)return; const r=_diceyEl.getBoundingClientRect();
   const px=Math.max(4,Math.min(r.left+ (Math.random()<.5?-58:58), window.innerWidth-78)), py=Math.max(6, r.top-62);
   const plat=document.createElement('div'); plat.className='dicey-plat'; plat.style.left=px+'px'; plat.style.top=py+'px'; plat.innerHTML='<span>🃏</span>'; document.body.appendChild(plat);
-  diceySay('Hup!',1300);
+  diceySay('Up we go!',1300);
   diceyMoveTo(px+ -6, py-2, 460); // hop up onto the card platform
   setTimeout(()=>{ if(plat)plat.classList.add('fade'); }, 1300);
   setTimeout(()=>{ if(plat)plat.remove(); if(_diceyEl){ const rr=_diceyEl.getBoundingClientRect(); diceyMoveTo(rr.left, Math.min(rr.top+54, window.innerHeight-66), 400); } }, 1700);
@@ -7336,8 +7348,8 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
   _diceyEl.appendChild(bub); diceyPlaceBubble();
   bub.querySelector('.dicey-x').onclick=diceyClosePanel;
   bub.querySelector('[data-tour]').onclick=()=>diceyTour(1);
-  const am=bub.querySelector('#dicey-allmode'); if(am)am.onchange=()=>{ const s=diceyState(); s.mode=am.checked?'all':'os'; diceySave(s); if(typeof toast==='function')toast(am.checked?'I’ll tag along everywhere! 🐾':'Back to Deck OS only.'); };
-  const pf=bub.querySelector('#dicey-plats'); if(pf)pf.onchange=()=>{ const s=diceyState(); s.platforms=pf.checked; diceySave(s); if(!pf.checked)diceyClearPlatforms(); if(typeof toast==='function')toast(pf.checked?'I’ll build hop-platforms! 🧱🐾':'No more platforms — I’ll keep to the ground.'); };
+  const am=bub.querySelector('#dicey-allmode'); if(am)am.onchange=()=>{ const s=diceyState(); s.mode=am.checked?'all':'os'; diceySave(s); if(typeof toast==='function')toast(am.checked?'I’ll tag along everywhere.':'Back to Deck OS only.'); };
+  const pf=bub.querySelector('#dicey-plats'); if(pf)pf.onchange=()=>{ const s=diceyState(); s.platforms=pf.checked; diceySave(s); if(!pf.checked)diceyClearPlatforms(); if(typeof toast==='function')toast(pf.checked?'I’ll build platforms to ride. 🧱':'No more platforms — I’ll keep to the ground.'); };
   bub.querySelector('.dicey-hide').onclick=()=>{ diceyClosePanel(); diceyToggle(); };
   bub.querySelector('.dicey-roll').onclick=diceyRoll;
   bub.querySelectorAll('.dicey-app').forEach(b=>b.onclick=()=>{ const k=b.getAttribute('data-dapp'); diceyClosePanel(); try{ mgLaunchApp(k); }catch(e){} });
@@ -7395,7 +7407,7 @@ function diceyBuildPlatform(opts){ opts=opts||{}; if(!_diceyEl||!diceyPlatformsO
   return el; }
 function diceyHopTo(plat){ if(!_diceyEl||!plat)return; const pr=plat.getBoundingClientRect();
   const x=Math.max(2,Math.min(pr.left+pr.width/2-33, window.innerWidth-66)), y=Math.max(2, pr.top-58); // perch his ~66px body on top
-  diceySay('Hup!',900); diceyMoveTo(x,y,470); }
+  diceySay('Whee!',900); diceyMoveTo(x,y,470); }
 function diceyHopPlatforms(){ if(!diceyPlatformsOn())return; if(_diceyPlats.length && Math.random()<.55)diceyHopTo(_diceyPlats[(Math.random()*_diceyPlats.length)|0]); else diceyBuildPlatform({hop:true}); }
 function diceyGrow(kind){ return diceyBuildPlatform({hop:true}); } // platforms are persistent now; the old vertical "wall" is retired
 function diceyCast(roll){ const sp=DICEY_SPELLS[roll]||{ name:'Mystic Roll', act:()=>diceySay('Rolled '+roll+'!',1800) };
@@ -7412,7 +7424,7 @@ function diceyMakeBubble(){ if(!_diceyEl)return null; const old=_diceyEl.querySe
 function diceyIntro(){ if(!_diceyEl)return; try{ DeckOS.store.set('dicey_seen',1); }catch(e){} diceyWhirl(); clearTimeout(_diceyTimer);
   const b=diceyMakeBubble(); if(!b)return;
   b.innerHTML='<div class="dicey-hd"><b>🎲 Dicey</b><button class="dicey-x" title="Close">✕</button></div>'+
-    '<div class="dicey-tip"><b>Oh boy, a player!</b> 🐾 Are you new here, or a returning planeswalker?</div>'+
+    '<div class="dicey-tip"><b>Welcome, planeswalker!</b> New here, or rolling back through?</div>'+
     '<div class="dicey-foot"><button class="dicey-roll" data-i="new">✨ I’m new!</button><button class="dicey-hide" data-i="ret">Returning</button></div>';
   b.querySelector('.dicey-x').onclick=()=>{ diceyClosePanel(); diceyScheduleIdle(); };
   b.querySelector('[data-i="ret"]').onclick=()=>{ diceyClosePanel(); diceySay('Welcome back! Let’s get you signed in.',2400); setTimeout(()=>{ try{ mgLaunchApp('account'); }catch(e){} diceyScheduleIdle(); }, 600); };

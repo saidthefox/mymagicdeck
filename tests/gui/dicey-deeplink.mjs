@@ -8,7 +8,7 @@ await p.goto('http://mymagicdeck.com/?dicey=basics',{waitUntil:'domcontentloaded
 await p.waitForTimeout(2400); // mid-escort
 const mid = await p.evaluate(()=>{ const e=(typeof _diceyEl!=='undefined')&&_diceyEl; const rc=e&&e.getBoundingClientRect();
   return { pos:rc?{x:rc.left,y:rc.top}:null, introUp:!!document.querySelector('.dicey-bubble') }; });
-await p.waitForTimeout(5200); // past settle(5.3s) + intro(6.7s)
+await p.waitForTimeout(6900); // past settle + 1s corner pause + intro (~8.3s)
 const end = await p.evaluate(()=>{ const e=(typeof _diceyEl!=='undefined')&&_diceyEl; const rc=e&&e.getBoundingClientRect();
   return { dicey:!!e, deckos:document.body.classList.contains('deckos'), openedLandgame:!!document.getElementById('modal-prog-landgame'),
     pos:rc?{x:rc.left,y:rc.top}:null, introUp:!!document.querySelector('.dicey-bubble, .dicey-say') }; });
