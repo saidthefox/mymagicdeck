@@ -7241,6 +7241,7 @@ function mgWireStartMenu(a){
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
 let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0;
 let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=12000; // recent user input → Dicey stays calm; after this much quiet he wakes up
+let _summon=null, _diceyIdleStreak=0; // _summon = the in-progress "special summon" screensaver state
 const DICEY_BARKS=["Feeling lucky?","A game? Let’s roll.","Nat 20 energy today.","Fresh cards to crack?","Roll with me.","Ooh, found something.","Best deck ever.","Shuffle up!"];
 const DICEY_TIPS=[
   "Hi! Drag me anywhere. Click me for the app list, or roll me for a surprise.",
@@ -7304,7 +7305,9 @@ function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(
 // the way; he only gets lively again once you've been idle a bit (like a screensaver waking up).
 function diceyWireActivity(){ if(_diceyInputWired)return; _diceyInputWired=true;
   const bump=e=>{ if(_diceyEl&&e&&e.target&&_diceyEl.contains(e.target))return; // interacting with Dicey himself doesn't count
-    const wasActive=diceyUserActive(); _diceyBusyUntil=Date.now()+DICEY_ACTIVE_MS; if(!wasActive)diceyStepAside(); };
+    const wasActive=diceyUserActive(); _diceyBusyUntil=Date.now()+DICEY_ACTIVE_MS; _diceyIdleStreak=0;
+    if(_summon)diceyDesummon();              // caught mid-special-summon → panic, hide everything, put it back
+    else if(!wasActive)diceyStepAside(); };
   ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>document.addEventListener(ev,bump,{passive:true,capture:true})); }
 function diceyStepAside(){ if(!_diceyEl||_diceyDragging)return;
   const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();   // hush any chatter
@@ -7315,13 +7318,55 @@ function diceyStepAside(){ if(!_diceyEl||_diceyDragging)return;
     diceyMoveTo(x,y,520); const s=diceyState(); s.x=x; s.y=y; diceySave(s); } }
 function diceyUserActive(){ return Date.now() < _diceyBusyUntil; }
 function diceyIdleTick(){ if(!_diceyEl){ return; }
-  if(_diceyOpen||_diceyDragging||document.hidden||_diceyReduced||diceyUserActive()){ diceyScheduleIdle(); return; } // paused / you're busy → stay calm
+  if(_diceyOpen||_diceyDragging||document.hidden||_diceyReduced||diceyUserActive()){ _diceyIdleStreak=0; diceyScheduleIdle(); return; } // paused / you're busy → stay calm
+  if(_summon){ diceyScheduleIdle(); return; }                 // already performing the special summon
+  _diceyIdleStreak++;
+  if(_diceyIdleStreak>=3 && diceyCanSummon()){ diceyBeginSummon(); diceyScheduleIdle(); return; } // deep idle on the desktop → Exodia
   const roll=(typeof _diceRand==='function'?_diceRand(20):((Math.random()*20)|0))+1;
   if(roll>=18) diceyRoll();        // spontaneously roll + cast a spell
   else if(roll>=14){ if(diceyPlatformsOn()&&Math.random()<.6)diceyHopPlatforms(); else diceyWhirl(); } // hop around his platforms
   else if(roll>=8){ const r=_diceyEl.getBoundingClientRect(); diceyMoveTo(r.left+(Math.random()*180-90), r.top+(Math.random()*70-35), 640); }
   else if(roll<=3) diceySay(DICEY_BARKS[(Math.random()*DICEY_BARKS.length)|0], 2200);
   diceyScheduleIdle();
+}
+// ===== Dicey's "special summon" screensaver (desktop only): away a while → he tiles programs next to
+// MyMagicDeck until the screen is full, then goes GOLD like he topdecked Exodia. Return → he panics, puts
+// it all back. All of it is temporary (the gold skin is applied, never persisted). =====
+function diceyGridCells(){ const barH=38, pad=8; const W=window.innerWidth, H=window.innerHeight-barH;
+  const cols=Math.max(2, Math.floor(W/360)), rows=Math.max(2, Math.floor(H/300));
+  const cw=Math.floor((W-pad)/cols), ch=Math.floor((H-pad)/rows), cells=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++)cells.push({ x:Math.round(pad+c*cw), y:Math.round(pad+r*ch), w:cw-pad, h:ch-pad });
+  return cells; }
+function diceyCanSummon(){ return !_summon && document.body.classList.contains('wm-on') && !document.hidden && typeof wmWins!=='undefined' && wmWins.site && typeof wmOpen==='function' && typeof wmEligible==='function'; }
+function diceyBeginSummon(){ if(!diceyCanSummon())return; const cells=diceyGridCells(); if(cells.length<3)return;
+  const safe=['manapool','twentyfourty','dicebag','landgame','battle','cardle','calendar','interactions','matchhistory','widgets','notes','documents','tournaments','mail'];
+  const cands=safe.filter(k=> wmEligible(k) && !(wmWins[k]&&wmWins[k].state!=='min'));
+  if(!cands.length)return;
+  _summon={ cells, i:1, opened:[], cands, savedTheme:(typeof themeGet==='function'?themeGet():'dark'),
+    savedSite:(wmWins.site&&wmWins.site.rect)?Object.assign({},wmWins.site.rect):null, savedState:wmWins.site&&wmWins.site.state, gold:false, timer:null };
+  diceySay('Heh… while they’re away… ✨',2600); diceyWhirl();
+  if(_summon.savedSite && wmWins.site){ wmWins.site.state='normal'; wmWins.site.rect=Object.assign({},cells[0]); wmApply('site'); } // MyMagicDeck takes the first tile
+  _summon.timer=setTimeout(diceySummonNext, 1100);
+}
+function diceySummonNext(){ const sm=_summon; if(!sm)return;
+  if(sm.i>=sm.cells.length || !sm.cands.length){ diceySummonFinale(); return; }
+  const key=sm.cands.shift(), cell=sm.cells[sm.i];
+  diceyMoveTo(cell.x+cell.w/2-30, Math.max(4, cell.y+cell.h/2-30), 700);  // roll over to the empty space first
+  sm.timer=setTimeout(()=>{ if(_summon!==sm)return;
+    try{ wmOpen(key); if(wmWins[key]){ wmWins[key].state='normal'; wmWins[key].rect=Object.assign({},cell); wmApply(key); } sm.opened.push(key); }catch(e){}
+    diceyWhirl(); sm.i++; sm.timer=setTimeout(diceySummonNext, 1500);
+  }, 760);
+}
+function diceySummonFinale(){ const sm=_summon; if(!sm||sm.gold)return; sm.gold=true;
+  if(typeof themeApply==='function')themeApply('gold');                   // EXODIA — temporary skin, never persisted
+  diceyMoveTo(Math.round(window.innerWidth*0.5-30), Math.round(window.innerHeight*0.42-30), 700); diceyWhirl();
+  diceySay('EXODIA! …behold our masterpiece. 🔥', 6000);
+}
+function diceyDesummon(){ const sm=_summon; if(!sm)return; _summon=null; clearTimeout(sm.timer);
+  if(sm.gold && typeof themeApply==='function')themeApply(sm.savedTheme||'dark');  // skin back to whatever they had
+  (sm.opened||[]).forEach(k=>{ try{ if(typeof wmClose==='function')wmClose(k); }catch(e){} });
+  try{ if(sm.savedSite && wmWins.site){ wmWins.site.state=sm.savedState||'normal'; wmWins.site.rect=sm.savedSite; wmApply('site'); } }catch(e){}
+  diceyWhirl(); diceySay('Ack—they’re back! Hide everything, don’t let them see the special summon!', 3400);
 }
 function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math.min(x,window.innerWidth-66)); y=Math.max(2,Math.min(y,window.innerHeight-66));
   const r=_diceyEl.getBoundingClientRect(), dx=x-r.left; _diceyRot+= dx/66*180; // a body-width ≈ half a tumble → looks like it's rolling
