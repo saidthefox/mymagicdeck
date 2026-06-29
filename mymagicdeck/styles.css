@@ -1335,6 +1335,7 @@
     /* 2040 "Deck you're playing" button (lower-left) */
     .lc-deckbtn{position:absolute;left:6px;bottom:8px;z-index:7;display:flex;align-items:center;gap:5px;max-width:46%;font-family:Tahoma,sans-serif;font-size:12px;font-weight:bold;color:#fff;background:rgba(8,9,12,.6);border:1px solid rgba(255,255,255,.28);border-radius:8px;padding:6px 10px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
     .lc-deckbtn.set{border-color:rgba(184,147,47,.6);color:#ffd27a}
+    .lc-deck-ck{color:#3ad04e;font-weight:900;font-size:13px;line-height:1;text-shadow:0 0 4px rgba(58,208,78,.45)}
     .lc-deckbtn.live{bottom:46px}
     .lc-deckbtn:active{filter:brightness(1.2)}
     /* Tournament match: centered report box (X to minimize) ⇄ trophy+score chip */
@@ -1447,6 +1448,7 @@
     .tf-gpip{font-size:11px;font-weight:bold;padding:2px 6px;border-radius:4px;background:#0d0f13;border:1px solid #3a404a}
     .tf-gpip.tf-rW{border-color:#3a7d4c}.tf-gpip.tf-rL{border-color:#7d3a3a}.tf-gpip.tf-rD{border-color:#4a505c}
     .tf-fin{background:#2f9b54;border-color:#7CFC00;color:#fff}
+    .tf-quit{background:#5e2a2a;border-color:#d9a3a3 #2e1010 #2e1010 #d9a3a3;color:#ffdada}
     /* Match History program */
     .mh-wrap{font-family:Tahoma,sans-serif;color:#e7eef7;background:#1b1f27;min-height:100%;padding:14px;box-sizing:border-box}
     .mh-load{color:#9aa6b6;padding:20px;text-align:center}

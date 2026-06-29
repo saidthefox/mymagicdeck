@@ -281,17 +281,14 @@ try {
           assert(r0.status === 200 && r0.body.results.length === 0, 'no result reported until BOTH confirm');
           const f2 = await Ja('/tf/live/' + code + '/finish', { method:'POST', body:'{}' }, TB);
           assert(f2.status === 200 && f2.body.status === 'done', 'both confirm → match locked');
-          // Interactions ledger: durably recorded + public, but decklists are obfuscated until the tournament concludes
-          const ixHidden = await J('/interactions?tourn=' + tourn);
-          const m0 = (ixHidden.body.interactions||[]).find(x => x.tourn === tourn);
-          assert(ixHidden.status === 200 && m0 && m0.decksHidden === true && m0.a.deck !== 'Mono-Red Aggro' && m0.b.deck !== 'Azorius Control',
-            'decklists are obfuscated while the tournament is ongoing');
-          const conc = await Jb('/integrations/discord/tournament/' + tourn + '/conclude', { method:'POST', body:'{}' });
-          assert(conc.status === 200 && conc.body.concluded, 'bot /conclude marks the tournament concluded');
+          // Interactions ledger: durably recorded + public; deck names always show (no tournament obfuscation)
           const ixFeed = await J('/interactions?tourn=' + tourn);
-          assert(ixFeed.status === 200 && ixFeed.body.interactions.some(x => x.tourn === tourn
-            && [x.a.deck, x.b.deck].includes('Mono-Red Aggro') && [x.a.deck, x.b.deck].includes('Azorius Control')),
-            'decklists are revealed once the tournament has concluded');
+          const m0 = (ixFeed.body.interactions||[]).find(x => x.tourn === tourn);
+          assert(ixFeed.status === 200 && m0 && m0.decksHidden === false
+            && [m0.a.deck, m0.b.deck].includes('Mono-Red Aggro') && [m0.a.deck, m0.b.deck].includes('Azorius Control'),
+            'decklists are visible immediately — no obfuscation during tournaments');
+          const conc = await Jb('/integrations/discord/tournament/' + tourn + '/conclude', { method:'POST', body:'{}' });
+          assert(conc.status === 200 && conc.body.concluded, 'bot /conclude still responds (no longer affects deck visibility)');
           const ixT = await J('/interactions/tournament/' + tourn);
           assert(ixT.status === 200 && ixT.body.matches.length >= 1 && ixT.body.champion && ixT.body.champion.deck && ixT.body.path.length >= 1,
             'tournament view returns a champion + winning-deck path');

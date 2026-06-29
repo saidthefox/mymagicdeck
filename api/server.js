@@ -3502,12 +3502,10 @@ app.get('/api/tf/matches', { preHandler:authenticate }, async (req)=>{
 
 // ── INTERACTIONS — public match ledger (zKillboard-style). Read-only, guests allowed. Names + deck
 // names only (no emails / user ids leaked). ───────────────────────────────────────────────────────
-const IX_DECK_MASK='*****';
-function ixOut(r, concluded){ let games=[]; try{ games=JSON.parse(r.games||'[]'); }catch(_){}
-  // Hide decklists while a tournament is still running (reveal once concluded). Casual matches always show.
-  const hide = r.tourn && !(concluded && concluded.has(r.tourn));
-  const dk = v => hide ? IX_DECK_MASK : (v||'');
-  return { id:r.id, ts:r.ts, tourn:r.tourn||null, round:r.round||null, decksHidden:!!hide,
+function ixOut(r){ let games=[]; try{ games=JSON.parse(r.games||'[]'); }catch(_){}
+  // Deck names always show — casual and tournament matches alike (no obfuscation).
+  const dk = v => (v||'');
+  return { id:r.id, ts:r.ts, tourn:r.tourn||null, round:r.round||null, decksHidden:false,
     a:{ name:r.a_name||'', deck:dk(r.deck_a) }, b:{ name:r.b_name||'', deck:dk(r.deck_b) },
     result:r.result, score:(r.a_wins||0)+'-'+(r.b_wins||0),
     winner: r.result==='draw'?null:(r.result==='a'?{name:r.a_name||'',deck:dk(r.deck_a)}:{name:r.b_name||'',deck:dk(r.deck_b)}),
@@ -3519,8 +3517,7 @@ app.get('/api/interactions', { preHandler: softAuthenticate }, async (req)=>{
   let rows;
   if(tourn) rows=db.prepare('SELECT * FROM interactions WHERE tourn=? '+(hasB?'AND ts<? ':'')+'ORDER BY ts DESC LIMIT ?').all(...(hasB?[tourn,before,limit]:[tourn,limit]));
   else rows=db.prepare('SELECT * FROM interactions '+(hasB?'WHERE ts<? ':'')+'ORDER BY ts DESC LIMIT ?').all(...(hasB?[before,limit]:[limit]));
-  const concluded=ixConcludedSet();
-  return { interactions: rows.map(r=>ixOut(r,concluded)), hasMore: rows.length===limit };
+  return { interactions: rows.map(ixOut), hasMore: rows.length===limit };
 });
 app.get('/api/interactions/tournaments', { preHandler: softAuthenticate }, async ()=>{
   const rows=db.prepare("SELECT tourn, COUNT(*) c, MAX(ts) last, MAX(round) rounds FROM interactions WHERE tourn IS NOT NULL AND tourn!='' GROUP BY tourn ORDER BY last DESC LIMIT 200").all();
@@ -3528,8 +3525,7 @@ app.get('/api/interactions/tournaments', { preHandler: softAuthenticate }, async
 });
 app.get('/api/interactions/tournament/:tourn', { preHandler: softAuthenticate }, async (req)=>{
   const tourn=String(req.params.tourn);
-  const concluded=ixConcludedSet();
-  const matches=db.prepare('SELECT * FROM interactions WHERE tourn=? ORDER BY round ASC, ts ASC').all(tourn).map(r=>ixOut(r,concluded));
+  const matches=db.prepare('SELECT * FROM interactions WHERE tourn=? ORDER BY round ASC, ts ASC').all(tourn).map(ixOut);
   const byRound={}; for(const m of matches){ const rd=m.round||0; (byRound[rd]=byRound[rd]||[]).push(m); }
   const rounds=Object.keys(byRound).map(Number).sort((a,b)=>a-b);
   let champion=null, path=[];
@@ -3604,7 +3600,6 @@ db.exec('CREATE INDEX IF NOT EXISTS idx_interactions_tourn ON interactions(tourn
 // Decks/deck-names in the public ledger stay obfuscated (★) for a tournament until it concludes (the bot
 // calls /tournament/:tourn/conclude on /end) — so opponents can't scout decklists mid-event.
 db.exec(`CREATE TABLE IF NOT EXISTS concluded_tournaments ( tourn TEXT PRIMARY KEY, ts INTEGER NOT NULL DEFAULT (unixepoch()) )`);
-function ixConcludedSet(){ try{ return new Set(db.prepare('SELECT tourn FROM concluded_tournaments').all().map(r=>r.tourn)); }catch(_){ return new Set(); } }
 function tfLivePrune(){ try{ db.prepare("DELETE FROM tf_live WHERE updated < ? AND tourn IS NULL").run(Date.now()-TF_LIVE_TTL); }catch(_){} } // keep tournament matches longer
 function tfLiveGet(code){ return db.prepare('SELECT * FROM tf_live WHERE code=?').get(String(code||'').toUpperCase()); }
 function tfLiveRole(row, uid){ return row.host_id===uid ? 'host' : (row.guest_id===uid ? 'guest' : null); }

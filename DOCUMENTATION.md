@@ -323,8 +323,8 @@ art are never sent until you solve it. Per-account progress in `cardle_games`.
 | POST | `/api/tf/live/:code/reset` | yes | redo: clear recorded games + confirmations (blocked once the match is done) |
 | GET | `/api/interactions` | public | match ledger feed, recent-first; `?before=<ts>&limit=&tourn=` |
 | GET | `/api/interactions/tournaments` | public | tournaments present in the ledger (+ match counts) |
-| GET | `/api/interactions/tournament/:tourn` | public | a tournament's matches by round + `champion` + winning-deck `path` (decks `★`-masked until concluded) |
-| POST | `/api/integrations/discord/tournament/:tourn/conclude` | bot key | mark a tournament concluded → reveal its decklists in the ledger (bot calls on `/end`) |
+| GET | `/api/interactions/tournament/:tourn` | public | a tournament's matches by round + `champion` + winning-deck `path` (deck names always shown) |
+| POST | `/api/integrations/discord/tournament/:tourn/conclude` | bot key | mark a tournament concluded (bot calls on `/end`); no longer affects deck visibility |
 | GET | `/api/integrations/discord/tournaments/upcoming` | bot key | upcoming Discord-sourced tournaments within `?days=` (default 15) — feeds the bot's `/notifications` reminder scheduler |
 
 Matches live locally in `DeckOS.store` ('tf_matches') for offline/guest play; when signed in they sync to

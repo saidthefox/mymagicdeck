@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=18" />
+  <link rel="stylesheet" href="/styles.css?v=19" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -5917,7 +5917,8 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
     else if(a==='next'){ if(typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.st&&_tfLive.st.tourn){ s.tr=s.tr||{active:true,gameNo:1,curMull:0,games:[]}; s.tr.gameNo=(s.tr.gameNo||1)+1; s.tr.curMull=0; lcSave(); _tfLive.min=false; lcRender(body); } else tfResultPrompt(body,'next'); }
     else if(a==='finish'){ tfResultPrompt(body,'finish'); }
     else if(a==='live'){ tfLivePanel(body); }
-    else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); } }));
+    else if(a==='history'){ if(typeof mgLaunchApp==='function'&&typeof MGW_APPS!=='undefined'&&MGW_APPS['matchhistory'])mgLaunchApp('matchhistory'); else tfHistory(body); }
+    else if(a==='quit'){ tfQuitPrompt(body); } }));
   // Live-match strip controls (per-game result, finish/confirm, leave) + waiting-strip controls.
   body.querySelectorAll('[data-lg]').forEach(b=>b.addEventListener('click',()=>tfLiveRecord(b.getAttribute('data-lg'))));
   const lf=body.querySelector('[data-lfin]'); if(lf&&!lf.disabled)lf.addEventListener('click',()=>tfLiveFinish());
@@ -5933,7 +5934,7 @@ function lcRender(body){ if(!body)return; const s=lcLoad();
 // 2040 "Deck" button (lower-left): pick the deck you're playing — stamps your matches in Interactions.
 function lcDeckBtnHtml(s,L){ const nm=(L&&typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.st)?(_tfLive.st.myDeck||''):(s.deck||'');
   const lbl=nm?(nm.length>22?nm.slice(0,21)+'…':nm):'Deck';
-  return '<button class="lc-deckbtn'+(L?' live':'')+(nm?' set':'')+'" data-lcdeck title="The deck you’re playing — shows on your matches in Interactions">📋 '+_mgEsc(lbl)+'</button>'; }
+  return '<button class="lc-deckbtn'+(L?' live':'')+(nm?' set':'')+'" data-lcdeck title="The deck you’re playing — shows on your matches in Interactions">'+(nm?'<span class="lc-deck-ck">✓</span> ':'')+_mgEsc(lbl)+'</button>'; }
 function lcSetDeck(name){ if(typeof _tfLive!=='undefined'&&_tfLive&&_tfLive.code&&_tfLive.st&&(_tfLive.st.status==='live'||_tfLive.st.status==='open')){ apiFetch('/tf/live/'+_tfLive.code+'/deck',{method:'POST',body:JSON.stringify({deck:name||''})}).then(st=>{ if(_tfLive&&_tfLive.code===st.code)_tfLive.st=st; }).catch(()=>{}); } }
 function lcDeckPick(body){ const ov=tfOverlay(body); if(!ov)return;
   const decks=(typeof state!=='undefined'&&state.decks)?Object.values(state.decks):[];
@@ -5997,9 +5998,16 @@ function lcTrackerHtml(s, tourn){ const t=s.tr||{};
     '<div class="tf-game">Game '+(t.gameNo||1)+'</div>'+
     '<button class="tf-btn" data-tf="next">⏭ Next Game</button>'+
     (!tourn && t.nexted?'<button class="tf-btn tf-fin" data-tf="finish">🏁 Finish Match</button>':'')+
+    (!tourn?'<button class="tf-btn tf-quit" data-tf="quit" title="Quit this match — nothing is saved">✖ Quit Game</button>':'')+
     '</div>';
 }
 function tfOverlay(body){ const fs=body.querySelector('.lc-fs'); if(!fs)return null; let ov=fs.querySelector('.tf-overlay'); if(ov)ov.remove(); ov=document.createElement('div'); ov.className='tf-overlay'; fs.appendChild(ov); return ov; }
+function tfQuitPrompt(body){ const s=lcLoad(); if(!s.tr||!s.tr.active)return; const ov=tfOverlay(body); if(!ov)return;
+  ov.innerHTML='<div class="tf-panel"><h3>Quit match?</h3><p class="tf-note">This ends the current match. Nothing is saved to your history.</p>'+
+    '<div class="tf-acts"><button class="tf-cancel" data-x>Keep playing</button><button class="tf-l" data-quit>Quit match</button></div></div>';
+  ov.querySelector('[data-x]').onclick=()=>ov.remove();
+  ov.querySelector('[data-quit]').onclick=()=>{ const s2=lcLoad(); s2.tr={active:false}; lcSave(); ov.remove(); lcRender(body); if(typeof toast==='function')toast('Match quit','info'); };
+}
 function tfResultPrompt(body,kind){ const s=lcLoad(); if(!s.tr||!s.tr.active)return; const ov=tfOverlay(body); if(!ov)return;
   ov.innerHTML='<div class="tf-panel"><h3>Game '+(s.tr.gameNo||1)+' result</h3>'+
     '<div class="tf-wld"><button class="tf-w" data-r="W">Won</button><button class="tf-l" data-r="L">Lost</button><button class="tf-d" data-r="D">Draw</button></div>'+
