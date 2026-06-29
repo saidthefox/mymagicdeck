@@ -6634,9 +6634,9 @@ if(window.DeckOS){
   DeckOS.registerProgram({ id:'landgame', title:'Basics', icon:'🏞️', width:'460px', category:'games', mount(body){ lgRender(body); } });
   DeckOS.registerProgram({ id:'dicebag', title:'Dice Bag', icon:'🎲', width:'420px', desktop:true, mount(body){ dbRender(body); } });
   DeckOS.registerProgram({ id:'cardle', title:'Cardle', icon:'🃏', width:'520px', category:'games', mount(body){ cardleRender(body); } });
-  DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'games', mount(body){ mhRender(body); } });
+  DeckOS.registerProgram({ id:'matchhistory', title:'Match History', icon:'🏆', width:'460px', category:'utilities', mount(body){ mhRender(body); } });
   DeckOS.registerProgram({ id:'diagnostics', title:'Diagnostics', icon:'🩺', width:'600px', desktop:true, mount(body){ diagRender(body); } });
-  DeckOS.registerProgram({ id:'interactions', title:'Interactions', icon:_ixIcon, width:'600px', desktop:true, category:'games', mount(body){ ixRender(body); } });
+  DeckOS.registerProgram({ id:'interactions', title:'Interactions', icon:_ixIcon, width:'600px', desktop:true, category:'utilities', mount(body){ ixRender(body); } });
   try{ Object.defineProperty(MGW_APPS.interactions,'icon',{ configurable:true, get(){ return _ixIcon; } }); }catch(e){} // shifting holding-hands icon
   DeckOS.registerProgram({ id:'widgets', title:'Widgets', icon:'🧩', width:'380px', desktop:true, mount(body){ renderWidgetsApp(body); } });
   WEB_APPS.forEach(app=>DeckOS.registerProgram({ id:'web-'+app.id, title:app.title, icon:app.icon, width:'940px', mount(body){ webMount(body,app); } }));
