@@ -728,7 +728,8 @@
       /* Panels get proper mobile heights */
       #panel-deck .panel-body { max-height: 45vh; overflow-y: auto; }
       #panel-search { min-height: 60vh; }
-      #panel-detail .detail-view { max-height: 50vh; overflow-y: auto; }
+      #panel-detail { overflow: hidden; }
+      #panel-detail .detail-view { flex: 1; min-height: 0; overflow-y: auto; } /* fill the panel (was capped at 50vh, leaving blank space + clipping the card info) */
     }
     @media (max-width: 600px) {
       #header { padding: 0 8px; gap: 4px; height: 46px; }
