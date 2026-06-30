@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=36" />
+  <link rel="stylesheet" href="/styles.css?v=37" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -3621,10 +3621,13 @@ function fcdWire(){
   mgWire3('cm-mana',()=>{ const n=(_fs.cmcNum!==null?parseInt(_fs.cmcNum):0)+1; _fs.cmcNum=String(n); _fs.cmcOps.clear(); _fs.cmcOps.add('='); syncFilters(); },
     ()=>{ _fs.cmcNum=null; _fs.cmcOps.clear(); syncFilters(); },
     el=>{ const items=[{value:'',label:'Any'}]; for(let i=0;i<=16;i++)items.push({value:String(i),label:String(i)}); cmPicker(el,{items,current:_fs.cmcNum!==null?String(_fs.cmcNum):'',onPick:v=>{ if(v===''){_fs.cmcNum=null;_fs.cmcOps.clear();}else{_fs.cmcNum=v;_fs.cmcOps.clear();_fs.cmcOps.add('=');} syncFilters(); }}); });
-  mgWire3('fcd-fmt',fcdPickFormat,()=>{ _fs.formats.clear(); _fs.set=''; syncFilters(); },fcdPickFormat);
-  mgWire3('fcd-set',el=>fcdPickSet(el),()=>{ _fs.set=''; syncFilters(); },el=>fcdPickSet(el));
-  mgWire3('fcd-kw',el=>fcdPickKeyword(el),()=>{ _fs.keywords.clear(); syncFilters(); },el=>fcdPickKeyword(el));
-  mgWire3('fcd-oracle',el=>fcdPickOracle(el),()=>{ _fs.oracleText=''; const oi=document.getElementById('oracle-text-input'); if(oi)oi.value=''; syncFilters(); },el=>fcdPickOracle(el));
+  // Format / Set / Keywords / Oracle: single click opens the dropdown, hold does nothing — matches Type/Subtype.
+  // (Clearing is the "Any …" item in each dropdown.) Colour edges + mana keep their tap/hold behaviour above.
+  const fcdClick=(id,fn)=>{ const el=document.getElementById(id); if(el)el.addEventListener('click',e=>{ e.stopPropagation(); fn(el); }); };
+  fcdClick('fcd-fmt',()=>fcdPickFormat());
+  fcdClick('fcd-set',el=>fcdPickSet(el));
+  fcdClick('fcd-kw',el=>fcdPickKeyword(el));
+  fcdClick('fcd-oracle',el=>fcdPickOracle(el));
 }
 
 function clearAllFilters(){
