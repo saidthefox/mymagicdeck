@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=45" />
+  <link rel="stylesheet" href="/styles.css?v=46" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4568,7 +4568,7 @@ function mgResolveAppId(s){ s=String(s||'').trim(); const low=s.toLowerCase(); i
 function diceyGuideTo(id){ try{
   id=mgResolveAppId(id);
   _diceyGreeted=true; _diceyEscorting=true; clearTimeout(_diceyGreetT); // suppress the startup intro/greet while he escorts — it shows only once he's settled
-  const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(s.mode!=='all')s.mode='all'; if(typeof diceySave==='function')diceySave(s);
+  const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(typeof diceySave==='function')diceySave(s); _diceyForce=true; // visible for the escort, without opting into all-mode
   if(typeof diceyInit==='function')diceyInit();
   const a=(typeof MGW_APPS!=='undefined'&&MGW_APPS[id])?MGW_APPS[id]:null; const nm=a?a.title:(id==='cgg'?'Card Guesser':id);
   const W=()=>window.innerWidth, H=()=>window.innerHeight;
@@ -7397,7 +7397,7 @@ function mgWireStartMenu(a){
   const dc=a.querySelector('.mg-smitem[data-dicey]');if(dc)dc.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;const m=document.getElementById('wm-startmenu');if(m)m.remove();if(typeof diceyToggle==='function')diceyToggle();if(typeof mgRenderDesktop==='function')mgRenderDesktop();});
 }
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
-let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0, _diceyGreetT=null, _diceyEscorting=false, _diceyTucked=false;
+let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0, _diceyGreetT=null, _diceyEscorting=false, _diceyTucked=false, _diceyForce=false;
 try{ if(new URLSearchParams(location.search).has("dicey"))_diceyEscorting=true; }catch(e){} // arriving as a guide → never play the startup greeting
 let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=20000; // recent user input → Dicey stays calm; after this much quiet he wakes up
 let _summon=null, _diceyIdleStreak=0; // _summon = the in-progress "special summon" screensaver state
@@ -7413,7 +7413,7 @@ const DICEY_TIPS=[
 function diceyState(){ try{ const s=DeckOS.store.get('dicey'); if(s&&typeof s==='object')return s; }catch(e){} return {on:true,x:null,y:null}; }
 function diceySave(s){ try{ DeckOS.store.set('dicey', s); }catch(e){} }
 // Dicey is a Deck OS (Win95) citizen — only present in the shell, unless you opt him into 'all' mode.
-function diceyHere(s){ s=s||diceyState(); return s.mode==='all' || document.body.classList.contains('deckos'); }
+function diceyHere(s){ s=s||diceyState(); return _diceyForce || s.mode==='all' || document.body.classList.contains('deckos'); }
 // A faceted icosahedron (real d20 look): shaded triangular facets, crisp silhouette, no number
 // shown by default — a value fades in on the front facet only when Dicey actually rolls.
 function diceyD20Svg(){
@@ -7460,7 +7460,7 @@ function diceyTuckUnder(){ if(!_diceyEl)return; _diceyTucked=true;   // guide do
   const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();
   if(typeof diceyMoveTo==='function')diceyMoveTo(cx,cy,700);
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.zIndex='1'; }, 720);   // below the program window → hidden under it
-  try{ const s=diceyState(); s.x=cx; s.y=cy; diceySave(s); }catch(e){} }
+  _diceyForce=false; }   // escort done — leave his saved home position alone (don't pin him to centre)
 function diceyUntuck(){ if(!_diceyTucked)return; _diceyTucked=false; if(_diceyEl)_diceyEl.style.zIndex=""; } // back from under the program
 function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
   if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
