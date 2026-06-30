@@ -8,6 +8,7 @@
     <string>/Users/jake/vlm-gate/venv/bin/python3</string>
     <string>/Users/jake/vlm-gate/vlm_gate.py</string>
   </array>
+  <key>UserName</key><string>jake</string>
   <key>WorkingDirectory</key><string>/Users/jake/vlm-gate</string>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>

@@ -200,6 +200,8 @@ const PHASH_THRESHOLD = parseInt(process.env.PHASH_THRESHOLD || '14', 10); // ma
 // Tunable: a clean scan of the matching art is ~14; a misread (wrong card) sits ~26-32; phone photos of the
 // right card land in between, so the threshold trades false-adds vs false-rejects. Calibrate via the logged distances.
 const SCAN_PHASH_MAX = parseInt(process.env.SCAN_PHASH_MAX || '18', 10);
+// Phase-2: offload corner-detect + deskew to the Mac Mini vision worker (keeps the CPU work off this old box).
+const SCAN_DESKEW_URL = process.env.SCAN_DESKEW_URL || 'http://192.168.1.109:8088/deskew';
 
 // FTS5 table — content= links to cards so we don't double-store text
 try {
@@ -895,6 +897,19 @@ async function verifyAndLocateCard(jpeg, expectedName) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// Deskew a card out of a frame, preferring the Mac Mini worker (offloads OpenCV/ImageMagick off this box);
+// falls back to doing it locally if the Mini is unreachable. Returns a straightened-card JPEG buffer or null.
+async function scanDeskew(buf) {
+  if (SCAN_DESKEW_URL) {
+    try {
+      const r = await fetch(SCAN_DESKEW_URL, { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: buf, signal: AbortSignal.timeout(8000) });
+      if (r.ok) { const j = await r.json(); if (j && j.crop_b64) return Buffer.from(j.crop_b64, 'base64'); if (j && j.corners === null) return null; }
+    } catch (_) { /* fall back to local */ }
+  }
+  try { const c = await detectCornersCV(buf); if (c) return await _deskew(buf, c); } catch (_) {}
+  return null;
 }
 
 // ── Image processing (sharp): crop to the card and emit the 3 Scryfall sizes ───
@@ -2657,12 +2672,7 @@ app.post('/api/cards/scan', { preHandler: [authenticate, rateLimitUpload] }, asy
   // This is what stops confident misreads from being auto-added — the client only adds when verified===true.
   let verified = false, phashDistance = null, phashAgrees = false, reason = null;
   if (v.isCard !== false && id.oracleId) {
-    let crop = null;
-    try {
-      let corners = await detectCornersCV(buf);               // reliable OpenCV corners…
-      if (!corners && Array.isArray(v.corners) && v.corners.length === 4) corners = v.corners; // …VLM corners as fallback
-      if (corners) crop = await _deskew(buf, corners);
-    } catch (_) {}
+    const crop = await scanDeskew(buf);                        // corner-detect + deskew (Mac Mini, local fallback)
     if (crop) {
       try {
         const ranked = await rankHashAmong(crop, new Set([id.oracleId])); // distance to the NAMED card's printings
