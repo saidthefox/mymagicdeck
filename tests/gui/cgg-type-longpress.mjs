@@ -27,11 +27,20 @@ await hold('mg-kw'); const kwPick = await p.evaluate(()=>!!document.getElementBy
 const fill = await p.evaluate(()=>{ mgGuess.cands=[{name:'Serra Angel',typeLine:'Creature — Angel',power:'4',toughness:'4',manaCost:'{3}{W}{W}'}]; mgGuess.idx=0; mgShowGuess();
   return { type:document.getElementById('mg-type-label').textContent, sub:document.getElementById('mg-sub-label').textContent }; });
 
-console.log(JSON.stringify({ init, tapType, subPick, colorPick, manaPick, powPick, kwPick, fill }));
+// Format | Set bar (pipe, not hyphen): old ▸fmt gone, format cycles, set picker narrows to the chosen format.
+const fmtset = await p.evaluate(()=>({ fmt:document.getElementById('mg-fmt-label').textContent, set:document.getElementById('mg-set-label').textContent,
+  pipe:[...document.querySelectorAll('.mg-typedash')].some(e=>e.textContent==='|'), oldFmt:!!document.getElementById('mg-fmt') }));
+const tapFmt = await p.evaluate(()=>{ document.getElementById('mg-fmt-label').click(); return new Promise(r=>setTimeout(()=>r(mgState.format),300)); });
+const setNarrow = await p.evaluate(()=>{ mgState.format='standard'; mgState.set=''; return null; });
+await hold('mg-set-label'); const setPick = await p.evaluate(()=>{ const pk=document.getElementById('cm-picker'); return { open:!!pk, narrowed: pk && pk.querySelectorAll('.cm-picker-item').length>1 && pk.querySelectorAll('.cm-picker-item').length<=60 }; }); await close();
+
+console.log(JSON.stringify({ init, tapType, subPick, colorPick, manaPick, powPick, kwPick, fill, fmtset, tapFmt, setPick }));
 console.log('PAGE_ERRORS:', errs.length, errs.slice(0,3));
 const ok = init.type==='Type' && init.sub==='Subtype' && init.kw==='Keywords' && init.dash && init.legend
   && tapType==='Artifact' && subPick && colorPick && manaPick && powPick && kwPick
-  && fill.type==='Creature' && fill.sub==='Angel' && !errs.length;
+  && fill.type==='Creature' && fill.sub==='Angel'
+  && fmtset.fmt==='Format' && fmtset.set==='Set' && fmtset.pipe && !fmtset.oldFmt && tapFmt==='standard' && setPick.open && setPick.narrowed
+  && !errs.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);

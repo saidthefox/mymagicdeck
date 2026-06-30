@@ -596,6 +596,29 @@ function cardTypeIndex() {
   return _typeIndex;
 }
 
+// Sets (code + name) and the sets that occur under each format — so the CGG "Set" picker narrows to the
+// chosen format. Best-effort: a set is "in" a format if it has ≥1 card legal/restricted in that format
+// (loose for rotating Standard, accurate enough for the eternal formats). Derived from the card DB, cached.
+const SET_FORMATS = ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'pauper', 'commander', 'premodern', 'oldschool', 'brawl', 'predh'];
+let _setIndex = null;
+function cardSetIndex() {
+  if (_setIndex) return _setIndex;
+  const names = new Map(); const byFmt = {};
+  for (const f of SET_FORMATS) byFmt[f] = new Set();
+  let rows = [];
+  try { rows = db.prepare("SELECT set_id, set_name, legalities FROM cards WHERE set_id IS NOT NULL AND set_id != ''").all(); } catch (_) {}
+  for (const r of rows) {
+    if (r.set_name && !names.has(r.set_id)) names.set(r.set_id, r.set_name);
+    let leg = {}; try { leg = JSON.parse(r.legalities || '{}'); } catch (_) {}
+    for (const f of SET_FORMATS) { const v = leg[f]; if (v === 'legal' || v === 'restricted') byFmt[f].add(r.set_id); }
+  }
+  _setIndex = {
+    sets: [...names.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name)),
+    setsByFormat: Object.fromEntries(Object.entries(byFmt).map(([k, v]) => [k, [...v]])),
+  };
+  return _setIndex;
+}
+
 function cardRowToScryfall(r) {
   return {
     oracle_id:      r.oracle_id,
@@ -2383,6 +2406,9 @@ app.get('/api/cards/search', async (req, reply) => {
 // ── GET /api/cards/types — card types + the subtypes occurring under each (for the card-box dropdowns) ──
 app.get('/api/cards/types', async () => cardTypeIndex());
 
+// ── GET /api/cards/sets — set list + sets-by-format (CGG Format | Set picker; set narrows to the format) ──
+app.get('/api/cards/sets', async () => cardSetIndex());
+
 // ── GET /api/cards/named?name=...&fuzzy=1 ────────────────────────────────────
 // ── GET /api/cards/keywords  (distinct keyword list for the filter typeahead) ─
 let _keywordList = null;
@@ -2460,7 +2486,7 @@ app.get('/api/cards/named', async (req, reply) => {
 });
 
 // ── POST /api/cards/guess  (mobile "guess my card") ──────────────────────────
-// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, subtype, keyword, power, toughness, name, exclude:[]}
+// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, subtype, keyword, set, power, toughness, name, format, exclude:[]}
 // Returns candidates matching the given constraints, ranked by edhrec popularity.
 function _cardImage(row) {
   let u = null;
@@ -2481,6 +2507,7 @@ app.post('/api/cards/guess', async (req, reply) => {
   if (b.type) { where.push('type_line LIKE ?'); params.push('%' + String(b.type) + '%'); }
   if (b.subtype) { where.push('type_line LIKE ?'); params.push('%' + String(b.subtype) + '%'); }     // subtype lives in the type line after the —
   if (b.keyword) { where.push('lower(keywords) LIKE ?'); params.push('%"' + String(b.keyword).toLowerCase() + '"%'); }
+  if (b.set) { where.push('oracle_id IN (SELECT oracle_id FROM card_printings WHERE set_code = ?)'); params.push(String(b.set).toLowerCase()); }
   if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
   if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }
   if (b.name) { where.push('name LIKE ?'); params.push('%' + String(b.name) + '%'); }
