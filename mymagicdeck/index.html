@@ -7799,8 +7799,8 @@ function mgWire(){
   if(typeof cmLoadTypeIndex==='function')cmLoadTypeIndex(); mgLoadKeywords(); mgLoadSets();
   mgWire3('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=0;mgHint('mana cleared');mgTouch();},mgPickMana);
   mgWire3('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgState.sub='';mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgState.sub='';mgHint('type cleared');mgTouch();},mgPickType);
-  mgWire3('mg-sub-label',el=>mgPickSub(el),()=>{mgState.sub='';mgHint('subtype cleared');mgTouch();},mgPickSub); // tap & hold both open the (searchable) subtype list
-  mgWire3('mg-kw',el=>mgPickKeyword(el),()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
+  mgWire3('mg-sub-label',()=>mgPickSub(document.getElementById('mg-sub-label')),()=>{mgState.sub='';mgHint('subtype cleared');mgTouch();},mgPickSub); // tap & hold both open the (searchable) subtype list
+  mgWire3('mg-kw',()=>mgPickKeyword(document.getElementById('mg-kw')),()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
   mgWire3('mg-oracle-label',mgCycleOracle,()=>{mgState.oracle='';mgHint('oracle cleared');mgTouch();},mgPickOracle);
   mgWire3('mg-fmt-label',mgCycleFormat,()=>{mgState.format=null;mgState.set='';mgHint('format cleared');mgTouch();},mgPickFormat);
   mgWire3('mg-set-label',el=>mgCycleSet(el),()=>{mgState.set='';mgHint('set cleared');mgTouch();},mgPickSet); // tap cycles the format's sets · hold = searchable list
