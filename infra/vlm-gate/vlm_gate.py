@@ -57,7 +57,7 @@ def _record(ok):
 
 # ── dedup helpers ─────────────────────────────────────────────────────────────
 def _ahash_from_jpeg(raw):
-    if not CV: return None
+    if not CV or not raw: return None   # text-only chat (e.g. deck blurb) has no image — skip dedup
     arr = np.frombuffer(raw, np.uint8)
     img = cv2.imdecode(arr, cv2.IMREAD_GRAYSCALE)
     if img is None: return None
