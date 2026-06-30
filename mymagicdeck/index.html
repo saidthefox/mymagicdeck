@@ -7602,7 +7602,6 @@ function diceyOpenPanel(){ if(!_diceyEl)return; diceyClosePanel(); _diceyOpen=tr
 // his head, and the rolled 1–20 maps to a specific effect — a quip, opening a program, a movement,
 // or growing platforms/walls out of the screen (Ice-Climbers-random-hammer energy).
 const _diceyFun=['cardle','manapool','dicebag','twentyfourty','landgame','battle','matchhistory'];
-const _diceyLaunch=k=>{ try{ mgLaunchApp(k); }catch(e){} };
 const DICEY_SPELLS={
   1:{ name:'Goblin Fumble', act:()=>{ diceySay('Nat 1… 😬 tripped on my own facets!',2400); diceyWhirl(); } },
   2:{ name:'Opt', act:()=>diceySay(DICEY_BARKS[(Math.random()*DICEY_BARKS.length)|0],2200) },
@@ -7610,20 +7609,20 @@ const DICEY_SPELLS={
   4:{ name:'Sleight of Hand', act:()=>{ const r=_diceyEl.getBoundingClientRect(); diceyMoveTo(r.left+(Math.random()*200-100), r.top+(Math.random()*80-40),620); } },
   5:{ name:'Llanowar Elves', act:()=>diceyGrow('platform') },
   6:{ name:'Lightning Bolt', act:()=>diceySay('Zap! ⚡',1800) },
-  7:{ name:'Brainstorm', act:()=>_diceyLaunch(_diceyFun[(Math.random()*_diceyFun.length)|0]) },
+  7:{ name:'Brainstorm', act:()=>diceySay(DICEY_TIPS[(Math.random()*DICEY_TIPS.length)|0],3200) },
   8:{ name:'Giant Growth', act:()=>diceyGrow('wall') },
   9:{ name:'Unsummon', act:()=>{ const y=_diceyEl.getBoundingClientRect().top; diceyMoveTo(Math.random()<.5?6:window.innerWidth-72, y, 680); } },
-  10:{ name:'Mana Leak', act:()=>_diceyLaunch('manapool') },
+  10:{ name:'Mana Leak', act:()=>{ diceyGrow('wall'); diceySay('Countered! …just kidding. 🫧',2000); } },
   11:{ name:'Wall of Omens', act:()=>diceyGrow('wall') },
   12:{ name:'Explore', act:()=>diceyGrow('platform') },
   13:{ name:'Hill Giant', act:()=>{ diceyGrow('platform'); const r=_diceyEl.getBoundingClientRect(); setTimeout(()=>diceyMoveTo(r.left, Math.max(6,r.top-44),520),220); } },
   14:{ name:'Cultivate', act:()=>{ diceyGrow('platform'); setTimeout(()=>diceyGrow('platform'),320); } },
   15:{ name:'Roil', act:()=>{ diceyGrow('wall'); const r=_diceyEl.getBoundingClientRect(); diceyMoveTo(r.left+(Math.random()<.5?-130:130), r.top, 620); } },
-  16:{ name:'Time Walk', act:()=>_diceyLaunch('cardle') },
-  17:{ name:"Mind's Desire", act:()=>_diceyLaunch(_diceyFun[(Math.random()*_diceyFun.length)|0]) },
+  16:{ name:'Time Walk', act:()=>{ diceyWhirl(); diceySay('Take an extra turn! ⏳',2000); } },
+  17:{ name:"Mind's Desire", act:()=>diceySay(DICEY_BARKS[(Math.random()*DICEY_BARKS.length)|0],2200) },
   18:{ name:'Craterhoof Behemoth', act:()=>{ diceyGrow('platform'); setTimeout(()=>diceyGrow('wall'),200); setTimeout(()=>diceyGrow('platform'),440); } },
-  19:{ name:'Emrakul, the Aeons Torn', act:()=>{ diceySay('Behold! 🐙',2400); diceyWhirl(); _diceyLaunch('landgame'); } },
-  20:{ name:'Black Lotus', act:()=>{ diceySay('NATURAL 20 — jackpot! 🎉',2800); diceyWhirl(); diceyGrow('platform'); setTimeout(()=>diceyGrow('platform'),250); setTimeout(()=>_diceyLaunch('cardle'),800); } },
+  19:{ name:'Emrakul, the Aeons Torn', act:()=>{ diceySay('Behold! 🐙',2400); diceyWhirl(); } },
+  20:{ name:'Black Lotus', act:()=>{ diceySay('NATURAL 20 — jackpot! 🎉',2800); diceyWhirl(); diceyGrow('platform'); setTimeout(()=>diceyGrow('platform'),250); } },
 };
 function diceySpellCard(name){ if(!_diceyEl)return; const c=document.createElement('div'); c.className='dicey-spell';
   c.innerHTML='<div class="dicey-spell-art"></div><div class="dicey-spell-nm">'+_mgEsc(name)+'</div>';
