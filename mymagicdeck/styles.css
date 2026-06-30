@@ -303,7 +303,7 @@
     /* Card type/subtype picker popover (lives on document.body so it escapes the SVG card bounds) */
     .cm-picker { position: fixed; z-index: 10050; min-width: 150px; max-width: 240px; background: var(--surface, #1b1f27); border: 1px solid var(--border, #3a404a); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 5px; display: flex; flex-direction: column; gap: 4px; }
     .cm-picker-search { width: 100%; box-sizing: border-box; background: var(--surface2, #11151c); border: 1px solid var(--border, #3a404a); border-radius: 6px; color: var(--text-bright, #e7eef7); padding: 5px 8px; font-size: 0.8rem; outline: none; }
-    .cm-picker-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }
+    .cm-picker-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; touch-action: pan-y; overscroll-behavior: contain; }
     .cm-picker-item { padding: 5px 9px; font-size: 0.82rem; color: var(--text, #cdd5e0); border-radius: 5px; cursor: pointer; white-space: nowrap; }
     .cm-picker-item:hover { background: var(--accent, #3a6df0); color: #fff; }
     .cm-picker-item.sel { background: rgba(120,150,255,0.18); color: var(--text-bright, #fff); font-weight: 700; }
