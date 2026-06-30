@@ -33,10 +33,16 @@ const confirm = await mp.evaluate(()=>{
   return { shown, hasGuess:/Black Lotus\?/.test(text), up, down, dismissed, reprompted:el.classList.contains('show') };
 });
 
-console.log(JSON.stringify({ fabDesktop, fabMobile, consent, cancelled, confirm }));
+// Main/Sideboard toggle in the camera bar
+const board = await mp.evaluate(()=>{ window._cam=window._cam||{}; _cam.board='main'; const btn=document.getElementById('cam-board');
+  const start=btn.textContent; camToggleBoard(); const side=btn.textContent==='Sideboard'&&_cam.board==='side'&&btn.classList.contains('side');
+  camToggleBoard(); return { start, side, back:btn.textContent==='Main'&&_cam.board==='main' }; });
+
+console.log(JSON.stringify({ fabDesktop, fabMobile, consent, cancelled, confirm, board }));
 console.log('PAGE_ERRORS:', der.length+mer.length, [...der,...mer].slice(0,3));
 const ok = fabDesktop==='none' && fabMobile!=='none' && consent.open && consent.mentionsNoPhotos && consent.mentionsDeck && cancelled
   && confirm.shown && confirm.hasGuess && confirm.up && confirm.down && confirm.dismissed && !confirm.reprompted
+  && board.start==='Main' && board.side && board.back
   && !der.length && !mer.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();

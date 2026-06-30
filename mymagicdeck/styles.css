@@ -719,6 +719,8 @@
     #cam-reticle { position: absolute; left: 50%; top: 45%; transform: translate(-50%,-50%); width: 74%; max-width: 330px; aspect-ratio: 5/7; border: 2px solid rgba(255,255,255,0.75); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none; }
     #cam-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px calc(14px + env(safe-area-inset-top,0px)); color: #fff; font-family: Tahoma, sans-serif; background: linear-gradient(rgba(0,0,0,0.6), transparent); }
     #cam-top #cam-deckname { font-weight: 700; font-size: 0.95rem; text-shadow: 0 1px 3px #000; }
+    #cam-board { margin-left: auto; margin-right: 8px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.45); color: #fff; padding: 6px 12px; border-radius: 16px; font-family: Tahoma, sans-serif; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; }
+    #cam-board.side { background: rgba(184,147,47,0.9); border-color: #ffd27a; color: #1a1300; }
     #cam-close { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.45); color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
     #cam-status { position: absolute; left: 0; right: 0; bottom: 104px; text-align: center; color: #fff; font-family: Tahoma, sans-serif; font-size: 0.9rem; text-shadow: 0 1px 4px #000; padding: 0 16px; }
     #cam-status.scanning { opacity: 0.65; }
