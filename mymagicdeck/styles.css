@@ -1054,16 +1054,20 @@
     .mg-ac div:hover{background:#efe7d2}
     #mg-mana{display:flex;align-items:center;gap:3px;flex-shrink:0}
     .mg-winbtn{width:22px;height:22px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:#d8d2c4;color:#1a1a1a;font-size:12px;font-weight:bold;border:1px solid #2a2a2a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
-    #mg-art{flex:1;min-height:140px;background:#23232b;border:1px solid #2a2114;border-radius:4px;position:relative;overflow:hidden}
+    #mg-art{flex:1;min-height:60px;background:#23232b;border:1px solid #2a2114;border-radius:4px;position:relative;overflow:hidden}
     #mg-type{display:flex;align-items:center;gap:3px;background:linear-gradient(#f4eddb,#dacdaa);border:1px solid #8a7a52;border-radius:9px;padding:5px 11px;font-size:13px;font-weight:bold;color:#191207;font-family:Georgia,serif;overflow:hidden;white-space:nowrap}
     #mg-type-label,#mg-sub-label,#mg-fmt-label,#mg-set-label{flex-shrink:0;white-space:nowrap;color:#6a5d3c}
     #mg-type-label.mg-set,#mg-sub-label.mg-set,#mg-fmt-label.mg-set,#mg-set-label.mg-set{color:#191207}
     .mg-typedash{flex-shrink:0;color:#9a8a5c;pointer-events:none;user-select:none;padding:0 1px}
     #mg-fs{margin-left:auto;display:flex;align-items:center;gap:3px;flex-shrink:0;padding-left:8px}
     .mg-textbox{background:linear-gradient(#f7f1e0,#ece2c8);border:1px solid #8a7a52;border-radius:9px;padding:8px 11px;min-height:48px;font-size:12px;color:#241c10;display:flex;align-items:center;gap:10px;font-family:Georgia,serif}
-    #mg-kworacle{flex:1;min-width:0;display:flex;align-items:center;gap:4px;line-height:1.4;font-weight:bold;overflow:hidden}
+    #mg-kworacle{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:4px;line-height:1.4;font-weight:bold}
+    .mg-orachip{display:inline-flex;align-items:center;gap:2px;background:rgba(0,0,0,.10);border:1px solid #6a5d3c;border-radius:9px;padding:0 3px 0 7px;font-size:11px;color:#191207;font-weight:bold}
+    .mg-orax{cursor:pointer;font-weight:bold;color:#8a2a16;padding:0 3px;font-size:13px;line-height:1}
+    .mg-oraadd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border:1px solid #6a5d3c;border-radius:9px;font-weight:bold;cursor:pointer;color:#191207;background:rgba(0,0,0,.06);font-size:13px;line-height:1}
     #mg-kw,#mg-oracle-label{color:#6a5d3c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
     #mg-kw.mg-set,#mg-oracle-label.mg-set{color:#191207}
+    #mg-oracle-label.mg-set{white-space:normal;overflow:visible;text-overflow:clip;max-width:none;flex:1 1 100%;display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center} /* chips wrap to their own rows → box grows, art shrinks */
     #mg-readout{position:absolute;left:0;right:0;bottom:0;z-index:7;background:rgba(0,0,0,.55);color:#eafff9;font-size:11px;line-height:1.35;padding:5px 9px;pointer-events:none;font-family:-apple-system,system-ui,sans-serif}
     #mg-readout:empty{display:none}
     .mg-art-oracle{position:absolute;left:34px;right:34px;bottom:36px;max-height:32%;overflow:hidden;box-sizing:border-box;background:rgba(0,0,0,.52);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 11px;color:#f1f1f1;font-size:11px;line-height:1.38;font-family:-apple-system,system-ui,sans-serif;white-space:pre-wrap;pointer-events:none;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}

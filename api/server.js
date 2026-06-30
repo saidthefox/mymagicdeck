@@ -2536,7 +2536,7 @@ app.post('/api/cards/guess', async (req, reply) => {
   if (b.type) { where.push('type_line LIKE ?'); params.push('%' + String(b.type) + '%'); }
   if (b.subtype) { where.push('type_line LIKE ?'); params.push('%' + String(b.subtype) + '%'); }     // subtype lives in the type line after the —
   if (b.keyword) { where.push('lower(keywords) LIKE ?'); params.push('%"' + String(b.keyword).toLowerCase() + '"%'); }
-  if (b.oracle) { where.push('lower(oracle_text) LIKE ?'); params.push('%' + String(b.oracle).toLowerCase().slice(0, 40) + '%'); }
+  if (b.oracle) { const ors = (Array.isArray(b.oracle) ? b.oracle : [b.oracle]).filter(o => o && typeof o === 'string').slice(0, 8); for (const o of ors) { where.push('lower(oracle_text) LIKE ?'); params.push('%' + o.toLowerCase().slice(0, 40) + '%'); } }
   if (b.set) { where.push('oracle_id IN (SELECT oracle_id FROM card_printings WHERE set_code = ?)'); params.push(String(b.set).toLowerCase()); }
   if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
   if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }

@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=49" />
+  <link rel="stylesheet" href="/styles.css?v=51" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4166,7 +4166,7 @@ function init(){
 const MG_COLORS=[{k:'W',n:'White',f:'#efe6c8',pip:'#fffdf0'},{k:'U',n:'Blue',f:'#2f6fb0',pip:'#cfe6ff'},{k:'B',n:'Black',f:'#4a4550',pip:'#d8d2dc'},{k:'R',n:'Red',f:'#c24a3a',pip:'#ffd6cc'},{k:'G',n:'Green',f:'#3f8f63',pip:'#cdeed7'},{k:'M',n:'Multicolor',f:'#d4a843',pip:'#fff2cf'}];
 const MG_ARTIFACT={k:'C',n:'Colorless',f:'#b7a9a0',pip:'#efe9e2'};
 const MG_TYPES=['Artifact','Battle','Creature','Enchantment','Instant','Kindred','Land','Planeswalker','Sorcery','Tribal'];
-let mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',oracle:'',set:'',p:null,t:null,name:'',format:null};
+let mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',oracle:[],set:'',p:null,t:null,name:'',format:null};
 const MG_ORACLE=['creature','target','you','control','card','damage','search','turn','mana','counter','battlefield','library','each','player','opponent','hand','graveyard','draw','deal','destroy','exile','return','gain','token','sacrifice','end','beginning','until','whenever','may'];
 const _mgCap=s=>s?String(s).replace(/\b\w/g,c=>c.toUpperCase()):s;
 // Shrink the type line's font until "Type — Subtype … Format | Set" fits on one row (down to 8px).
@@ -4215,8 +4215,8 @@ function mgPickKeyword(el){ if(typeof cmPicker!=='function')return;
 // Oracle — match a common word in the card's rules text. Tap cycles the list · double clears · hold = picker.
 function mgCycleOracle(){ const i=MG_ORACLE.indexOf(mgState.oracle); const nx=MG_ORACLE[(i+1)%MG_ORACLE.length]; mgState.oracle=nx; mgHint(_mgCap(nx)); mgTouch(); }
 function mgPickOracle(el){ if(typeof cmPicker!=='function')return;
-  cmPicker(el, { items:[{value:'',label:'Any'}].concat(MG_ORACLE.map(w=>({value:w,label:_mgCap(w)}))), current:mgState.oracle||'', searchable:true,
-    onPick:v=>{ mgState.oracle=v; mgHint(v?_mgCap(v):'oracle cleared'); mgTouch(); } }); }
+  cmPicker(el, { items:[{value:'',label:'Any (clear)'}].concat(MG_ORACLE.map(w=>({value:w,label:_mgCap(w)}))), current:'', searchable:true,
+    onPick:v=>{ if(!Array.isArray(mgState.oracle))mgState.oracle=mgState.oracle?[mgState.oracle]:[]; if(!v){mgState.oracle=[];} else if(!mgState.oracle.includes(v)){mgState.oracle.push(v);} mgHint(v?_mgCap(v):'oracle cleared'); mgTouch(); } }); }
 // Format | Set — Set narrows to the chosen format (like Subtype narrows to Type).
 let _mgSetIndex=null;
 function mgLoadSets(){ if(_mgSetIndex)return Promise.resolve(_mgSetIndex);
@@ -4306,7 +4306,11 @@ function mgRender(){
   const _tl=document.getElementById('mg-type-label'); if(_tl){ _tl.textContent=mgState.ti<0?'Type':MG_TYPES[mgState.ti]; _tl.classList.toggle('mg-set',mgState.ti>=0); }
   const _sl=document.getElementById('mg-sub-label'); if(_sl){ _sl.textContent=mgState.sub?_mgCap(mgState.sub):'Subtype'; _sl.classList.toggle('mg-set',!!mgState.sub); }
   const _kw=document.getElementById('mg-kw'); if(_kw){ _kw.textContent=mgState.kw?_mgCap(mgState.kw):'Keywords'; _kw.classList.toggle('mg-set',!!mgState.kw); }
-  const _or=document.getElementById('mg-oracle-label'); if(_or){ _or.textContent=mgState.oracle?_mgCap(mgState.oracle):'Oracle'; _or.classList.toggle('mg-set',!!mgState.oracle); }
+  const _or=document.getElementById('mg-oracle-label'); if(_or){ const _oa=Array.isArray(mgState.oracle)?mgState.oracle:(mgState.oracle?[mgState.oracle]:[]);
+    if(!_oa.length){ _or.textContent='Oracle'; _or.classList.remove('mg-set'); }
+    else { _or.classList.add('mg-set'); _or.innerHTML=_oa.map((w,i)=>'<span class="mg-orachip">'+_mgEsc(_mgCap(w))+'<b class="mg-orax" data-ori="'+i+'">×</b></span>').join('')+'<span class="mg-oraadd" id="mg-oraadd" title="Add another">＋</span>';
+      _or.querySelectorAll('.mg-orax').forEach(x=>x.addEventListener('click',ev=>{ ev.stopPropagation(); mgState.oracle.splice(+x.getAttribute('data-ori'),1); mgHint('oracle updated'); mgTouch(); }));
+      const _add=_or.querySelector('#mg-oraadd'); if(_add)_add.addEventListener('click',ev=>{ ev.stopPropagation(); mgPickOracle(_or); }); } }
   const _fl=document.getElementById('mg-fmt-label'); if(_fl){ _fl.textContent=mgState.format?mgFmtLabel():'Format'; _fl.classList.toggle('mg-set',!!mgState.format); }
   const _se=document.getElementById('mg-set-label'); if(_se){ _se.textContent=mgState.set?mgSetName(mgState.set):'Set'; _se.classList.toggle('mg-set',!!mgState.set); }
   document.getElementById('mg-pow').textContent=mgState.p==null?'—':mgState.p;
@@ -4317,7 +4321,7 @@ function mgRender(){
   if(mgState.ti>=0)parts.push(MG_TYPES[mgState.ti]);
   if(mgState.sub)parts.push(_mgCap(mgState.sub));
   if(mgState.kw)parts.push(_mgCap(mgState.kw));
-  if(mgState.oracle)parts.push('“'+_mgCap(mgState.oracle)+'”');
+  (Array.isArray(mgState.oracle)?mgState.oracle:(mgState.oracle?[mgState.oracle]:[])).forEach(o=>parts.push('“'+_mgCap(o)+'”'));
   if(mgState.p!=null||mgState.t!=null)parts.push((mgState.p==null?'?':mgState.p)+'/'+(mgState.t==null?'?':mgState.t));
   if(mgState.name)parts.push('“'+mgState.name+'”');
   if(mgState.format)parts.push(mgFmtLabel());
@@ -4352,7 +4356,7 @@ function mgConstraints(){
   if(mgState.ti>=0)b.type=MG_TYPES[mgState.ti];
   if(mgState.sub)b.subtype=mgState.sub;
   if(mgState.kw)b.keyword=mgState.kw;
-  if(mgState.oracle)b.oracle=mgState.oracle;
+  if((Array.isArray(mgState.oracle)?mgState.oracle:(mgState.oracle?[mgState.oracle]:[])).length)b.oracle=(Array.isArray(mgState.oracle)?mgState.oracle.slice():[mgState.oracle]);
   if(mgState.set)b.set=mgState.set;
   if(mgState.p!=null)b.power=mgState.p;
   if(mgState.t!=null)b.toughness=mgState.t;
@@ -4434,7 +4438,7 @@ function mgArt(mode,c){
     return;
   }
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',oracle:'',set:'',p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('building');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',oracle:[],set:'',p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('building');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');} // "Enter the app" = hide the game overlay
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false;
@@ -7813,7 +7817,7 @@ function mgWire(){
   mgWire3('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgState.sub='';mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgState.sub='';mgHint('type cleared');mgTouch();},mgPickType);
   mgWire3('mg-sub-label',()=>mgPickSub(document.getElementById('mg-sub-label')),()=>{mgState.sub='';mgHint('subtype cleared');mgTouch();},mgPickSub); // tap & hold both open the (searchable) subtype list
   mgWire3('mg-kw',()=>mgPickKeyword(document.getElementById('mg-kw')),()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
-  mgWire3('mg-oracle-label',mgCycleOracle,()=>{mgState.oracle='';mgHint('oracle cleared');mgTouch();},mgPickOracle);
+  mgWire3('mg-oracle-label',()=>mgPickOracle(document.getElementById('mg-oracle-label')),()=>{mgState.oracle=[];mgHint('oracle cleared');mgTouch();},mgPickOracle);
   mgWire3('mg-fmt-label',mgCycleFormat,()=>{mgState.format=null;mgState.set='';mgHint('format cleared');mgTouch();},mgPickFormat);
   mgWire3('mg-set-label',el=>mgCycleSet(el),()=>{mgState.set='';mgHint('set cleared');mgTouch();},mgPickSet); // tap cycles the format's sets · hold = searchable list
   mgWire3('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{mgState.p=null;mgHint('power cleared');mgTouch();},el=>mgPickNum(el,'p'));
