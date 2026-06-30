@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=34" />
+  <link rel="stylesheet" href="/styles.css?v=35" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -3272,8 +3272,6 @@ const _fs={
   oracleText: '',
 };
 let _filterPanelOpen=true;
-let _manaPips=[];      // array of pip values: 'generic' or a color key e.g. 'r'
-let _prevManaKey='';   // detect when colors/cmc change so we reset pips
 
 const COLOR_MANA={
   w:{bg:'#f9f3d0',fg:'#5a4a00',sym:'W'},
@@ -3340,6 +3338,23 @@ function ptSyncFromState(){
   ['pow','tou'].forEach(f=>ptUpdateUI(f));
 }
 
+// Re-derive every standalone widget's UI from _fs, so a change made on the unified card (or anywhere) shows
+// up on the widgets too. Idempotent; focus-guards keep it from clobbering an input you're typing in.
+function fsReflectWidgets(){
+  document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
+  _fs.colors.forEach(c=>document.querySelector(`.cfp-color-chip[data-color="${c}"]`)?.classList.add('active'));
+  _fs.types.forEach(t=>document.querySelector(`.cfp-chip[data-type="${t}"]`)?.classList.add('active'));
+  _fs.formats.forEach(f=>document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.add('active'));
+  _fs.rarities.forEach(r=>document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.add('active'));
+  _fs.keywords.forEach(k=>document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.add('active'));
+  if(typeof renderKeywordExtraChips==='function')renderKeywordExtraChips();
+  _fs.cmcOps.forEach(op=>document.querySelector(`.cfp-op[data-op="${op}"]`)?.classList.add('active'));
+  if(_fs.cmcNum!==null)document.querySelector(`.cfp-num[data-cmc="${_fs.cmcNum}"]`)?.classList.add('active');
+  const pp=document.getElementById('pt-power-op'),pv=document.getElementById('pt-power-val'),tp=document.getElementById('pt-tough-op'),tv=document.getElementById('pt-tough-val');
+  if(pp)pp.value=_fs.powOp||''; if(pv)pv.value=_fs.powVal||''; if(tp)tp.value=_fs.touOp||''; if(tv)tv.value=_fs.touVal||'';
+  if(typeof ptSyncFromState==='function')ptSyncFromState();
+  const oi=document.getElementById('oracle-text-input'); if(oi&&document.activeElement!==oi)oi.value=_fs.oracleText||'';
+}
 function syncFilters(){
   _fs.powOp  = document.getElementById('pt-power-op')?.value||'';
   _fs.powVal = document.getElementById('pt-power-val')?.value||'';
@@ -3363,6 +3378,7 @@ function syncFilters(){
   if(_fs.name.trim()) parts.push(..._fs.name.trim().split(/\s+/).map(w=>'name:'+w));
 
   document.getElementById('search-input').value=parts.join(' ');
+  fsReflectWidgets();   // keep the standalone widgets in sync when the card (or anything) changed _fs
   updateCardMockup();
   updateActiveFilterPills();
   updateFilterToggle();
@@ -3447,27 +3463,7 @@ function parseSearchToFilters(){
   }
   _fs.name=nameWords.join(' ');
 
-  // Update UI: remove all active, then re-add
-  document.querySelectorAll('.cfp-color-chip,.cfp-chip,.cfp-op,.cfp-num').forEach(el=>el.classList.remove('active'));
-  _fs.colors.forEach(c=>{document.querySelector(`.cfp-color-chip[data-color="${c}"]`)?.classList.add('active')});
-  _fs.types.forEach(t=>{document.querySelector(`.cfp-chip[data-type="${t}"]`)?.classList.add('active')});
-  _fs.formats.forEach(f=>{document.querySelector(`.cfp-chip[data-format="${f}"]`)?.classList.add('active')});
-  _fs.rarities.forEach(r=>{document.querySelector(`.cfp-chip[data-rarity="${r}"]`)?.classList.add('active')});
-  _fs.keywords.forEach(k=>{document.querySelector(`.cfp-chip[data-keyword="${k}"]`)?.classList.add('active')});
-  if(typeof renderKeywordExtraChips==='function')renderKeywordExtraChips();
-  _fs.cmcOps.forEach(op=>{document.querySelector(`.cfp-op[data-op="${op}"]`)?.classList.add('active')});
-  if(_fs.cmcNum!==null)document.querySelector(`.cfp-num[data-cmc="${_fs.cmcNum}"]`)?.classList.add('active');
-
-  // Update P/T hidden inputs and drum UI
-  document.getElementById('pt-power-op').value=_fs.powOp||'';
-  document.getElementById('pt-power-val').value=_fs.powVal||'';
-  document.getElementById('pt-tough-op').value=_fs.touOp||'';
-  document.getElementById('pt-tough-val').value=_fs.touVal||'';
-  ptSyncFromState();
-
-  // Update card mockup name input
-  const nameIn=document.getElementById('cm-name-input');
-  if(nameIn)nameIn.value=_fs.name;
+  fsReflectWidgets();
 
   // Update visual indicators
   updateCardMockup();
@@ -3530,94 +3526,6 @@ function _makePipCircle(m, label, isGeneric){
   return g;
 }
 
-function _collapseGenericPips(manaG, cycleColors, manaKey){
-  // Count leading generics in _manaPips
-  let genericCount=0;
-  for(const p of _manaPips){ if(p==='generic') genericCount++; else break; }
-  if(genericCount===0) return;
-  const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
-  // The first pip circle in manaG corresponds to index 0
-  // Remove first genericCount children and replace with one numbered circle
-  for(let i=0;i<genericCount;i++) if(manaG.firstChild) manaG.removeChild(manaG.firstChild);
-  // Shift remaining children right
-  const remaining=[...manaG.children];
-  // Re-position: numbered pip at x=PIP_R, then rest follow
-  const numG=_makePipCircle(GENERIC, String(genericCount), true);
-  numG.setAttribute('transform',`translate(${PIP_R},0)`);
-  numG.style.cursor=cycleColors.length>0?'pointer':'default';
-  if(cycleColors.length>0){
-    numG.title='Click to cycle color';
-    numG.addEventListener('click',()=>{
-      const firstGenIdx=_manaPips.indexOf('generic');
-      if(firstGenIdx===-1) return;
-      _manaPips[firstGenIdx]=cycleColors[0];
-      const WUBRG=['w','u','b','r','g'];
-      _manaPips.sort((a,b)=>{
-        if(a==='generic'&&b==='generic') return 0;
-        if(a==='generic') return -1; if(b==='generic') return 1;
-        return WUBRG.indexOf(a)-WUBRG.indexOf(b);
-      });
-      _prevManaKey=manaKey;
-      renderManaPips(cycleColors,manaKey);
-    });
-  }
-  manaG.insertBefore(numG, manaG.firstChild);
-  // Reposition all children
-  let x=PIP_R;
-  for(const child of manaG.children){
-    child.setAttribute('transform',`translate(${x},0)`);
-    x+=PIP_GAP;
-  }
-}
-
-function renderManaPips(cycleColors, manaKey){
-  const manaG=document.getElementById('cm-mana-g');
-  if(!manaG) return;
-  while(manaG.firstChild) manaG.removeChild(manaG.firstChild);
-  const GENERIC={bg:'#c8b860',fg:'#2a1a00'};
-  _manaPips.forEach((pip,idx)=>{
-    const isGeneric=pip==='generic';
-    const m=isGeneric?GENERIC:(COLOR_MANA[pip]||GENERIC);
-    const g=_makePipCircle(m, isGeneric?'':m.sym, isGeneric);
-    g.dataset.pip=pip;
-    g.style.cursor='pointer';
-    const x=PIP_R + idx*PIP_GAP;
-    g.setAttribute('transform',`translate(${x},0)`);
-    g.addEventListener('click',()=>{
-      if(cycleColors.length===0) return;
-      const cur=_manaPips[idx];
-      const pos=cycleColors.indexOf(cur);
-      if(cur==='generic') _manaPips[idx]=cycleColors[0];
-      else if(pos>=0&&pos<cycleColors.length-1) _manaPips[idx]=cycleColors[pos+1];
-      else _manaPips[idx]='generic';
-      const WUBRG=['w','u','b','r','g'];
-      _manaPips.sort((a,b)=>{
-        if(a==='generic'&&b==='generic') return 0;
-        if(a==='generic') return -1; if(b==='generic') return 1;
-        return WUBRG.indexOf(a)-WUBRG.indexOf(b);
-      });
-      _prevManaKey=manaKey;
-      renderManaPips(cycleColors,manaKey);
-    });
-    manaG.appendChild(g);
-  });
-  _collapseGenericPips(manaG, cycleColors, manaKey);
-  // Reposition all pips, compressing gap if needed to stay within the pip zone
-  const PIP_ZONE=51; // px available right of name input (x:140 to x:191 in SVG)
-  const PIP_PAD=3;  // padding between rightmost pip edge and box edge
-  const n=manaG.children.length;
-  // gap between pip centers: shrink if needed so all fit, min = 2*PIP_R+2 (never overlap)
-  const gap = n<=1 ? 0 : Math.max(2*PIP_R+2, Math.min(PIP_GAP, (PIP_ZONE - 2*PIP_R - PIP_PAD) / (n-1)));
-  const totalW = n<=1 ? 2*PIP_R : 2*PIP_R + (n-1)*gap;
-  // right-align: place group so rightmost pip edge = SVG x:191 minus padding
-  const groupX = 191 - PIP_PAD - totalW;
-  let x=PIP_R;
-  for(const child of manaG.children){
-    child.setAttribute('transform',`translate(${x},0)`);
-    x+=gap;
-  }
-  manaG.setAttribute('transform',`translate(${groupX},${20})`);
-}
 
 function updateCardMockup(){
   const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
