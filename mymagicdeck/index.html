@@ -4216,7 +4216,9 @@ function mgPickKeyword(el){ if(typeof cmPicker!=='function')return;
   mgLoadKeywords().then(list=>{ cmPicker(el, { items:[{value:'',label:'Any keyword'}].concat(list.map(k=>({value:k.toLowerCase(),label:_mgCap(k)}))), current:mgState.kw||'', searchable:true,
     onPick:v=>{ mgState.kw=v; mgHint(v?_mgCap(v):'keyword cleared'); mgTouch(); } }); }); }
 // Oracle — match a common word in the card's rules text. Tap cycles the list · double clears · hold = picker.
-function mgCycleOracle(){ const i=MG_ORACLE.indexOf(mgState.oracle); const nx=MG_ORACLE[(i+1)%MG_ORACLE.length]; mgState.oracle=nx; mgHint(_mgCap(nx)); mgTouch(); }
+function mgCycleOracle(){ const cur=(Array.isArray(mgState.oracle)&&mgState.oracle.length===1)?mgState.oracle[0]:''; const i=MG_ORACLE.indexOf(cur); const nx=MG_ORACLE[(i+1)%MG_ORACLE.length]; mgState.oracle=[nx]; mgHint(_mgCap(nx)); mgTouch(); }
+const MG_KW_CYCLE=['flying','trample','haste','vigilance','deathtouch','lifelink','first strike','double strike','menace','reach','hexproof','flash','defender','ward'];
+function mgCycleKeyword(){ const i=MG_KW_CYCLE.indexOf(mgState.kw); const nx=MG_KW_CYCLE[(i+1)%MG_KW_CYCLE.length]; mgState.kw=nx; mgHint(_mgCap(nx)); mgTouch(); }
 function mgPickOracle(el){ if(typeof cmPicker!=='function')return;
   cmPicker(el, { items:[{value:'',label:'Any (clear)'}].concat(MG_ORACLE.map(w=>({value:w,label:_mgCap(w)}))), current:'', searchable:true,
     onPick:v=>{ if(!Array.isArray(mgState.oracle))mgState.oracle=mgState.oracle?[mgState.oracle]:[]; if(!v){mgState.oracle=[];} else if(!mgState.oracle.includes(v)){mgState.oracle.push(v);} mgHint(v?_mgCap(v):'oracle cleared'); mgTouch(); } }); }
@@ -7819,8 +7821,8 @@ function mgWire(){
   mgWire3('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=0;mgHint('mana cleared');mgTouch();},mgPickMana);
   mgWire3('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgState.sub='';mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgState.sub='';mgHint('type cleared');mgTouch();},mgPickType);
   mgWire3('mg-sub-label',()=>mgPickSub(document.getElementById('mg-sub-label')),()=>{mgState.sub='';mgHint('subtype cleared');mgTouch();},mgPickSub); // tap & hold both open the (searchable) subtype list
-  mgWire3('mg-kw',()=>mgPickKeyword(document.getElementById('mg-kw')),()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
-  mgWire3('mg-oracle-label',()=>mgPickOracle(document.getElementById('mg-oracle-label')),()=>{mgState.oracle=[];mgHint('oracle cleared');mgTouch();},mgPickOracle);
+  mgWire3('mg-kw',mgCycleKeyword,()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
+  mgWire3('mg-oracle-label',mgCycleOracle,()=>{mgState.oracle=[];mgHint('oracle cleared');mgTouch();},mgPickOracle);
   mgWire3('mg-fmt-label',mgCycleFormat,()=>{mgState.format=null;mgState.set='';mgHint('format cleared');mgTouch();},mgPickFormat);
   mgWire3('mg-set-label',el=>mgCycleSet(el),()=>{mgState.set='';mgHint('set cleared');mgTouch();},mgPickSet); // tap cycles the format's sets · hold = searchable list
   mgWire3('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{mgState.p=null;mgHint('power cleared');mgTouch();},el=>mgPickNum(el,'p'));
