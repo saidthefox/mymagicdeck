@@ -257,13 +257,7 @@
     /* Card mockup — pure SVG, fills widget */
     .card-mockup-wrap { width: 100%; height: 100%; display: flex; align-items: stretch; }
     .cm-svg-card { width: 100%; height: 100%; display: block; overflow: visible; }
-    /* Type / Subtype pickers inside the card's type bar */
-    .cm-typerow { display: flex; align-items: center; gap: 3px; height: 100%; font-family: 'Courier New', monospace; font-size: 9px; color: #222; overflow: hidden; }
-    .cm-tz { border: none; background: transparent; font: inherit; color: #555; cursor: pointer; padding: 1px 3px; border-radius: 3px; white-space: nowrap; max-width: 88px; overflow: hidden; text-overflow: ellipsis; }
-    .cm-tz:hover { background: rgba(0,0,0,0.08); color: #111; }
-    .cm-tz.set { color: #111; font-weight: 700; }
-    .cm-tz-dash { color: #999; pointer-events: none; }
-    /* Anchored popover (lives on document.body so it escapes the SVG card bounds) */
+    /* Card type/subtype picker popover (lives on document.body so it escapes the SVG card bounds) */
     .cm-picker { position: fixed; z-index: 10050; min-width: 150px; max-width: 240px; background: var(--surface, #1b1f27); border: 1px solid var(--border, #3a404a); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 5px; display: flex; flex-direction: column; gap: 4px; }
     .cm-picker-search { width: 100%; box-sizing: border-box; background: var(--surface2, #11151c); border: 1px solid var(--border, #3a404a); border-radius: 6px; color: var(--text-bright, #e7eef7); padding: 5px 8px; font-size: 0.8rem; outline: none; }
     .cm-picker-list { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; }

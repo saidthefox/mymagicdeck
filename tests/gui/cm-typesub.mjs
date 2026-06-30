@@ -10,12 +10,12 @@ await p.evaluate(()=>{ const cg=document.getElementById('mguess-overlay'); if(cg
 
 const init = await p.evaluate(()=>({ type:document.getElementById('cm-type-btn')?.textContent, sub:document.getElementById('cm-sub-btn')?.textContent }));
 
-await p.click('#cm-type-btn'); await p.waitForTimeout(300);
+await p.click('#cm-type-hit'); await p.waitForTimeout(300);
 const typeCount = await p.evaluate(()=>document.querySelectorAll('#cm-picker .cm-picker-item').length);
 await p.evaluate(()=>{ const it=[...document.querySelectorAll('#cm-picker .cm-picker-item')].find(e=>e.textContent==='Creature'); it&&it.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); });
 await p.waitForTimeout(600);
 
-await p.click('#cm-sub-btn'); await p.waitForTimeout(300);
+await p.click('#cm-sub-hit'); await p.waitForTimeout(300);
 const sub = await p.evaluate(()=>({ searchable:!!document.querySelector('#cm-picker .cm-picker-search'),
   angel:[...document.querySelectorAll('#cm-picker .cm-picker-item')].some(e=>e.textContent==='Angel') }));
 // type a filter to confirm search narrows, then pick Angel

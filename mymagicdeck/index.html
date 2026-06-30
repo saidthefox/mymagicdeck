@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=21" />
+  <link rel="stylesheet" href="/styles.css?v=22" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -228,15 +228,14 @@
                 <!-- Mana pips group (populated by JS) -->
                 <g id="cm-mana-g" transform="translate(144,9)"></g>
 
-                <!-- Type / Subtype pickers (HTML foreignObject so real dropdowns work) -->
-                <foreignObject x="11" y="155" width="152" height="18">
-                  <div xmlns="http://www.w3.org/1999/xhtml" class="cm-typerow">
-                    <button type="button" class="cm-tz" id="cm-type-btn" onclick="cmOpenTypePicker(event)">Type</button>
-                    <span class="cm-tz-dash">—</span>
-                    <button type="button" class="cm-tz" id="cm-sub-btn" onclick="cmOpenSubPicker(event)">Subtype</button>
-                  </div>
-                </foreignObject>
-                <text id="cm-rarity" x="187" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
+                <!-- Type / Subtype: native SVG text labels + transparent hit-rects (SVG rect clicks are
+                     reliable cross-browser; interactive foreignObject content is not). Laid out by JS. -->
+                <text id="cm-type-btn" x="13" y="165" font-size="9" font-family="'Courier New',monospace" fill="#777" dominant-baseline="middle" style="pointer-events:none">Type</text>
+                <text id="cm-tz-dash" x="34" y="165" font-size="9" font-family="'Courier New',monospace" fill="#999" dominant-baseline="middle" style="pointer-events:none">—</text>
+                <text id="cm-sub-btn" x="42" y="165" font-size="9" font-family="'Courier New',monospace" fill="#777" dominant-baseline="middle" style="pointer-events:none">Subtype</text>
+                <rect id="cm-type-hit" x="10" y="156" width="26" height="16" fill="transparent" style="cursor:pointer" onclick="cmOpenTypePicker(event)"><title>Pick a card type</title></rect>
+                <rect id="cm-sub-hit" x="40" y="156" width="48" height="16" fill="transparent" style="cursor:pointer" onclick="cmOpenSubPicker(event)"><title>Pick a subtype</title></rect>
+                <text id="cm-rarity" x="187" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end" style="pointer-events:none"></text>
 
                 <!-- Text box content (foreignObject for wrapping) -->
                 <foreignObject x="11" y="177" width="178" height="70">
@@ -3612,12 +3611,26 @@ function updateCardMockup(){
 
   renderManaPips(cycleColors, manaKey);
 
-  // Type / Subtype picker labels (left) + Rarity (right)
+  // Type / Subtype labels (native SVG text) + their hit-rects, laid out left→right from text metrics
   const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
-  const typeBtn=document.getElementById('cm-type-btn');
-  if(typeBtn){ const tn=[..._fs.types]; typeBtn.textContent=tn.length?tn.map(cap).join(' '):'Type'; typeBtn.classList.toggle('set',!!tn.length); }
-  const subBtn=document.getElementById('cm-sub-btn');
-  if(subBtn){ const sn=[..._fs.subtypes]; subBtn.textContent=sn.length?sn.map(cap).join(' '):'Subtype'; subBtn.classList.toggle('set',!!sn.length); }
+  const typeBtn=document.getElementById('cm-type-btn'), subBtn=document.getElementById('cm-sub-btn'), dashEl=document.getElementById('cm-tz-dash');
+  if(typeBtn&&subBtn&&dashEl){
+    const tn=[..._fs.types], sn=[..._fs.subtypes];
+    typeBtn.textContent=tn.length?tn.map(cap).join(' '):'Type';
+    subBtn.textContent=sn.length?sn.map(cap).join(' '):'Subtype';
+    typeBtn.setAttribute('fill', tn.length?'#111':'#777');
+    subBtn.setAttribute('fill', sn.length?'#111':'#777');
+    const TX=13; let tw=0,dw=0,sw=0;
+    try{ tw=typeBtn.getComputedTextLength(); dw=dashEl.getComputedTextLength(); }catch(e){}
+    if(tw>0){ // metrics are 0 while the card is hidden — skip; the next visible update lays it out
+      const dashX=TX+tw+4; dashEl.setAttribute('x',dashX);
+      const subX=dashX+dw+4; subBtn.setAttribute('x',subX);
+      try{ sw=subBtn.getComputedTextLength(); }catch(e){}
+      const th=document.getElementById('cm-type-hit'), sh=document.getElementById('cm-sub-hit');
+      if(th){ th.setAttribute('x',TX-3); th.setAttribute('width',Math.max(16,tw+6)); }
+      if(sh){ sh.setAttribute('x',subX-3); sh.setAttribute('width',Math.max(20,Math.min(sw+6,191-(subX-3)))); }
+    }
+  }
   const rars=[..._fs.rarities];
   const rarEl=document.getElementById('cm-rarity');
   if(rarEl) rarEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
