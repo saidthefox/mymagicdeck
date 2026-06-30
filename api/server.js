@@ -196,6 +196,10 @@ db.exec(`
   );
 `);
 const PHASH_THRESHOLD = parseInt(process.env.PHASH_THRESHOLD || '14', 10); // max Hamming for a confident match
+// Live-scan verification gate: the deskewed frame must actually match the card the VLM named before we add it.
+// Tunable: a clean scan of the matching art is ~14; a misread (wrong card) sits ~26-32; phone photos of the
+// right card land in between, so the threshold trades false-adds vs false-rejects. Calibrate via the logged distances.
+const SCAN_PHASH_MAX = parseInt(process.env.SCAN_PHASH_MAX || '18', 10);
 
 // FTS5 table — content= links to cards so we don't double-store text
 try {
@@ -2646,9 +2650,34 @@ app.post('/api/cards/scan', { preHandler: [authenticate, rateLimitUpload] }, asy
   if (data.file?.truncated) return reply.code(413).send({ error: 'Frame too large.' });
   try { buf = await toProcessable(buf, data.mimetype); } catch { return reply.code(400).send({ error: 'Could not read frame.' }); }
   try { await sharp(buf).metadata(); } catch { return reply.code(400).send({ error: 'Bad frame.' }); }
-  const v = await verifyAndLocateCard(buf, null);            // VLM: is-card + name read (no corners, no save)
+  const v = await verifyAndLocateCard(buf, null);            // VLM: is-card + name read
   const id = resolveCardIdentity(v.cardName, null, null);    // resolve the read name against the card DB
-  return { isMagicCard: v.isCard !== false, confidence: v.confidence || 0, cardName: id.cardName, oracleId: id.oracleId };
+
+  // VERIFY: deskew the card out of the frame and check the image actually matches the card the VLM named.
+  // This is what stops confident misreads from being auto-added — the client only adds when verified===true.
+  let verified = false, phashDistance = null, phashAgrees = false, reason = null;
+  if (v.isCard !== false && id.oracleId) {
+    let crop = null;
+    try {
+      let corners = await detectCornersCV(buf);               // reliable OpenCV corners…
+      if (!corners && Array.isArray(v.corners) && v.corners.length === 4) corners = v.corners; // …VLM corners as fallback
+      if (corners) crop = await _deskew(buf, corners);
+    } catch (_) {}
+    if (crop) {
+      try {
+        const ranked = await rankHashAmong(crop, new Set([id.oracleId])); // distance to the NAMED card's printings
+        if (ranked.length) phashDistance = ranked[0].distance;
+        const g = await matchHash(crop);                       // global nearest across all hashed cards (diagnostic)
+        phashAgrees = !!(g && g.oracle_id === id.oracleId);
+        if (phashDistance != null) verified = phashDistance <= SCAN_PHASH_MAX;
+        if (!verified) reason = phashDistance == null ? 'no-hash' : 'mismatch';
+      } catch (_) { reason = 'verify-error'; }
+    } else { reason = 'no-crop'; }
+  } else { reason = id.oracleId ? 'not-a-card' : 'unreadable'; }
+
+  app.log.info(`scan: read=${JSON.stringify(id.cardName)} conf=${v.confidence} dist=${phashDistance} agree=${phashAgrees} verified=${verified} reason=${reason}`); // calibration
+  return { isMagicCard: v.isCard !== false, confidence: v.confidence || 0, cardName: id.cardName, oracleId: id.oracleId,
+           verified, phashDistance, phashAgrees, reason };
 });
 
 // ── POST /api/uploads/deck-photo  (full-deck photo for the splash header) ──────

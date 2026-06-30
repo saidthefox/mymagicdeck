@@ -2854,8 +2854,10 @@ async function camTick(){
   if(_cam.stream)_cam.timer=setTimeout(camTick, 1500);
 }
 function camHandle(j){
-  if(!j||!j.isMagicCard||!j.oracleId||(j.confidence||0)<0.55){ camStatus('Point at a card…'); return; }
-  const name=j.cardName, now=Date.now();
+  if(!j||!j.isMagicCard||!j.oracleId){ camStatus('Point at a card…'); return; }
+  const name=j.cardName||'card', now=Date.now();
+  // Gate on server-side pHash verification: the image must actually match the card the VLM read, or we don't add.
+  if(!j.verified){ camStatus('Couldn’t confirm “'+name+'” — hold it steady & flat'); return; }
   if(_cam.last.name===name && (now-_cam.last.at)<4000){ camStatus('✓ '+name+' (added)'); return; } // hold-debounce
   _cam.last={ name, at:now }; camStatus(name);
   apiFetch('/cards/named?name='+encodeURIComponent(name)).then(card=>{ if(card&&card.name){ addCard(card); camAddedToast(card.name); } }).catch(()=>{});
