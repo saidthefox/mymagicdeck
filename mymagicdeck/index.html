@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=40" />
+  <link rel="stylesheet" href="/styles.css?v=41" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -103,12 +103,13 @@
           <div class="fw-title">Colors</div>
           <div class="fw-body">
             <div class="cfp-chips">
-              <span class="cfp-color-chip" data-color="w" title="White" style="background:#f9f3d0">⚪</span>
-              <span class="cfp-color-chip" data-color="u" title="Blue"  style="background:#2a6fa8">🔵</span>
-              <span class="cfp-color-chip" data-color="b" title="Black" style="background:#2a1a2e">⚫</span>
-              <span class="cfp-color-chip" data-color="r" title="Red"   style="background:#9e2a0a">🔴</span>
-              <span class="cfp-color-chip" data-color="g" title="Green" style="background:#1a5c1e">🟢</span>
-              <span class="cfp-color-chip" data-color="c" title="Colorless" style="background:#888;color:#fff;font-style:normal;font-size:0.75rem;font-weight:700">◇</span>
+              <!-- real Scryfall mana pips injected by mmdWireManaPips() -->
+              <span class="cfp-color-chip" data-color="w" title="White"></span>
+              <span class="cfp-color-chip" data-color="u" title="Blue"></span>
+              <span class="cfp-color-chip" data-color="b" title="Black"></span>
+              <span class="cfp-color-chip" data-color="r" title="Red"></span>
+              <span class="cfp-color-chip" data-color="g" title="Green"></span>
+              <span class="cfp-color-chip" data-color="c" title="Colorless"></span>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -3527,8 +3528,10 @@ function updateCardMockup(){
   const order=['w','u','b','r','g']; const cc=colors.filter(c=>c!=='c').sort((a,b)=>order.indexOf(a)-order.indexOf(b));
   const mana=document.getElementById('cm-mana');
   if(mana){ if(cmc!=null||cc.length||colors.includes('c')){ let html='';
-      if(cmc!=null){ const gen=Math.max(0,cmc-cc.length); html+='<span class="fcd-pip">'+(op&&op!=='='?op:'')+gen+'</span>'; }
-      (cc.length?cc:(colors.includes('c')?['c']:[])).forEach(c=>html+='<span class="fcd-pip fcd-pip-'+c+'">'+c.toUpperCase()+'</span>');
+      if(cmc!=null){ const gen=Math.max(0,cmc-cc.length); const hasCol=cc.length||colors.includes('c');
+        if(op&&op!=='=')html+='<span class="fcd-pipop">'+op+'</span>';
+        if(gen>0||!hasCol)html+=manaSymbol(String(gen)); }
+      (cc.length?cc:(colors.includes('c')?['c']:[])).forEach(c=>html+=manaSymbol(c.toUpperCase()));
       mana.innerHTML=html; mana.classList.add('mg-set');
     } else { mana.textContent='+'; mana.classList.remove('mg-set'); } }
   // Type / Subtype
@@ -3595,8 +3598,16 @@ function fcdPickKeyword(el){ if(typeof cmPicker!=='function'||typeof mgLoadKeywo
 function fcdPickOracle(el){ if(typeof cmPicker!=='function')return;
   cmPicker(el,{items:[{value:'',label:'Any'}].concat((typeof MG_ORACLE!=='undefined'?MG_ORACLE:[]).map(w=>({value:w,label:_mgCap(w)}))),current:_fs.oracleText||'',searchable:true,
     onPick:v=>{ _fs.oracleText=v; const oi=document.getElementById('oracle-text-input'); if(oi)oi.value=v; syncFilters(); }}); }
+// Inject real Scryfall mana pips into the Colors widget (WUBRG/C) and the Mana-Value widget (generic {0}..{7}).
+// Keeps the same clickable elements (their toggle listeners survive — we only swap inner content).
+function mmdWireManaPips(){
+  if(typeof manaSymbol!=='function')return;
+  document.querySelectorAll('.cfp-color-chip[data-color]').forEach(ch=>{ ch.innerHTML=manaSymbol(ch.dataset.color.toUpperCase()); });
+  document.querySelectorAll('.cfp-num[data-cmc]').forEach(n=>{ const v=n.dataset.cmc; n.innerHTML=manaSymbol(v)+(v==='7'?'<span class="cfp-plus">+</span>':''); });
+}
 function fcdWire(){
   if(window._fcdWired||!document.getElementById('fcd-frame')||typeof mgWire3!=='function')return; window._fcdWired=true;
+  mmdWireManaPips();
   if(typeof cmLoadTypeIndex==='function')cmLoadTypeIndex(); if(typeof mgLoadKeywords==='function')mgLoadKeywords(); if(typeof mgLoadSets==='function')mgLoadSets();
   const COL=['w','u','b','r','g','c'];
   const colCycle=()=>{ const cur=[..._fs.colors][0]; const i=COL.indexOf(cur); _fs.colors.clear(); _fs.colors.add(COL[(i+1)%COL.length]); syncFilters(); };
