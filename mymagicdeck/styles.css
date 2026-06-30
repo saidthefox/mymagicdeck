@@ -168,7 +168,7 @@
     .cfp-chips { display: flex; flex-wrap: wrap; gap: 4px; }
     .cfp-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 20px; padding: 2px 9px; font-size: 0.7rem; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; white-space: nowrap; }
     .cfp-chip:hover { border-color: var(--accent); color: var(--text); }
-    .cfp-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+    .cfp-chip.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); } /* no weight change → chips don't resize/reflow on select */
     .cfp-color-chip { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; transition: opacity 0.12s, transform 0.12s; user-select: none; opacity: 0.45; }
     .cfp-color-chip:hover { opacity: 0.8; transform: scale(1.1); }
     .cfp-color-chip.active { opacity: 1; transform: scale(1.1); }
