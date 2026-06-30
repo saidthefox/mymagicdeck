@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=23" />
+  <link rel="stylesheet" href="/styles.css?v=24" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -437,6 +437,7 @@
   <div id="cam-reticle"></div>
   <div id="cam-top"><span id="cam-deckname">—</span><button id="cam-close" onclick="camScanStop()" aria-label="Stop scanning">✕</button></div>
   <div id="cam-status">Point at a card…</div>
+  <div id="cam-confirm"></div>
   <div id="cam-added"></div>
 </div>
 <div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
@@ -2821,8 +2822,9 @@ async function camScanStart(){
   const sc=document.getElementById('cam-scan'), video=document.getElementById('cam-video');
   let stream; try{ stream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false }); }
   catch(e){ toast('Camera unavailable: '+(e&&e.name==='NotAllowedError'?'permission denied':(e.message||'error')),'error'); return; }
-  _cam.stream=stream; _cam.video=video; _cam.last={}; video.srcObject=stream;
+  _cam.stream=stream; _cam.video=video; _cam.last={}; _cam.rejected=null; _cam.prompting=null; video.srcObject=stream;
   const d=currentDeck(); document.getElementById('cam-deckname').textContent='→ '+(d?(d.name||'deck'):'deck');
+  const cc=document.getElementById('cam-confirm'); if(cc){ cc.classList.remove('show'); cc.innerHTML=''; }
   document.getElementById('cam-added').innerHTML=''; camStatus('Point at a card…');
   sc.classList.add('open'); sc.setAttribute('aria-hidden','false');
   try{ await video.play(); }catch(e){}
@@ -2830,6 +2832,7 @@ async function camScanStart(){
 }
 function camScanStop(){ const sc=document.getElementById('cam-scan'); if(_cam.timer)clearTimeout(_cam.timer); _cam.timer=null;
   if(_cam.stream){ _cam.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); _cam.stream=null; }
+  _cam.prompting=null; const cc=document.getElementById('cam-confirm'); if(cc){ cc.classList.remove('show'); cc.innerHTML=''; }
   if(_cam.video)_cam.video.srcObject=null; if(sc){ sc.classList.remove('open'); sc.setAttribute('aria-hidden','true'); } _cam.busy=false; }
 function camStatus(t,scanning){ const s=document.getElementById('cam-status'); if(s){ s.textContent=t; s.classList.toggle('scanning',!!scanning); } }
 async function camTick(){
@@ -2851,16 +2854,32 @@ async function camTick(){
     }
   }catch(e){}
   _cam.busy=false;
-  if(_cam.stream)_cam.timer=setTimeout(camTick, 1500);
+  if(_cam.stream && !_cam.prompting){ _cam.timer=setTimeout(camTick, 1500); } else { _cam.timer=null; } // hold scanning while a confirm prompt is up
 }
+function camAdd(name){ apiFetch('/cards/named?name='+encodeURIComponent(name)).then(card=>{ if(card&&card.name){ addCard(card); camAddedToast(card.name); } }).catch(()=>{}); }
 function camHandle(j){
   if(!j||!j.isMagicCard||!j.oracleId){ camStatus('Point at a card…'); return; }
   const name=j.cardName||'card', now=Date.now();
-  // Gate on server-side pHash verification: the image must actually match the card the VLM read, or we don't add.
-  if(!j.verified){ camStatus('Couldn’t confirm “'+name+'” — hold it steady & flat'); return; }
-  if(_cam.last.name===name && (now-_cam.last.at)<4000){ camStatus('✓ '+name+' (added)'); return; } // hold-debounce
-  _cam.last={ name, at:now }; camStatus(name);
-  apiFetch('/cards/named?name='+encodeURIComponent(name)).then(card=>{ if(card&&card.name){ addCard(card); camAddedToast(card.name); } }).catch(()=>{});
+  if(_cam.last.name===name && (now-_cam.last.at)<4000){ camStatus('✓ '+name+' (added)'); return; }        // just added — hold-debounce
+  if(_cam.rejected&&_cam.rejected.name===name && (now-_cam.rejected.at)<6000){ camStatus('Point at a card…'); return; } // recently 👎'd
+  if(j.verified){ _cam.last={ name, at:now }; camStatus(name); camAdd(name); return; }                      // confirmed → auto-add
+  camPromptConfirm(name);                                                                                   // couldn't confirm → ask
+}
+// Couldn't auto-confirm: show "<guess>?  👍 👎" and PAUSE scanning until the user decides.
+function camPromptConfirm(name){
+  if(_cam.prompting===name)return; _cam.prompting=name;
+  const el=document.getElementById('cam-confirm'); if(!el)return;
+  camStatus('Not sure — is this…');
+  el.innerHTML='<span class="cam-q">'+_mgEsc(name)+'?</span>'+
+    '<button class="cam-vote" id="cam-yes2" aria-label="Yes, add it">👍</button>'+
+    '<button class="cam-vote" id="cam-no2" aria-label="No, skip">👎</button>';
+  el.classList.add('show');
+  el.querySelector('#cam-yes2').onclick=()=>{ _cam.last={ name, at:Date.now() }; camAdd(name); camResolveConfirm(); };
+  el.querySelector('#cam-no2').onclick=()=>{ _cam.rejected={ name, at:Date.now() }; camResolveConfirm(); };
+}
+function camResolveConfirm(){ const el=document.getElementById('cam-confirm'); if(el){ el.classList.remove('show'); el.innerHTML=''; }
+  _cam.prompting=null; camStatus('Point at a card…');
+  if(_cam.stream && !_cam.timer)_cam.timer=setTimeout(camTick, 400); // resume scanning
 }
 function camAddedToast(name){ const wrap=document.getElementById('cam-added'); if(!wrap)return;
   const t=document.createElement('div'); t.className='cam-add-toast'; t.textContent='✓ Added '+name; wrap.appendChild(t);

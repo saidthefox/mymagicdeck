@@ -722,6 +722,12 @@
     #cam-close { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.45); color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
     #cam-status { position: absolute; left: 0; right: 0; bottom: 104px; text-align: center; color: #fff; font-family: Tahoma, sans-serif; font-size: 0.9rem; text-shadow: 0 1px 4px #000; padding: 0 16px; }
     #cam-status.scanning { opacity: 0.65; }
+    /* "<guess>?  👍 👎" confirm bar — shown only when the scan can't auto-verify */
+    #cam-confirm { display: none; position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); align-items: center; gap: 12px; background: rgba(10,12,16,0.86); border: 1px solid rgba(255,255,255,0.28); border-radius: 14px; padding: 9px 14px; max-width: 92%; box-shadow: 0 8px 28px rgba(0,0,0,0.55); }
+    #cam-confirm.show { display: flex; }
+    #cam-confirm .cam-q { color: #fff; font-family: Tahoma, sans-serif; font-weight: 700; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56vw; }
+    .cam-vote { background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.3); border-radius: 50%; width: 44px; height: 44px; font-size: 22px; line-height: 1; cursor: pointer; flex-shrink: 0; }
+    .cam-vote:active { transform: scale(0.9); }
     #cam-added { position: absolute; left: 0; right: 0; bottom: calc(20px + env(safe-area-inset-bottom,0px)); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
     .cam-add-toast { background: rgba(34,160,80,0.94); color: #fff; font-family: Tahoma, sans-serif; font-weight: 700; font-size: 0.9rem; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.45); animation: camPop 0.28s ease-out; }
     @keyframes camPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }

@@ -22,7 +22,22 @@ const cancelled = await mp.evaluate(()=>{ document.getElementById('cam-no').clic
 
 console.log(JSON.stringify({ fabDesktop, fabMobile, consent, cancelled }));
 console.log('PAGE_ERRORS:', der.length+mer.length, [...der,...mer].slice(0,3));
-const ok = fabDesktop==='none' && fabMobile!=='none' && consent.open && consent.mentionsNoPhotos && consent.mentionsDeck && cancelled && !der.length && !mer.length;
+// Unverified guess → "<name>?  👍 👎" confirm bar; 👎 dismisses; same card is debounced (no instant re-prompt).
+const confirm = await mp.evaluate(()=>{
+  camHandle({ isMagicCard:true, oracleId:'x', cardName:'Black Lotus', verified:false });
+  const el=document.getElementById('cam-confirm');
+  const shown=el.classList.contains('show'), text=el.textContent, up=!!document.getElementById('cam-yes2'), down=!!document.getElementById('cam-no2');
+  document.getElementById('cam-no2').click();
+  const dismissed=!el.classList.contains('show');
+  camHandle({ isMagicCard:true, oracleId:'x', cardName:'Black Lotus', verified:false });
+  return { shown, hasGuess:/Black Lotus\?/.test(text), up, down, dismissed, reprompted:el.classList.contains('show') };
+});
+
+console.log(JSON.stringify({ fabDesktop, fabMobile, consent, cancelled, confirm }));
+console.log('PAGE_ERRORS:', der.length+mer.length, [...der,...mer].slice(0,3));
+const ok = fabDesktop==='none' && fabMobile!=='none' && consent.open && consent.mentionsNoPhotos && consent.mentionsDeck && cancelled
+  && confirm.shown && confirm.hasGuess && confirm.up && confirm.down && confirm.dismissed && !confirm.reprompted
+  && !der.length && !mer.length;
 console.log('RESULT:', ok?'PASS':'FAIL');
 await b.close();
 if(!ok) process.exit(1);
