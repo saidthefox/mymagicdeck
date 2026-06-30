@@ -4566,7 +4566,7 @@ function mgResolveAppId(s){ s=String(s||'').trim(); const low=s.toLowerCase(); i
   return s; }
 function diceyGuideTo(id){ try{
   id=mgResolveAppId(id);
-  _diceyGreeted=true; // suppress the startup intro/greet while he escorts — it shows only once he's settled
+  _diceyGreeted=true; _diceyEscorting=true; clearTimeout(_diceyGreetT); // suppress the startup intro/greet while he escorts — it shows only once he's settled
   const s=(typeof diceyState==='function')?diceyState():{on:true}; s.on=true; if(s.mode!=='all')s.mode='all'; if(typeof diceySave==='function')diceySave(s);
   if(typeof diceyInit==='function')diceyInit();
   const a=(typeof MGW_APPS!=='undefined'&&MGW_APPS[id])?MGW_APPS[id]:null; const nm=a?a.title:(id==='cgg'?'Card Guesser':id);
@@ -4590,7 +4590,7 @@ function diceyGuideTo(id){ try{
   setTimeout(()=>{ if(revealBtn){ diceyPressEl(revealBtn, ()=>{ revealAct&&revealAct(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); if(bx!=null)mv(bx,by,1); whirl(); }); } else whirl(); }, 1950);
   // settle bottom-right, hold a full second, THEN show his startup greeting (shared by both routes below)
   const settleThenGreet=(d)=>{ setTimeout(()=>{ mv(W()-86, H()-98, GL); }, d);
-    setTimeout(()=>{ _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, d+GL+1000); };
+    setTimeout(()=>{ _diceyEscorting=false; _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, d+GL+1000); };
   // 3) route to the program: if it lives in an app-folder bubble (e.g. a guest's Basics inside Games), he
   //    physically goes to the folder, opens it, walks to the entry and clicks it; else straight to its icon/centre.
   setTimeout(()=>{
@@ -7391,7 +7391,7 @@ function mgWireStartMenu(a){
   const dc=a.querySelector('.mg-smitem[data-dicey]');if(dc)dc.addEventListener('click',e=>{e.stopPropagation();mgStartOpen=false;const m=document.getElementById('wm-startmenu');if(m)m.remove();if(typeof diceyToggle==='function')diceyToggle();if(typeof mgRenderDesktop==='function')mgRenderDesktop();});
 }
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
-let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0;
+let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0, _diceyGreetT=null, _diceyEscorting=false;
 let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=20000; // recent user input → Dicey stays calm; after this much quiet he wakes up
 let _summon=null, _diceyIdleStreak=0; // _summon = the in-progress "special summon" screensaver state
 const DICEY_BARKS=["Feeling lucky?","A game? Let’s roll.","Nat 20 energy today.","Fresh cards to crack?","Roll with me.","Ooh, found something.","Best deck ever.","Shuffle up!"];
@@ -7442,7 +7442,7 @@ function diceyInit(){ const s=diceyState();
   diceyDrag(el);
   el.querySelector('.dicey-die').addEventListener('click',()=>{ if(el._moved){ el._moved=false; return; } _diceyOpen?diceyClosePanel():diceyOpenPanel(); });
   try{ _diceyReduced=matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
-  if(!_diceyGreeted){ _diceyGreeted=true; setTimeout(()=>{ if(!diceySeen())diceyIntro(); else diceyGreet(); }, 700); }
+  if(!_diceyGreeted){ _diceyGreeted=true; clearTimeout(_diceyGreetT); _diceyGreetT=setTimeout(()=>{ if(_diceyEscorting)return; if(!diceySeen())diceyIntro(); else diceyGreet(); }, 700); }
   diceyWireActivity();
   diceyScheduleIdle();
 }
