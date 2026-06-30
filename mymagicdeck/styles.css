@@ -709,6 +709,23 @@
     .load-more-btn:hover { border-color: var(--accent); color: var(--accent); }
     .load-more-btn:disabled { opacity: 0.5; cursor: default; }
 
+    /* Scan-to-deck camera: FAB (mobile MMD only) + full-screen live overlay */
+    #cam-fab { display: none; position: fixed; right: 14px; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); z-index: 9000; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 23px; box-shadow: 0 6px 20px rgba(0,0,0,0.45); cursor: pointer; align-items: center; justify-content: center; }
+    #cam-fab:active { transform: scale(0.94); }
+    body.pc-deskmode #cam-fab, body.mtask-on #cam-fab { display: none; } /* hidden when MMD is minimized / behind the pinned bar */
+    #cam-scan { display: none; position: fixed; inset: 0; z-index: 10100; background: #000; }
+    #cam-scan.open { display: block; }
+    #cam-video { width: 100%; height: 100%; object-fit: cover; }
+    #cam-reticle { position: absolute; left: 50%; top: 45%; transform: translate(-50%,-50%); width: 74%; max-width: 330px; aspect-ratio: 5/7; border: 2px solid rgba(255,255,255,0.75); border-radius: 12px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.32); pointer-events: none; }
+    #cam-top { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: 14px 16px calc(14px + env(safe-area-inset-top,0px)); color: #fff; font-family: Tahoma, sans-serif; background: linear-gradient(rgba(0,0,0,0.6), transparent); }
+    #cam-top #cam-deckname { font-weight: 700; font-size: 0.95rem; text-shadow: 0 1px 3px #000; }
+    #cam-close { background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.45); color: #fff; width: 36px; height: 36px; border-radius: 50%; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+    #cam-status { position: absolute; left: 0; right: 0; bottom: 104px; text-align: center; color: #fff; font-family: Tahoma, sans-serif; font-size: 0.9rem; text-shadow: 0 1px 4px #000; padding: 0 16px; }
+    #cam-status.scanning { opacity: 0.65; }
+    #cam-added { position: absolute; left: 0; right: 0; bottom: calc(20px + env(safe-area-inset-bottom,0px)); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+    .cam-add-toast { background: rgba(34,160,80,0.94); color: #fff; font-family: Tahoma, sans-serif; font-weight: 700; font-size: 0.9rem; padding: 8px 16px; border-radius: 20px; box-shadow: 0 4px 14px rgba(0,0,0,0.45); animation: camPop 0.28s ease-out; }
+    @keyframes camPop { from { transform: scale(0.7); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
     /* Mobile bottom nav */
     #mobile-nav { display: none; background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
     .mobile-nav-btn { flex: 1; padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 0.6rem; color: var(--text-dim); background: none; border: none; cursor: pointer; transition: color 0.15s; }
@@ -725,6 +742,7 @@
       /* The center-pane Search/Deck pill toggle is redundant with the bottom Deck flap and triggers the wide deck-visual trap — hide it on mobile */
       .view-toggle { display: none !important; }
       #mobile-nav { display: flex; }
+      #cam-fab { display: flex; } /* scan-to-deck button is mobile-only */
       #header .logo { font-size: 1rem; }
       #deck-name-input { min-width: 80px; max-width: 120px; font-size: 0.8rem; }
       .header-right .btn span { display: none; }

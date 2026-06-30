@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=22" />
+  <link rel="stylesheet" href="/styles.css?v=23" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -430,6 +430,15 @@
     <button class="mobile-nav-btn" id="mnav-detail" onclick="mobileNav('detail')"><span class="icon">🃏</span>Card</button>
   </div>
 </div><!-- /site-window -->
+<!-- Scan-to-deck: live camera card identify (mobile MMD only). No photos saved — identify-only. -->
+<button id="cam-fab" onclick="camScanOpen()" title="Scan cards into your deck" aria-label="Scan cards with camera">📷</button>
+<div id="cam-scan" aria-hidden="true">
+  <video id="cam-video" playsinline autoplay muted></video>
+  <div id="cam-reticle"></div>
+  <div id="cam-top"><span id="cam-deckname">—</span><button id="cam-close" onclick="camScanStop()" aria-label="Stop scanning">✕</button></div>
+  <div id="cam-status">Point at a card…</div>
+  <div id="cam-added"></div>
+</div>
 <div class="modal-overlay" id="modal-import"><div class="modal"><div class="modal-header"><div class="modal-title">Import Deck</div><button class="modal-close" onclick="closeModal('modal-import')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchImportTab('text')" id="import-tab-text">Plain Text</div><div class="modal-tab" onclick="switchImportTab('arena')" id="import-tab-arena">MTG Arena</div></div><div class="modal-label" id="import-label">Paste deck list (e.g. "4 Lightning Bolt")</div><textarea class="modal-textarea" id="import-textarea" placeholder="4 Lightning Bolt&#10;4 Monastery Swiftspear&#10;20 Mountain"></textarea><div class="import-error" id="import-error"></div><div id="import-progress"><div id="import-progress-bar"><div id="import-progress-fill"></div></div><div id="import-progress-text"></div></div></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-import')">Cancel</button><button class="btn primary" id="import-btn" onclick="doImport()">Import</button></div></div></div>
 <div class="modal-overlay" id="modal-export"><div class="modal"><div class="modal-header"><div class="modal-title">Export Deck</div><button class="modal-close" onclick="closeModal('modal-export')">✕</button></div><div class="modal-body"><div class="modal-tabs"><div class="modal-tab active" onclick="switchExportTab('text')" id="export-tab-text">Plain Text</div><div class="modal-tab" onclick="switchExportTab('arena')" id="export-tab-arena">MTG Arena</div><div class="modal-tab" onclick="switchExportTab('json')" id="export-tab-json">JSON</div></div><textarea class="modal-textarea" id="export-textarea" readonly></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal('modal-export')">Close</button><button class="btn primary" onclick="copyExport()">📋 Copy</button></div></div></div>
 <div class="modal-overlay" id="modal-decks"><div class="modal"><div class="modal-header"><div class="modal-title">My Decks</div><button class="modal-close" onclick="decksClose()">✕</button></div><div class="modal-body" id="deck-manager-list"></div><div class="modal-footer"><button class="btn" onclick="decksClose()">Close</button><button class="btn primary" onclick="newDeck();decksClose()">＋ New Deck</button></div></div></div>
@@ -2791,6 +2800,70 @@ function showUploadRules(proceed){
 // the backend routes, cropper, gallery viewing, rules modal, and /dmca page all stay in place. ──
 const UPLOADS_ENABLED = false;
 function _uploadsPaused(){ if(typeof toast==='function')toast('Uploads are paused for now — coming back soon.','info'); return true; }
+// ── Scan-to-deck: live camera card identify → add to the active deck (no photos saved) ───────────────
+let _cam={ stream:null, timer:null, busy:false, last:{}, video:null, canvas:null };
+function camScanOpen(){
+  if(!state.user||!apiToken()){ toast('Sign in to scan cards into your deck','error'); return; }
+  const d=currentDeck(); if(!d){ toast('Open or create a deck first','error'); return; }
+  const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='cam-consent'; ov.style.display='flex';
+  ov.innerHTML='<div class="modal" style="max-width:380px"><div class="modal-header"><div class="modal-title">📷 Scan cards into your deck</div></div>'+
+    '<div class="modal-body" style="font-size:.9rem;line-height:1.55">'+
+    'Point your camera at a card and it’s added straight to <b>'+_mgEsc(d.name||'your deck')+'</b> — your active deck.<br><br>'+
+    '• It only <b>reads</b> cards to identify them — <b>no photos are taken or saved.</b><br>'+
+    '• Hold a card steady in the frame; when it’s recognised you’ll see “✓ Added”.<br><br>'+
+    'Your browser will ask for camera permission next.'+
+    '</div><div class="modal-footer"><button class="btn" id="cam-no">Cancel</button><button class="btn primary" id="cam-yes">Allow camera</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector('#cam-no').onclick=()=>ov.remove();
+  ov.querySelector('#cam-yes').onclick=()=>{ ov.remove(); camScanStart(); };
+}
+async function camScanStart(){
+  const sc=document.getElementById('cam-scan'), video=document.getElementById('cam-video');
+  let stream; try{ stream=await navigator.mediaDevices.getUserMedia({ video:{ facingMode:{ ideal:'environment' } }, audio:false }); }
+  catch(e){ toast('Camera unavailable: '+(e&&e.name==='NotAllowedError'?'permission denied':(e.message||'error')),'error'); return; }
+  _cam.stream=stream; _cam.video=video; _cam.last={}; video.srcObject=stream;
+  const d=currentDeck(); document.getElementById('cam-deckname').textContent='→ '+(d?(d.name||'deck'):'deck');
+  document.getElementById('cam-added').innerHTML=''; camStatus('Point at a card…');
+  sc.classList.add('open'); sc.setAttribute('aria-hidden','false');
+  try{ await video.play(); }catch(e){}
+  _cam.timer=setTimeout(camTick, 1200);
+}
+function camScanStop(){ const sc=document.getElementById('cam-scan'); if(_cam.timer)clearTimeout(_cam.timer); _cam.timer=null;
+  if(_cam.stream){ _cam.stream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} }); _cam.stream=null; }
+  if(_cam.video)_cam.video.srcObject=null; if(sc){ sc.classList.remove('open'); sc.setAttribute('aria-hidden','true'); } _cam.busy=false; }
+function camStatus(t,scanning){ const s=document.getElementById('cam-status'); if(s){ s.textContent=t; s.classList.toggle('scanning',!!scanning); } }
+async function camTick(){
+  if(!_cam.stream)return;
+  if(_cam.busy){ _cam.timer=setTimeout(camTick, 500); return; }
+  const v=_cam.video; if(!v||!v.videoWidth){ _cam.timer=setTimeout(camTick, 600); return; }
+  _cam.busy=true; camStatus('Scanning…', true);
+  try{
+    const cw=640, ch=Math.max(1, Math.round(cw*v.videoHeight/v.videoWidth));
+    const cv=_cam.canvas||(_cam.canvas=document.createElement('canvas')); cv.width=cw; cv.height=ch;
+    cv.getContext('2d').drawImage(v,0,0,cw,ch);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.72));
+    if(blob){
+      const fd=new FormData(); fd.append('file',blob,'frame.jpg');
+      const res=await fetch(API_BASE+'/cards/scan',{ method:'POST', headers:{ Authorization:'Bearer '+apiToken() }, body:fd });
+      if(res.ok){ camHandle(await res.json()); }
+      else if(res.status===429){ camStatus('One sec…'); }
+      else { camStatus('Point at a card…'); }
+    }
+  }catch(e){}
+  _cam.busy=false;
+  if(_cam.stream)_cam.timer=setTimeout(camTick, 1500);
+}
+function camHandle(j){
+  if(!j||!j.isMagicCard||!j.oracleId||(j.confidence||0)<0.55){ camStatus('Point at a card…'); return; }
+  const name=j.cardName, now=Date.now();
+  if(_cam.last.name===name && (now-_cam.last.at)<4000){ camStatus('✓ '+name+' (added)'); return; } // hold-debounce
+  _cam.last={ name, at:now }; camStatus(name);
+  apiFetch('/cards/named?name='+encodeURIComponent(name)).then(card=>{ if(card&&card.name){ addCard(card); camAddedToast(card.name); } }).catch(()=>{});
+}
+function camAddedToast(name){ const wrap=document.getElementById('cam-added'); if(!wrap)return;
+  const t=document.createElement('div'); t.className='cam-add-toast'; t.textContent='✓ Added '+name; wrap.appendChild(t);
+  setTimeout(()=>{ try{ t.remove(); }catch(e){} }, 2600); while(wrap.children.length>4)wrap.firstChild.remove(); }
+
 function doCardUpload(input){
   if(!UPLOADS_ENABLED){ if(input)input.value=''; return _uploadsPaused()&&undefined; }
   const f=input.files&&input.files[0]; if(!f)return; input.value='';

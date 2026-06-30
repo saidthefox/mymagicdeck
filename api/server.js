@@ -2633,6 +2633,24 @@ app.post('/api/uploads/analyze', { preHandler: [authenticate, rateLimitUpload] }
   };
 });
 
+// ── POST /api/cards/scan — live camera identify. NO storage: the frame is read in memory and discarded,
+// nothing is written to disk or served, so this is exempt from the uploads pause (identify-only, not hosting).
+// Returns the best card guess for one frame; the client decides whether to add it to the active deck. ──
+app.post('/api/cards/scan', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
+  let data;
+  try { data = await req.file(); } catch (e) { return reply.code(400).send({ error: 'Scan failed: ' + e.message }); }
+  if (!data) return reply.code(400).send({ error: 'No frame.' });
+  if (!/^image\//.test(data.mimetype || '')) return reply.code(400).send({ error: 'Frame must be an image.' });
+  let buf;
+  try { buf = await data.toBuffer(); } catch { return reply.code(413).send({ error: 'Frame too large.' }); }
+  if (data.file?.truncated) return reply.code(413).send({ error: 'Frame too large.' });
+  try { buf = await toProcessable(buf, data.mimetype); } catch { return reply.code(400).send({ error: 'Could not read frame.' }); }
+  try { await sharp(buf).metadata(); } catch { return reply.code(400).send({ error: 'Bad frame.' }); }
+  const v = await verifyAndLocateCard(buf, null);            // VLM: is-card + name read (no corners, no save)
+  const id = resolveCardIdentity(v.cardName, null, null);    // resolve the read name against the card DB
+  return { isMagicCard: v.isCard !== false, confidence: v.confidence || 0, cardName: id.cardName, oracleId: id.oracleId };
+});
+
 // ── POST /api/uploads/deck-photo  (full-deck photo for the splash header) ──────
 app.post('/api/uploads/deck-photo', { preHandler: [authenticate, rateLimitUpload] }, async (req, reply) => {
   if (uploadGate(req, reply)) return;

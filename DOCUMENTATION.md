@@ -183,6 +183,7 @@ framecheck, and battle routes.
 | GET | `/api/cards/named?name=` | — | exact-then-FTS card lookup |
 | GET | `/api/cards/keywords` | — | distinct keyword list (filter typeahead) |
 | GET | `/api/cards/types` | — | card types + subtypes-by-type (powers the card-box type/subtype dropdowns) |
+| POST | `/api/cards/scan` | auth | live-camera card identify for one frame (VLM name + DB resolve); **no storage**, exempt from uploads pause |
 | GET | `/api/cards/prints?oracle=` | — | all paper printings (Scryfall, cached 24h) — powers art/printing swap |
 | POST | `/api/cards/guess` | — | mobile guess engine: candidates by color/cmc/type/P-T/name/format, ranked by EDHREC |
 | GET | `/api/cards/refresh/status` | — | card-DB refresh status |
