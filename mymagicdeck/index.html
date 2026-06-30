@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=25" />
+  <link rel="stylesheet" href="/styles.css?v=26" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -642,10 +642,10 @@
         <div id="mg-name-wrap"><input id="mg-name" placeholder="Type a card name…" autocomplete="off" autocapitalize="off" spellcheck="false" /><div id="mg-name-ac" class="mg-ac"></div></div>
         <div id="mg-mana" class="mg-zone" aria-label="mana cost">+</div>
       </div>
-      <div id="mg-artwrap"><div id="mg-art"></div><div class="mg-edge mg-edge-l" id="mg-edge-l" aria-label="cycle card color"></div><div class="mg-edge mg-edge-r" id="mg-edge-r" aria-label="cycle card color"></div></div>
-      <div id="mg-type"><span id="mg-type-label" class="mg-zone">Tap for type…</span><span id="mg-fmt" class="mg-zone">▸ fmt</span></div>
+      <div id="mg-artwrap"><div id="mg-art"></div><div class="mg-edge mg-edge-l" id="mg-edge-l" aria-label="card color"></div><div class="mg-edge mg-edge-r" id="mg-edge-r" aria-label="card color"></div><div id="mg-readout"></div></div>
+      <div id="mg-type"><span id="mg-type-label" class="mg-zone">Type</span><span class="mg-typedash">—</span><span id="mg-sub-label" class="mg-zone">Subtype</span><span id="mg-fmt" class="mg-zone">▸ fmt</span></div>
       <div class="mg-textbox">
-        <div id="mg-readout">Tap the parts of the card to describe what you're thinking of — I'll guess.</div>
+        <div id="mg-kw" class="mg-zone">Keywords</div>
         <div id="mg-pt"><span id="mg-pow" class="mg-zone">—</span><span class="mg-slash">/</span><span id="mg-tou" class="mg-zone">—</span></div>
       </div>
     </div>
@@ -4311,28 +4311,49 @@ function init(){
    into the guess (full art). Tap the art = confirm, ↻ = next candidate. ── */
 const MG_COLORS=[{k:'W',n:'White',f:'#efe6c8',pip:'#fffdf0'},{k:'U',n:'Blue',f:'#2f6fb0',pip:'#cfe6ff'},{k:'B',n:'Black',f:'#4a4550',pip:'#d8d2dc'},{k:'R',n:'Red',f:'#c24a3a',pip:'#ffd6cc'},{k:'G',n:'Green',f:'#3f8f63',pip:'#cdeed7'},{k:'M',n:'Multicolor',f:'#d4a843',pip:'#fff2cf'}];
 const MG_ARTIFACT={k:'C',n:'Colorless',f:'#b7a9a0',pip:'#efe9e2'};
-const MG_TYPES=['Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Land'];
-let mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};
-// Long-press the type spot → jump straight to any type (vs tap = cycle). Reuses the shared card-box picker.
-function mgOpenTypePicker(anchor){
-  if(typeof cmPicker!=='function')return;
-  const cur=mgState.ti>=0?MG_TYPES[mgState.ti].toLowerCase():'';
-  const items=[{value:'',label:'Any type'}].concat(MG_TYPES.map(t=>({value:t.toLowerCase(),label:t})));
-  cmPicker(anchor, { items, current:cur, onPick:v=>{ mgState.ti=MG_TYPES.findIndex(t=>t.toLowerCase()===v); mgHint(mgState.ti>=0?MG_TYPES[mgState.ti]:'type cleared'); mgTouch(); } });
-}
-// Wire the type label: tap = cycle, double-tap = clear, LONG-PRESS = full type picker.
-function mgWireType(){
-  const el=document.getElementById('mg-type-label'); if(!el||el._mg)return; el._mg=1;
+const MG_TYPES=['Artifact','Battle','Creature','Enchantment','Instant','Kindred','Land','Planeswalker','Sorcery','Tribal'];
+let mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',p:null,t:null,name:'',format:null};
+const _mgCap=s=>s?String(s).replace(/\b\w/g,c=>c.toUpperCase()):s;
+// Generic 3-mode tap wiring: single tap, double tap, long-press. Used by every CGG card zone.
+function mgWire3(id, tap, dbl, hold){
+  const el=document.getElementById(id); if(!el||el._mg)return; el._mg=1;
   let n=0,tm=null,lp=null,longFired=false,dxy=null;
-  const cycle=()=>{ mgState.ti=(mgState.ti+1)%MG_TYPES.length; mgHint(MG_TYPES[mgState.ti]); mgTouch(); };
-  const clear=()=>{ mgState.ti=-1; mgHint('type cleared'); mgTouch(); };
   const killLp=()=>{ if(lp){ clearTimeout(lp); lp=null; } };
   el.addEventListener('pointerdown',e=>{ longFired=false; dxy=[e.clientX,e.clientY]; killLp();
-    lp=setTimeout(()=>{ longFired=true; if(tm){clearTimeout(tm);tm=null;n=0;} mgOpenTypePicker(el); }, 500); });
+    if(hold)lp=setTimeout(()=>{ longFired=true; if(tm){clearTimeout(tm);tm=null;n=0;} hold(el); }, 500); });
   el.addEventListener('pointermove',e=>{ if(dxy&&Math.hypot((e.clientX||0)-dxy[0],(e.clientY||0)-dxy[1])>10)killLp(); });
   el.addEventListener('pointerup',killLp); el.addEventListener('pointercancel',killLp); el.addEventListener('pointerleave',killLp);
-  el.addEventListener('click',()=>{ if(longFired){ longFired=false; return; } n++; if(tm)clearTimeout(tm); tm=setTimeout(()=>{ (n===1?cycle:clear)(); n=0; }, 230); });
+  el.addEventListener('click',()=>{ if(longFired){ longFired=false; return; } n++; if(tm)clearTimeout(tm); tm=setTimeout(()=>{ (n===1?tap:(dbl||tap))(); n=0; }, 230); });
 }
+// Subtypes available for the current type (from the shared /api/cards/types index); falls back to all.
+function mgSubList(){ const idx=(typeof _cmTypeIndex!=='undefined')?_cmTypeIndex:null; if(!idx)return [];
+  const t=mgState.ti>=0?MG_TYPES[mgState.ti]:null;
+  if(t){ const key=(idx.types||[]).find(x=>x.toLowerCase()===t.toLowerCase()); return key?(idx.subtypesByType[key]||[]):[]; }
+  return idx.allSubtypes||[]; }
+let _mgKwList=null;
+function mgLoadKeywords(){ if(_mgKwList)return Promise.resolve(_mgKwList);
+  return apiFetch('/cards/keywords').then(d=>{ _mgKwList=(d&&d.keywords)||[]; return _mgKwList; }).catch(()=>{ _mgKwList=[]; return _mgKwList; }); }
+// ── CGG zone pickers (reuse the shared anchored popover) ──
+function mgPickType(el){ if(typeof cmPicker!=='function')return; const cur=mgState.ti>=0?MG_TYPES[mgState.ti].toLowerCase():'';
+  cmPicker(el, { items:[{value:'',label:'Any type'}].concat(MG_TYPES.map(t=>({value:t.toLowerCase(),label:t}))), current:cur,
+    onPick:v=>{ mgState.ti=MG_TYPES.findIndex(t=>t.toLowerCase()===v); if(mgState.ti<0)mgState.ti=-1; mgState.sub=''; mgHint(mgState.ti>=0?MG_TYPES[mgState.ti]:'type cleared'); mgTouch(); } }); }
+function mgPickSub(el){ if(typeof cmPicker!=='function')return;
+  (typeof cmLoadTypeIndex==='function'?cmLoadTypeIndex():Promise.resolve()).then(()=>{ const list=mgSubList();
+    cmPicker(el, { items:[{value:'',label:'Any subtype'}].concat(list.map(s=>({value:s.toLowerCase(),label:s}))), current:mgState.sub||'', searchable:true,
+      onPick:v=>{ mgState.sub=v; mgHint(v?_mgCap(v):'subtype cleared'); mgTouch(); } }); }); }
+function mgPickColor(el){ if(typeof cmPicker!=='function')return;
+  const items=[{value:'-1',label:'Any color'}].concat(MG_COLORS.map((c,i)=>({value:String(i),label:c.n}))).concat([{value:String(MG_COLORS.length),label:'Colorless'}]);
+  const cur=String(mgState.ci);
+  cmPicker(el, { items, current:cur, onPick:v=>{ mgState.ci=parseInt(v,10); const c=mgColor(); mgHint(c?c.n:'colorless'); mgApplyFrame(); mgTouch(); } }); }
+function mgPickMana(el){ if(typeof cmPicker!=='function')return;
+  const items=[{value:'0',label:'Any / 0'}]; for(let i=1;i<=16;i++)items.push({value:String(i),label:String(i)});
+  cmPicker(el, { items, current:String(mgState.cmc), onPick:v=>{ mgState.cmc=parseInt(v,10)||0; mgHint('mana value '+mgState.cmc); mgTouch(); } }); }
+function mgPickNum(el, field){ if(typeof cmPicker!=='function')return;
+  const items=[{value:'',label:'Any'}]; for(let i=0;i<=15;i++)items.push({value:String(i),label:String(i)}); items.push({value:'*',label:'*'});
+  cmPicker(el, { items, current:(mgState[field]==null?'':String(mgState[field])), onPick:v=>{ mgState[field]=(v===''?null:v); mgHint((field==='p'?'power ':'toughness ')+(v||'—')); mgTouch(); } }); }
+function mgPickKeyword(el){ if(typeof cmPicker!=='function')return;
+  mgLoadKeywords().then(list=>{ cmPicker(el, { items:[{value:'',label:'Any keyword'}].concat(list.map(k=>({value:k.toLowerCase(),label:_mgCap(k)}))), current:mgState.kw||'', searchable:true,
+    onPick:v=>{ mgState.kw=v; mgHint(v?_mgCap(v):'keyword cleared'); mgTouch(); } }); }); }
 let mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};
 let mgMode='g3'; // g3 | g5 | manual | insane
 let mgActiveDeckId=null; // the deck confirmed guesses get added to
@@ -4385,7 +4406,9 @@ function mgRender(){
     if(isSingle)mana.appendChild(wb(c.k,c.pip,'#1a1a1a'));
     else if(isMulti)mana.appendChild(wb('✦',c.pip,'#5a3a00'));
   }else{mana.appendChild(wb('+'));}
-  document.getElementById('mg-type-label').textContent=mgState.ti<0?'Tap for type…':MG_TYPES[mgState.ti];
+  const _tl=document.getElementById('mg-type-label'); if(_tl){ _tl.textContent=mgState.ti<0?'Type':MG_TYPES[mgState.ti]; _tl.classList.toggle('mg-set',mgState.ti>=0); }
+  const _sl=document.getElementById('mg-sub-label'); if(_sl){ _sl.textContent=mgState.sub?_mgCap(mgState.sub):'Subtype'; _sl.classList.toggle('mg-set',!!mgState.sub); }
+  const _kw=document.getElementById('mg-kw'); if(_kw){ _kw.textContent=mgState.kw?_mgCap(mgState.kw):'Keywords'; _kw.classList.toggle('mg-set',!!mgState.kw); }
   const _fe=document.getElementById('mg-fmt');if(_fe)_fe.textContent=mgState.format?('▸ '+mgFmtLabel()):'▸ fmt';
   document.getElementById('mg-pow').textContent=mgState.p==null?'—':mgState.p;
   document.getElementById('mg-tou').textContent=mgState.t==null?'—':mgState.t;
@@ -4393,12 +4416,14 @@ function mgRender(){
   if(c)parts.push(c.n);
   if(mgState.cmc>0)parts.push(mgState.cmc+' MV');
   if(mgState.ti>=0)parts.push(MG_TYPES[mgState.ti]);
+  if(mgState.sub)parts.push(_mgCap(mgState.sub));
+  if(mgState.kw)parts.push(_mgCap(mgState.kw));
   if(mgState.p!=null||mgState.t!=null)parts.push((mgState.p==null?'?':mgState.p)+'/'+(mgState.t==null?'?':mgState.t));
   if(mgState.name)parts.push('“'+mgState.name+'”');
   if(mgState.format)parts.push(mgFmtLabel());
   const ro=document.getElementById('mg-readout');
   if(parts.length)ro.innerHTML='Thinking of a <b>'+parts.join('</b> · <b>')+'</b>…';
-  else ro.textContent='Tap the parts of the card to describe what you\'re thinking of — I\'ll guess.';
+  else ro.textContent=''; // instructions live in the art area now; the strip hides when empty
   mgUpdateWinTitle();
 }
 function mgTaps(id,single,dbl){
@@ -4423,6 +4448,8 @@ function mgConstraints(){
   if(c)b.color=c.k;
   if(mgState.cmc>0)b.cmc=mgState.cmc;
   if(mgState.ti>=0)b.type=MG_TYPES[mgState.ti];
+  if(mgState.sub)b.subtype=mgState.sub;
+  if(mgState.kw)b.keyword=mgState.kw;
   if(mgState.p!=null)b.power=mgState.p;
   if(mgState.t!=null)b.toughness=mgState.t;
   if(mgState.name)b.name=mgState.name;
@@ -4443,7 +4470,8 @@ function mgShowGuess(){
   const c=mgGuess.cands[mgGuess.idx];if(!c){mgNextGuess();return;}
   mgGuess.on=true;
   document.getElementById('mg-name').textContent=c.name;
-  document.getElementById('mg-type-label').textContent=c.typeLine||'';
+  { const seg=(c.typeLine||'').split('—'); document.getElementById('mg-type-label').textContent=(seg[0]||'').trim()||'—';
+    const sub=document.getElementById('mg-sub-label'); if(sub)sub.textContent=(seg[1]||'').trim()||'—'; } // fill subtype from the suggested card
   document.getElementById('mg-pow').textContent=c.power==null?'—':c.power;
   document.getElementById('mg-tou').textContent=c.toughness==null?'—':c.toughness;
   mgManaToBtns(document.getElementById('mg-mana'),c.manaCost);
@@ -4479,13 +4507,21 @@ function mgArt(mode,c){
   a.removeEventListener('click',mgArtClick);
   if(mode==='building'){
     const manual=mgMode==='manual';
-    const sub=manual?'Then press Guess.':(mgMode==='insane'?'I\'ll guess the instant you pause.':'I\'ll guess when you pause.');
-    a.innerHTML='<div style="position:absolute;inset:0;background:#017e7e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:18px;text-align:center"><div class="mg95" style="color:#eafff9;font-size:13px;line-height:1.5">Keep tapping the card to describe it.<br>'+sub+'</div>'+(manual?'<button id="mg-guessnow" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:13px;padding:6px 20px;font-weight:bold">Guess</button>':'')+'</div>';
+    const sub=manual?'Then press Guess.':(mgMode==='insane'?'I’ll guess the instant you pause.':'I’ll guess when you pause.');
+    a.innerHTML='<div style="position:absolute;inset:0;background:#017e7e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;text-align:center">'+
+      '<div class="mg95" style="color:#eafff9;font-size:12px;font-weight:bold;letter-spacing:.04em">TAP THE PARTS OF THE CARD</div>'+
+      '<div class="mg95" style="color:#dffaf1;font-size:12px;line-height:1.85;text-align:left">'+
+        '<div>👆 <b>Tap</b> — cycle / +1</div>'+
+        '<div>👆👆 <b>Double-tap</b> — clear</div>'+
+        '<div>⏱ <b>Hold</b> — full list</div>'+
+      '</div>'+
+      '<div class="mg95" style="color:#a9e6d6;font-size:11px">'+sub+'</div>'+
+      (manual?'<button id="mg-guessnow" class="mg95 mg-bvl mg-zone" style="background:#c0c0c0;color:#000;font-size:13px;padding:6px 20px;font-weight:bold">Guess</button>':'')+'</div>';
     if(manual){const g=document.getElementById('mg-guessnow');if(g)g.addEventListener('click',e=>{e.stopPropagation();mgDoGuess();});}
     return;
   }
 }
-function mgReset(){mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('building');}
+function mgReset(){mgState={cmc:0,ci:-1,ti:-1,sub:'',kw:'',p:null,t:null,name:'',format:null};mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};mgApplyFrame();mgRender();mgArt('building');}
 function mgShutdown(){document.getElementById('mguess-overlay').classList.remove('open');} // "Enter the app" = hide the game overlay
 // ── Window manager: the game is a Win95 window over the deckbuilder, with a taskbar ──
 let mgRunning=false;
@@ -7829,11 +7865,15 @@ function maybeShowMobileGuess(){
 let _mgWired=false;
 function mgWire(){
   if(_mgWired)return; _mgWired=true;
-  mgTaps('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=Math.max(0,mgState.cmc-1);mgHint('mana value '+mgState.cmc);mgTouch();});
-  mgWireType(); // tap = cycle · double-tap = clear · long-press = full type picker
+  // Every zone: single tap · double-tap (clear) · long-press (full picker). cmTypeIndex + keywords pre-loaded.
+  if(typeof cmLoadTypeIndex==='function')cmLoadTypeIndex(); mgLoadKeywords();
+  mgWire3('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=0;mgHint('mana cleared');mgTouch();},mgPickMana);
+  mgWire3('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgState.sub='';mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgState.sub='';mgHint('type cleared');mgTouch();},mgPickType);
+  mgWire3('mg-sub-label',el=>mgPickSub(el),()=>{mgState.sub='';mgHint('subtype cleared');mgTouch();},mgPickSub); // tap & hold both open the (searchable) subtype list
+  mgWire3('mg-kw',el=>mgPickKeyword(el),()=>{mgState.kw='';mgHint('keyword cleared');mgTouch();},mgPickKeyword);
   mgTaps('mg-fmt',mgOpenFormatPicker,mgClearFormat);
-  mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
-  mgTaps('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{if(mgState.t!=null){mgState.t--;if(mgState.t<0)mgState.t=null;}mgHint('toughness '+(mgState.t==null?'—':mgState.t));mgTouch();});
+  mgWire3('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{mgState.p=null;mgHint('power cleared');mgTouch();},el=>mgPickNum(el,'p'));
+  mgWire3('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{mgState.t=null;mgHint('toughness cleared');mgTouch();},el=>mgPickNum(el,'t'));
   // Card name: type directly into the title bar (no popup), with prefix-search autocomplete
   // ("Lightning B" → Lightning Bolt) via the global /api/cards/search.
   (function(){ const inp=document.getElementById('mg-name'), ac=document.getElementById('mg-name-ac'); if(!inp||!ac||inp._mg)return; inp._mg=1; let t=null, seq=0;
@@ -7852,8 +7892,8 @@ function mgWire(){
     inp.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const first=ac.querySelector('[data-nm]'); if(ac.style.display==='block'&&first){e.preventDefault();pick(first.getAttribute('data-nm'));} else {hide();inp.blur();} } else if(e.key==='Escape'){hide();} });
     inp.addEventListener('blur',()=>{ setTimeout(hide,150); });
   })();
-  mgTaps('mg-edge-l',mgCycleColor,mgClearColor);
-  mgTaps('mg-edge-r',mgCycleColor,mgClearColor);
+  mgWire3('mg-edge-l',mgCycleColor,mgClearColor,mgPickColor);
+  mgWire3('mg-edge-r',mgCycleColor,mgClearColor,mgPickColor);
   const min=document.getElementById('mg-min');if(min&&!min._mg){min._mg=1;min.addEventListener('click',e=>{e.stopPropagation();mgMinimize();});}
   const mx=document.getElementById('mg-max');if(mx&&!mx._mg){mx._mg=1;mx.addEventListener('click',e=>{e.stopPropagation();mgMaxToggle();});}
   const cls=document.getElementById('mg-close');if(cls&&!cls._mg){cls._mg=1;cls.addEventListener('click',e=>{e.stopPropagation();mgClose();});}

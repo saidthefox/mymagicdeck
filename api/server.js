@@ -2460,7 +2460,7 @@ app.get('/api/cards/named', async (req, reply) => {
 });
 
 // ── POST /api/cards/guess  (mobile "guess my card") ──────────────────────────
-// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, power, toughness, name, exclude:[]}
+// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, subtype, keyword, power, toughness, name, exclude:[]}
 // Returns candidates matching the given constraints, ranked by edhrec popularity.
 function _cardImage(row) {
   let u = null;
@@ -2479,6 +2479,8 @@ app.post('/api/cards/guess', async (req, reply) => {
   else if (['W', 'U', 'B', 'R', 'G'].includes(color)) { where.push('colors LIKE ?'); params.push('%"' + color + '"%'); }
   if (Number.isFinite(b.cmc)) { where.push('cmc = ?'); params.push(Number(b.cmc)); }
   if (b.type) { where.push('type_line LIKE ?'); params.push('%' + String(b.type) + '%'); }
+  if (b.subtype) { where.push('type_line LIKE ?'); params.push('%' + String(b.subtype) + '%'); }     // subtype lives in the type line after the —
+  if (b.keyword) { where.push('lower(keywords) LIKE ?'); params.push('%"' + String(b.keyword).toLowerCase() + '"%'); }
   if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
   if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }
   if (b.name) { where.push('name LIKE ?'); params.push('%' + String(b.name) + '%'); }
