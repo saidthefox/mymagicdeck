@@ -7474,7 +7474,8 @@ function diceyIdleTick(){ if(!_diceyEl){ return; }
 // at random spots SCATTERED AROUND MyMagicDeck (which is left front & centre, untouched), then goes GOLD
 // like he topdecked Exodia. Return → he panics and puts it all back. Temporary — the gold skin is applied,
 // never persisted; MyMagicDeck and your theme come back exactly as they were. =====
-function diceyCanSummon(){ return !_summon && document.body.classList.contains('wm-on') && !document.hidden && typeof wmWins!=='undefined' && wmWins.site && typeof mgLaunchApp==='function' && typeof wmEligible==='function'; }
+function diceyCanSummon(){ return false; /* Exodia special-summon disabled — remove this line to re-enable */
+  return !_summon && document.body.classList.contains('wm-on') && !document.hidden && typeof wmWins!=='undefined' && wmWins.site && typeof mgLaunchApp==='function' && typeof wmEligible==='function'; }
 function diceyRandRect(){ const barH=38, W=window.innerWidth, H=window.innerHeight-barH;
   const w=Math.round(Math.max(320, Math.min(460, W*0.26))), h=Math.round(Math.max(240, Math.min(360, H*0.42)));
   return { x:Math.round(8+Math.random()*Math.max(1,W-w-16)), y:Math.round(6+Math.random()*Math.max(1,H-h-12)), w, h }; }
