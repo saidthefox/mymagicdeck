@@ -27,6 +27,12 @@ try {
   const sp = await J('/cards/search?q=' + encodeURIComponent('Lightning B') + '&per_page=8');
   assert(sp.status === 200 && (sp.body.data || []).some(c => c.name === 'Lightning Bolt'), 'partial search "Lightning B" finds Lightning Bolt');
 
+  // Power/toughness filter (regressed: pow=/tou= once fell through to FTS and returned nothing).
+  const pt = await J('/cards/search?q=' + encodeURIComponent('pow=3 tou=3 cmc=3 t:creature') + '&per_page=20');
+  const ptd = pt.body.data || [];
+  assert(pt.status === 200 && ptd.length > 0 && ptd.every(c => c.power === '3' && c.toughness === '3' && c.cmc === 3),
+    'pow=3 tou=3 cmc=3 t:creature returns only 3-CMC 3/3 creatures (P/T filter works)');
+
   // Guest AI analysis is open but strictly rate-limited (429 within a few calls).
   let analyze429 = false;
   for (let i = 0; i < 7; i++) {

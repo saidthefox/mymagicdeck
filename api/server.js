@@ -516,6 +516,16 @@ function parseScryfallQuery(q) {
       continue;
     }
 
+    // Power / toughness: pow=3, pow>2, tou<=4, power>=1, toughness!=0 …
+    // (power/toughness are TEXT — guard to plain-integer rows so '*', 'X', '1+*' don't false-match.)
+    const ptM = lower.match(/^(pow|power|tou|toughness)(>=|<=|!=|>|<|=)(\d+)$/);
+    if (ptM) {
+      const col = ptM[1].startsWith('pow') ? 'power' : 'toughness';
+      where.push(`(${col} GLOB '[0-9]*' AND ${col} NOT GLOB '*[^0-9]*' AND CAST(${col} AS INTEGER) ${ptM[2]} ?)`);
+      params.push(parseInt(ptM[3], 10));
+      continue;
+    }
+
     // Rarity: r:rare (incl. special, bonus)
     const rarityM = lower.match(/^(?:r|rarity):(\w+)$/);
     if (rarityM) {
@@ -553,6 +563,8 @@ function cardRowToScryfall(r) {
     cmc:            r.cmc,
     type_line:      r.type_line,
     oracle_text:    r.oracle_text,
+    power:          r.power ?? undefined,
+    toughness:      r.toughness ?? undefined,
     colors:         JSON.parse(r.colors || '[]'),
     color_identity: JSON.parse(r.color_identity || '[]'),
     keywords:       JSON.parse(r.keywords || '[]'),
