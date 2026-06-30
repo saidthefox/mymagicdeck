@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=33" />
+  <link rel="stylesheet" href="/styles.css?v=34" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -199,65 +199,26 @@
         <div class="fw" id="fw-card" data-fw="card">
           <div class="fw-body" style="padding:0;">
             <div class="card-mockup-wrap">
-              <svg id="card-mockup-svg" class="cm-svg-card" viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg">
-                <!-- Card body -->
-                <rect id="cm-body" x="2" y="2" width="196" height="276" rx="10" ry="10" stroke="#222" stroke-width="1.5" fill="#f8f8f6"/>
-                <rect x="6" y="6" width="188" height="268" rx="7" ry="7" stroke="#555" stroke-width="0.6" fill="none"/>
-                <!-- Name bar -->
-                <rect id="cm-namebar" x="9" y="9" width="182" height="22" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
-                <!-- Art box -->
-                <rect id="cm-artbox" x="9" y="34" width="182" height="118" rx="2" ry="2" stroke="#333" stroke-width="0.8" fill="#e0e0de"/>
-                <!-- Art clear-filters button (invisible hit area) -->
-                <rect id="cm-art-hit" x="9" y="34" width="182" height="118" rx="2" ry="2" fill="transparent" style="cursor:pointer" onclick="clearAllFilters()" title="Clear all filters"/>
-                <text id="cm-art-icon" x="100" y="97" text-anchor="middle" dominant-baseline="middle" font-size="18" opacity="0.22" style="pointer-events:none">♻</text>
-                <!-- Type line bar -->
-                <rect id="cm-typebar" x="9" y="155" width="182" height="18" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
-                <!-- Text box -->
-                <rect x="9" y="176" width="182" height="72" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#f4f4f2"/>
-                <!-- P/T box -->
-                <rect x="142" y="251" width="50" height="21" rx="3" ry="3" stroke="#333" stroke-width="0.8" fill="#eee"/>
-
-                <!-- Name text (editable via foreignObject) -->
-                <foreignObject x="10" y="9" width="130" height="22">
-                  <input xmlns="http://www.w3.org/1999/xhtml"
-                    id="cm-name-input"
-                    style="width:100%;height:100%;border:none;background:transparent;font-size:12px;font-family:'Courier New',monospace;color:#111;padding:0 3px;outline:none;box-sizing:border-box;"
-                    placeholder="Name…" maxlength="60" oninput="cmNameInput()"/>
-                </foreignObject>
-
-                <!-- Mana pips group (populated by JS) -->
-                <g id="cm-mana-g" transform="translate(144,9)"></g>
-
-                <!-- Type / Subtype: native SVG text labels + transparent hit-rects (SVG rect clicks are
-                     reliable cross-browser; interactive foreignObject content is not). Laid out by JS. -->
-                <text id="cm-type-btn" x="13" y="165" font-size="9" font-family="'Courier New',monospace" fill="#777" dominant-baseline="middle" style="pointer-events:none">Type</text>
-                <text id="cm-tz-dash" x="34" y="165" font-size="9" font-family="'Courier New',monospace" fill="#999" dominant-baseline="middle" style="pointer-events:none">—</text>
-                <text id="cm-sub-btn" x="42" y="165" font-size="9" font-family="'Courier New',monospace" fill="#777" dominant-baseline="middle" style="pointer-events:none">Subtype</text>
-                <rect id="cm-type-hit" x="10" y="156" width="26" height="16" fill="transparent" style="cursor:pointer" onclick="cmOpenTypePicker(event)"><title>Pick a card type</title></rect>
-                <rect id="cm-sub-hit" x="40" y="156" width="48" height="16" fill="transparent" style="cursor:pointer" onclick="cmOpenSubPicker(event)"><title>Pick a subtype</title></rect>
-                <text id="cm-rarity" x="187" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end" style="pointer-events:none"></text>
-
-                <!-- Text box content (foreignObject for wrapping) -->
-                <foreignObject x="11" y="177" width="178" height="70">
-                  <div xmlns="http://www.w3.org/1999/xhtml" id="cm-textbox"
-                    style="width:100%;height:100%;font-size:9.8px;font-family:'Courier New',monospace;color:#333;line-height:1.45;overflow:hidden;box-sizing:border-box;padding:2px 3px;font-style:italic;opacity:0.45;">
-                  </div>
-                </foreignObject>
-
-                <!-- P/T -->
-                <foreignObject x="143" y="251" width="48" height="21">
-                  <div xmlns="http://www.w3.org/1999/xhtml"
-                    style="display:flex;align-items:center;justify-content:center;height:100%;gap:1px;font-family:'Courier New',monospace;font-size:10px;font-weight:700;color:#111;">
-                    <input id="cm-pow-in" xmlns="http://www.w3.org/1999/xhtml"
-                      style="width:18px;border:none;background:transparent;text-align:center;font-size:10px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
-                      placeholder="*" maxlength="3" oninput="cmPtInput()"/>
-                    <span style="line-height:1">/</span>
-                    <input id="cm-tou-in" xmlns="http://www.w3.org/1999/xhtml"
-                      style="width:18px;border:none;background:transparent;text-align:center;font-size:10px;font-weight:700;font-family:'Courier New',monospace;color:#111;outline:none;padding:0;"
-                      placeholder="*" maxlength="3" oninput="cmPtInput()"/>
-                  </div>
-                </foreignObject>
-              </svg>
+              <div id="fcd-frame">
+                <div class="fcd-titlebar">
+                  <input id="cm-name-input" class="fcd-name" placeholder="Card name…" maxlength="60" autocomplete="off" oninput="cmNameInput()"/>
+                  <div id="cm-mana" class="fcd-mana mg-zone" aria-label="mana value">+</div>
+                </div>
+                <div id="fcd-art">
+                  <div class="fcd-edge fcd-edge-l" id="fcd-edge-l" aria-label="color"></div>
+                  <div class="fcd-edge fcd-edge-r" id="fcd-edge-r" aria-label="color"></div>
+                  <div id="cm-textbox" class="fcd-summary"></div>
+                  <button class="fcd-clear" id="fcd-clear" onclick="clearAllFilters()" title="Clear all filters">✕ Clear</button>
+                </div>
+                <div class="fcd-typebar">
+                  <span id="cm-type-btn" class="mg-zone" onclick="cmOpenTypePicker(event)">Type</span><span class="fcd-dash">—</span><span id="cm-sub-btn" class="mg-zone" onclick="cmOpenSubPicker(event)">Subtype</span>
+                  <span class="fcd-fs"><span id="fcd-fmt" class="mg-zone">Format</span><span class="fcd-dash">|</span><span id="fcd-set" class="mg-zone">Set</span></span>
+                </div>
+                <div class="fcd-textbox">
+                  <span id="fcd-kw" class="mg-zone">Keywords</span><span class="fcd-dash">|</span><span id="fcd-oracle" class="mg-zone">Oracle</span>
+                  <div class="fcd-pt"><input id="cm-pow-in" class="fcd-ptin" placeholder="*" maxlength="3" oninput="cmPtInput()"/><span class="fcd-slash">/</span><input id="cm-tou-in" class="fcd-ptin" placeholder="*" maxlength="3" oninput="cmPtInput()"/></div>
+                </div>
+              </div>
             </div>
           </div>
           <div class="fw-resize"></div>
@@ -3302,6 +3263,7 @@ const _fs={
   formats: new Set(),  // 'standard','commander', etc
   rarities:new Set(),  // 'common','uncommon','rare','mythic'
   subtypes:new Set(),  // 'angel','equipment', etc — t: tokens that aren't a card type
+  set:'',              // a single set code (e.g. 'inv') — the unified card's Set zone
   keywords:new Set(),  // 'flying','trample', etc
   cmcOps:  new Set(),  // '>','=','<'
   cmcNum:  null,       // string or null
@@ -3389,6 +3351,7 @@ function syncFilters(){
   _fs.colors.forEach(c=>parts.push('c:'+c));
   _fs.types.forEach(t=>parts.push('t:'+t));
   _fs.subtypes.forEach(s=>parts.push('t:'+s));
+  if(_fs.set)parts.push("s:"+_fs.set);
   _fs.formats.forEach(f=>parts.push('f:'+f));
   _fs.rarities.forEach(r=>parts.push('r:'+r));
   _fs.keywords.forEach(k=>parts.push('kw:'+k));
@@ -3415,7 +3378,7 @@ function parseSearchToFilters(){
   const validKeywords=new Set(['flying','trample','deathtouch','lifelink','haste','flash','vigilance','menace']);
 
   // Reset all filter state
-  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
+  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();_fs.set="";
   _fs.cmcOps.clear();_fs.cmcNum=null;_fs.name='';
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';
 
@@ -3423,7 +3386,7 @@ function parseSearchToFilters(){
   const tokens=q.match(/(?:[^\s"]+|"[^"]*")/g)||[];
   const nameWords=[];
   for(const tok of tokens){
-    const m=tok.match(/^(c|color|ci|identity|t|type|f|format|o|oracle|r|rarity|kw|keyword|cmc|mv|pow|tou|name):(.+)$/i);
+    const m=tok.match(/^(c|color|ci|identity|t|type|f|format|o|oracle|r|rarity|kw|keyword|cmc|mv|pow|tou|name|s|set):(.+)$/i);
     if(!m){
       // Check for cmc operators: cmc>3, cmc<=2, etc
       const cmcM=tok.match(/^(?:cmc|mv)([><=]{1,2})(\d+)$/i);
@@ -3469,6 +3432,8 @@ function parseSearchToFilters(){
       else{ _fs.oracleText=unquoted; const el=document.getElementById('oracle-text-input');if(el)el.value=unquoted; }
     } else if(key==='name'){
       nameWords.push(val.replace(/"/g,''));
+    } else if(key==='s'||key==='set'){
+      _fs.set=val.toLowerCase();
     } else if(key==='cmc'||key==='mv'){
       const cmcM2=val.match(/^([><=]{0,2})(\d+)$/);
       if(cmcM2){
@@ -3655,107 +3620,56 @@ function renderManaPips(cycleColors, manaKey){
 }
 
 function updateCardMockup(){
-  const colors=[..._fs.colors], types=[..._fs.types];
-
-  // Frame color
-  let fc='none';
-  if(types.includes('land')) fc='L';
-  else if(types.includes('artifact')&&colors.length===0) fc='A';
-  else if(colors.includes('c')&&colors.length===1) fc='C';
-  else if(colors.length===0) fc='none';
-  else if(colors.length===1) fc=colors[0].toUpperCase();
-  else fc='M';
-  document.getElementById('cm-frame') && (document.getElementById('cm-frame').className='cm-frame '+fc);
-
-  // SVG frame tint based on color (outer card body)
-  const COLOR_FILL={W:'#faf5dc',U:'#d0e8f8',B:'#c8b8d0',R:'#fad0a8',G:'#b8dca8',M:'#f8e890',A:'#dcdcdc',L:'#dcc898',C:'#dce0e8',none:'#f8f8f6'};
-  const svgBody=document.getElementById('cm-body');
-  if(svgBody) svgBody.setAttribute('fill', COLOR_FILL[fc]||'#f8f8f6');
-  const svgNamebar=document.getElementById('cm-namebar');
-  if(svgNamebar) svgNamebar.setAttribute('fill', COLOR_FILL[fc]||'#eee');
-  const svgTypebar=document.getElementById('cm-typebar');
-  if(svgTypebar) svgTypebar.setAttribute('fill', COLOR_FILL[fc]||'#eee');
-
-  // Mana symbols — clickable pips that cycle through selected colors
-  const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
-  const colored=colors.filter(c=>c!=='c');
-  const WUBRG_ORDER=['w','u','b','r','g'];
-  const cycleColors=colored.slice().sort((a,b)=>WUBRG_ORDER.indexOf(a)-WUBRG_ORDER.indexOf(b));
-
-  // Build a key to detect when colors/cmc change (triggers pip reset)
-  const manaKey=JSON.stringify({colors:[...colors].sort(),cmc,op});
-  if(manaKey!==_prevManaKey){
-    _prevManaKey=manaKey;
-    if(cmc!==null&&op==='='){
-      const generic=Math.max(0,cmc-cycleColors.length);
-      _manaPips=[];
-      for(let i=0;i<generic;i++) _manaPips.push('generic');
-      // cycleColors already in WUBRG order
-      cycleColors.forEach(c=>_manaPips.push(c));
-    } else if(cycleColors.length>0){
-      _manaPips=cycleColors.slice();
-    } else if(colors.includes('c')){
-      _manaPips=['c'];
-    } else {
-      _manaPips=[];
-    }
-  } else if(cmc!==null&&op==='='){
-    // Sync pip count even when manaKey unchanged (e.g. CMC-only, no colors)
-    while(_manaPips.length<cmc) _manaPips.push('generic');
-    if(_manaPips.length>cmc) _manaPips=_manaPips.slice(0,cmc);
-    _manaPips=_manaPips.map(p=>(p==='generic'||cycleColors.includes(p))?p:'generic');
-  }
-
-  renderManaPips(cycleColors, manaKey);
-
-  // Type / Subtype labels (native SVG text) + their hit-rects, laid out left→right from text metrics
   const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
-  const typeBtn=document.getElementById('cm-type-btn'), subBtn=document.getElementById('cm-sub-btn'), dashEl=document.getElementById('cm-tz-dash');
-  if(typeBtn&&subBtn&&dashEl){
+  const colors=[..._fs.colors], types=[..._fs.types];
+  // Frame tint by colour identity
+  let fc='none';
+  if(types.includes('land'))fc='L'; else if(types.includes('artifact')&&colors.length===0)fc='A';
+  else if(colors.includes('c')&&colors.length===1)fc='C'; else if(colors.length===0)fc='none';
+  else if(colors.length===1)fc=colors[0].toUpperCase(); else fc='M';
+  const COLOR_FILL={W:'#f3ecd2',U:'#cadff2',B:'#cabfd2',R:'#f2c6ae',G:'#bbdcbf',M:'#eedfa2',A:'#d6d6da',L:'#d8c498',C:'#dbe1e9',none:'#e7ddc4'};
+  const frame=document.getElementById('fcd-frame'); if(frame)frame.style.setProperty('--fcd-tint',COLOR_FILL[fc]||COLOR_FILL.none);
+  // Mana zone
+  const op=_cmcOpStr(), cmc=_fs.cmcNum!==null?parseInt(_fs.cmcNum):null;
+  const order=['w','u','b','r','g']; const cc=colors.filter(c=>c!=='c').sort((a,b)=>order.indexOf(a)-order.indexOf(b));
+  const mana=document.getElementById('cm-mana');
+  if(mana){ if(cmc!=null||cc.length||colors.includes('c')){ let html='';
+      if(cmc!=null){ const gen=Math.max(0,cmc-cc.length); html+='<span class="fcd-pip">'+(op&&op!=='='?op:'')+gen+'</span>'; }
+      (cc.length?cc:(colors.includes('c')?['c']:[])).forEach(c=>html+='<span class="fcd-pip fcd-pip-'+c+'">'+c.toUpperCase()+'</span>');
+      mana.innerHTML=html; mana.classList.add('mg-set');
+    } else { mana.textContent='+'; mana.classList.remove('mg-set'); } }
+  // Type / Subtype
+  const tBtn=document.getElementById('cm-type-btn'); if(tBtn){ tBtn.textContent=types.length?types.map(cap).join(' '):'Type'; tBtn.classList.toggle('mg-set',!!types.length); }
+  const sBtn=document.getElementById('cm-sub-btn'); if(sBtn){ const sn=[..._fs.subtypes]; sBtn.textContent=sn.length?sn.map(cap).join(' '):'Subtype'; sBtn.classList.toggle('mg-set',!!sn.length); }
+  // Format | Set
+  const ff=document.getElementById('fcd-fmt'); if(ff){ const fm=[..._fs.formats]; ff.textContent=fm.length?fm.map(cap).join(','):'Format'; ff.classList.toggle('mg-set',!!fm.length); }
+  const stl=document.getElementById('fcd-set'); if(stl){ stl.textContent=_fs.set?(typeof mgSetName==='function'?mgSetName(_fs.set):_fs.set.toUpperCase()):'Set'; stl.classList.toggle('mg-set',!!_fs.set); }
+  // Keywords | Oracle
+  const kw=document.getElementById('fcd-kw'); if(kw){ const ks=[..._fs.keywords]; kw.textContent=ks.length?ks.map(cap).join(','):'Keywords'; kw.classList.toggle('mg-set',!!ks.length); }
+  const orc=document.getElementById('fcd-oracle'); if(orc){ orc.textContent=_fs.oracleText?('“'+_fs.oracleText+'”'):'Oracle'; orc.classList.toggle('mg-set',!!_fs.oracleText); }
+  // P/T
+  const powIn=document.getElementById('cm-pow-in'), touIn=document.getElementById('cm-tou-in');
+  if(powIn&&document.activeElement!==powIn) powIn.value=_fs.powVal||'';
+  if(touIn&&document.activeElement!==touIn) touIn.value=_fs.touVal||'';
+  // Name (don't clobber while typing)
+  const nm=document.getElementById('cm-name-input'); if(nm&&document.activeElement!==nm) nm.value=_fs.name||'';
+  // Art-area live filter summary + clear affordance
+  const sum=document.getElementById('cm-textbox');
+  if(sum){ const parts=[]; const CN={W:'White',U:'Blue',B:'Black',R:'Red',G:'Green',M:'Multicolor',C:'Colorless',A:'Artifact',L:'Land'};
+    if(fc!=='none')parts.push(CN[fc]||fc);
+    if(cmc!=null)parts.push('cmc'+(op||'=')+cmc);
     const tn=[..._fs.types], sn=[..._fs.subtypes];
-    typeBtn.textContent=tn.length?tn.map(cap).join(' '):'Type';
-    subBtn.textContent=sn.length?sn.map(cap).join(' '):'Subtype';
-    typeBtn.setAttribute('fill', tn.length?'#111':'#777');
-    subBtn.setAttribute('fill', sn.length?'#111':'#777');
-    const TX=13; let tw=0,dw=0,sw=0;
-    try{ tw=typeBtn.getComputedTextLength(); dw=dashEl.getComputedTextLength(); }catch(e){}
-    if(tw>0){ // metrics are 0 while the card is hidden — skip; the next visible update lays it out
-      const dashX=TX+tw+4; dashEl.setAttribute('x',dashX);
-      const subX=dashX+dw+4; subBtn.setAttribute('x',subX);
-      try{ sw=subBtn.getComputedTextLength(); }catch(e){}
-      const th=document.getElementById('cm-type-hit'), sh=document.getElementById('cm-sub-hit');
-      if(th){ th.setAttribute('x',TX-3); th.setAttribute('width',Math.max(16,tw+6)); }
-      if(sh){ sh.setAttribute('x',subX-3); sh.setAttribute('width',Math.max(20,Math.min(sw+6,191-(subX-3)))); }
-    }
+    if(tn.length||sn.length)parts.push(tn.map(cap).join('/')+(sn.length?' — '+sn.map(cap).join(' '):''));
+    if(_fs.powVal||_fs.touVal)parts.push((_fs.powVal||'?')+'/'+(_fs.touVal||'?'));
+    [..._fs.rarities].forEach(r=>parts.push(cap(r)));
+    [..._fs.keywords].forEach(k=>parts.push(cap(k)));
+    if(_fs.oracleText)parts.push('“'+_fs.oracleText+'”');
+    [..._fs.formats].forEach(f=>parts.push(cap(f)));
+    if(_fs.set)parts.push(typeof mgSetName==='function'?mgSetName(_fs.set):_fs.set.toUpperCase());
+    if(_fs.name)parts.push('“'+_fs.name+'”');
+    sum.innerHTML=parts.length?parts.map(p=>'<span class="fcd-chip">'+_mgEsc(p)+'</span>').join(''):'<span class="fcd-empty">Tap the card parts or use the widgets to filter your search.</span>';
+    const cl=document.getElementById('fcd-clear'); if(cl)cl.style.display=parts.length?'':'none';
   }
-  const rars=[..._fs.rarities];
-  const rarEl=document.getElementById('cm-rarity');
-  if(rarEl) rarEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
-
-  // Text box — show all active filters
-  const tb=document.getElementById('cm-textbox');
-  const fmts=[..._fs.formats];
-  const kws=[..._fs.keywords];
-  const textParts=[];
-  if(kws.length) textParts.push(kws.map(k=>k[0].toUpperCase()+k.slice(1)).join(', '));
-  if(_fs.oracleText) textParts.push('\u201c'+_fs.oracleText+'\u201d');
-  if(fmts.length) textParts.push('Legal in: '+fmts.map(f=>f[0].toUpperCase()+f.slice(1)).join(', '));
-  if(tb){
-    if(textParts.length){
-      tb.style.fontStyle='normal'; tb.style.opacity='1';
-      tb.innerHTML=textParts.join('<br>');
-    } else if(colors.length||types.length||cmc!==null){
-      tb.style.fontStyle='italic'; tb.style.opacity='0.45'; tb.textContent='';
-    } else {
-      tb.style.fontStyle='italic'; tb.style.opacity='0.45'; tb.textContent='';
-    }
-  }
-
-  // P/T — sync values from filter state
-  const powIn=document.getElementById('cm-pow-in');
-  const touIn=document.getElementById('cm-tou-in');
-  if(powIn) powIn.value=_fs.powVal||'';
-  if(touIn) touIn.value=_fs.touVal||'';
 }
 
 function cmNameInput(){
@@ -3772,8 +3686,41 @@ function cmPtInput(){
   syncFilters();
 }
 
+// ── Unified card: tap zones drive the search filters (_fs). The standalone widgets keep full multi-select;
+// the card's single picks set the primary value. Reuses the shared pickers (cmPicker/mgWire3/MG_FORMATS/…). ──
+function fcdPickFormat(){ if(typeof cmPicker!=='function')return; const el=document.getElementById('fcd-fmt');
+  cmPicker(el,{items:MG_FORMATS.map(f=>({value:f[0],label:f[1]})),current:[..._fs.formats][0]||'',searchable:true,
+    onPick:v=>{ _fs.formats.clear(); if(v)_fs.formats.add(v); _fs.set=''; syncFilters(); }}); }
+function fcdPickSet(el){ if(typeof cmPicker!=='function'||typeof mgLoadSets!=='function')return;
+  mgLoadSets().then(()=>{ const idx=(typeof _mgSetIndex!=='undefined'&&_mgSetIndex)?_mgSetIndex:{sets:[]}; const f=[..._fs.formats][0];
+    let list=idx.sets||[]; if(f&&idx.setsByFormat&&idx.setsByFormat[f]){ const allow=new Set(idx.setsByFormat[f]); list=list.filter(s=>allow.has(s.code)); }
+    cmPicker(el,{items:[{value:'',label:'Any set'}].concat(list.map(s=>({value:s.code,label:s.name}))),current:_fs.set||'',searchable:true,
+      onPick:v=>{ _fs.set=v; syncFilters(); }}); }); }
+function fcdPickKeyword(el){ if(typeof cmPicker!=='function'||typeof mgLoadKeywords!=='function')return;
+  mgLoadKeywords().then(list=>{ cmPicker(el,{items:[{value:'',label:'Any keyword'}].concat(list.map(k=>({value:k.toLowerCase(),label:_mgCap(k)}))),current:[..._fs.keywords][0]||'',searchable:true,
+    onPick:v=>{ _fs.keywords.clear(); if(v)_fs.keywords.add(v); syncFilters(); }}); }); }
+function fcdPickOracle(el){ if(typeof cmPicker!=='function')return;
+  cmPicker(el,{items:[{value:'',label:'Any'}].concat((typeof MG_ORACLE!=='undefined'?MG_ORACLE:[]).map(w=>({value:w,label:_mgCap(w)}))),current:_fs.oracleText||'',searchable:true,
+    onPick:v=>{ _fs.oracleText=v; const oi=document.getElementById('oracle-text-input'); if(oi)oi.value=v; syncFilters(); }}); }
+function fcdWire(){
+  if(window._fcdWired||!document.getElementById('fcd-frame')||typeof mgWire3!=='function')return; window._fcdWired=true;
+  if(typeof cmLoadTypeIndex==='function')cmLoadTypeIndex(); if(typeof mgLoadKeywords==='function')mgLoadKeywords(); if(typeof mgLoadSets==='function')mgLoadSets();
+  const COL=['w','u','b','r','g','c'];
+  const colCycle=()=>{ const cur=[..._fs.colors][0]; const i=COL.indexOf(cur); _fs.colors.clear(); _fs.colors.add(COL[(i+1)%COL.length]); syncFilters(); };
+  const colClear=()=>{ _fs.colors.clear(); syncFilters(); };
+  const colPick=el=>cmPicker(el,{items:[{value:'',label:'Any color'},{value:'w',label:'White'},{value:'u',label:'Blue'},{value:'b',label:'Black'},{value:'r',label:'Red'},{value:'g',label:'Green'},{value:'c',label:'Colorless'}],current:[..._fs.colors][0]||'',onPick:v=>{ _fs.colors.clear(); if(v)_fs.colors.add(v); syncFilters(); }});
+  mgWire3('fcd-edge-l',colCycle,colClear,colPick); mgWire3('fcd-edge-r',colCycle,colClear,colPick);
+  mgWire3('cm-mana',()=>{ const n=(_fs.cmcNum!==null?parseInt(_fs.cmcNum):0)+1; _fs.cmcNum=String(n); _fs.cmcOps.clear(); _fs.cmcOps.add('='); syncFilters(); },
+    ()=>{ _fs.cmcNum=null; _fs.cmcOps.clear(); syncFilters(); },
+    el=>{ const items=[{value:'',label:'Any'}]; for(let i=0;i<=16;i++)items.push({value:String(i),label:String(i)}); cmPicker(el,{items,current:_fs.cmcNum!==null?String(_fs.cmcNum):'',onPick:v=>{ if(v===''){_fs.cmcNum=null;_fs.cmcOps.clear();}else{_fs.cmcNum=v;_fs.cmcOps.clear();_fs.cmcOps.add('=');} syncFilters(); }}); });
+  mgWire3('fcd-fmt',fcdPickFormat,()=>{ _fs.formats.clear(); _fs.set=''; syncFilters(); },fcdPickFormat);
+  mgWire3('fcd-set',el=>fcdPickSet(el),()=>{ _fs.set=''; syncFilters(); },el=>fcdPickSet(el));
+  mgWire3('fcd-kw',el=>fcdPickKeyword(el),()=>{ _fs.keywords.clear(); syncFilters(); },el=>fcdPickKeyword(el));
+  mgWire3('fcd-oracle',el=>fcdPickOracle(el),()=>{ _fs.oracleText=''; const oi=document.getElementById('oracle-text-input'); if(oi)oi.value=''; syncFilters(); },el=>fcdPickOracle(el));
+}
+
 function clearAllFilters(){
-  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
+  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();_fs.set="";
   _fs.cmcOps.clear();_fs.cmcNum=null;
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';_fs.oracleText='';
   ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val','oracle-text-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -8187,6 +8134,8 @@ function fwInitDrag(){
 // Init widgets after DOM ready
 fwInitDrag();
 fwInitSearchResize();
+if(typeof fcdWire==='function')fcdWire(); // wire the unified card's tap zones → search filters
+if(typeof updateCardMockup==='function')updateCardMockup(); // initial reflect of _fs into the card
 // Re-flow the filter widgets to the justified two-sided default whenever the panel width
 // changes (window resize / clip / spawn) — but only while the user hasn't customized the
 // layout (no saved positions). This keeps widgets flush to the card on both sides at any width.

@@ -532,6 +532,14 @@ function parseScryfallQuery(q) {
       continue;
     }
 
+    // Set: s:inv / set:inv — cards printed in that set
+    const setM = lower.match(/^(?:s|set):([0-9a-z]{2,6})$/);
+    if (setM) {
+      where.push('oracle_id IN (SELECT oracle_id FROM card_printings WHERE set_code = ?)');
+      params.push(setM[1]);
+      continue;
+    }
+
     // Rarity: r:rare (incl. special, bonus)
     const rarityM = lower.match(/^(?:r|rarity):(\w+)$/);
     if (rarityM) {

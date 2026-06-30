@@ -257,6 +257,28 @@
     /* Card mockup — pure SVG, fills widget */
     .card-mockup-wrap { width: 100%; height: 100%; display: flex; align-items: stretch; }
     .cm-svg-card { width: 100%; height: 100%; display: block; overflow: visible; }
+    /* Unified MMD card (CGG look, drives the search filters) — replaces the old SVG mockup in #fw-card */
+    #fcd-frame { flex:1; min-height:0; display:flex; flex-direction:column; gap:4px; background:linear-gradient(165deg,#e9e0c9,#cbbd99); border:5px solid #0b0b0d; border-radius:11px; padding:6px; font-family:Georgia,serif; box-sizing:border-box; overflow:hidden; }
+    .fcd-titlebar { display:flex; align-items:center; gap:6px; background:linear-gradient(var(--fcd-tint,#eee),#d7cba8); border:1px solid #8a7a52; border-radius:8px; padding:3px 8px; flex-shrink:0; }
+    .fcd-name { flex:1; min-width:0; border:none; background:transparent; font-family:Georgia,serif; font-size:13px; font-weight:bold; color:#191207; outline:none; padding:2px; }
+    .fcd-mana { flex-shrink:0; display:flex; gap:2px; align-items:center; font-weight:bold; font-size:13px; color:#5a3a00; cursor:pointer; }
+    .fcd-pip { display:inline-flex; align-items:center; justify-content:center; min-width:16px; height:16px; border-radius:50%; background:#d8d2c4; border:1px solid #2a2a2a; font-size:10px; padding:0 3px; color:#1a1a1a; }
+    .fcd-pip-w{background:#fffdf0}.fcd-pip-u{background:#cfe6ff}.fcd-pip-b{background:#d8d2dc}.fcd-pip-r{background:#ffd6cc}.fcd-pip-g{background:#cdeed7}.fcd-pip-c{background:#e8e2d6}
+    #fcd-art { position:relative; flex:1; min-height:88px; background:linear-gradient(160deg,#2a2f23,#1a1d16); border:1px solid #2a2114; border-radius:4px; overflow:hidden; display:flex; align-items:center; justify-content:center; }
+    .fcd-edge { position:absolute; top:8px; bottom:8px; width:20px; cursor:pointer; border:1px dashed rgba(255,255,255,.3); border-radius:5px; -webkit-tap-highlight-color:transparent; -webkit-touch-callout:none; touch-action:manipulation; }
+    .fcd-edge-l{left:6px}.fcd-edge-r{right:6px} .fcd-edge:active{background:rgba(255,255,255,.1)}
+    .fcd-summary { display:flex; flex-wrap:wrap; gap:5px; align-content:center; justify-content:center; max-height:100%; overflow:auto; padding:6px 30px; }
+    .fcd-chip { background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.28); color:#f2f2f2; font-family:Tahoma,sans-serif; font-size:11px; font-weight:bold; padding:3px 9px; border-radius:12px; white-space:nowrap; }
+    .fcd-empty { color:#9aa6a0; font-family:Tahoma,sans-serif; font-size:11px; text-align:center; line-height:1.45; }
+    .fcd-clear { position:absolute; top:6px; right:30px; background:rgba(0,0,0,.5); border:1px solid rgba(255,255,255,.35); color:#fff; font-family:Tahoma,sans-serif; font-size:10px; font-weight:bold; padding:3px 8px; border-radius:10px; cursor:pointer; z-index:3; }
+    .fcd-typebar, .fcd-textbox { display:flex; align-items:center; gap:4px; background:linear-gradient(#f4eddb,#dacdaa); border:1px solid #8a7a52; border-radius:8px; padding:4px 10px; font-family:Georgia,serif; font-size:12px; font-weight:bold; flex-shrink:0; overflow:hidden; white-space:nowrap; }
+    .fcd-typebar .mg-zone, .fcd-textbox .mg-zone { color:#6a5d3c; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:46%; }
+    .fcd-typebar .mg-zone.mg-set, .fcd-textbox .mg-zone.mg-set { color:#191207; }
+    .fcd-dash { flex-shrink:0; color:#9a8a5c; pointer-events:none; }
+    .fcd-fs { margin-left:auto; display:flex; align-items:center; gap:3px; flex-shrink:0; padding-left:6px; }
+    .fcd-pt { margin-left:auto; flex-shrink:0; display:flex; align-items:center; gap:1px; background:linear-gradient(#f4eddb,#d4c498); border:1px solid #2a2114; border-radius:8px; padding:2px 8px; color:#191207; }
+    .fcd-ptin { width:20px; border:none; background:transparent; text-align:center; font-family:Georgia,serif; font-size:14px; font-weight:bold; color:#191207; outline:none; padding:0; }
+    .fcd-slash { color:#7a6a44; }
     /* Card type/subtype picker popover (lives on document.body so it escapes the SVG card bounds) */
     .cm-picker { position: fixed; z-index: 10050; min-width: 150px; max-width: 240px; background: var(--surface, #1b1f27); border: 1px solid var(--border, #3a404a); border-radius: 8px; box-shadow: 0 12px 40px rgba(0,0,0,0.55); padding: 5px; display: flex; flex-direction: column; gap: 4px; }
     .cm-picker-search { width: 100%; box-sizing: border-box; background: var(--surface2, #11151c); border: 1px solid var(--border, #3a404a); border-radius: 6px; color: var(--text-bright, #e7eef7); padding: 5px 8px; font-size: 0.8rem; outline: none; }
