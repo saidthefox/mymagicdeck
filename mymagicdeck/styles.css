@@ -1568,18 +1568,12 @@
     .dicey-svg{width:64px;height:64px;display:block}
     .dicey-die.dicey-rolling{animation:dicey-roll .7s ease-in-out}
     @keyframes dicey-roll{0%{transform:rotate(0) scale(1)}25%{transform:rotate(160deg) scale(1.12)}50%{transform:rotate(300deg) scale(.95)}75%{transform:rotate(430deg) scale(1.08)}100%{transform:rotate(540deg) scale(1)}}
-    .dicey-bubble{position:absolute;bottom:72px;right:0;width:242px;background:#2a2e36;border:1px solid #4a505c;border-radius:10px;padding:10px;color:#eee;font-family:Tahoma,sans-serif;font-size:12px;box-shadow:0 12px 34px rgba(0,0,0,.6)}
+    .dicey-bubble{position:absolute;bottom:72px;right:0;width:242px;max-height:calc(100vh - 96px);overflow-y:auto;background:#2a2e36;border:1px solid #4a505c;border-radius:10px;padding:10px;color:#eee;font-family:Tahoma,sans-serif;font-size:12px;box-shadow:0 12px 34px rgba(0,0,0,.6)}
     .dicey-bubble:after{content:'';position:absolute;bottom:-8px;right:26px;border:8px solid transparent;border-top-color:#2a2e36;border-bottom:0}
     .dicey-bubble.below{bottom:auto;top:72px}                                  /* flip below when Dicey is near the top */
     .dicey-bubble.below:after{top:-8px;bottom:auto;border-top:0;border-bottom:8px solid #2a2e36}
     .dicey-bubble.bleft{right:auto;left:0}                                     /* flip to the right when he's near the left edge */
     .dicey-bubble.bleft:after{right:auto;left:26px}
-    /* Mobile: the panel/intro bubble can spill off a narrow screen anchored to the die — clamp it to a bottom sheet */
-    @media (max-width:600px){
-      .dicey-bubble{ position:fixed; left:8px; right:8px; top:auto !important; bottom:calc(var(--mtask-h,0px) + 12px); width:auto; max-width:none; max-height:62vh; overflow-y:auto; z-index:6300; }
-      .dicey-bubble.below,.dicey-bubble.bleft{ left:8px; right:8px; }
-      .dicey-bubble:after{ display:none; }
-    }
     .dicey-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
     .dicey-hd b{color:#fff;font-size:13px}
     .dicey-x{background:none;border:none;color:#9aa6b6;cursor:pointer;font-size:14px;line-height:1}

@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=46" />
+  <link rel="stylesheet" href="/styles.css?v=47" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -7456,7 +7456,8 @@ function diceyInit(){ const s=diceyState();
 function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
 function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Welcome back, '+state.user.username+'.'):'Welcome — roll on in.', 2600); }
 function diceyTuckUnder(){ if(!_diceyEl)return; _diceyTucked=true;   // guide done → slide onto the program and duck behind it (no greeting)
-  const cx=Math.round(window.innerWidth*0.5-30), cy=Math.round(window.innerHeight*0.42-30);
+  const tbH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--mtask-h'))||0;
+  const cx=window.innerWidth-66-12, cy=window.innerHeight-66-(tbH?tbH+8:14);   // tuck into the bottom-right corner
   const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();
   if(typeof diceyMoveTo==='function')diceyMoveTo(cx,cy,700);
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.zIndex='1'; }, 720);   // below the program window → hidden under it
@@ -7540,7 +7541,7 @@ function diceyMoveTo(x,y,ms){ if(!_diceyEl)return; ms=ms||600; x=Math.max(2,Math
   _diceyEl.style.transition='left '+ms+'ms ease-in-out, top '+ms+'ms ease-in-out';
   if(die){ die.style.transition='transform '+ms+'ms ease-in-out'; die.style.transform='rotate('+Math.round(_diceyRot)+'deg)'; }
   _diceyEl.style.left=x+'px'; _diceyEl.style.top=y+'px';
-  const b=_diceyEl.querySelector('.dicey-bubble'); if(b){ b.classList.toggle('below', y<window.innerHeight*0.42); b.classList.toggle('bleft', x<250); } // keep his speech on-screen
+  if(_diceyEl.querySelector('.dicey-bubble'))diceyPlaceBubble(); // keep his panel edge-aware as he moves
   diceySayPlace(); // re-anchor the speech bubble as he moves (flip below / shift off the walls)
   setTimeout(()=>{ if(_diceyEl)_diceyEl.style.transition=''; }, ms+30);
 }
@@ -7661,7 +7662,15 @@ function diceyRoll(){ const die=_diceyEl&&_diceyEl.querySelector('.dicey-die'); 
   die.classList.remove('dicey-rolling'); void die.offsetWidth; die.classList.add('dicey-rolling');
   setTimeout(()=>{ const roll=rnd(); diceyShowFace(roll); diceyCast(roll); }, 700); }
 // ---- Dicey onboarding: greet a brand-new browser, branch new vs returning, then a guided tour ----
-function diceyPlaceBubble(){ const b=_diceyEl&&_diceyEl.querySelector('.dicey-bubble'); if(!b||!_diceyEl)return; const r=_diceyEl.getBoundingClientRect(); b.classList.toggle('below', r.top<window.innerHeight*0.42); b.classList.toggle('bleft', r.left<250); }
+function diceyPlaceBubble(){ const b=_diceyEl&&_diceyEl.querySelector('.dicey-bubble'); if(!b||!_diceyEl)return;
+  b.style.transform=''; const dr=_diceyEl.getBoundingClientRect();
+  b.classList.toggle('below', dr.top<window.innerHeight*0.42);   // flip below when he's up top
+  b.classList.toggle('bleft', dr.left<250);                       // open to the right when he's by the left edge
+  const pad=8, tbH=parseInt(getComputedStyle(document.documentElement).getPropertyValue('--mtask-h'))||0;
+  const r=b.getBoundingClientRect(); let dx=0,dy=0;
+  if(r.left<pad)dx=pad-r.left; else if(r.right>window.innerWidth-pad)dx=(window.innerWidth-pad)-r.right;          // clamp horizontally
+  const bot=window.innerHeight-tbH-pad; if(r.bottom>bot)dy=bot-r.bottom; if(r.top+dy<pad)dy=pad-r.top;            // clamp vertically, above the pinned taskbar
+  if(dx||dy)b.style.transform='translate('+Math.round(dx)+'px,'+Math.round(dy)+'px)'; }
 function diceyCorner(){ const m=14, sz=66; const xs=[m, window.innerWidth-sz-m], ys=[m, window.innerHeight-sz-m]; return { x:xs[(Math.random()*2)|0], y:ys[(Math.random()*2)|0] }; }
 function diceyMakeBubble(){ if(!_diceyEl)return null; const old=_diceyEl.querySelector('.dicey-bubble'); if(old)old.remove(); const b=document.createElement('div'); b.className='dicey-bubble'; _diceyEl.appendChild(b); _diceyOpen=true; diceyPlaceBubble(); return b; }
 function diceyIntro(){ if(!_diceyEl)return; try{ DeckOS.store.set('dicey_seen',1); }catch(e){} diceyWhirl(); clearTimeout(_diceyTimer);
