@@ -4313,6 +4313,26 @@ const MG_COLORS=[{k:'W',n:'White',f:'#efe6c8',pip:'#fffdf0'},{k:'U',n:'Blue',f:'
 const MG_ARTIFACT={k:'C',n:'Colorless',f:'#b7a9a0',pip:'#efe9e2'};
 const MG_TYPES=['Creature','Instant','Sorcery','Artifact','Enchantment','Planeswalker','Land'];
 let mgState={cmc:0,ci:-1,ti:-1,p:null,t:null,name:'',format:null};
+// Long-press the type spot → jump straight to any type (vs tap = cycle). Reuses the shared card-box picker.
+function mgOpenTypePicker(anchor){
+  if(typeof cmPicker!=='function')return;
+  const cur=mgState.ti>=0?MG_TYPES[mgState.ti].toLowerCase():'';
+  const items=[{value:'',label:'Any type'}].concat(MG_TYPES.map(t=>({value:t.toLowerCase(),label:t})));
+  cmPicker(anchor, { items, current:cur, onPick:v=>{ mgState.ti=MG_TYPES.findIndex(t=>t.toLowerCase()===v); mgHint(mgState.ti>=0?MG_TYPES[mgState.ti]:'type cleared'); mgTouch(); } });
+}
+// Wire the type label: tap = cycle, double-tap = clear, LONG-PRESS = full type picker.
+function mgWireType(){
+  const el=document.getElementById('mg-type-label'); if(!el||el._mg)return; el._mg=1;
+  let n=0,tm=null,lp=null,longFired=false,dxy=null;
+  const cycle=()=>{ mgState.ti=(mgState.ti+1)%MG_TYPES.length; mgHint(MG_TYPES[mgState.ti]); mgTouch(); };
+  const clear=()=>{ mgState.ti=-1; mgHint('type cleared'); mgTouch(); };
+  const killLp=()=>{ if(lp){ clearTimeout(lp); lp=null; } };
+  el.addEventListener('pointerdown',e=>{ longFired=false; dxy=[e.clientX,e.clientY]; killLp();
+    lp=setTimeout(()=>{ longFired=true; if(tm){clearTimeout(tm);tm=null;n=0;} mgOpenTypePicker(el); }, 500); });
+  el.addEventListener('pointermove',e=>{ if(dxy&&Math.hypot((e.clientX||0)-dxy[0],(e.clientY||0)-dxy[1])>10)killLp(); });
+  el.addEventListener('pointerup',killLp); el.addEventListener('pointercancel',killLp); el.addEventListener('pointerleave',killLp);
+  el.addEventListener('click',()=>{ if(longFired){ longFired=false; return; } n++; if(tm)clearTimeout(tm); tm=setTimeout(()=>{ (n===1?cycle:clear)(); n=0; }, 230); });
+}
 let mgGuess={cands:[],idx:0,excluded:[],on:false,timer:null};
 let mgMode='g3'; // g3 | g5 | manual | insane
 let mgActiveDeckId=null; // the deck confirmed guesses get added to
@@ -7810,7 +7830,7 @@ let _mgWired=false;
 function mgWire(){
   if(_mgWired)return; _mgWired=true;
   mgTaps('mg-mana',()=>{mgState.cmc++;mgHint('mana value '+mgState.cmc);mgTouch();},()=>{mgState.cmc=Math.max(0,mgState.cmc-1);mgHint('mana value '+mgState.cmc);mgTouch();});
-  mgTaps('mg-type-label',()=>{mgState.ti=(mgState.ti+1)%MG_TYPES.length;mgHint(MG_TYPES[mgState.ti]);mgTouch();},()=>{mgState.ti=-1;mgHint('type cleared');mgTouch();});
+  mgWireType(); // tap = cycle · double-tap = clear · long-press = full type picker
   mgTaps('mg-fmt',mgOpenFormatPicker,mgClearFormat);
   mgTaps('mg-pow',()=>{mgState.p=(mgState.p==null?1:mgState.p+1);mgHint('power '+mgState.p);mgTouch();},()=>{if(mgState.p!=null){mgState.p--;if(mgState.p<0)mgState.p=null;}mgHint('power '+(mgState.p==null?'—':mgState.p));mgTouch();});
   mgTaps('mg-tou',()=>{mgState.t=(mgState.t==null?1:mgState.t+1);mgHint('toughness '+mgState.t);mgTouch();},()=>{if(mgState.t!=null){mgState.t--;if(mgState.t<0)mgState.t=null;}mgHint('toughness '+(mgState.t==null?'—':mgState.t));mgTouch();});
