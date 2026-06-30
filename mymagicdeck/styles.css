@@ -1033,6 +1033,7 @@
     .mg-cggart{display:flex;flex-direction:column;align-items:center;justify-content:center;width:46px;height:46px;background:#000;border:2px solid #888;line-height:1.05;padding:2px;box-sizing:border-box}
     .mg-cggart b{font-size:9px;font-family:'Courier New',monospace;letter-spacing:.5px}
     #mguess-overlay.open{display:flex}
+    body.mtask-on #mguess-overlay{bottom:var(--mtask-h,0)} /* keep CGG fullscreen above the pinned taskbar (the one program that spanned over it) */
     #mguess-card{position:relative;width:min(96vw,440px);flex:1 1 auto;min-height:0;box-sizing:border-box;background:var(--ch-face);border:3px solid;border-color:var(--ch-win-border);padding:2px;font-family:Tahoma,'MS Sans Serif',Geneva,sans-serif;box-shadow:0 12px 48px rgba(0,0,0,.6);display:flex;flex-direction:column;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
     #mguess-card img{-webkit-touch-callout:none;-webkit-user-drag:none;pointer-events:none}
     #mg-name{-webkit-user-select:text;user-select:text} /* keep the name field selectable/editable */

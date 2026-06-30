@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=48" />
+  <link rel="stylesheet" href="/styles.css?v=49" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -3648,7 +3648,7 @@ let _cmTypeIndex=null, _cmTypeIndexP=null;
 function cmLoadTypeIndex(){ if(_cmTypeIndex)return Promise.resolve(_cmTypeIndex);
   if(!_cmTypeIndexP) _cmTypeIndexP=apiFetch('/cards/types').then(d=>{_cmTypeIndex=d||{types:[],subtypesByType:{},allSubtypes:[]};return _cmTypeIndex;}).catch(()=>({types:[],subtypesByType:{},allSubtypes:[]}));
   return _cmTypeIndexP; }
-function cmClosePicker(){ const p=document.getElementById('cm-picker'); if(p)p.remove(); document.removeEventListener('mousedown',_cmPickerOutside,true); document.removeEventListener('keydown',_cmPickerKey,true); }
+function cmClosePicker(){ const p=document.getElementById('cm-picker'); if(p)p.remove(); document.removeEventListener('pointerdown',_cmPickerOutside,true); document.removeEventListener('keydown',_cmPickerKey,true); }
 function _cmPickerOutside(e){ const p=document.getElementById('cm-picker'); if(p&&!p.contains(e.target))cmClosePicker(); }
 function _cmPickerKey(e){ if(e.key==='Escape')cmClosePicker(); }
 // items: [{value,label}]; current: selected value (''/undefined = none). onPick(value) — '' clears.
@@ -3663,12 +3663,12 @@ function cmPicker(anchor, opts){ cmClosePicker(); if(!anchor)return;
     let top=r.bottom+4; if(top+ph>window.innerHeight-6) top=Math.max(6, r.top-ph-4);
     p.style.left=left+'px'; p.style.top=top+'px'; };
   place();
-  const wire=()=>p.querySelectorAll('.cm-picker-item').forEach(el=>el.addEventListener('mousedown',ev=>{ ev.preventDefault(); ev.stopPropagation(); opts.onPick(el.getAttribute('data-v')); cmClosePicker(); }));
+  const wire=()=>p.querySelectorAll('.cm-picker-item').forEach(el=>el.addEventListener('pointerdown',ev=>{ ev.preventDefault(); ev.stopPropagation(); opts.onPick(el.getAttribute('data-v')); cmClosePicker(); }));
   wire();
   if(opts.searchable){ const s=p.querySelector('.cm-picker-search'); s.addEventListener('input',()=>{ const q=s.value.trim().toLowerCase();
     const f=q?opts.items.filter(it=>it.label.toLowerCase().includes(q)):opts.items; listEl.innerHTML=listHtml(f); wire(); place(); });
     setTimeout(()=>s.focus(),0); }
-  setTimeout(()=>{ document.addEventListener('mousedown',_cmPickerOutside,true); document.addEventListener('keydown',_cmPickerKey,true); },0);
+  setTimeout(()=>{ document.addEventListener('pointerdown',_cmPickerOutside,true); document.addEventListener('keydown',_cmPickerKey,true); },0);
 }
 function cmOpenTypePicker(e){ e&&e.stopPropagation(); cmLoadTypeIndex().then(idx=>{
   const cur=[..._fs.types][0]||'';
