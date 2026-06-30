@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=41" />
+  <link rel="stylesheet" href="/styles.css?v=45" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -5007,7 +5007,7 @@ function osBootStartup(){ const isMobile=window.matchMedia('(pointer: coarse), (
   if(s==='cgg'){ if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess(); finish(); return; }
   if(typeof MGW_APPS!=='undefined'&&MGW_APPS[s]){ try{ mgLaunchApp(s); }catch(e){} } else if(typeof maybeShowMobileGuess==='function')maybeShowMobileGuess();
   finish(); }
-function taskbarPinned(){ try{ return !!DeckOS.store.get('taskbarPinned'); }catch(e){ return false; } }
+function taskbarPinned(){ try{ const v=DeckOS.store.get('taskbarPinned'); if(v===undefined||v===null)return window.matchMedia('(pointer: coarse), (max-width: 600px)').matches; return !!v; }catch(e){ return false; } }
 function taskbarBig(){ try{ return !!DeckOS.store.get('taskbarBig'); }catch(e){ return false; } }
 function taskbarApply(){ const pinned=taskbarPinned() && !document.body.classList.contains('wm-on'); const big=taskbarBig();
   document.body.classList.toggle('mtask-on',pinned); document.body.classList.toggle('mtask-big',big); // big is independent of pin — it also enlarges the regular taskbar
@@ -7392,7 +7392,7 @@ function mgWireStartMenu(a){
 }
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
 let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0;
-let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=12000; // recent user input → Dicey stays calm; after this much quiet he wakes up
+let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=20000; // recent user input → Dicey stays calm; after this much quiet he wakes up
 let _summon=null, _diceyIdleStreak=0; // _summon = the in-progress "special summon" screensaver state
 const DICEY_BARKS=["Feeling lucky?","A game? Let’s roll.","Nat 20 energy today.","Fresh cards to crack?","Roll with me.","Ooh, found something.","Best deck ever.","Shuffle up!"];
 const DICEY_TIPS=[
@@ -7452,7 +7452,7 @@ function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
   if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
   if(typeof toast==='function')toast(s.on?'Dicey is out! 🎲':'Dicey is back in the bag.'); }
 // ---- Dicey personality: rolls to move, whirls when excited, greets, and builds card platforms to hop onto ----
-function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 5000+Math.random()*7000); }
+function diceyScheduleIdle(){ clearTimeout(_diceyTimer); _diceyTimer=setTimeout(diceyIdleTick, 9000+Math.random()*11000); }
 // Activity-aware: while you're doing things Dicey goes chill (no wandering/barks/antics) and steps out of
 // the way; he only gets lively again once you've been idle a bit (like a screensaver waking up).
 function diceyWireActivity(){ if(_diceyInputWired)return; _diceyInputWired=true;
@@ -7463,6 +7463,7 @@ function diceyWireActivity(){ if(_diceyInputWired)return; _diceyInputWired=true;
   ['pointerdown','keydown','wheel','touchstart'].forEach(ev=>document.addEventListener(ev,bump,{passive:true,capture:true})); }
 function diceyStepAside(){ if(!_diceyEl||_diceyDragging)return;
   const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();   // hush any chatter
+  diceyClearPlatforms();                                                  // active user → platforms go away
   const r=_diceyEl.getBoundingClientRect(), m=110;
   const central = r.left>m && r.left<window.innerWidth-66-m && r.top>m && r.top<window.innerHeight-66-m;
   if(central){ const tb=document.querySelector('#mg-mtask')||document.querySelector('.mg-taskbar'); const gap=tb?56:14;
@@ -7618,7 +7619,7 @@ function diceySpellCard(name){ if(!_diceyEl)return; const c=document.createEleme
 // accumulate (capped) so Dicey has ledges to bounce around on — no more short-lived vertical walls.
 let _diceyPlats=[]; const DICEY_PLAT_MAX=9;
 const _diceyPalette=['#5aa86a','#5b8def','#c0392b','#d39a2d','#8e5bd0','#2bb6a8','#d05b9c','#e07b39'];
-function diceyPlatformsOn(){ try{ if(window.matchMedia('(max-width:900px)').matches)return false; }catch(e){} return diceyState().platforms!==false; } // card-platform hops: desktop only (off on mobile)
+function diceyPlatformsOn(){ if(diceyUserActive())return false; try{ if(window.matchMedia('(max-width:900px)').matches)return false; }catch(e){} return diceyState().platforms!==false; } // card-platform hops: desktop only (off on mobile)
 function diceyClearPlatforms(){ _diceyPlats.forEach(p=>{ try{ p.remove(); }catch(e){} }); _diceyPlats=[]; }
 function diceyBuildPlatform(opts){ opts=opts||{}; if(!_diceyEl||!diceyPlatformsOn())return null;
   const len=64+Math.round(Math.random()*130), hgt=7+Math.round(Math.random()*5);   // varying length 64–194, thin 7–12px
@@ -7829,46 +7830,37 @@ function fwComputeDefaults(){
   const isMobile=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
 
   const CARD={ id:'fw-card', w:262, h:350 };
-  const col1=[
-    { id:'fw-colors',   w:179, h:68  },
-    { id:'fw-cmc',      w:232, h:67  },
-    { id:'fw-types',    w:248, h:75  },
-    { id:'fw-pt',       w:242, h:92  },
-  ];
   const col3=[
     { id:'fw-format',   w:200, h:100 },
-    { id:'fw-rarity',   w:160, h:62  },
-    { id:'fw-keywords', w:200, h:94  },
-    { id:'fw-oracle',   w:200, h:80  },
+    { id:'fw-rarity',   w:165, h:62  },
+    { id:'fw-keywords', w:185, h:94  },
+    { id:'fw-oracle',   w:185, h:80  },
   ];
 
   // Center the card in the panel width (read live if possible, else fallback)
   const panel=document.getElementById('card-filter-panel');
   const panelW=panel ? panel.offsetWidth : 900;
   const cardX=Math.max(2, Math.round((panelW - CARD.w) / 2));
-
-  const col1W=Math.max(...col1.map(w=>w.w));
   const col3X=cardX+CARD.w+GAP;
 
   const layout={};
-
-  // Card centered
   layout[CARD.id]={ x:cardX, y:TOP, w:CARD.w, h:CARD.h, anchored:isMobile };
 
-  // Left column: each widget's RIGHT edge flush against card left
+  // Right column: left-edge flush against card right, stacked top->bottom
   let cy=TOP;
-  col1.forEach(widget=>{
-    const wx=cardX - widget.w - GAP;
-    layout[widget.id]={ x:Math.max(2, wx), y:cy, w:widget.w, h:widget.h, anchored:isMobile };
-    cy+=widget.h+GAP;
-  });
+  col3.forEach(widget=>{ layout[widget.id]={ x:col3X, y:cy, w:widget.w, h:widget.h, anchored:isMobile }; cy+=widget.h+GAP; });
+  const oracleBottom=cy-GAP;                       // base of the right column (Oracle)
 
-  // Right column: left-edge flush against card right
-  cy=TOP;
-  col3.forEach(widget=>{
-    layout[widget.id]={ x:col3X, y:cy, w:widget.w, h:widget.h, anchored:isMobile };
-    cy+=widget.h+GAP;
-  });
+  // Left column: content-dependent (ragged) widths, each widget right-edge flush to the card left edge.
+  // Vertical layout kept from the mockup: Colors at min height (top flush w/ Format), Mana Value taller,
+  // Types fills the gap, P/T base flush with Oracle base. Colors & Types run a little thinner.
+  const colorsH=52, cmcH=86, ptH=92;
+  const ptY=oracleBottom-ptH;
+  const colorsY=TOP, cmcY=colorsY+colorsH+GAP, typesY=cmcY+cmcH+GAP, typesH=(ptY-GAP)-typesY;
+  [ { id:'fw-colors', w:200, y:colorsY, h:colorsH },
+    { id:'fw-cmc',    w:252, y:cmcY,    h:cmcH },
+    { id:'fw-types',  w:220, y:typesY,  h:typesH },
+    { id:'fw-pt',     w:242, y:ptY,     h:ptH } ].forEach(wd=>{ layout[wd.id]={ x:Math.max(2, cardX - wd.w - GAP), y:wd.y, w:wd.w, h:wd.h, anchored:isMobile }; });
 
   return layout;
 }
