@@ -3295,7 +3295,9 @@ function _cmcOpStr(){
 const _ptIds = f => f==='pow' ? { op:'pt-power-op', val:'pt-power-val', lbl:'ptw-pow-val' } : { op:'pt-tough-op', val:'pt-tough-val', lbl:'ptw-tou-val' };
 function ptSetOp(field, sym){
   const id=_ptIds(field), op=document.getElementById(id.op), val=document.getElementById(id.val);
-  op.value=field+sym; if(val.value==='')val.value='1'; // op alone is meaningless until there's a value → seed 1
+  const want=field+sym;
+  if(op.value===want){ op.value=''; val.value=''; }            // tap the active op again → untick (clear the stat)
+  else { op.value=want; if(val.value==='')val.value='1'; }      // op alone is meaningless until there's a value → seed 1
   syncFilters();
 }
 function ptStep(field, dir){
