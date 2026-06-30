@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=20" />
+  <link rel="stylesheet" href="/styles.css?v=21" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -228,8 +228,14 @@
                 <!-- Mana pips group (populated by JS) -->
                 <g id="cm-mana-g" transform="translate(144,9)"></g>
 
-                <!-- Type line text -->
-                <text id="cm-typeline" x="13" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle">—</text>
+                <!-- Type / Subtype pickers (HTML foreignObject so real dropdowns work) -->
+                <foreignObject x="11" y="155" width="152" height="18">
+                  <div xmlns="http://www.w3.org/1999/xhtml" class="cm-typerow">
+                    <button type="button" class="cm-tz" id="cm-type-btn" onclick="cmOpenTypePicker(event)">Type</button>
+                    <span class="cm-tz-dash">—</span>
+                    <button type="button" class="cm-tz" id="cm-sub-btn" onclick="cmOpenSubPicker(event)">Subtype</button>
+                  </div>
+                </foreignObject>
                 <text id="cm-rarity" x="187" y="165" font-size="9" font-family="'Courier New',monospace" fill="#222" dominant-baseline="middle" text-anchor="end"></text>
 
                 <!-- Text box content (foreignObject for wrapping) -->
@@ -3199,6 +3205,7 @@ const _fs={
   types:   new Set(),  // 'creature','instant', etc
   formats: new Set(),  // 'standard','commander', etc
   rarities:new Set(),  // 'common','uncommon','rare','mythic'
+  subtypes:new Set(),  // 'angel','equipment', etc — t: tokens that aren't a card type
   keywords:new Set(),  // 'flying','trample', etc
   cmcOps:  new Set(),  // '>','=','<'
   cmcNum:  null,       // string or null
@@ -3285,6 +3292,7 @@ function syncFilters(){
   const parts=[];
   _fs.colors.forEach(c=>parts.push('c:'+c));
   _fs.types.forEach(t=>parts.push('t:'+t));
+  _fs.subtypes.forEach(s=>parts.push('t:'+s));
   _fs.formats.forEach(f=>parts.push('f:'+f));
   _fs.rarities.forEach(r=>parts.push('r:'+r));
   _fs.keywords.forEach(k=>parts.push('kw:'+k));
@@ -3311,7 +3319,7 @@ function parseSearchToFilters(){
   const validKeywords=new Set(['flying','trample','deathtouch','lifelink','haste','flash','vigilance','menace']);
 
   // Reset all filter state
-  _fs.colors.clear();_fs.types.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
+  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
   _fs.cmcOps.clear();_fs.cmcNum=null;_fs.name='';
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';
 
@@ -3352,7 +3360,7 @@ function parseSearchToFilters(){
     } else if(key==='ci'||key==='identity'){
       for(const ch of val)if(validColors.has(ch))_fs.colors.add(ch);
     } else if(key==='t'||key==='type'){
-      if(validTypes.has(val))_fs.types.add(val);
+      if(validTypes.has(val))_fs.types.add(val); else _fs.subtypes.add(val); // t: that isn't a card type → a subtype
     } else if(key==='f'||key==='format'){
       if(validFormats.has(val))_fs.formats.add(val);
     } else if(key==='r'||key==='rarity'){
@@ -3604,10 +3612,12 @@ function updateCardMockup(){
 
   renderManaPips(cycleColors, manaKey);
 
-  // Type line (left) + Rarity (right)
-  const typeStr=types.length?types.map(t=>t[0].toUpperCase()+t.slice(1)).join(' — '):'—';
-  const tlEl=document.getElementById('cm-typeline');
-  if(tlEl) tlEl.textContent=typeStr;
+  // Type / Subtype picker labels (left) + Rarity (right)
+  const cap=s=>s?s[0].toUpperCase()+s.slice(1):s;
+  const typeBtn=document.getElementById('cm-type-btn');
+  if(typeBtn){ const tn=[..._fs.types]; typeBtn.textContent=tn.length?tn.map(cap).join(' '):'Type'; typeBtn.classList.toggle('set',!!tn.length); }
+  const subBtn=document.getElementById('cm-sub-btn');
+  if(subBtn){ const sn=[..._fs.subtypes]; subBtn.textContent=sn.length?sn.map(cap).join(' '):'Subtype'; subBtn.classList.toggle('set',!!sn.length); }
   const rars=[..._fs.rarities];
   const rarEl=document.getElementById('cm-rarity');
   if(rarEl) rarEl.textContent=rars.length?rars.map(r=>r[0].toUpperCase()+r.slice(1)).join(', '):'';
@@ -3653,7 +3663,7 @@ function cmPtInput(){
 }
 
 function clearAllFilters(){
-  _fs.colors.clear();_fs.types.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
+  _fs.colors.clear();_fs.types.clear();_fs.subtypes.clear();_fs.formats.clear();_fs.rarities.clear();_fs.keywords.clear();
   _fs.cmcOps.clear();_fs.cmcNum=null;
   _fs.powOp='';_fs.powVal='';_fs.touOp='';_fs.touVal='';_fs.name='';_fs.oracleText='';
   ['cm-name-input','cm-pow-in','cm-tou-in','pt-power-val','pt-tough-val','oracle-text-input'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -3667,6 +3677,53 @@ function clearAllFilters(){
   updateFilterToggle();
   doSearch();
 }
+
+// ── Card-box Type / Subtype dropdowns ─────────────────────────────────────────
+// Shared little popover picker (anchored to a card zone, escapes the card bounds via document.body).
+let _cmTypeIndex=null, _cmTypeIndexP=null;
+function cmLoadTypeIndex(){ if(_cmTypeIndex)return Promise.resolve(_cmTypeIndex);
+  if(!_cmTypeIndexP) _cmTypeIndexP=apiFetch('/cards/types').then(d=>{_cmTypeIndex=d||{types:[],subtypesByType:{},allSubtypes:[]};return _cmTypeIndex;}).catch(()=>({types:[],subtypesByType:{},allSubtypes:[]}));
+  return _cmTypeIndexP; }
+function cmClosePicker(){ const p=document.getElementById('cm-picker'); if(p)p.remove(); document.removeEventListener('mousedown',_cmPickerOutside,true); document.removeEventListener('keydown',_cmPickerKey,true); }
+function _cmPickerOutside(e){ const p=document.getElementById('cm-picker'); if(p&&!p.contains(e.target))cmClosePicker(); }
+function _cmPickerKey(e){ if(e.key==='Escape')cmClosePicker(); }
+// items: [{value,label}]; current: selected value (''/undefined = none). onPick(value) — '' clears.
+function cmPicker(anchor, opts){ cmClosePicker(); if(!anchor)return;
+  const p=document.createElement('div'); p.id='cm-picker'; p.className='cm-picker';
+  let listHtml=(items)=>items.map(it=>'<div class="cm-picker-item'+(it.value===opts.current?' sel':'')+'" data-v="'+_mgEsc(it.value)+'">'+_mgEsc(it.label)+'</div>').join('')||'<div class="cm-picker-empty">No matches</div>';
+  p.innerHTML=(opts.searchable?'<input class="cm-picker-search" placeholder="Filter…" />':'')+'<div class="cm-picker-list"></div>';
+  document.body.appendChild(p);
+  const listEl=p.querySelector('.cm-picker-list'); listEl.innerHTML=listHtml(opts.items);
+  const place=()=>{ const r=anchor.getBoundingClientRect(); const pw=p.offsetWidth, ph=p.offsetHeight;
+    let left=Math.min(r.left, window.innerWidth-pw-6); left=Math.max(6,left);
+    let top=r.bottom+4; if(top+ph>window.innerHeight-6) top=Math.max(6, r.top-ph-4);
+    p.style.left=left+'px'; p.style.top=top+'px'; };
+  place();
+  const wire=()=>p.querySelectorAll('.cm-picker-item').forEach(el=>el.addEventListener('mousedown',ev=>{ ev.preventDefault(); ev.stopPropagation(); opts.onPick(el.getAttribute('data-v')); cmClosePicker(); }));
+  wire();
+  if(opts.searchable){ const s=p.querySelector('.cm-picker-search'); s.addEventListener('input',()=>{ const q=s.value.trim().toLowerCase();
+    const f=q?opts.items.filter(it=>it.label.toLowerCase().includes(q)):opts.items; listEl.innerHTML=listHtml(f); wire(); place(); });
+    setTimeout(()=>s.focus(),0); }
+  setTimeout(()=>{ document.addEventListener('mousedown',_cmPickerOutside,true); document.addEventListener('keydown',_cmPickerKey,true); },0);
+}
+function cmOpenTypePicker(e){ e&&e.stopPropagation(); cmLoadTypeIndex().then(idx=>{
+  const cur=[..._fs.types][0]||'';
+  const items=[{value:'',label:'Any type'}].concat((idx.types||[]).map(t=>({value:t.toLowerCase(),label:t})));
+  cmPicker(document.getElementById('cm-type-btn'), { items, current:cur, onPick:v=>{ _fs.types.clear(); if(v)_fs.types.add(v);
+    // a subtype that no longer occurs under the new type is dropped
+    if(v){ const key=(_cmTypeIndex.types||[]).find(t=>t.toLowerCase()===v); const allowed=key?(_cmTypeIndex.subtypesByType[key]||[]).map(s=>s.toLowerCase()):[];
+      [..._fs.subtypes].forEach(s=>{ if(!allowed.includes(s))_fs.subtypes.delete(s); }); }
+    cmSyncTypeChips(); syncFilters(); } });
+}); }
+function cmOpenSubPicker(e){ e&&e.stopPropagation(); cmLoadTypeIndex().then(idx=>{
+  const t=[..._fs.types][0]||''; const key=(idx.types||[]).find(x=>x.toLowerCase()===t);
+  const list=(t&&key)?(idx.subtypesByType[key]||[]):(idx.allSubtypes||[]); // constrain to the picked type only when one is set
+  const cur=[..._fs.subtypes][0]||'';
+  const items=[{value:'',label:'Any subtype'}].concat(list.map(s=>({value:s.toLowerCase(),label:s})));
+  cmPicker(document.getElementById('cm-sub-btn'), { items, current:cur, searchable:true, onPick:v=>{ _fs.subtypes.clear(); if(v)_fs.subtypes.add(v); syncFilters(); } });
+}); }
+// keep the standalone type-chip widget's highlight in sync when the card dropdown changes the type
+function cmSyncTypeChips(){ document.querySelectorAll('.cfp-chip[data-type]').forEach(el=>el.classList.toggle('active',_fs.types.has(el.dataset.type))); }
 
 // Wire chips
 document.querySelectorAll('.cfp-color-chip').forEach(el=>el.addEventListener('click',function(){

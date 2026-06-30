@@ -182,6 +182,7 @@ framecheck, and battle routes.
 | GET | `/api/cards/search?q=&page=&per_page=` | — | search (Scryfall-syntax subset); **503 `{fallback:true}`** if unseeded |
 | GET | `/api/cards/named?name=` | — | exact-then-FTS card lookup |
 | GET | `/api/cards/keywords` | — | distinct keyword list (filter typeahead) |
+| GET | `/api/cards/types` | — | card types + subtypes-by-type (powers the card-box type/subtype dropdowns) |
 | GET | `/api/cards/prints?oracle=` | — | all paper printings (Scryfall, cached 24h) — powers art/printing swap |
 | POST | `/api/cards/guess` | — | mobile guess engine: candidates by color/cmc/type/P-T/name/format, ranked by EDHREC |
 | GET | `/api/cards/refresh/status` | — | card-DB refresh status |

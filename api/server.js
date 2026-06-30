@@ -555,6 +555,41 @@ function parseScryfallQuery(q) {
   return { where, params, ftsTerms };
 }
 
+// Card types + the subtypes that actually occur under each (derived from the live card DB so it tracks new
+// sets). Subtype is constrained to the chosen type when one is picked; otherwise the flat list is offered.
+const CARD_TYPES = ['Artifact', 'Battle', 'Creature', 'Enchantment', 'Instant', 'Kindred', 'Land', 'Planeswalker', 'Sorcery', 'Tribal'];
+let _typeIndex = null;
+function cardTypeIndex() {
+  if (_typeIndex) return _typeIndex;
+  const byType = {}; const allSub = new Set(); const seen = new Set();
+  for (const ct of CARD_TYPES) byType[ct] = new Set();
+  let rows = [];
+  try { rows = db.prepare("SELECT DISTINCT type_line FROM cards WHERE type_line IS NOT NULL AND type_line != ''").all(); } catch (_) {}
+  for (const { type_line } of rows) {
+    // A card may have two faces ("… // …"); index each face independently.
+    for (const face of String(type_line).split('//')) {
+      const seg = face.split('—'); // em dash separates types (left) from subtypes (right)
+      const left = seg[0] || '';
+      const right = seg.slice(1).join('—') || '';
+      const leftTypes = CARD_TYPES.filter(ct => new RegExp('\\b' + ct + '\\b', 'i').test(left));
+      leftTypes.forEach(t => seen.add(t));
+      if (right.trim()) {
+        for (const s of right.trim().split(/\s+/)) {
+          if (!s || s.includes('/') || CARD_TYPES.includes(s)) continue; // skip stray separators / type words
+          allSub.add(s);
+          leftTypes.forEach(t => byType[t] && byType[t].add(s));
+        }
+      }
+    }
+  }
+  _typeIndex = {
+    types: CARD_TYPES.filter(t => seen.has(t)),
+    subtypesByType: Object.fromEntries(Object.entries(byType).map(([k, v]) => [k, [...v].sort()])),
+    allSubtypes: [...allSub].sort(),
+  };
+  return _typeIndex;
+}
+
 function cardRowToScryfall(r) {
   return {
     oracle_id:      r.oracle_id,
@@ -2325,6 +2360,9 @@ app.get('/api/cards/search', async (req, reply) => {
     return reply.code(500).send({ error: err.message, fallback: true });
   }
 });
+
+// ── GET /api/cards/types — card types + the subtypes occurring under each (for the card-box dropdowns) ──
+app.get('/api/cards/types', async () => cardTypeIndex());
 
 // ── GET /api/cards/named?name=...&fuzzy=1 ────────────────────────────────────
 // ── GET /api/cards/keywords  (distinct keyword list for the filter typeahead) ─
