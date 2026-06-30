@@ -5033,10 +5033,15 @@ function mtaskRender(){ let bar=document.getElementById('mg-mtask'); const on=do
     if(st && st.s==='full' && k===mgwFrontKey()){ if(typeof mgwMin==='function')mgwMin(k); }
     else if(typeof mgwToFull==='function')mgwToFull(k);
     _mtaskMinned=null; mtaskRender(); }); }
-let _mtaskMinned=null;
+let _mtaskMinned=null, _mtaskCggMin=false;
 function mtaskShowDesktop(){ const full=Object.keys(mgwState).filter(k=>mgwState[k]&&mgwState[k].s==='full');
-  if(full.length){ _mtaskMinned=full.slice(); full.forEach(k=>{ if(typeof mgwMin==='function')mgwMin(k); }); }
-  else if(_mtaskMinned&&_mtaskMinned.length){ const r=_mtaskMinned.slice(); _mtaskMinned=null; r.forEach(k=>{ if(typeof mgwToFull==='function')mgwToFull(k); }); }
+  const cggOv=document.getElementById('mguess-overlay'); const cggOpen=!!(cggOv&&cggOv.classList.contains('open'));
+  if(full.length||cggOpen){ _mtaskMinned=full.slice(); _mtaskCggMin=cggOpen;
+    full.forEach(k=>{ if(typeof mgwMin==='function')mgwMin(k); });
+    if(cggOpen&&typeof mgMinimize==='function')mgMinimize(); }            // CGG is the overlay, not an mgw app → minimize it too
+  else if((_mtaskMinned&&_mtaskMinned.length)||_mtaskCggMin){ const r=(_mtaskMinned||[]).slice(); _mtaskMinned=null;
+    r.forEach(k=>{ if(typeof mgwToFull==='function')mgwToFull(k); });
+    if(_mtaskCggMin){ _mtaskCggMin=false; if(typeof mgShowGame==='function')mgShowGame(); } }   // tap again → bring CGG back
   mtaskRender(); }
 function mtaskStartMenu(){ let m=document.getElementById('mt-startmenu'); if(m){ m.remove(); return; }
   if(typeof ixShuffleIcon==='function')ixShuffleIcon();
