@@ -177,6 +177,21 @@
     .cfp-op:hover, .cfp-op.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
     .cfp-num { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); font-size: 0.68rem; font-weight: 400; cursor: pointer; color: var(--text-dim); transition: all 0.12s; user-select: none; }
     .cfp-num:hover, .cfp-num.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+    /* Redesigned P/T widget: two rows, ≤ = ≥ toggle + − value + stepper */
+    #fw-pt .fw-body { display: flex; flex-direction: column; gap: 7px; }
+    .ptw-row { display: flex; align-items: center; gap: 7px; }
+    .ptw-lbl { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.72rem; font-weight: 600; color: var(--text-dim); }
+    .ptw-ops { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+    .ptw-op { width: 24px; height: 24px; border: none; border-right: 1px solid var(--border); background: var(--surface2); color: var(--text-dim); font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: background 0.12s, color 0.12s; }
+    .ptw-op:last-child { border-right: none; }
+    .ptw-op:hover { color: var(--text); }
+    .ptw-op.active { background: var(--accent); color: #fff; }
+    .ptw-step { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; }
+    .ptw-pm { width: 24px; height: 24px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface2); color: var(--text); font-size: 1rem; font-weight: 700; line-height: 1; cursor: pointer; }
+    .ptw-pm:hover { border-color: var(--accent); color: var(--accent); }
+    .ptw-val { min-width: 28px; text-align: center; font-size: 1rem; font-weight: 800; color: var(--text-bright); cursor: pointer; user-select: none; padding: 0 2px; }
+    .ptw-val.empty { color: var(--text-dim); font-size: 0.8rem; font-weight: 400; }
+
     .cfp-pt-row { display: flex; align-items: center; gap: 6px; justify-content: center; }
     /* hidden inputs keep filter state, new drum UI drives them */
     .pt-drum { display: inline-flex; flex-direction: column; align-items: center; gap: 0; user-select: none; }

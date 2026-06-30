@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=37" />
+  <link rel="stylesheet" href="/styles.css?v=40" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -163,32 +163,33 @@
         <div class="fw" id="fw-pt" data-fw="pt">
           <div class="fw-title">Power / Toughness</div>
           <div class="fw-body">
-            <div class="cfp-pt-row">
-              <!-- hidden inputs for filter state -->
-              <input type="hidden" id="pt-power-op" value="">
-              <input type="hidden" id="pt-power-val" value="">
-              <input type="hidden" id="pt-tough-op" value="">
-              <input type="hidden" id="pt-tough-val" value="">
-              <!-- Power drum -->
-              <div class="pt-drum" id="pt-pow-drum">
-                <div class="pt-drum-op" id="pt-pow-op-btn" onclick="ptCycleOp('pow')" title="Cycle operator">P</div>
-                <div class="pt-drum-num">
-                  <div class="pt-drum-up" onclick="ptStep('pow',1)">▲</div>
-                  <div class="pt-drum-val empty" id="pt-pow-val-lbl">—</div>
-                  <div class="pt-drum-dn" onclick="ptStep('pow',-1)">▼</div>
-                </div>
-                <div class="pt-drum-base"></div>
+            <!-- hidden inputs are the filter-state contract (pt-<stat>-op = 'pow>='/'tou='… , -val = number) -->
+            <input type="hidden" id="pt-power-op" value=""><input type="hidden" id="pt-power-val" value="">
+            <input type="hidden" id="pt-tough-op" value=""><input type="hidden" id="pt-tough-val" value="">
+            <div class="ptw-row">
+              <span class="ptw-lbl">Power</span>
+              <div class="ptw-ops" data-f="pow">
+                <button class="ptw-op" data-op="<=" onclick="ptSetOp('pow','<=')" title="at most" aria-label="power at most">≤</button>
+                <button class="ptw-op" data-op="=" onclick="ptSetOp('pow','=')" title="exactly" aria-label="power exactly">=</button>
+                <button class="ptw-op" data-op=">=" onclick="ptSetOp('pow','>=')" title="at least" aria-label="power at least">≥</button>
               </div>
-              <span class="pt-sep">/</span>
-              <!-- Toughness drum (number left, op right) -->
-              <div class="pt-drum" id="pt-tou-drum">
-                <div class="pt-drum-op" id="pt-tou-op-btn" onclick="ptCycleOp('tou')" title="Cycle operator">T</div>
-                <div class="pt-drum-num">
-                  <div class="pt-drum-up" onclick="ptStep('tou',1)">▲</div>
-                  <div class="pt-drum-val empty" id="pt-tou-val-lbl">—</div>
-                  <div class="pt-drum-dn" onclick="ptStep('tou',-1)">▼</div>
-                </div>
-                <div class="pt-drum-base"></div>
+              <div class="ptw-step">
+                <button class="ptw-pm" onclick="ptStep('pow',-1)" aria-label="decrease power">−</button>
+                <span class="ptw-val empty" id="ptw-pow-val" onclick="ptPick('pow')" title="Tap to pick a number">—</span>
+                <button class="ptw-pm" onclick="ptStep('pow',1)" aria-label="increase power">+</button>
+              </div>
+            </div>
+            <div class="ptw-row">
+              <span class="ptw-lbl">Toughness</span>
+              <div class="ptw-ops" data-f="tou">
+                <button class="ptw-op" data-op="<=" onclick="ptSetOp('tou','<=')" title="at most" aria-label="toughness at most">≤</button>
+                <button class="ptw-op" data-op="=" onclick="ptSetOp('tou','=')" title="exactly" aria-label="toughness exactly">=</button>
+                <button class="ptw-op" data-op=">=" onclick="ptSetOp('tou','>=')" title="at least" aria-label="toughness at least">≥</button>
+              </div>
+              <div class="ptw-step">
+                <button class="ptw-pm" onclick="ptStep('tou',-1)" aria-label="decrease toughness">−</button>
+                <span class="ptw-val empty" id="ptw-tou-val" onclick="ptPick('tou')" title="Tap to pick a number">—</span>
+                <button class="ptw-pm" onclick="ptStep('tou',1)" aria-label="increase toughness">+</button>
               </div>
             </div>
           </div>
@@ -3289,49 +3290,31 @@ function _cmcOpStr(){
 }
 
 // ── P/T drum-roller helpers ───────────────────────────────────────────────────
-const _PT_OPS = { pow: ['','pow=','pow>','pow<'], tou: ['','tou=','tou>','tou<'] };
-const _PT_LABELS = { '':'', 'pow=':'=', 'pow>':'>', 'pow<':'<', 'tou=':'=', 'tou>':'>', 'tou<':'<' };
-function ptCycleOp(field){
-  const hidId = field==='pow'?'pt-power-op':'pt-tough-op';
-  const hid = document.getElementById(hidId);
-  const ops = _PT_OPS[field];
-  const cur = hid.value||'';
-  const next = ops[(ops.indexOf(cur)+1)%ops.length];
-  hid.value = next;
-  ptUpdateUI(field);
+// P/T widget: two rows (Power / Toughness), each a ≤ = ≥ toggle + a − value + stepper. The hidden inputs
+// (pt-<stat>-op = 'pow>='/'tou='…, -val = number) stay the filter-state contract the card + search read.
+const _ptIds = f => f==='pow' ? { op:'pt-power-op', val:'pt-power-val', lbl:'ptw-pow-val' } : { op:'pt-tough-op', val:'pt-tough-val', lbl:'ptw-tou-val' };
+function ptSetOp(field, sym){
+  const id=_ptIds(field), op=document.getElementById(id.op), val=document.getElementById(id.val);
+  op.value=field+sym; if(val.value==='')val.value='1'; // op alone is meaningless until there's a value → seed 1
   syncFilters();
 }
 function ptStep(field, dir){
-  const hidValId = field==='pow'?'pt-power-val':'pt-tough-val';
-  const hidOpId  = field==='pow'?'pt-power-op':'pt-tough-op';
-  const hidVal = document.getElementById(hidValId);
-  const hidOp  = document.getElementById(hidOpId);
-  let v = parseInt(hidVal.value)||0;
-  v = Math.max(0, Math.min(20, v + dir));
-  hidVal.value = v;
-  // Auto-set op to '=' if none selected
-  if(!hidOp.value) { hidOp.value = field+'='; }
-  ptUpdateUI(field);
+  const id=_ptIds(field), op=document.getElementById(id.op), val=document.getElementById(id.val);
+  let v = val.value===''?null:(parseInt(val.value,10)||0);
+  if(dir>0) v=(v===null?0:Math.min(20,v+1)); else v=(v===null?null:(v<=0?null:v-1));
+  if(v===null){ val.value=''; op.value=''; } else { val.value=String(v); if(!op.value)op.value=field+'='; }
   syncFilters();
 }
+function ptPick(field){
+  if(typeof cmPicker!=='function')return; const id=_ptIds(field), op=document.getElementById(id.op), val=document.getElementById(id.val);
+  const items=[{value:'',label:'Any'}]; for(let i=0;i<=15;i++)items.push({value:String(i),label:String(i)});
+  cmPicker(document.getElementById(id.lbl), { items, current:val.value||'', onPick:v=>{ if(v===''){ val.value=''; op.value=''; } else { val.value=v; if(!op.value)op.value=field+'='; } syncFilters(); } });
+}
 function ptUpdateUI(field){
-  const hidValId = field==='pow'?'pt-power-val':'pt-tough-val';
-  const hidOpId  = field==='pow'?'pt-power-op':'pt-tough-op';
-  const lblId    = field==='pow'?'pt-pow-val-lbl':'pt-tou-val-lbl';
-  const opBtnId  = field==='pow'?'pt-pow-op-btn':'pt-tou-op-btn';
-  const v = document.getElementById(hidValId).value;
-  const op = document.getElementById(hidOpId).value;
-  const lbl = document.getElementById(lblId);
-  const opBtn = document.getElementById(opBtnId);
-  if(lbl){
-    if(v===''||v===undefined){ lbl.textContent='—'; lbl.className='pt-drum-val empty'; }
-    else { lbl.textContent=v; lbl.className='pt-drum-val'; }
-  }
-  if(opBtn){
-    const sym = _PT_LABELS[op]||(field==='pow'?'P':'T');
-    opBtn.textContent = op ? sym : (field==='pow'?'P':'T');
-    opBtn.classList.toggle('active', !!op);
-  }
+  const id=_ptIds(field); const v=document.getElementById(id.val).value; const opv=document.getElementById(id.op).value;
+  const lbl=document.getElementById(id.lbl); if(lbl){ lbl.textContent=(v===''?'—':v); lbl.classList.toggle('empty',v===''); }
+  const active = v!=='' ? (opv.replace(/^(pow|tou)/,'')||'=') : null;
+  document.querySelectorAll('.ptw-ops[data-f="'+field+'"] .ptw-op').forEach(btn=>btn.classList.toggle('active', btn.dataset.op===active));
 }
 function ptSyncFromState(){
   // Called after parseSearchToFilters to sync drum UI from hidden inputs
@@ -7836,7 +7819,7 @@ function fwComputeDefaults(){
     { id:'fw-colors',   w:179, h:68  },
     { id:'fw-cmc',      w:232, h:67  },
     { id:'fw-types',    w:248, h:75  },
-    { id:'fw-pt',       w:108, h:96  },
+    { id:'fw-pt',       w:242, h:92  },
   ];
   const col3=[
     { id:'fw-format',   w:200, h:100 },
