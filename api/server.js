@@ -596,25 +596,46 @@ function cardTypeIndex() {
   return _typeIndex;
 }
 
-// Sets (code + name) and the sets that occur under each format — so the CGG "Set" picker narrows to the
-// chosen format. Best-effort: a set is "in" a format if it has ≥1 card legal/restricted in that format
-// (loose for rotating Standard, accurate enough for the eternal formats). Derived from the card DB, cached.
-const SET_FORMATS = ['standard', 'pioneer', 'modern', 'legacy', 'vintage', 'pauper', 'commander', 'premodern', 'oldschool', 'brawl', 'predh'];
+// Sets (code + name) + the sets each *set-constrained* format actually consists of, so the CGG "Set" picker
+// narrows to the format. Three kinds of format:
+//   • set-constrained (Standard/Pioneer/Premodern/Old School): a set belongs if a high FRACTION of its cards
+//     are legal there — so a lone still-legal reprint (e.g. Impulse) doesn't drag its old home set (Visions)
+//     into Standard. Fraction-based so it tracks rotation without a hardcoded set list.
+//   • explicit custom formats (Middle School, A-to-A Ante): the format's own set list (exact).
+//   • eternal / card-defined (Vintage/Legacy/Modern/Commander/Pauper/…): NO set constraint → all sets.
+const SET_CONSTRAINED = ['standard', 'pioneer', 'premodern', 'oldschool'];
+const SET_FRACTION = 0.35, SET_MIN_CARDS = 15;
 let _setIndex = null;
 function cardSetIndex() {
   if (_setIndex) return _setIndex;
-  const names = new Map(); const byFmt = {};
-  for (const f of SET_FORMATS) byFmt[f] = new Set();
+  const names = new Map(); const oracleLegal = new Map();   // oracle_id -> [constrained formats it's legal in]
   let rows = [];
-  try { rows = db.prepare("SELECT set_id, set_name, legalities FROM cards WHERE set_id IS NOT NULL AND set_id != ''").all(); } catch (_) {}
+  try { rows = db.prepare("SELECT oracle_id, set_id, set_name, legalities FROM cards WHERE set_id IS NOT NULL AND set_id != ''").all(); } catch (_) {}
   for (const r of rows) {
     if (r.set_name && !names.has(r.set_id)) names.set(r.set_id, r.set_name);
     let leg = {}; try { leg = JSON.parse(r.legalities || '{}'); } catch (_) {}
-    for (const f of SET_FORMATS) { const v = leg[f]; if (v === 'legal' || v === 'restricted') byFmt[f].add(r.set_id); }
+    const fs = SET_CONSTRAINED.filter(f => { const v = leg[f]; return v === 'legal' || v === 'restricted'; });
+    if (fs.length) oracleLegal.set(r.oracle_id, fs);
   }
+  // Per-set totals + per-format legal counts across ALL printings (set membership comes from card_printings).
+  const total = {}, legal = {};
+  let prints = [];
+  try { prints = db.prepare('SELECT oracle_id, set_code FROM card_printings').all(); } catch (_) {}
+  for (const p of prints) {
+    total[p.set_code] = (total[p.set_code] || 0) + 1;
+    const fs = oracleLegal.get(p.oracle_id);
+    if (fs) { const sl = legal[p.set_code] || (legal[p.set_code] = {}); for (const f of fs) sl[f] = (sl[f] || 0) + 1; }
+  }
+  const byFmt = {}; for (const f of SET_CONSTRAINED) byFmt[f] = [];
+  for (const code of Object.keys(total)) {
+    if (total[code] < SET_MIN_CARDS) continue;
+    const sl = legal[code] || {};
+    for (const f of SET_CONSTRAINED) if ((sl[f] || 0) / total[code] >= SET_FRACTION) byFmt[f].push(code);
+  }
+  for (const [k, cf] of Object.entries(CUSTOM_FORMATS)) byFmt[k] = cf.sets.slice();   // explicit set lists win
   _setIndex = {
     sets: [...names.entries()].map(([code, name]) => ({ code, name })).sort((a, b) => a.name.localeCompare(b.name)),
-    setsByFormat: Object.fromEntries(Object.entries(byFmt).map(([k, v]) => [k, [...v]])),
+    setsByFormat: byFmt,   // only set-constrained + custom formats have an entry; others → unconstrained (all sets)
   };
   return _setIndex;
 }
@@ -2486,7 +2507,7 @@ app.get('/api/cards/named', async (req, reply) => {
 });
 
 // ── POST /api/cards/guess  (mobile "guess my card") ──────────────────────────
-// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, subtype, keyword, set, power, toughness, name, format, exclude:[]}
+// Body: {color:'W'|'U'|'B'|'R'|'G'|'M'|'C', cmc, type, subtype, keyword, oracle, set, power, toughness, name, format, exclude:[]}
 // Returns candidates matching the given constraints, ranked by edhrec popularity.
 function _cardImage(row) {
   let u = null;
@@ -2507,6 +2528,7 @@ app.post('/api/cards/guess', async (req, reply) => {
   if (b.type) { where.push('type_line LIKE ?'); params.push('%' + String(b.type) + '%'); }
   if (b.subtype) { where.push('type_line LIKE ?'); params.push('%' + String(b.subtype) + '%'); }     // subtype lives in the type line after the —
   if (b.keyword) { where.push('lower(keywords) LIKE ?'); params.push('%"' + String(b.keyword).toLowerCase() + '"%'); }
+  if (b.oracle) { where.push('lower(oracle_text) LIKE ?'); params.push('%' + String(b.oracle).toLowerCase().slice(0, 40) + '%'); }
   if (b.set) { where.push('oracle_id IN (SELECT oracle_id FROM card_printings WHERE set_code = ?)'); params.push(String(b.set).toLowerCase()); }
   if (b.power != null && b.power !== '') { where.push('power = ?'); params.push(String(b.power)); }
   if (b.toughness != null && b.toughness !== '') { where.push('toughness = ?'); params.push(String(b.toughness)); }
@@ -2527,14 +2549,14 @@ app.post('/api/cards/guess', async (req, reply) => {
   const all = [...params, ...exclude];
   let rows, count;
   try {
-    rows = db.prepare(`SELECT oracle_id, name, mana_cost, cmc, type_line, colors, power, toughness, image_uris, card_faces, edhrec_rank
+    rows = db.prepare(`SELECT oracle_id, name, mana_cost, cmc, type_line, oracle_text, colors, power, toughness, image_uris, card_faces, edhrec_rank
                        FROM cards WHERE ${cond} ORDER BY edhrec_rank IS NULL, edhrec_rank ASC LIMIT 12`).all(...all);
     count = db.prepare(`SELECT COUNT(*) n FROM cards WHERE ${cond}`).get(...all).n;
   } catch (e) { app.log.warn('guess failed: ' + e.message); return reply.code(500).send({ error: 'guess failed' }); }
   const candidates = rows.map(r => {
     const img = _cardImage(r);
     return { oracleId: r.oracle_id, name: r.name, manaCost: r.mana_cost, cmc: r.cmc, typeLine: r.type_line,
-             power: r.power, toughness: r.toughness, edhrecRank: r.edhrec_rank, image: img.normal, art: img.art };
+             oracleText: r.oracle_text || '', power: r.power, toughness: r.toughness, edhrecRank: r.edhrec_rank, image: img.normal, art: img.art };
   });
   return { count, candidates };
 });
