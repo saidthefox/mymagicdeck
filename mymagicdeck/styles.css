@@ -1067,7 +1067,8 @@
     .mg-oraadd{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border:1px solid #6a5d3c;border-radius:9px;font-weight:bold;cursor:pointer;color:#191207;background:rgba(0,0,0,.06);font-size:13px;line-height:1}
     #mg-kw,#mg-oracle-label{color:#6a5d3c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46%}
     #mg-kw.mg-set,#mg-oracle-label.mg-set{color:#191207}
-    #mg-oracle-label.mg-set{white-space:normal;overflow:visible;text-overflow:clip;max-width:none;flex:1 1 100%;display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center} /* chips wrap to their own rows → box grows, art shrinks */
+    #mg-kw.mg-set,#mg-oracle-label.mg-set{white-space:normal;overflow:visible;text-overflow:clip;max-width:none} /* plain comma text; wraps/grows if long, same font as the label */
+    .mg-plus{cursor:pointer;padding:0 6px;font-weight:bold}
     #mg-readout{position:absolute;left:0;right:0;bottom:0;z-index:7;background:rgba(0,0,0,.55);color:#eafff9;font-size:11px;line-height:1.35;padding:5px 9px;pointer-events:none;font-family:-apple-system,system-ui,sans-serif}
     #mg-readout:empty{display:none}
     .mg-art-oracle{position:absolute;left:34px;right:34px;bottom:36px;max-height:32%;overflow:hidden;box-sizing:border-box;background:rgba(0,0,0,.52);border:1px solid rgba(255,255,255,.18);border-radius:8px;padding:7px 11px;color:#f1f1f1;font-size:11px;line-height:1.38;font-family:-apple-system,system-ui,sans-serif;white-space:pre-wrap;pointer-events:none;-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px)}
