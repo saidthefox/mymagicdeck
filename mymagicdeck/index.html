@@ -4590,7 +4590,7 @@ function diceyGuideTo(id){ try{
   setTimeout(()=>{ if(revealBtn){ diceyPressEl(revealBtn, ()=>{ revealAct&&revealAct(); _diceyGreeted=true; if(typeof diceyInit==='function')diceyInit(); if(bx!=null)mv(bx,by,1); whirl(); }); } else whirl(); }, 1950);
   // settle bottom-right, hold a full second, THEN show his startup greeting (shared by both routes below)
   const settleThenGreet=(d)=>{ setTimeout(()=>{ mv(W()-86, H()-98, GL); }, d);
-    setTimeout(()=>{ _diceyEscorting=false; _diceyGreeted=true; if(typeof diceySeen==='function'&&!diceySeen()&&typeof diceyIntro==='function')diceyIntro(); else if(typeof diceyGreet==='function')diceyGreet(); }, d+GL+1000); };
+    setTimeout(()=>{ _diceyEscorting=false; _diceyGreeted=true; if(typeof diceyTuckUnder==='function')diceyTuckUnder(); }, d+GL+1000); };
   // 3) route to the program: if it lives in an app-folder bubble (e.g. a guest's Basics inside Games), he
   //    physically goes to the folder, opens it, walks to the entry and clicks it; else straight to its icon/centre.
   setTimeout(()=>{
@@ -7392,6 +7392,7 @@ function mgWireStartMenu(a){
 }
 // ===== Dicey — a friendly d20 desktop helper: drag me, ask me to open things, or roll me =====
 let _diceyEl=null, _diceyOpen=false, _diceyTimer=null, _diceyReduced=false, _diceyDragging=false, _diceyGreeted=false, _diceyRot=0, _diceyGreetT=null, _diceyEscorting=false;
+try{ if(new URLSearchParams(location.search).has("dicey"))_diceyEscorting=true; }catch(e){} // arriving as a guide → never play the startup greeting
 let _diceyBusyUntil=0, _diceyInputWired=false; const DICEY_ACTIVE_MS=20000; // recent user input → Dicey stays calm; after this much quiet he wakes up
 let _summon=null, _diceyIdleStreak=0; // _summon = the in-progress "special summon" screensaver state
 const DICEY_BARKS=["Feeling lucky?","A game? Let’s roll.","Nat 20 energy today.","Fresh cards to crack?","Roll with me.","Ooh, found something.","Best deck ever.","Shuffle up!"];
@@ -7448,6 +7449,12 @@ function diceyInit(){ const s=diceyState();
 }
 function diceySeen(){ try{ return !!DeckOS.store.get('dicey_seen'); }catch(e){ return false; } }
 function diceyGreet(){ diceyWhirl(); diceySay(state.user?('Welcome back, '+state.user.username+'.'):'Welcome — roll on in.', 2600); }
+function diceyTuckUnder(){ if(!_diceyEl)return;             // guide done → slide onto the program and duck behind it (no greeting)
+  const cx=Math.round(window.innerWidth*0.5-30), cy=Math.round(window.innerHeight*0.42-30);
+  const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();
+  if(typeof diceyMoveTo==='function')diceyMoveTo(cx,cy,700);
+  setTimeout(()=>{ if(_diceyEl)_diceyEl.style.zIndex='1'; }, 720);   // below the program window → hidden under it
+  try{ const s=diceyState(); s.x=cx; s.y=cy; diceySave(s); }catch(e){} }
 function diceyToggle(){ const s=diceyState(); s.on=!s.on; diceySave(s);
   if(s.on)diceyInit(); else { _diceyOpen=false; clearTimeout(_diceyTimer); clearTimeout(_diceyTourT); _diceyTourApp=null; diceyClearPlatforms(); if(_diceyEl){_diceyEl.remove();_diceyEl=null;} }
   if(typeof toast==='function')toast(s.on?'Dicey is out! 🎲':'Dicey is back in the bag.'); }
@@ -7464,6 +7471,7 @@ function diceyWireActivity(){ if(_diceyInputWired)return; _diceyInputWired=true;
 function diceyStepAside(){ if(!_diceyEl||_diceyDragging)return;
   const say=_diceyEl.querySelector('.dicey-say'); if(say)say.remove();   // hush any chatter
   diceyClearPlatforms();                                                  // active user → platforms go away
+  if(_diceyEl.style.zIndex&&_diceyEl.style.zIndex!=='')_diceyEl.style.zIndex=''; // pop back up if he had ducked under a program
   const r=_diceyEl.getBoundingClientRect(), m=110;
   const central = r.left>m && r.left<window.innerWidth-66-m && r.top>m && r.top<window.innerHeight-66-m;
   if(central){ const tb=document.querySelector('#mg-mtask')||document.querySelector('.mg-taskbar'); const gap=tb?56:14;
