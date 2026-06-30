@@ -12,7 +12,7 @@ const init = await p.evaluate(()=>({ type:document.getElementById('cm-type-btn')
 
 await p.click('#cm-type-btn'); await p.waitForTimeout(300);
 const typeCount = await p.evaluate(()=>document.querySelectorAll('#cm-picker .cm-picker-item').length);
-await p.evaluate(()=>{ const it=[...document.querySelectorAll('#cm-picker .cm-picker-item')].find(e=>e.textContent==='Creature'); it&&it.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); });
+await p.evaluate(()=>{ const it=[...document.querySelectorAll('#cm-picker .cm-picker-item')].find(e=>e.textContent==='Creature'); it&&it.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); });
 await p.waitForTimeout(600);
 
 await p.click('#cm-sub-btn'); await p.waitForTimeout(300);
@@ -21,7 +21,7 @@ const sub = await p.evaluate(()=>({ searchable:!!document.querySelector('#cm-pic
 // type a filter to confirm search narrows, then pick Angel
 await p.fill('#cm-picker .cm-picker-search','ang'); await p.waitForTimeout(200);
 const filtered = await p.evaluate(()=>[...document.querySelectorAll('#cm-picker .cm-picker-item')].every(e=>/ang/i.test(e.textContent)||e.textContent==='Any subtype'));
-await p.evaluate(()=>{ const it=[...document.querySelectorAll('#cm-picker .cm-picker-item')].find(e=>e.textContent==='Angel'); it&&it.dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); });
+await p.evaluate(()=>{ const it=[...document.querySelectorAll('#cm-picker .cm-picker-item')].find(e=>e.textContent==='Angel'); it&&it.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true})); });
 await p.waitForTimeout(1600);
 
 const after = await p.evaluate(()=>({ type:document.getElementById('cm-type-btn')?.textContent, sub:document.getElementById('cm-sub-btn')?.textContent,
