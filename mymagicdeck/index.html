@@ -736,12 +736,19 @@ async function apiFetch(path,opts={}){
   // POST calls like mail delete + mark-all-read.
   const headers={...(opts.body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{}),...(opts.headers||{})};
   const res=await fetch(API_BASE+path,{...opts,headers});
-  if(!res.ok){const body=await res.json().catch(()=>({error:'Request failed'}));
+  if(!res.ok){
+    if(res.status===401 && token && typeof _handleSessionExpired==='function') _handleSessionExpired();
+    const body=await res.json().catch(()=>({error:'Request failed'}));
     // Prefer the descriptive `message` (Fastify schema-validation errors put the real reason there and
     // set `error` to a generic 'Bad Request'); fall back to our own `{error}` payloads.
     const err=new Error(body.message||body.error||'Request failed');err.status=res.status;throw err}
   return res.json();
 }
+// A request came back 401 while we were holding a token → the session expired. Clear it once and tell the
+// user plainly (rather than letting calls silently fail). Guarded so parallel 401s don't stack toasts.
+let _sessExpFired=false;
+function _handleSessionExpired(){ if(_sessExpFired)return; _sessExpFired=true; setTimeout(()=>{_sessExpFired=false;},8000);
+  try{ if(typeof logout==='function')logout('Your session expired — please sign in again.'); }catch(e){} }
 // Client error beacon → /api/clientlog (throttled, deduped, best-effort; never throws).
 (function(){
   let last=0; const seen=new Set();
@@ -1010,7 +1017,7 @@ async function syncLocalDecksToApi(){
     await syncDeckToApi(id);
   }
 }
-function logout(){
+function logout(reason){
   localStorage.removeItem('mmd_token');
   state.user=null;
   // Clear this account's decks from the local session. Otherwise they linger in
@@ -1030,7 +1037,7 @@ function logout(){
   if(typeof mgRenderDesktop==='function')mgRenderDesktop();
   updateUserUI();
   closeUserMenu();
-  toast('Signed out.');
+  toast((typeof reason==='string'&&reason)?reason:'Signed out.');
 }
 async function deleteAccount(){
   if(!state.user){closeUserMenu();return;}
@@ -4866,7 +4873,7 @@ function renderSysset(){
      mods.map(u=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 2px"><span style="background:#7a4a1f;color:#ffd6a8;font-size:.62rem;padding:1px 5px;border-radius:4px;flex-shrink:0">TRUSTED</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;color:var(--text)">'+_mgEsc(u)+'</span><button class="btn small" data-rmmod="'+_mgEsc(u)+'">Remove</button></div>').join(''))+
     ((smods.length||mods.length)?'':'<div style="padding:4px 2px;color:var(--text-dim);font-size:.78rem">No mods installed.</div>')+
     '<div style="display:flex;gap:8px;padding:6px 2px"><input id="ss-modurl" placeholder="https://…/mod.js" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem"><button class="btn" id="ss-modadd">Install</button></div>'+
-    '<label style="display:flex;align-items:center;gap:7px;padding:2px 2px 6px;color:var(--text-dim);font-size:.76rem"><input type="checkbox" id="ss-modsandbox" checked> Run sandboxed (recommended)</label>'+
+    '<label style="display:flex;align-items:center;gap:7px;padding:2px 2px 6px;color:var(--text-dim);font-size:.76rem"><input type="checkbox" id="ss-modsandbox" checked'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' disabled':'')+'> Run sandboxed'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' <span style="color:#7fb0e0">(required on the public site)</span>':' (recommended)')+'</label>'+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Startup program</div>'+
     '<div style="padding:4px 2px;color:var(--text-dim);font-size:.74rem">Which app opens first when you load on a phone.</div>'+
     '<select id="ss-startup" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;margin:2px 0 4px">'+
@@ -6357,6 +6364,9 @@ window.DeckOS = {
   get mode(){ try{ return localStorage.getItem('deckos_mode') || 'hosted'; }catch(e){ return 'hosted'; } },
   set mode(m){ try{ localStorage.setItem('deckos_mode', m); }catch(e){} },
   isLocal(){ return this.mode === 'local'; },
+  // Trusted (new Function) mods run with full session access. Allowed on self-hosted / localhost, but
+  // DISABLED on the public host — there only sandboxed mods run (see SECURITY.md).
+  isTrustedModsAllowed(){ try{ return !/(^|\.)(mymagicdeck|myvintagedeck|mycommanderdeck)\.com$/i.test(location.hostname); }catch(e){ return false; } },
   HOSTED_ONLY: ['splash','share','hud','account','storage'], // programs that need an account/subdomains
   // --- storage abstraction (mods + future backends). Default backend = localStorage. ---
   store: {
@@ -6404,7 +6414,7 @@ window.DeckOS = {
   // --- mods (third-party programs). LOCAL-TRUST model: a mod is JS that calls DeckOS.registerProgram.
   // It runs with full access to your session (like a userscript) — only install mods you trust.
   // (The sandboxed-iframe capability model for untrusted/hosted mods is on the roadmap.)
-  _run(code){ try{ (new Function('DeckOS', code))(window.DeckOS); return true; }catch(e){ console.error('[DeckOS mod]', e); this.ui.toast('Mod error: '+(e.message||e)); return false; } },
+  _run(code){ if(!this.isTrustedModsAllowed()){ this.ui.toast('Trusted mods are disabled on the public site — use “Run sandboxed”.'); return false; } try{ (new Function('DeckOS', code))(window.DeckOS); return true; }catch(e){ console.error('[DeckOS mod]', e); this.ui.toast('Mod error: '+(e.message||e)); return false; } },
   async installMod(url){
     url=(url||'').trim(); if(!url) return false;
     try{ const res=await fetch(url); if(!res.ok) throw new Error('HTTP '+res.status); const code=await res.text();
@@ -6414,7 +6424,7 @@ window.DeckOS = {
     }catch(e){ this.ui.toast('Could not load mod'); return false; }
   },
   removeMod(url){ this.store.set('mods', (this.store.get('mods')||[]).filter(u=>u!==url)); },
-  async loadInstalledMods(){ for(const url of (this.store.get('mods')||[])){ try{ const r=await fetch(url); this._run(await r.text()); }catch(e){} } },
+  async loadInstalledMods(){ if(!this.isTrustedModsAllowed())return; for(const url of (this.store.get('mods')||[])){ try{ const r=await fetch(url); this._run(await r.text()); }catch(e){} } },
   // --- backup: save/restore decks to a real file (rewire where your data lives) ---
   exportDecks(){
     const data={ app:'deckos', version:1, exportedAt:new Date().toISOString(), decks:state.decks||{} };

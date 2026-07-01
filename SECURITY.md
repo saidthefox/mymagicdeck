@@ -7,11 +7,9 @@ email + bcrypt-hashed password + user decks. No payments, no PII beyond email.
 
 - **Auth:** `@fastify/jwt`, 30-day bearer tokens in `Authorization: Bearer` (localStorage), bcrypt
   password hashing. Per-IP rate limits on auth, uploads, GPU endpoints, reports, and battles.
-- **CORS = `origin: true` (reflect) — deliberate.** Auth is **bearer-token, not cookies**, so there is
-  no ambient-credential CSRF surface (a malicious site can't read your localStorage token or have the
-  browser attach it). Reflecting the origin is also what lets a **self-hosted instance** point its PWA
-  at the API (System Settings → self-hosted API). Locking to a single origin would break that and buys
-  little given bearer auth.
+- **CORS = allowlist.** The API only accepts requests from our own origins (apex + `*.mymagicdeck.com`
+  subdomains) plus localhost for dev; any other origin is rejected (`api/server.js`, the `origin(origin, cb)`
+  callback). Auth is bearer-token (not cookies), so there is no ambient-credential CSRF surface regardless.
 - **SQL:** all queries use `better-sqlite3` prepared statements (parameterized) — no string-built SQL.
 - **SSRF:** `POST /api/splash/render` fetches only an allowlist (`cards.scryfall.io` + our own `/u/...`).
 - **Uploads:** per-user quota + rate limit; moderation reports + admin takedown (`purgeUpload`).
@@ -24,8 +22,9 @@ email + bcrypt-hashed password + user decks. No payments, no PII beyond email.
   - *Sandboxed* (default, for untrusted/community mods): runs in a `sandbox="allow-scripts"` iframe
     (opaque origin — no access to the page, cookies, or localStorage); talks to the host only over a
     narrow `postMessage` capability API (read-only sanitized decks, mod-scoped storage, toast, setMeta).
-  - *Trusted*: `new Function(code)` userscript model — full session access; the UI warns explicitly and
-    it's opt-in per mod.
+  - *Trusted*: `new Function(code)` userscript model — full session access; opt-in per mod with an explicit
+    warning. **Disabled on the public host** (`*.mymagicdeck.com`) — there, only sandboxed mods run. Trusted
+    mods are for self-hosted / localhost instances (like a userscript on your own machine).
 - **Security headers** (nginx, app blocks): `X-Content-Type-Options: nosniff`,
   `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`. (Set in
   `/srv/docker/nginx/conf.d/default.conf`, outside this repo.)
@@ -33,13 +32,15 @@ email + bcrypt-hashed password + user decks. No payments, no PII beyond email.
 
 ## Known / deferred (with rationale)
 
-- **No Content-Security-Policy.** A strict CSP would break the inline `<script>`, the *trusted*-mod
-  `new Function` path, and the sandboxed-iframe `srcdoc`. The security model instead relies on the
-  **iframe sandbox** as the boundary for untrusted code; trusted mods are an explicit, warned opt-in
-  (like a browser extension). Revisit if the app moves to external/nonce'd scripts.
+- **No Content-Security-Policy (yet).** The app is one large inline `<script>`, so a strict CSP would need
+  `unsafe-inline` today. On the public host the `new Function` trusted-mod path is disabled (sandboxed mods
+  only), so untrusted code is confined to the `sandbox="allow-scripts"` iframe. A nonce'd CSP is a future
+  hardening step and would require moving the inline handlers/script out of the HTML.
 - **Event-loop blocking:** `better-sqlite3` is synchronous and the pHash cascade is CPU-heavy; fine at
   current scale (single host, modest traffic), would need workers/queue at higher load.
-- **No app-level error monitoring** (Sentry-style) yet.
+- **No app-level error monitoring** (Sentry-style) yet — errors log to a local `errors` table + client log endpoint.
+- **Session tokens live in `localStorage`** (bearer, 30-day). Fine given the allowlist CORS + sandboxed mods,
+  but moving to HttpOnly-cookie sessions with server-side revocation is a planned hardening step.
 
 ## Agent note
 
