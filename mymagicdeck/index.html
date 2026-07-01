@@ -4506,6 +4506,10 @@ function mgEmbedDesktop(){ // show the root desktop. If the site is already a fl
   mgRenderDesktop();
   if(typeof mtaskRender==='function')mtaskRender(); // keep the pinned bar's MyMagicDeck button state in sync
 }
+function mgwTuckPrograms(){ // bringing MMD to front → tuck any fullscreen program behind it (they stay in the taskbar)
+  try{ if(typeof mgwState!=="undefined")Object.keys(mgwState).forEach(k=>{ if(mgwState[k]&&mgwState[k].s==="full"&&typeof mgwMin==="function")mgwMin(k); }); }catch(e){}
+  try{ const cg=document.getElementById("mguess-overlay"); if(cg&&cg.classList.contains("open")&&typeof mgMinimize==="function")mgMinimize(); }catch(e){}
+}
 function mgCloseDesktopEmbed(){ siteRestore(); mgDeskTarget='pc-deskcontent'; } // "Back to Search" = restore the site window
 function siteRestore(){document.body.classList.remove('pc-deskmode','site-windowed');const sw=document.getElementById('site-window');if(sw){sw.classList.remove('site-mini','dragging');sw.style.transform='';sw.style.transformOrigin='';sw.style.width='';sw.style.height='';sw.style.left='';sw.style.top='';sw.style.position='';sw.style.zIndex='';if(sw.parentElement!==document.body)document.body.appendChild(sw);}if(typeof mtaskRender==='function')mtaskRender();}
 let sitePos=null;
@@ -5048,7 +5052,12 @@ function mtaskRender(){ let bar=document.getElementById('mg-mtask'); const on=do
   const dk=bar.querySelector('#mt-desk'); if(dk)dk.onclick=mtaskShowDesktop;
   // MyMagicDeck tray button: restore it if minimized, else minimize it (the pinned bar replaces the desktop's
   // own taskbar, which carried this button — without it a minimized MMD had no way back when pinned).
-  const si=bar.querySelector('#mt-site'); if(si)si.onclick=()=>{ if(document.body.classList.contains('pc-deskmode')||document.body.classList.contains('site-windowed')){ if(typeof siteRestore==='function')siteRestore(); } else if(typeof mgEmbedDesktop==='function'){ mgEmbedDesktop(); } mtaskRender(); };
+  const si=bar.querySelector('#mt-site'); if(si)si.onclick=()=>{
+    const cg=document.getElementById('mguess-overlay'); const progOpen=!!(cg&&cg.classList.contains('open'))||(typeof mgwState!=='undefined'&&Object.keys(mgwState).some(k=>mgwState[k]&&mgwState[k].s==='full'));
+    const siteMin=document.body.classList.contains('pc-deskmode')||document.body.classList.contains('site-windowed');
+    if(siteMin||progOpen){ mgwTuckPrograms(); if(typeof siteRestore==='function')siteRestore(); }   // tuck programs, then bring MMD fully to front
+    else if(typeof mgEmbedDesktop==='function'){ mgEmbedDesktop(); }                                 // already front & clear → minimize to desktop
+    mtaskRender(); };
   const cg=bar.querySelector('#mt-cgg'); if(cg)cg.onclick=()=>{ const ov=document.getElementById('mguess-overlay'); if(ov&&ov.classList.contains('open')){ if(typeof mgMinimize==='function')mgMinimize(); } else if(typeof mgShowGame==='function'){ mgShowGame(); } mtaskRender(); };
   // Tap a tray icon: if it's open AND frontmost → minimize; if open-but-behind or minimized → bring to front.
   bar.querySelectorAll('.mg-barwin[data-mgw]').forEach(btn=>btn.onclick=()=>{ const k=btn.getAttribute('data-mgw'); const st=mgwState[k];
@@ -7161,7 +7170,7 @@ function mgRenderDesktop(){
     const bin=document.getElementById('mg-bin');if(bin)bin.addEventListener('click',e=>{e.stopPropagation();mgLaunchApp('bin');});
   }
   a.querySelectorAll('[data-mgw]').forEach(b=>b.addEventListener('click',e=>{e.stopPropagation();mgwRestore(b.getAttribute('data-mgw'));}));
-  const sbn=a.querySelector('[data-site]');if(sbn)sbn.addEventListener('click',e=>{e.stopPropagation();siteRestore();});
+  const sbn=a.querySelector('[data-site]');if(sbn)sbn.addEventListener('click',e=>{e.stopPropagation();if(typeof mgwTuckPrograms==='function')mgwTuckPrograms();siteRestore();});
   if(mgStartOpen)mgWireStartMenu(embedded?document.getElementById('pc-startmenu'):a);
   const deskc=a.querySelector('.mg-deskicons');
   if(deskc){ deskc.addEventListener('click',e=>{if(mgStartOpen&&e.target===deskc){mgStartOpen=false;mgRenderDesktop();}});
