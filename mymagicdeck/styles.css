@@ -1657,6 +1657,28 @@
       .lc-life{font-size:min(62cqmin,200px)}
       .lc-ovbtns button{font-size:min(6cqmin,32px);min-width:min(15cqmin,104px);height:min(12cqmin,88px)}
     }
+    /* 2040 landscape (phone/tablet on a stand): the board fills the rotated screen and lays out as two
+       upright halves side-by-side with a vertical divider — not a squished centered window. Touch-only so
+       desktop windows (always landscape) are untouched. */
+    @media (orientation: landscape) and (pointer: coarse){
+      #modal-prog-twentyfourty .modal{width:100vw;max-width:100vw;height:100%;max-height:100%;border-radius:0}
+      #modal-prog-twentyfourty .modal-body{padding:0;height:100%}
+      #modal-prog-twentyfourty .lc-fs{min-height:0}
+      .lc-fs{flex-direction:row}
+      .lc-half{border-bottom:none;border-right:3px solid #000;padding-top:38px}   /* top bar clearance */
+      .lc-half:last-child{border-right:none}
+      .lc-half.lc-flip{transform:none}                 /* both halves upright — no across-table flip */
+      .lc-half.lc-flip .lc-name{transform:none}
+      /* shared Reset / 20·40 → top-center strip, upright */
+      .lc-side{left:0;right:0;top:6px;bottom:auto;width:auto;height:auto;align-items:flex-start}
+      .lc-side-inner{transform:none;gap:14px}
+      /* match tracker → top-right; live bar spans the top */
+      .tf-track{right:6px;left:auto;top:6px;bottom:auto;transform:none;flex-direction:row;align-items:center}
+      .tf-track.lc-livebar{left:6px;right:6px;top:6px;bottom:auto;transform:none}
+      /* deck button → top-left (bottom-left while a live bar occupies the top) */
+      .lc-deckbtn{top:6px;bottom:auto}
+      .lc-deckbtn.live{top:auto;bottom:8px}
+    }
     /* Mana Pool tracker */
     /* Dice Bag */
     .db-wrap{display:flex;flex-direction:column;height:100%;min-height:460px;background:radial-gradient(120% 90% at 50% 0%,#1c2230,#0c0f16);color:#eee;font-family:Tahoma,sans-serif;overflow:hidden;padding:10px;box-sizing:border-box}
