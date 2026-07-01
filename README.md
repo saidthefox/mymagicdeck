@@ -58,12 +58,25 @@ the desktop browser is unaffected.
 |---|---|
 | **CGG — Card Guesser Game** | A tactile, mobile-only card the player taps to describe (color/CMC/type/P-T/name/format); the engine guesses via rules + EDHREC popularity (no LLM — must be instant). Lives as `mg*` functions; the card face is a real Magic-card frame inside a Win95 program window, and the frame tints to the cycled color. Confirming a guess adds the card to the active deck. |
 | **Card Duel** | 2-player guessing battle (`battle*` functions). v1 is **local hot-seat**: a hidden real card is dealt, clues reveal one at a time, both players race to guess; first correct wins the round (scores persist in `DeckOS.store`). **Online async** (words-with-friends style) is a planned drop-in: the same clue schedule keyed off a shared seed in a backend "battle room" — create/join by code, POST guesses, poll state. |
+| **2040** | Two-player life & match tracker (`lc*`/`tf*`). Tabletop portrait (opponent flipped 180°) or landscape (two upright halves on a stand); tracks a Bo3 match, and a live/tournament mode syncs the opponent's life + records results. |
+| **Cardle** | Daily card mystery — clues reveal one at a time, guess the card (`cardle*`, server-backed daily). |
+| **Card Duel** | 2-player guessing battle (`battle*`), local hot-seat + online-by-code. |
+| **Mana Pool / Dice Bag / Basics (Land Game)** | Play aids: pool mana, roll dice, and a solitaire land-drop game. |
+| **Interactions** | Public, zKillboard-style ledger of matches/decks; trace a winning deck through a tournament. |
+| **Match History** | Your own past matches (synced). |
+| **Calendar / Tournaments / Mail** | Events, nearby-event finder, and in-app messages/notifications. |
 | **Splash Builder** | Designs/edits the public splash page for a deck. |
 | **Share Deck** | Public share link + sets which deck is published to each splash site. |
-| **Storage** | The "My Uploads" custom-card-art library. |
-| **HUD** | Live status of your published pages (`you.mymagicdeck.com` / `.myvintagedeck.com` / `.mycommanderdeck.com`) — up/down + which deck is set. Anchors as a faded desktop widget. |
+| **Gallery (Storage)** | The "My Uploads" custom-card-art library. |
+| **Display (HUD)** | Live status of your published pages (`you.mymagicdeck.com` / `.myvintagedeck.com` / `.mycommanderdeck.com`) — up/down + which deck is set. Anchors as a faded desktop widget. |
+| **Widgets / Notes / Documents** | Pin live panels to the desktop, jot notes, browse your files/decks. |
+| **MyMagicBot** | The companion Discord bot's info/link program. |
 | **Recycle Bin** | Soft-deleted decks (restore / empty). |
 | **System Settings / About** | Small system programs. About = "DECK OS v1 · 2026". |
+
+Desktop icons carry hover descriptions; programs group into **folders** (Games/Comms/Counters/Sites); the
+File actions (New/Open/Save/Import/Share) live in a **right-edge dock** (long-press to move it); and a pinned
+mobile taskbar + a `/`-command palette round out navigation.
 
 The desktop also holds your **decks as file icons** (single-tap = set the "adding-to" deck,
 double-tap = open in the builder), **folders** (account-synced tree, drag to nest / bin),
@@ -113,27 +126,29 @@ from the desktop **and the header sign-in chrome**, and your decks live in this 
 **Own your data** — System Settings → Storage & backup gives three levels:
 - **Export / Import** decks as a JSON file (File System Access API where available, else download) — portable, works everywhere.
 - **Folder auto-save** (desktop Chromium): pick a folder once and decks mirror to `decks.json` there on every save (handle persisted in IndexedDB; re-permissioned each session). `DeckOS.store.backend === 'folder'`.
-- **Self-hosted API** (advanced): set an API base URL to point the PWA at *your own* MyMagicDeck server (`deckos_api_base`; blank = this site). Reloads on save. Your server needs permissive CORS (the bundled API uses `origin:true`).
+- **Self-hosted API** (advanced): set an API base URL to point the PWA at *your own* MyMagicDeck server (`deckos_api_base`; blank = this site). Reloads on save. Note the bundled API's CORS is an **allowlist** (own origins + localhost), so a cross-origin PWA→API setup needs that allowlist widened for your domain (same-origin self-hosting works as-is).
 
 So a personal instance can run account-less, keep decks in a folder it controls, and talk to its
 own backend — the hosted multi-tenant site and a self-hosted personal one are the same code.
 
-### Mods — installed today (local-trust), sandboxed model next
+### Mods — two trust tiers (disabled on the public host for now)
 
-A program is just `DeckOS.registerProgram(...)`, so a **mod** is loadable JS that calls it.
-**Installed now:** System Settings → **Mods** → paste a `…/mod.js` URL → it's fetched, run, and
-remembered in `DeckOS.store` (re-loaded every boot). This is the **local-trust** model: a mod runs
-with full access to your session (like a userscript), so the UI warns you to install only mods you
-trust. A minimal mod:
+A program is just `DeckOS.registerProgram(...)`, so a **mod** is loadable JS that calls it. Two tiers exist
+(System Settings → **Mods** → paste a `…/mod.js` URL):
+
+- **Sandboxed** (default, recommended): runs in a `sandbox="allow-scripts"` iframe (opaque origin — no access
+  to the page, cookies, or localStorage), reaching the host only over a narrow `postMessage` capability API
+  (read-only sanitized decks, mod-scoped storage, toast, setMeta).
+- **Trusted**: `new Function(code)` userscript model — full session access; opt-in per mod with a warning.
+
+> **On the public host (`*.mymagicdeck.com`) all user apps are currently turned OFF** — neither tier installs
+> or loads, and the setting shows "turned off for now" (`DeckOS.userAppsEnabled()` gates it; flip to re-enable).
+> Self-hosted / localhost instances keep both tiers. A minimal mod:
 
 ```js
 DeckOS.registerProgram({ id:'lamp', title:'Lamp', icon:'💡',
   mount(b){ b.innerHTML = '<p style="padding:16px">💡 a cozy desktop lamp</p>'; } });
 ```
-
-**Next:** for untrusted/hosted mods, run them in a **sandboxed iframe** talking to the host over a
-narrow `postMessage` capability API, so a mod can't read your account or affect other users. The
-`DeckOS` facade is the versioned contract both paths target.
 
 ---
 
@@ -164,8 +179,11 @@ Fastify + `better-sqlite3`. Highlights (see the wiki doc for the full endpoint l
   the `x-admin-key` header (`ADMIN_API_KEY`).
 - GPU-backed endpoints (uploads/VLM, AI backgrounds) are rate-limited + concurrency-capped to
   protect the brownout-prone 207 inference box.
-- Nightly: SQLite online backup (`/srv/scripts/backup-mymagicdeck.sh`) and an off-box `.env`
-  copy to the Mac mini.
+- Nightly: SQLite online backup (`/srv/scripts/backup-mymagicdeck.sh`, WAL-safe, 14-day retention) and an
+  off-box `.env` copy to the Mac mini. A restore drill (`/srv/scripts/restore-drill-mymagicdeck.sh`) verifies
+  the newest backup nightly (integrity + counts). Recovery steps + RPO/RTO: [`RESTORE.md`](RESTORE.md).
+- **CORS is an allowlist** (own origins + localhost), not `origin:true`. Auth is bearer-token in
+  `localStorage`. See [`SECURITY.md`](SECURITY.md) for the current posture.
 
 ---
 
