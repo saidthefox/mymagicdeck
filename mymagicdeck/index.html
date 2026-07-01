@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=53" />
+  <link rel="stylesheet" href="/styles.css?v=54" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -7099,8 +7099,7 @@ function mgRenderDesktop(){
   const path=mgCurrentFolder===null?'Desktop':('Desktop ▸ '+_mgEsc(mgFolderName(mgCurrentFolder)));
   a.innerHTML=
     '<div class="mg-desk">'+
-      '<div class="mg-toolbar"><span class="mg-presdot'+(presenceGet()==='online'?' on':'')+'" id="mg-presdot" title="Toggle online status"></span><span class="mg-vsep"></span><span class="mg-acct" id="mg-acct" title="Account">'+_mgEsc(state.user?state.user.username:'Guest')+'</span></div>'+
-      '<div class="mg-deskinfo"><div class="dki-deck">📇 '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</div><div class="dki-path">'+path+'</div></div>'+
+      '<div class="mg-toolbar"><span class="mg-seldeck">Selected Deck: '+_mgEsc((mgActiveDeckId||state.currentDeckId)?mgDeckName(mgActiveDeckId||state.currentDeckId):'—')+'</span><span class="mg-vsep"></span><span class="mg-path">'+path+'</span><span class="mg-presdot'+(presenceGet()==='online'?' on':'')+'" id="mg-presdot" title="Toggle online status"></span><span class="mg-vsep"></span><span class="mg-acct" id="mg-acct" title="Account">'+_mgEsc(state.user?state.user.username:'Guest')+'</span></div>'+
       '<div class="mg-dock'+(mgDockOpen?' open':'')+'" id="mg-dock"><button class="mg-dock-tab" id="mg-dock-toggle" title="File actions" aria-label="File actions">🗄</button><div class="mg-dock-items"><button id="mg-newdeck" class="mg-dockbtn">🗃️ New</button><button id="mg-open" class="mg-dockbtn">🗂️ Open</button><button id="mg-newfolder" class="mg-dockbtn">📁 New Folder</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg-dockbtn">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg-dockbtn">💾 Save</button><button id="mg-import" class="mg-dockbtn">⬇ Import</button><button id="mg-share" class="mg-dockbtn">🔗 Share</button></div></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin"><span class="bw-ic">🗃️</span><span class="bw-nm">CGG</span></button>':''):'<button id="mg-incard-win" class="mg-barwin active"><span class="bw-ic">🗃️</span><span class="bw-nm">CGG</span></button>')+(embedded?'<button class="mg-barwin" data-site="1"><span class="bw-ic">✦</span><span class="bw-nm">MyMagicDeck</span></button>':'')+mgwTaskbarHtml()+'</div>'+

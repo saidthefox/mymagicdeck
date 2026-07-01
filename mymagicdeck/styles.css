@@ -1116,7 +1116,7 @@
     .mg-icon .mg-ilbl{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:calc(11px * var(--os-font,1));color:#fff;text-align:center;line-height:1.2;text-shadow:0 1px 2px rgba(0,0,0,.7);word-break:break-word;max-width:calc(72px * var(--os-icon,1))}
     .mg-icon.sel{border:1px dotted #fff}
     .mg-icon.sel .mg-ilbl{background:#000080;text-shadow:none}
-    .mg-toolbar{flex-shrink:0;display:flex;align-items:center;justify-content:flex-end;gap:8px;background:var(--ch-face);border-bottom:2px solid #808080;padding:4px 6px;flex-wrap:wrap}
+    .mg-toolbar{flex-shrink:0;display:flex;align-items:center;gap:8px;background:var(--ch-face);border-bottom:2px solid #808080;padding:4px 6px;flex-wrap:wrap}
     /* Live desktop readout (moved out of the top bar): notepad-style, updates as decks/folders change */
     .mg-deskinfo{position:absolute;top:34px;right:12px;text-align:right;font-family:Courier New,monospace;line-height:1.35;pointer-events:none;z-index:6;text-shadow:0 1px 2px rgba(0,0,0,.55)}
     .mg-deskinfo .dki-deck{font-size:12px;font-weight:bold;color:rgba(255,255,255,.92)}
