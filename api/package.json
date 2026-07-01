@@ -17,5 +17,7 @@
     "heic-convert": "^2.1.0",
     "sharp": "^0.33.5",
     "stream-json": "^1.8.0"
-  }
+  },
+  "private": true,
+  "license": "UNLICENSED"
 }
