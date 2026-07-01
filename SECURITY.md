@@ -18,7 +18,10 @@ email + bcrypt-hashed password + user decks. No payments, no PII beyond email.
 - **Password reset:** no-leak (`/auth/forgot` always 200), single-use sha256 token, 1h expiry.
 - **Card Duel (online):** ephemeral rooms, rate-limited create, per-player random tokens, the answer is
   held server-side and never sent until the round is over, guess text length-capped, room reaped after 6h.
-- **Mods — two trust tiers:**
+- **User apps (mods) are turned OFF on the public host for now** (`*.mymagicdeck.com`) — no trusted *or*
+  sandboxed third-party programs load or install there; the setting shows "turned off for now." Self-hosted /
+  localhost instances keep both tiers. Reversible via `DeckOS.userAppsEnabled()`. When re-enabled, the two tiers are:
+- **Mods — two trust tiers (self-host / localhost):**
   - *Sandboxed* (default, for untrusted/community mods): runs in a `sandbox="allow-scripts"` iframe
     (opaque origin — no access to the page, cookies, or localStorage); talks to the host only over a
     narrow `postMessage` capability API (read-only sanitized decks, mod-scoped storage, toast, setMeta).

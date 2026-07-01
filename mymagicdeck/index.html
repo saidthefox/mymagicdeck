@@ -4129,7 +4129,7 @@ let _mmdClipped=null, _mmdDetached=false;
 deckosShellInit();
 // (desktop widgets are restored after the DeckOS object is defined — see widgetRenderAll() there)
 // Deck OS: apply personal/hosted mode + load any installed mods + restore the storage backend.
-if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); (DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
+if(window.DeckOS){ DeckOS.applyMode(); DeckOS.loadInstalledMods(); if(DeckOS.userAppsEnabled())(DeckOS.store.get('smods')||[]).forEach(u=>DeckOS.registerSandboxProgram(u));
   DeckOS.store.backend=DeckOS.store.get('store_backend')||'local';
   if(DeckOS.store.backend==='folder'&&DeckOS.fsSupported())window.addEventListener('load',()=>{DeckOS.folderLoad();});
 }
@@ -4854,6 +4854,7 @@ function renderSysset(){
   const su=osStartupGet();
   const mods=(window.DeckOS?DeckOS.store.get('mods'):null)||[];
   const smods=(window.DeckOS?DeckOS.store.get('smods'):null)||[];
+  const uapps=!!(window.DeckOS&&DeckOS.userAppsEnabled());
   const sep='border-bottom:1px solid var(--border)';
   b.innerHTML=
     '<div class="mg-smhdr" style="padding-left:0">Mode</div>'+
@@ -4868,12 +4869,13 @@ function renderSysset(){
     '<div style="padding:4px 2px;color:var(--text-dim);font-size:.74rem">Point the app at your own MyMagicDeck API server (blank = this site). Reloads on save.</div>'+
     '<div style="display:flex;gap:8px;padding:2px 2px"><input id="ss-apibase" placeholder="https://my-server.example" value="'+_mgEsc(window.DeckOS?DeckOS.getApiBase():'')+'" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem"><button class="btn" id="ss-apisave">Save</button></div>'+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Mods</div>'+
+    (uapps?(''+
     '<div style="padding:6px 2px;color:var(--text-dim);font-size:.74rem">Add programs by URL. <b>Sandboxed</b> mods run isolated (read-only deck access, scoped storage) and are safe; <b>trusted</b> mods run with full access to your session — only install those you trust.</div>'+
     (smods.map(u=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 2px"><span style="background:#1f6f4a;color:#cdeed7;font-size:.62rem;padding:1px 5px;border-radius:4px;flex-shrink:0">SANDBOX</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;color:var(--text)">'+_mgEsc(u)+'</span><button class="btn small" data-rmsmod="'+_mgEsc(u)+'">Remove</button></div>').join('')+
      mods.map(u=>'<div style="display:flex;align-items:center;gap:8px;padding:4px 2px"><span style="background:#7a4a1f;color:#ffd6a8;font-size:.62rem;padding:1px 5px;border-radius:4px;flex-shrink:0">TRUSTED</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.76rem;color:var(--text)">'+_mgEsc(u)+'</span><button class="btn small" data-rmmod="'+_mgEsc(u)+'">Remove</button></div>').join(''))+
     ((smods.length||mods.length)?'':'<div style="padding:4px 2px;color:var(--text-dim);font-size:.78rem">No mods installed.</div>')+
     '<div style="display:flex;gap:8px;padding:6px 2px"><input id="ss-modurl" placeholder="https://…/mod.js" style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 8px;font-size:.8rem"><button class="btn" id="ss-modadd">Install</button></div>'+
-    '<label style="display:flex;align-items:center;gap:7px;padding:2px 2px 6px;color:var(--text-dim);font-size:.76rem"><input type="checkbox" id="ss-modsandbox" checked'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' disabled':'')+'> Run sandboxed'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' <span style="color:#7fb0e0">(required on the public site)</span>':' (recommended)')+'</label>'+
+    '<label style="display:flex;align-items:center;gap:7px;padding:2px 2px 6px;color:var(--text-dim);font-size:.76rem"><input type="checkbox" id="ss-modsandbox" checked'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' disabled':'')+'> Run sandboxed'+(window.DeckOS&&!DeckOS.isTrustedModsAllowed()?' <span style="color:#7fb0e0">(required on the public site)</span>':' (recommended)')+'</label>'):'<div style="padding:6px 2px;color:var(--text-dim);font-size:.78rem">User apps are turned off for now.</div>')+
     '<div class="mg-smhdr" style="padding-left:0;margin-top:12px">Startup program</div>'+
     '<div style="padding:4px 2px;color:var(--text-dim);font-size:.74rem">Which app opens first when you load on a phone.</div>'+
     '<select id="ss-startup" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 8px;font-size:.82rem;margin:2px 0 4px">'+
@@ -6366,7 +6368,8 @@ window.DeckOS = {
   isLocal(){ return this.mode === 'local'; },
   // Trusted (new Function) mods run with full session access. Allowed on self-hosted / localhost, but
   // DISABLED on the public host — there only sandboxed mods run (see SECURITY.md).
-  isTrustedModsAllowed(){ try{ return !/(^|\.)(mymagicdeck|myvintagedeck|mycommanderdeck)\.com$/i.test(location.hostname); }catch(e){ return false; } },
+  userAppsEnabled(){ try{ return !/(^|\.)(mymagicdeck|myvintagedeck|mycommanderdeck)\.com$/i.test(location.hostname); }catch(e){ return false; } },  // user apps (mods) turned off on the public site for now
+  isTrustedModsAllowed(){ return this.userAppsEnabled(); },
   HOSTED_ONLY: ['splash','share','hud','account','storage'], // programs that need an account/subdomains
   // --- storage abstraction (mods + future backends). Default backend = localStorage. ---
   store: {
@@ -6478,7 +6481,7 @@ window.DeckOS = {
     this._smodMeta[id]=meta=>{ const a=MGW_APPS[id]; if(!a)return; if(meta.title)a.title=meta.title; if(meta.icon)a.icon=meta.icon; const p=self._programs.find(x=>x.id===id); if(p){if(meta.title)p.title=meta.title;if(meta.icon)p.icon=meta.icon;} const ti=document.querySelector('#modal-prog-'+id+' .mgw-ti'); if(ti)ti.innerHTML='<span class="mgw-ic">'+a.icon+'</span>'+_mgEsc(a.title); if(typeof mgwSyncTaskbar==='function')mgwSyncTaskbar(); };
     return id;
   },
-  installSandboxMod(url){ url=(url||'').trim(); if(!url)return false; const list=this.store.get('smods')||[]; if(list.indexOf(url)<0){ list.push(url); this.store.set('smods',list); } this.registerSandboxProgram(url); this.ui.toast('Sandboxed mod installed'); return true; },
+  installSandboxMod(url){ if(!this.userAppsEnabled()){ this.ui.toast('User apps are turned off for now.'); return false; } url=(url||'').trim(); if(!url)return false; const list=this.store.get('smods')||[]; if(list.indexOf(url)<0){ list.push(url); this.store.set('smods',list); } this.registerSandboxProgram(url); this.ui.toast('Sandboxed mod installed'); return true; },
   removeSandboxMod(url){ this.store.set('smods',(this.store.get('smods')||[]).filter(u=>u!==url)); },
   // --- self-hosted: point at your own API server (requires reload) ---
   getApiBase(){ try{ return localStorage.getItem('deckos_api_base')||''; }catch(e){ return ''; } },
