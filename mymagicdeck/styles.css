@@ -1122,6 +1122,8 @@
     .mg-deskinfo{position:absolute;top:34px;right:12px;text-align:right;font-family:Courier New,monospace;line-height:1.35;pointer-events:none;z-index:6;text-shadow:0 1px 2px rgba(0,0,0,.55)}
     .mg-deskinfo .dki-deck{font-size:12px;font-weight:bold;color:rgba(255,255,255,.92)}
     .mg-deskinfo .dki-path{font-size:11px;color:rgba(255,255,255,.7)}
+    .mg-slashhint{position:absolute;right:12px;bottom:10px;z-index:6;font-family:Courier New,monospace;font-size:12px;font-weight:bold;color:rgba(255,255,255,.82);text-shadow:0 1px 3px rgba(0,0,0,.7),0 0 2px rgba(0,0,0,.5);cursor:pointer;user-select:none;letter-spacing:.02em}
+    .mg-slashhint:active{color:#fff}
     /* Right-edge collapsing dock for File actions (Ribbon-style; tab expands/contracts) */
     .mg-dock{position:absolute;right:0;top:50%;transform:translateY(-50%);display:flex;flex-direction:row-reverse;align-items:center;z-index:55}
     .mg-dock-tab{flex-shrink:0;width:28px;height:62px;border:2px outset var(--ch-face);background:var(--ch-face);border-right:none;border-radius:7px 0 0 7px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:-2px 2px 6px rgba(0,0,0,.3)}
@@ -1129,6 +1131,13 @@
     .mg-dock.open .mg-dock-items{max-width:180px;opacity:1;transform:none;padding:6px}
     .mg-dockbtn{font-family:Tahoma,MS Sans Serif,sans-serif;font-size:11px;color:#000;background:var(--ch-face);border:2px outset var(--ch-face);padding:5px 9px;text-align:left;white-space:nowrap;cursor:pointer;border-radius:3px}
     .mg-dockbtn:active{border-style:inset}
+    .mg-dock.mg-dock-dragging,.mg-dock.mg-dock-dragging .mg-dock-items{transition:none} /* follow the finger while long-press-dragging */
+    .mg-dock.mg-dock-dragging .mg-dock-tab{box-shadow:0 0 0 2px var(--accent),-2px 2px 8px rgba(0,0,0,.5)}
+    /* docked on the LEFT edge (mirror of the default right-edge layout) */
+    .mg-dock.mg-dock-left{flex-direction:row;left:0;right:auto}
+    .mg-dock.mg-dock-left .mg-dock-tab{border-radius:0 7px 7px 0;border-left:none;border-right:2px outset var(--ch-face);box-shadow:2px 2px 6px rgba(0,0,0,.3)}
+    .mg-dock.mg-dock-left .mg-dock-items{border-radius:0 7px 7px 0;border-left:none;border-right:2px outset var(--ch-face);transform:translateX(-10px)}
+    .mg-dock.mg-dock-left.open .mg-dock-items{transform:none}
     .mg-toolbar button{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;background:var(--ch-face);padding:3px 8px}
     .mg-path{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;flex:1;min-width:40px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-seldeck{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:40%;flex-shrink:0}
@@ -1138,7 +1147,9 @@
     .mg-presdot{flex-shrink:0;align-self:center;width:9px;height:9px;border-radius:50%;background:#888;border:1px solid #5a5a5a;cursor:pointer}
     .mg-presdot.on{background:#39d353;border-color:#1f8b38}
     .mg-acct:hover{text-decoration:underline}
-    .mg-taskbar{flex-shrink:0;min-height:32px;background:var(--ch-face);border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px}
+    .mg-taskbar{flex-shrink:0;min-height:32px;background:var(--ch-face);border-top:2px solid #dfdfdf;display:flex;align-items:center;gap:8px;padding:3px 6px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+    .mg-taskbar>*{flex-shrink:0}
+    #mg-start{position:sticky;left:0;z-index:1}
     #mg-start{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:12px;font-weight:bold;color:#000;background:var(--ch-face);padding:3px 12px}
     .mg-adding{font-family:Tahoma,'MS Sans Serif',sans-serif;font-size:11px;color:#000;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .mg-binrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.16)}
@@ -1252,7 +1263,7 @@
     body.mtask-on .mg-taskbar{display:none} /* likewise the pinned #mg-mtask overlay replaces it (else it stacks under — invisible in opaque skins, but shows THROUGH the translucent Glass bar → doubled taskbar) */
     /* Pinned mobile taskbar — the regular Start + open-app buttons, always on top, reserves bounds */
     #mg-mtask{position:fixed;left:0;right:0;bottom:0;height:var(--mtask-h,40px);z-index:6000;display:flex;align-items:stretch;gap:6px;padding:4px 6px;background:var(--ch-face);border-top:2px solid #fff;box-sizing:border-box;overflow:hidden;font-family:Tahoma,'MS Sans Serif',sans-serif}
-    #mg-mtask .mt-apps{display:flex;align-items:stretch;gap:6px;flex:1;min-width:0;overflow-x:auto}
+    #mg-mtask .mt-apps{display:flex;align-items:stretch;gap:6px;flex:1;min-width:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
     #mg-mtask .mt-start,#mg-mtask .mt-desk{flex-shrink:0;font-weight:bold;color:var(--ch-text);background:var(--ch-face);border:2px solid;border-color:var(--ch-bevel);cursor:pointer}
     #mg-mtask .mt-start{font-size:12px;padding:0 14px}
     #mg-mtask .mt-desk{font-size:16px;line-height:1;padding:0 12px}

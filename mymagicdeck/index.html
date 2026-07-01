@@ -20,7 +20,7 @@
   <meta name="apple-mobile-web-app-title" content="Deck OS" />
   <link rel="apple-touch-icon" href="/icon-180.png" />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 140'><rect width='100' height='140' rx='12' fill='%230f1117'/><rect x='6' y='6' width='88' height='128' rx='9' fill='none' stroke='%235b8def' stroke-width='2.5' stroke-dasharray='6,3'/><rect x='13' y='13' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><rect x='13' y='75' width='74' height='52' rx='5' fill='none' stroke='%23374461' stroke-width='1.5'/><circle cx='68' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='80' cy='26' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/><circle cx='74' cy='36' r='6' fill='none' stroke='%235b8def' stroke-width='1.5'/></svg>" />
-  <link rel="stylesheet" href="/styles.css?v=56" />
+  <link rel="stylesheet" href="/styles.css?v=57" />
 </head>
 <body>
 <div id="db-status-banner"><span class="spinner"></span><span id="db-status-text">Loading card database from Scryfall... This may take a minute on first startup.</span></div>
@@ -4345,6 +4345,9 @@ function mgRender(){
   else ro.textContent=''; // instructions live in the art area now; the strip hides when empty
   mgFitType();
   mgUpdateWinTitle();
+  try{ a.querySelectorAll('.mg-icon').forEach(el=>{ let k=el.getAttribute('data-app'); if(!k){ if(el.hasAttribute('data-cgg'))k='cgg'; else if(el.id==='mg-backsearch')k='site'; else if(el.id==='mg-bin')k='bin'; } const d=k&&MG_APP_DESC[k]; if(d)el.title=d; }); }catch(e){}
+  { const sh=document.getElementById('mg-slashhint'); if(sh)sh.addEventListener('click',e=>{ e.stopPropagation(); if(typeof cmdPaletteOpen==='function')cmdPaletteOpen(); }); }
+  { const dk=document.getElementById('mg-dock'); if(dk){ dockApplyPos(dk); dockDragWire(dk); } }
 }
 function mgTaps(id,single,dbl){
   const el=document.getElementById(id);if(!el||el._mg)return;el._mg=1;
@@ -5080,7 +5083,7 @@ function mtaskStartMenu(){ let m=document.getElementById('mt-startmenu'); if(m){
   _smCats={}; // flyouts start closed each time the menu opens (else a stale-open flyout reappears)
   m=document.createElement('div'); m.id='mt-startmenu'; m.innerHTML=mgStartMenuHtml(false); document.body.appendChild(m); if(typeof mgWireStartMenu==='function')mgWireStartMenu(m);
   setTimeout(()=>{ const close=ev=>{ if(!m.contains(ev.target)&&ev.target.id!=='mt-start'){ m.remove(); document.removeEventListener('pointerdown',close,true); } }; document.addEventListener('pointerdown',close,true); },0); }
-function mgwTaskbarHtml(){ const front=mgwFrontKey(); return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(k===front?' active':'')+'" data-mgw="'+k+'" title="'+_mgEsc(MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
+function mgwTaskbarHtml(){ const front=mgwFrontKey(); return mgwOpenKeys().map(k=>'<button class="mg-barwin'+(k===front?' active':'')+'" data-mgw="'+k+'" title="'+_mgEsc((typeof MG_APP_DESC!=='undefined'&&MG_APP_DESC[k])||MGW_APPS[k].title)+'"><span class="bw-ic">'+MGW_APPS[k].icon+'</span><span class="bw-nm">'+_mgEsc(MGW_APPS[k].title)+'</span></button>').join('');}
 
 // ===== WM (Level B): THE desktop window manager — real floating, resizable windows. =====
 // On desktop (body.wm-on) wm* owns every window: the builder/site (wmOpenSite/wmReleaseSite), CGG,
@@ -6423,7 +6426,7 @@ window.DeckOS = {
     return true;
   },
   // Start-menu items for registered programs; pass a category ('games'|'utilities') to filter.
-  programsMenuHtml(cat){ return this._programs.filter(p=>!cat||(p.category||'utilities')===cat).map(p=>'<div class="mg-smitem" data-app="'+p.id+'">'+((typeof MGW_APPS!=='undefined'&&MGW_APPS[p.id]&&MGW_APPS[p.id].icon)||p.icon)+' '+_mgEsc(p.title)+'</div>').join(''); },  // live icon (so a shifting icon like Interactions updates here too)
+  programsMenuHtml(cat){ return this._programs.filter(p=>!cat||(p.category||'utilities')===cat).map(p=>'<div class="mg-smitem" data-app="'+p.id+'" title="'+_mgEsc((typeof MG_APP_DESC!=='undefined'&&MG_APP_DESC[p.id])||p.title||'')+'">'+((typeof MGW_APPS!=='undefined'&&MGW_APPS[p.id]&&MGW_APPS[p.id].icon)||p.icon)+' '+_mgEsc(p.title)+'</div>').join(''); },  // live icon (so a shifting icon like Interactions updates here too)
   // --- mods (third-party programs). LOCAL-TRUST model: a mod is JS that calls DeckOS.registerProgram.
   // It runs with full access to your session (like a userscript) — only install mods you trust.
   // (The sandboxed-iframe capability model for untrusted/hosted mods is on the roadmap.)
@@ -7078,10 +7081,42 @@ async function mgLoadFs(){try{if(state.user&&apiToken()){const r=await apiFetch(
 function mgFsSave(){try{if(state.user&&apiToken())apiFetch('/fs',{method:'PUT',body:JSON.stringify({data:mgFs})}).catch(()=>{});else localStorage.setItem('mmd_fs',JSON.stringify(mgFs));}catch(e){}}
 function mgGenId(){return 'f'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);}
 function mgFolderName(id){const f=mgFs.folders.find(x=>x.id===id);return f?f.name:'';}
+const MG_APP_DESC={
+  site:'MyMagicDeck — the deck builder', cgg:'Card Guesser Game — describe a card, it guesses it',
+  bin:'Recycle Bin — restore or empty deleted decks', manapool:'Mana Pool — tap to pool mana as you play',
+  twentyfourty:'2040 — two-player life & match tracker', dicebag:'Dice Bag — roll dice',
+  landgame:'Basics — the Land Game', battle:'Card Duel — 2-player guessing battle',
+  cardle:'Cardle — the daily card mystery', calendar:'Calendar — events & tournaments',
+  tournaments:'Tournaments — find events near you', mail:'Mail — messages & notifications',
+  interactions:'Interactions — public match ledger', matchhistory:'Match History — your past matches',
+  widgets:'Widgets — pin live panels to the desktop', notes:'Notes — quick notes',
+  documents:'Documents — your files & decks', hud:'Display — status of your published pages',
+  splash:'Splash Builder — design a deck showcase page', share:'Share Deck — public link + published deck',
+  storage:'Gallery — your uploaded card art', decks:'My Decks — open & manage decks',
+  import:'Import Deck — paste a list', account:'Account — sign in / profile',
+  mymagicbot:'MyMagicBot — the Discord bot', sysset:'System Settings', about:'About Deck OS'
+};
+// The right-edge File dock: long-press its tab to drag it to a new vertical spot / the other edge (persisted).
+function dockApplyPos(dk){ let p=null; try{ p=DeckOS.store.get('dockPos'); }catch(e){}
+  dk.classList.toggle('mg-dock-left', !!(p&&p.side==='left'));
+  if(p&&typeof p.top==='number'){ dk.style.top=p.top+'px'; dk.style.transform='none'; } else { dk.style.top=''; dk.style.transform=''; } }
+function dockDragWire(dk){ if(!dk||dk._dnd)return; dk._dnd=1;
+  const tab=dk.querySelector('.mg-dock-tab')||dk; let lp=null,dragging=false,moved=false,sx=0,sy=0;
+  const clampTop=y=>Math.max(4, Math.min(y, window.innerHeight - dk.offsetHeight - 4));
+  const place=(x,y)=>{ dk.classList.toggle('mg-dock-left', x < window.innerWidth/2); dk.style.transform='none'; dk.style.top=clampTop(y - dk.offsetHeight/2)+'px'; };
+  const move=e=>{ const x=e.clientX||0,y=e.clientY||0; if(!dragging){ if(Math.hypot(x-sx,y-sy)>8){ moved=true; clearTimeout(lp); } return; } e.preventDefault(); moved=true; place(x,y); };
+  const up=()=>{ clearTimeout(lp); document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up);
+    const wasDrag=dragging; dragging=false; dk.classList.remove('mg-dock-dragging');
+    if(wasDrag){ const left=dk.classList.contains('mg-dock-left'); const top=parseInt(dk.style.top,10)||0; try{ DeckOS.store.set('dockPos',{side:left?'left':'right', top}); }catch(e){} moved=true; } };
+  tab.addEventListener('pointerdown',e=>{ moved=false; sx=e.clientX; sy=e.clientY;
+    lp=setTimeout(()=>{ dragging=true; dk.classList.add('mg-dock-dragging'); try{ navigator.vibrate&&navigator.vibrate(15); }catch(_){} }, 400);
+    document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); });
+  tab.addEventListener('click',e=>{ if(moved||dragging){ e.stopImmediatePropagation(); e.preventDefault(); moved=false; } }, true); }
 function mgRenderDesktop(){
   if(typeof mgSeedDefaultFolders==='function')mgSeedDefaultFolders();
   const a=document.getElementById(mgDeskTarget);if(!a)return;
   const embedded=(mgDeskTarget==='pc-deskcontent');
+  const _mob=window.matchMedia('(pointer: coarse), (max-width: 600px)').matches;
   if(!embedded)mgArtMode='desktop';
   // keep the other desktop host empty so element ids don't collide
   a.removeEventListener('click',mgArtClick);
@@ -7126,6 +7161,7 @@ function mgRenderDesktop(){
       '<div class="mg-dock'+(mgDockOpen?' open':'')+'" id="mg-dock"><button class="mg-dock-tab" id="mg-dock-toggle" title="File actions" aria-label="File actions">🗄</button><div class="mg-dock-items"><button id="mg-newdeck" class="mg-dockbtn">🗃️ New</button><button id="mg-open" class="mg-dockbtn">🗂️ Open</button><button id="mg-newfolder" class="mg-dockbtn">📁 New Folder</button>'+(mgCurrentFolder!==null?'<button id="mg-renamefolder" class="mg-dockbtn">✏️ Rename Folder</button>':'')+'<button id="mg-save" class="mg-dockbtn">💾 Save</button><button id="mg-import" class="mg-dockbtn">⬇ Import</button><button id="mg-share" class="mg-dockbtn">🔗 Share</button></div></div>'+
       '<div class="mg-deskicons">'+icons+'</div>'+
       '<div class="mg-taskbar"><button id="mg-start" class="mg95 mg-bvl">Start</button>'+(embedded?(mgRunning?'<button id="mg-cgg-restore" class="mg-barwin"><span class="bw-ic">🗃️</span><span class="bw-nm">CGG</span></button>':''):'<button id="mg-incard-win" class="mg-barwin active"><span class="bw-ic">🗃️</span><span class="bw-nm">CGG</span></button>')+(embedded?'<button class="mg-barwin" data-site="1"><span class="bw-ic">✦</span><span class="bw-nm">MyMagicDeck</span></button>':'')+mgwTaskbarHtml()+'</div>'+
+      (embedded&&_mob?'<div class="mg-slashhint" id="mg-slashhint" title="Command palette — jump to any program">/ commands</div>':'')+
       ((!embedded&&mgStartOpen)?mgStartMenuHtml(false):'')+ // card-art desktop: inline menu
     '</div>';
   if(embedded){ // root desktop: float the Start menu as a high-z overlay so open windows DON'T disappear
@@ -7134,6 +7170,9 @@ function mgRenderDesktop(){
     else if(sm){ sm.remove(); }
   }
   mgUpdateWinTitle();
+  try{ a.querySelectorAll('.mg-icon').forEach(el=>{ let k=el.getAttribute('data-app'); if(!k){ if(el.hasAttribute('data-cgg'))k='cgg'; else if(el.id==='mg-backsearch')k='site'; else if(el.id==='mg-bin')k='bin'; } const d=k&&MG_APP_DESC[k]; if(d)el.title=d; }); }catch(e){}
+  { const sh=document.getElementById('mg-slashhint'); if(sh)sh.addEventListener('click',e=>{ e.stopPropagation(); if(typeof cmdPaletteOpen==='function')cmdPaletteOpen(); }); }
+  { const dk=document.getElementById('mg-dock'); if(dk){ dockApplyPos(dk); dockDragWire(dk); } }
   // folders: tap = open (unless renaming this one)
   a.querySelectorAll('.mg-icon[data-folder]').forEach(mgWireFolderIcon);
   // inline folder rename (no dialog — type in the label, keyboard pops up)
@@ -7278,7 +7317,7 @@ function mgAppFolderOpen(folderId, bub){
   const pop=document.createElement('div'); pop.id='mg-fbpop'; pop.className='mg-fbpop';
   pop.innerHTML='<div class="mg-fbpop-bar"><input class="mg-fbpop-name" maxlength="40" value="'+_mgEsc(f.name||'Folder')+'"></div>'+
     '<div class="mg-fbpop-grid">'+f.apps.map(k=>{ const m=_appMeta[k]||{emoji:'🧩',label:k};
-      return '<div class="mg-fbapp" data-fbapp="'+k+'"><button class="mg-fbapp-x" data-fbx="'+k+'" title="Remove from folder">✕</button><span class="mg-fbapp-ic">'+(m.emoji||'🧩')+'</span><span class="mg-fbapp-lbl">'+_mgEsc(m.label||k)+'</span></div>'; }).join('')+'</div>';
+      return '<div class="mg-fbapp" data-fbapp="'+k+'" title="'+_mgEsc((typeof MG_APP_DESC!=='undefined'&&MG_APP_DESC[k])||m.label||k)+'"><button class="mg-fbapp-x" data-fbx="'+k+'" title="Remove from folder">✕</button><span class="mg-fbapp-ic">'+(m.emoji||'🧩')+'</span><span class="mg-fbapp-lbl">'+_mgEsc(m.label||k)+'</span></div>'; }).join('')+'</div>';
   document.body.appendChild(pop);
   // position near the bubble, clamped to viewport
   const r=bub.getBoundingClientRect(); const pw=pop.offsetWidth, ph=pop.offsetHeight;
