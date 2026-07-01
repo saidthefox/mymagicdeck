@@ -756,6 +756,7 @@
     #cam-fab { display: none; position: fixed; right: 14px; bottom: calc(64px + env(safe-area-inset-bottom, 0px)); z-index: 9000; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--accent); color: #fff; font-size: 23px; box-shadow: 0 6px 20px rgba(0,0,0,0.45); cursor: pointer; align-items: center; justify-content: center; }
     #cam-fab:active { transform: scale(0.94); }
     body.pc-deskmode #cam-fab { display: none; } /* hidden when MMD is minimized */
+    body:has(.modal-overlay.open) #cam-fab, body:has(#mguess-overlay.open) #cam-fab { display: none; } /* hidden when a program/modal covers MMD (minimized programs drop .open, so it returns) */
     body.mtask-on #cam-fab { bottom: calc(64px + var(--mtask-h, 0px) + env(safe-area-inset-bottom, 0px)); } /* float above the pinned taskbar instead of hiding */
     #cam-scan { display: none; position: fixed; inset: 0; z-index: 10100; background: #000; }
     #cam-scan.open { display: block; }
@@ -1161,7 +1162,7 @@
     .mg-smlbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
     .mg-smchev{flex:0 0 auto;font-size:10px}
     /* flyout box to the right of the Start menu, Windows-style */
-    .mg-smsub{position:absolute;left:100%;top:-3px;min-width:172px;background:var(--ch-face);border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 8px rgba(0,0,0,.5);z-index:40;display:none;padding:3px}
+    .mg-smsub{position:absolute;left:100%;top:-3px;min-width:172px;max-height:72vh;overflow-y:auto;background:var(--ch-face);border:2px solid;border-color:#fff #404040 #404040 #fff;box-shadow:3px 3px 8px rgba(0,0,0,.5);z-index:40;display:none;padding:3px}
     .mg-smcat.open>.mg-smsub{display:block}
     .mg-smsub .mg-smitem{color:#000}
     #mg-cogmenu{position:absolute;top:34px;right:6px;left:auto;bottom:auto;width:204px;max-width:92%;background:var(--ch-face);z-index:40;display:block;box-shadow:2px 2px 6px rgba(0,0,0,.5)}
@@ -1257,6 +1258,7 @@
     #mg-mtask .mt-desk{font-size:16px;line-height:1;padding:0 12px}
     #mg-mtask .mt-start:active,#mg-mtask .mt-desk:active{border-color:var(--ch-bevel-in)}
     #mt-startmenu{position:fixed;left:4px;bottom:var(--mtask-h,40px);z-index:6001}
+    #mt-startmenu .mg-smcat.open>.mg-smsub{top:auto;bottom:-3px} /* open upward so Utilities/Games don't run off the bottom */
     #mt-startmenu .mg-startmenu{position:static;box-shadow:2px 2px 8px rgba(0,0,0,.6)}
     body.mtask-on .modal-overlay{bottom:var(--mtask-h)} /* reserve space so full-screen apps don't cover the bar */
     /* clean taskbar buttons (icon + name spans) — shared by the regular AND pinned taskbar */
